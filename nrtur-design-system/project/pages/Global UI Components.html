@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Global UI Components — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--surface-950);
+      color: var(--fg-1);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      padding-bottom: 120px;
+    }
+
+    /* Subtle grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    .page-content {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 48px;
+    }
+
+    /* Section chrome */
+    .section { margin-bottom: 64px; }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .section-head .num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--fg-7);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono);
+    }
+    .section-head .lbl {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--fg-5);
+    }
+    .section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-4);
+    }
+
+    /* Generic preview wrapper */
+    .preview {
+      background: var(--surface-925);
+      border: 1px solid var(--border-3);
+      border-radius: var(--radius-2xl);
+      overflow: hidden;
+    }
+    .preview-pad { padding: 32px; }
+
+    /* Sub-label inside previews */
+    .sub-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: var(--fg-6);
+      margin-bottom: 14px;
+    }
+
+    /* ── Toast ── */
+    .toast-stack { display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(13,13,26,0.94);
+      border: 1px solid var(--border-2);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    .toast-icon {
+      width: 26px; height: 26px;
+      border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .toast-body { flex: 1; min-width: 0; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+    .toast-msg   { margin-top: 3px; font-size: 12px; color: var(--fg-5); line-height: 1.45; }
+    .toast-x {
+      background: transparent; border: none;
+      color: var(--fg-6); cursor: pointer; padding: 2px;
+      display: flex; align-items: center;
+      transition: color .15s;
+    }
+    .toast-x:hover { color: var(--fg-3); }
+
+    /* ── Empty states ── */
+    .empty-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .empty-card {
+      background: var(--glass-1);
+      border: 1px solid var(--border-3);
+      border-radius: var(--radius-2xl);
+      padding: 36px 24px;
+      display: flex; flex-direction: column;
+      align-items: center; text-align: center; gap: 10px;
+    }
+    .empty-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: rgba(99,102,241,0.10);
+      border: 1px solid rgba(99,102,241,0.22);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+    }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--fg-1); }
+    .empty-desc  { font-size: 13px; color: var(--fg-5); line-height: 1.5; }
+
+    /* ── Skeletons ── */
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+    .skel {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 0%,
+        rgba(255,255,255,0.09) 40%,
+        rgba(255,255,255,0.04) 80%);
+      background-size: 200% 100%;
+      animation: shimmer 1.7s ease-in-out infinite;
+      border-radius: 5px;
+    }
+    .skel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+    /* ── Notification panel ── */
+    .notif-panel {
+      background: rgba(11,11,24,0.97);
+      border: 1px solid var(--border-2);
+      border-radius: 14px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 20px 60px rgba(0,0,0,0.60);
+      overflow: hidden;
+    }
+    .notif-tab {
+      font-size: 13px; font-weight: 500;
+      color: var(--fg-5); padding: 10px 14px;
+      border-bottom: 2px solid transparent;
+      cursor: pointer; transition: color .15s;
+      white-space: nowrap;
+    }
+    .notif-tab.active { color: var(--fg-1); border-bottom-color: var(--brand-500); }
+    .notif-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-4);
+      cursor: pointer; transition: background .1s;
+    }
+    .notif-row:hover { background: rgba(255,255,255,0.025); }
+    .notif-row:last-child { border-bottom: none; }
+
+    /* ── Command palette ── */
+    .cmd-palette {
+      background: rgba(11,11,24,0.98);
+      border: 1px solid var(--border-2);
+      border-radius: 16px;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.14),
+                  0 32px 80px rgba(0,0,0,0.75);
+      overflow: hidden;
+      width: 560px;
+    }
+    .cmd-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 12px; cursor: pointer;
+      border-radius: 8px; transition: background .1s;
+    }
+    .cmd-row:hover        { background: rgba(255,255,255,0.04); }
+    .cmd-row.cmd-selected { background: rgba(99,102,241,0.12); }
+    .cmd-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .cmd-grp {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--fg-6); padding: 8px 12px 4px;
+    }
+    kbd {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--fg-6);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-3);
+      border-radius: 5px; padding: 2px 6px;
+    }
+
+    /* ── Result row (search) ── */
+    .result-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 10px; cursor: pointer;
+      border-radius: 8px; transition: background .1s;
+    }
+    .result-row:hover      { background: rgba(255,255,255,0.04); }
+    .result-row.result-sel { background: rgba(99,102,241,0.12); }
+
+    /* ── 404 ── */
+    .page-404 {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; gap: 18px;
+      padding: 88px 40px; position: relative; overflow: hidden;
+      border-radius: var(--radius-2xl);
+      background: var(--surface-925);
+      border: 1px solid var(--border-3);
+    }
+
+    button { font-family: var(--font-sans); }
+
+    /* Live toast container */
+    #live-toasts {
+      position: fixed; top: 24px; right: 24px;
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: none;
+    }
+    #live-toasts .toast { pointer-events: all; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .toast-animate { animation: slideIn .28s ease both; }
+  </style>
+</head>
+<body>
+
+<!-- Live toast anchor -->
+<div id="live-toasts"></div>
+
+<div class="page-content">
+
+  <!-- ─────────────── PAGE HEADER ─────────────── -->
+  <div style="margin-bottom:60px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+      <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg, #6366f1, #7c3aed); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-brand);">
+        <span style="color:white; font-weight:900; font-size:13px;">n</span>
+      </div>
+      <span style="font-size:16px; font-weight:700; letter-spacing:-0.01em;">nrtur</span>
+      <span style="width:1px; height:16px; background:var(--border-2);"></span>
+      <span style="font-size:12px; color:var(--fg-6); font-weight:500;">Design System</span>
+    </div>
+    <h1 style="font-size:30px; font-weight:800; letter-spacing:-0.02em; color:var(--fg-1);">Global UI Components</h1>
+    <p style="margin-top:8px; font-size:14px; color:var(--fg-5); max-width:520px;">All shared overlay and feedback patterns in one reference. Eight components — click interactive demos to explore states.</p>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       01  TOAST NOTIFICATIONS
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">01</span>
+      <span class="lbl">Toast Notifications</span>
+    </div>
+
+    <div class="preview">
+      <div class="preview-pad" style="display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start;">
+
+        <!-- Stack -->
+        <div>
+          <p class="sub-lbl">Top-right stack</p>
+          <div class="toast-stack" id="toast-showcase">
+
+            <!-- Success -->
+            <div class="toast" style="border-left:3px solid #34d399;">
+              <div class="toast-icon" style="background:rgba(16,185,129,0.12); color:#34d399;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+              <div class="toast-body">
+                <div class="toast-title">Contact imported</div>
+                <div class="toast-msg">42 contacts added successfully.</div>
+              </div>
+              <button class="toast-x" onclick="dismissToast(this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Error -->
+            <div class="toast" style="border-left:3px solid #f87171;">
+              <div class="toast-icon" style="background:rgba(239,68,68,0.12); color:#f87171;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </div>
+              <div class="toast-body">
+                <div class="toast-title">Sync failed</div>
+                <div class="toast-msg">Gmail needs reauthorization. <a href="#" style="color:#a5b4fc; text-decoration:none;">Reconnect →</a></div>
+              </div>
+              <button class="toast-x" onclick="dismissToast(this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Warning -->
+            <div class="toast" style="border-left:3px solid #fbbf24;">
+              <div class="toast-icon" style="background:rgba(245,158,11,0.12); color:#fbbf24;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              </div>
+              <div class="toast-body">
+                <div class="toast-title">3 deals inactive for 7+ days</div>
+                <div class="toast-msg">Trigger a re-engagement workflow to nudge them.</div>
+              </div>
+              <button class="toast-x" onclick="dismissToast(this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Info -->
+            <div class="toast" style="border-left:3px solid #818cf8;">
+              <div class="toast-icon" style="background:rgba(99,102,241,0.12); color:#818cf8;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              </div>
+              <div class="toast-body">
+                <div class="toast-title">Pipeline updated</div>
+                <div class="toast-msg">Stage order was changed by Sarah K.</div>
+              </div>
+              <button class="toast-x" onclick="dismissToast(this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Spec + trigger -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <p class="sub-lbl">Variants</p>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#34d399; flex-shrink:0;"></div>
+              <span style="font-size:13px; color:var(--fg-3);">Success — emerald-400 · checkmark</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#f87171; flex-shrink:0;"></div>
+              <span style="font-size:13px; color:var(--fg-3);">Error — red-400 · X icon</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#fbbf24; flex-shrink:0;"></div>
+              <span style="font-size:13px; color:var(--fg-3);">Warning — amber-400 · triangle</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#818cf8; flex-shrink:0;"></div>
+              <span style="font-size:13px; color:var(--fg-3);">Info — indigo-400 · circle info</span>
+            </div>
+          </div>
+          <div style="background:var(--glass-1); border:1px solid var(--border-3); border-radius:10px; padding:14px 16px;">
+            <p style="font-size:12px; color:var(--fg-5); line-height:1.65;">3px left accent · frosted glass bg · icon chip (12% alpha fill) · bold title + body · dismiss button. Slides in from right. Auto-dismiss after 4 s.</p>
+          </div>
+          <button onclick="triggerLiveToast()" style="display:inline-flex; align-items:center; gap:8px; background:var(--glass-brand); border:1px solid var(--border-brand); color:var(--brand-400); font-size:12px; font-weight:600; padding:9px 16px; border-radius:9px; cursor:pointer; transition:background .15s; width:fit-content;" onmouseover="this.style.background='var(--glass-brand-strong)'" onmouseout="this.style.background='var(--glass-brand)'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Trigger live toast
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       02  EMPTY STATES
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">02</span>
+      <span class="lbl">Empty States</span>
+    </div>
+
+    <div class="preview">
+      <div class="preview-pad">
+        <div class="empty-grid">
+
+          <!-- No contacts -->
+          <div class="empty-card">
+            <div class="empty-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <p class="empty-title">No contacts yet</p>
+            <p class="empty-desc">Your contact book is empty. Start building relationships.</p>
+            <button class="btn-primary" style="border:none; cursor:pointer; padding:8px 18px; font-size:12px; margin-top:6px;">Import first contact</button>
+          </div>
+
+          <!-- No deals -->
+          <div class="empty-card">
+            <div class="empty-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            </div>
+            <p class="empty-title">No deals yet</p>
+            <p class="empty-desc">Track opportunities and close more revenue in the pipeline.</p>
+            <button class="btn-primary" style="border:none; cursor:pointer; padding:8px 18px; font-size:12px; margin-top:6px;">Create first deal</button>
+          </div>
+
+          <!-- No automations -->
+          <div class="empty-card">
+            <div class="empty-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <p class="empty-title">No automations</p>
+            <p class="empty-desc">Automate follow-ups, tasks, and notifications at scale.</p>
+            <button class="btn-primary" style="border:none; cursor:pointer; padding:8px 18px; font-size:12px; margin-top:6px;">Build first workflow</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       03  SKELETON LOADERS
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">03</span>
+      <span class="lbl">Skeleton Loaders</span>
+    </div>
+
+    <div class="preview">
+      <div class="preview-pad">
+        <div class="skel-grid">
+
+          <!-- Contacts table -->
+          <div>
+            <p class="sub-lbl">Contacts table</p>
+            <div style="display:flex; flex-direction:column; gap:0; background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; overflow:hidden;">
+              <!-- header row -->
+              <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border-3); background:rgba(255,255,255,0.02);">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:100px; height:10px;"></div>
+                <div style="flex:1;"></div>
+                <div class="skel" style="width:56px; height:10px;"></div>
+              </div>
+              <!-- row 1 -->
+              <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--border-4);">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:30px; height:30px; border-radius:50%; flex-shrink:0;"></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                  <div class="skel" style="width:62%; height:11px;"></div>
+                  <div class="skel" style="width:44%; height:9px;"></div>
+                </div>
+                <div class="skel" style="width:46px; height:20px; border-radius:9999px;"></div>
+              </div>
+              <!-- row 2 -->
+              <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--border-4);">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:30px; height:30px; border-radius:50%; flex-shrink:0;"></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                  <div class="skel" style="width:78%; height:11px;"></div>
+                  <div class="skel" style="width:52%; height:9px;"></div>
+                </div>
+                <div class="skel" style="width:54px; height:20px; border-radius:9999px;"></div>
+              </div>
+              <!-- row 3 -->
+              <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--border-4);">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:30px; height:30px; border-radius:50%; flex-shrink:0;"></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                  <div class="skel" style="width:55%; height:11px;"></div>
+                  <div class="skel" style="width:38%; height:9px;"></div>
+                </div>
+                <div class="skel" style="width:50px; height:20px; border-radius:9999px;"></div>
+              </div>
+              <!-- row 4 -->
+              <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--border-4);">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:30px; height:30px; border-radius:50%; flex-shrink:0;"></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                  <div class="skel" style="width:70%; height:11px;"></div>
+                  <div class="skel" style="width:48%; height:9px;"></div>
+                </div>
+                <div class="skel" style="width:58px; height:20px; border-radius:9999px;"></div>
+              </div>
+              <!-- row 5 -->
+              <div style="display:flex; align-items:center; gap:10px; padding:11px 14px;">
+                <div class="skel" style="width:14px; height:14px; border-radius:3px; flex-shrink:0;"></div>
+                <div class="skel" style="width:30px; height:30px; border-radius:50%; flex-shrink:0;"></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                  <div class="skel" style="width:60%; height:11px;"></div>
+                  <div class="skel" style="width:40%; height:9px;"></div>
+                </div>
+                <div class="skel" style="width:44px; height:20px; border-radius:9999px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dashboard stat cards -->
+          <div>
+            <p class="sub-lbl">Dashboard stats</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div style="background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div class="skel" style="width:30px; height:30px; border-radius:8px;"></div>
+                <div class="skel" style="width:65%; height:22px;"></div>
+                <div class="skel" style="width:80%; height:10px;"></div>
+                <div class="skel" style="width:48%; height:9px;"></div>
+              </div>
+              <div style="background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div class="skel" style="width:30px; height:30px; border-radius:8px;"></div>
+                <div class="skel" style="width:55%; height:22px;"></div>
+                <div class="skel" style="width:70%; height:10px;"></div>
+                <div class="skel" style="width:40%; height:9px;"></div>
+              </div>
+              <div style="background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div class="skel" style="width:30px; height:30px; border-radius:8px;"></div>
+                <div class="skel" style="width:72%; height:22px;"></div>
+                <div class="skel" style="width:60%; height:10px;"></div>
+                <div class="skel" style="width:44%; height:9px;"></div>
+              </div>
+              <div style="background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                <div class="skel" style="width:30px; height:30px; border-radius:8px;"></div>
+                <div class="skel" style="width:60%; height:22px;"></div>
+                <div class="skel" style="width:75%; height:10px;"></div>
+                <div class="skel" style="width:52%; height:9px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline kanban -->
+          <div>
+            <p class="sub-lbl">Pipeline kanban</p>
+            <div style="display:flex; gap:8px;">
+              <!-- Column 1 -->
+              <div style="flex:1; background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                  <div class="skel" style="width:55%; height:11px;"></div>
+                  <div class="skel" style="width:18px; height:18px; border-radius:9999px;"></div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:85%; height:10px;"></div>
+                  <div class="skel" style="width:55%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:38px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:70%; height:10px;"></div>
+                  <div class="skel" style="width:45%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:44px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:78%; height:10px;"></div>
+                  <div class="skel" style="width:50%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:36px; height:9px;"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Column 2 -->
+              <div style="flex:1; background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                  <div class="skel" style="width:60%; height:11px;"></div>
+                  <div class="skel" style="width:18px; height:18px; border-radius:9999px;"></div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:80%; height:10px;"></div>
+                  <div class="skel" style="width:48%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:42px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:65%; height:10px;"></div>
+                  <div class="skel" style="width:40%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:38px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:72%; height:10px;"></div>
+                  <div class="skel" style="width:52%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:46px; height:9px;"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Column 3 -->
+              <div style="flex:1; background:var(--glass-1); border:1px solid var(--border-3); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                  <div class="skel" style="width:50%; height:11px;"></div>
+                  <div class="skel" style="width:18px; height:18px; border-radius:9999px;"></div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:75%; height:10px;"></div>
+                  <div class="skel" style="width:46%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:40px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:82%; height:10px;"></div>
+                  <div class="skel" style="width:54%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:34px; height:9px;"></div>
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.025); border:1px solid var(--border-4); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                  <div class="skel" style="width:68%; height:10px;"></div>
+                  <div class="skel" style="width:44%; height:9px;"></div>
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                    <div class="skel" style="width:22px; height:22px; border-radius:50%;"></div>
+                    <div class="skel" style="width:48px; height:9px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       04  GLOBAL SEARCH OVERLAY
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">04</span>
+      <span class="lbl">Global Search Overlay</span>
+    </div>
+
+    <div class="preview" style="background:rgba(7,7,15,0.88);">
+      <div style="padding:48px 40px; position:relative; min-height:460px; display:flex; flex-direction:column;">
+        <!-- ESC hint -->
+        <div style="position:absolute; bottom:20px; right:24px; font-size:11px; color:var(--fg-7); font-family:var(--font-mono); display:flex; align-items:center; gap:6px;">
+          <kbd style="font-size:10px; padding:2px 5px; background:rgba(255,255,255,0.05); border:1px solid var(--border-3); border-radius:4px; color:var(--fg-6);">ESC</kbd>
+          <span>to close</span>
+        </div>
+
+        <div style="max-width:600px; margin:0 auto; width:100%; display:flex; flex-direction:column; gap:18px;">
+
+          <!-- Search input -->
+          <div style="position:relative;">
+            <div style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--fg-5); pointer-events:none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            <input type="text" value="Ma" placeholder="Search contacts, deals, automations…" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(99,102,241,0.38); border-radius:12px; padding:14px 52px 14px 44px; font-size:15px; color:var(--fg-1); font-family:var(--font-sans); outline:none; box-shadow:0 0 0 3px rgba(99,102,241,0.10);" />
+            <div style="position:absolute; right:12px; top:50%; transform:translateY(-50%);">
+              <kbd style="font-size:11px; padding:3px 8px;">⌘K</kbd>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div style="background:rgba(11,11,24,0.96); border:1px solid var(--border-2); border-radius:12px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+
+            <!-- Contacts group -->
+            <div style="padding:10px 10px 4px; font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-6); border-bottom:1px solid var(--border-4);">Contacts</div>
+            <div style="padding:6px 8px;">
+              <div class="result-row result-sel">
+                <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">M</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:13px; font-weight:500; color:var(--fg-1);">Marcus Chen</div>
+                  <div style="font-size:11px; color:var(--fg-5);">CTO · Forge &amp; Co</div>
+                </div>
+                <div style="font-size:11px; color:var(--fg-7); font-family:var(--font-mono);">↵</div>
+              </div>
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #10b981, #3b82f6); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">M</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:13px; font-weight:500; color:var(--fg-1);">Maya Rodriguez</div>
+                  <div style="font-size:11px; color:var(--fg-5);">Head of Sales · Pivot Studio</div>
+                </div>
+              </div>
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #f59e0b, #ec4899); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">M</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:13px; font-weight:500; color:var(--fg-1);">Martin Liu</div>
+                  <div style="font-size:11px; color:var(--fg-5);">Founder · Loop Labs</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deals group -->
+            <div style="padding:10px 10px 4px; font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-6); border-top:1px solid var(--border-4); border-bottom:1px solid var(--border-4);">Deals</div>
+            <div style="padding:6px 8px;">
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(99,102,241,0.10); border:1px solid rgba(99,102,241,0.20); display:flex; align-items:center; justify-content:center; color:#818cf8; flex-shrink:0;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                </div>
+                <div style="flex:1;"><div style="font-size:13px; font-weight:500; color:var(--fg-1);">Managed CRM rollout</div></div>
+                <div style="font-size:12px; color:var(--fg-5); font-weight:500;">$24,000</div>
+              </div>
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(99,102,241,0.10); border:1px solid rgba(99,102,241,0.20); display:flex; align-items:center; justify-content:center; color:#818cf8; flex-shrink:0;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+                </div>
+                <div style="flex:1;"><div style="font-size:13px; font-weight:500; color:var(--fg-1);">Marketing automation</div></div>
+                <div style="font-size:12px; color:var(--fg-5); font-weight:500;">$11,500</div>
+              </div>
+            </div>
+
+            <!-- Pages group -->
+            <div style="padding:10px 10px 4px; font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg-6); border-top:1px solid var(--border-4); border-bottom:1px solid var(--border-4);">Pages</div>
+            <div style="padding:6px 8px;">
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid var(--border-3); display:flex; align-items:center; justify-content:center; color:var(--fg-5); flex-shrink:0;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </div>
+                <div style="font-size:13px; font-weight:500; color:var(--fg-2);">Dashboard</div>
+              </div>
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid var(--border-3); display:flex; align-items:center; justify-content:center; color:var(--fg-5); flex-shrink:0;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+                </div>
+                <div style="font-size:13px; font-weight:500; color:var(--fg-2);">Reports</div>
+              </div>
+              <div class="result-row">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid var(--border-3); display:flex; align-items:center; justify-content:center; color:var(--fg-5); flex-shrink:0;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div style="font-size:13px; font-weight:500; color:var(--fg-2);">Settings</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Recent searches -->
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-6); flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span style="font-size:12px; color:var(--fg-6);">Recent:</span>
+            <span style="background:rgba(255,255,255,0.04); border:1px solid var(--border-3); border-radius:6px; padding:3px 10px; font-size:12px; color:var(--fg-4); cursor:pointer;">Forge &amp; Co</span>
+            <span style="background:rgba(255,255,255,0.04); border:1px solid var(--border-3); border-radius:6px; padding:3px 10px; font-size:12px; color:var(--fg-4); cursor:pointer;">Pipeline</span>
+            <span style="background:rgba(255,255,255,0.04); border:1px solid var(--border-3); border-radius:6px; padding:3px 10px; font-size:12px; color:var(--fg-4); cursor:pointer;">Sarah K.</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       05  NOTIFICATION DROPDOWN
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">05</span>
+      <span class="lbl">Notification Dropdown</span>
+    </div>
+
+    <div class="preview">
+      <div class="preview-pad" style="display:flex; gap:28px; align-items:flex-start; flex-wrap:wrap;">
+
+        <!-- Full panel -->
+        <div class="notif-panel" style="width:360px; flex-shrink:0;">
+          <div style="padding:16px 16px 0; display:flex; align-items:center; justify-content:space-between;">
+            <p style="font-size:14px; font-weight:700; color:var(--fg-1);">Notifications</p>
+            <button style="background:transparent; border:none; font-size:12px; color:var(--brand-400); cursor:pointer; font-weight:500; font-family:var(--font-sans); transition:color .15s;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='var(--brand-400)'">Mark all read</button>
+          </div>
+          <div style="display:flex; border-bottom:1px solid var(--border-3); padding:0 8px; margin-top:4px; gap:0;">
+            <div class="notif-tab active">All</div>
+            <div class="notif-tab">Unread <span style="background:var(--brand-500); color:white; border-radius:9999px; font-size:10px; font-weight:700; padding:1px 6px; margin-left:4px; vertical-align:middle;">3</span></div>
+          </div>
+          <!-- Row 1 -->
+          <div class="notif-row">
+            <div style="width:6px; height:6px; border-radius:50%; background:var(--brand-500); flex-shrink:0; margin-top:5px;"></div>
+            <div style="width:32px; height:32px; border-radius:50%; background:#8b5cf6; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">S</div>
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:12.5px; color:var(--fg-4); line-height:1.5;"><span style="color:var(--fg-1); font-weight:500;">Sarah K.</span> added a note to <span style="color:var(--fg-1); font-weight:500;">Forge &amp; Co</span></p>
+              <p style="margin:4px 0 0; font-size:11px; color:var(--fg-6);">2m ago</p>
+            </div>
+          </div>
+          <!-- Row 2 -->
+          <div class="notif-row">
+            <div style="width:6px; height:6px; border-radius:50%; background:var(--brand-500); flex-shrink:0; margin-top:5px;"></div>
+            <div style="width:32px; height:32px; border-radius:50%; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">M</div>
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:12.5px; color:var(--fg-4); line-height:1.5;"><span style="color:var(--fg-1); font-weight:500;">Marcus</span> was assigned to <span style="color:var(--fg-1); font-weight:500;">Managed rollout</span></p>
+              <p style="margin:4px 0 0; font-size:11px; color:var(--fg-6);">18m ago</p>
+            </div>
+          </div>
+          <!-- Row 3 -->
+          <div class="notif-row">
+            <div style="width:6px; height:6px; border-radius:50%; background:var(--brand-500); flex-shrink:0; margin-top:5px;"></div>
+            <div style="width:32px; height:32px; border-radius:50%; background:#10b981; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">J</div>
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:12.5px; color:var(--fg-4); line-height:1.5;">Deal <span style="color:var(--fg-1); font-weight:500;">Pivot Studio</span> moved to Closed Won</p>
+              <p style="margin:4px 0 0; font-size:11px; color:var(--fg-6);">1h ago</p>
+            </div>
+          </div>
+          <!-- Row 4 -->
+          <div class="notif-row">
+            <div style="width:6px; flex-shrink:0;"></div>
+            <div style="width:32px; height:32px; border-radius:50%; background:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">A</div>
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:12.5px; color:var(--fg-5); line-height:1.5;">Automation <span style="color:var(--fg-2); font-weight:500;">Follow-up sequence</span> triggered</p>
+              <p style="margin:4px 0 0; font-size:11px; color:var(--fg-6);">3h ago</p>
+            </div>
+          </div>
+          <!-- Row 5 -->
+          <div class="notif-row" style="border-bottom:none;">
+            <div style="width:6px; flex-shrink:0;"></div>
+            <div style="width:32px; height:32px; border-radius:50%; background:#ec4899; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white; flex-shrink:0;">T</div>
+            <div style="flex:1; min-width:0;">
+              <p style="margin:0; font-size:12.5px; color:var(--fg-5); line-height:1.5;"><span style="color:var(--fg-2); font-weight:500;">Tyler</span> mentioned you in a comment</p>
+              <p style="margin:4px 0 0; font-size:11px; color:var(--fg-6);">1d ago</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state panel -->
+        <div class="notif-panel" style="width:280px; flex-shrink:0;">
+          <div style="padding:16px 16px 0;">
+            <p style="font-size:14px; font-weight:700; color:var(--fg-1);">Notifications</p>
+          </div>
+          <div style="display:flex; border-bottom:1px solid var(--border-3); padding:0 8px; margin-top:4px;">
+            <div class="notif-tab active">All</div>
+            <div class="notif-tab">Unread</div>
+          </div>
+          <div style="padding:52px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid var(--border-3); display:flex; align-items:center; justify-content:center; color:var(--fg-6);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <p style="font-size:13px; font-weight:600; color:var(--fg-2);">All caught up</p>
+            <p style="font-size:12px; color:var(--fg-5);">No new notifications right now.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       06  CONFIRM MODAL
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">06</span>
+      <span class="lbl">Confirm Modal</span>
+    </div>
+
+    <div class="preview" style="background:rgba(7,7,15,0.65); backdrop-filter:blur(6px);">
+      <div class="preview-pad" style="display:flex; gap:24px; align-items:flex-start; justify-content:center; flex-wrap:wrap;">
+
+        <!-- Destructive variant -->
+        <div style="width:380px; background:rgba(13,13,26,0.97); border:1px solid var(--border-2); border-radius:16px; backdrop-filter:blur(24px); box-shadow:0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.65), 0 0 80px rgba(239,68,68,0.05); padding:24px;">
+          <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:20px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.22); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="m19 6-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </div>
+            <div>
+              <p style="margin:0; font-size:15px; font-weight:700; color:var(--fg-1);">Delete this contact?</p>
+              <p style="margin:6px 0 0; font-size:13px; color:var(--fg-5); line-height:1.55;">This will archive the contact for 30 days. You can restore them from the archive at any time.</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" style="cursor:pointer; flex:1; padding:10px 14px; font-size:13px; justify-content:center; border-radius:10px;">Cancel</button>
+            <button style="flex:1; padding:10px 14px; font-size:13px; font-weight:600; background:#dc2626; border:none; border-radius:10px; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s; font-family:var(--font-sans);" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="m19 6-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6"/></svg>
+              Delete
+            </button>
+          </div>
+          <p style="margin-top:12px; font-size:11px; color:var(--fg-6); text-align:center;">Destructive · red-700 fill button</p>
+        </div>
+
+        <!-- Confirm / indigo variant -->
+        <div style="width:380px; background:rgba(13,13,26,0.97); border:1px solid var(--border-2); border-radius:16px; backdrop-filter:blur(24px); box-shadow:0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.65), 0 0 80px rgba(99,102,241,0.07); padding:24px;">
+          <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:20px;">
+            <div style="width:40px; height:40px; border-radius:12px; background:rgba(99,102,241,0.10); border:1px solid rgba(99,102,241,0.22); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div>
+              <p style="margin:0; font-size:15px; font-weight:700; color:var(--fg-1);">Activate automation?</p>
+              <p style="margin:6px 0 0; font-size:13px; color:var(--fg-5); line-height:1.55;">This will run the workflow for all 84 contacts in the segment. Sends cannot be undone.</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" style="cursor:pointer; flex:1; padding:10px 14px; font-size:13px; justify-content:center; border-radius:10px;">Cancel</button>
+            <button class="btn-primary" style="border:none; cursor:pointer; flex:1; padding:10px 14px; font-size:13px; justify-content:center; border-radius:10px;">Activate</button>
+          </div>
+          <p style="margin-top:12px; font-size:11px; color:var(--fg-6); text-align:center;">Confirm · indigo primary button</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       07  COMMAND PALETTE  ⌘K
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">07</span>
+      <span class="lbl">Command Palette ⌘K</span>
+    </div>
+
+    <div class="preview" style="background:rgba(7,7,15,0.80);">
+      <div class="preview-pad" style="display:flex; justify-content:center; padding:48px 32px;">
+        <div class="cmd-palette">
+
+          <!-- Search bar -->
+          <div style="padding:14px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border-3);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-5); flex-shrink:0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" placeholder="Type a command or search…" style="flex:1; background:transparent; border:none; outline:none; font-size:14px; color:var(--fg-1); font-family:var(--font-sans);" />
+            <kbd style="font-size:10px; padding:2px 6px;">ESC</kbd>
+          </div>
+
+          <!-- Results area -->
+          <div style="padding:8px;">
+
+            <!-- Navigate -->
+            <div class="cmd-grp">Navigate</div>
+            <div class="cmd-row cmd-selected">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.04); border:1px solid var(--border-4); color:var(--fg-4);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-1);">Dashboard</span>
+              <kbd>⌘1</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.04); border:1px solid var(--border-4); color:var(--fg-4);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Contacts</span>
+              <kbd>⌘2</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.04); border:1px solid var(--border-4); color:var(--fg-4);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Pipeline</span>
+              <kbd>⌘3</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.04); border:1px solid var(--border-4); color:var(--fg-4);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Reports</span>
+              <kbd>⌘4</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.04); border:1px solid var(--border-4); color:var(--fg-4);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Settings</span>
+              <kbd>⌘,</kbd>
+            </div>
+
+            <!-- Create -->
+            <div class="cmd-grp" style="margin-top:4px;">Create</div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.18); color:var(--brand-400);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">New Contact</span>
+              <kbd>N C</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.18); color:var(--brand-400);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">New Deal</span>
+              <kbd>N D</kbd>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.18); color:var(--brand-400);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">New Automation</span>
+              <kbd>N A</kbd>
+            </div>
+
+            <!-- Recent -->
+            <div class="cmd-grp" style="margin-top:4px;">Recent</div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-4); color:var(--fg-6);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Forge &amp; Co</span>
+              <span style="font-size:11px; color:var(--fg-6);">Contact</span>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-4); color:var(--fg-6);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Q3 Outbound campaign</span>
+              <span style="font-size:11px; color:var(--fg-6);">Automation</span>
+            </div>
+            <div class="cmd-row">
+              <div class="cmd-icon" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-4); color:var(--fg-6);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <span style="flex:1; font-size:13px; color:var(--fg-2);">Settings</span>
+              <span style="font-size:11px; color:var(--fg-6);">Page</span>
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div style="padding:8px 16px; border-top:1px solid var(--border-4); display:flex; align-items:center; gap:16px; background:rgba(255,255,255,0.01);">
+            <span style="font-size:11px; color:var(--fg-7); font-family:var(--font-mono);">↑↓ navigate</span>
+            <span style="font-size:11px; color:var(--fg-7); font-family:var(--font-mono);">↵ select</span>
+            <span style="font-size:11px; color:var(--fg-7); font-family:var(--font-mono);">ESC close</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       08  404 PAGE
+  ═══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="num">08</span>
+      <span class="lbl">404 Page</span>
+    </div>
+
+    <div class="page-404">
+      <!-- Orb glow -->
+      <div style="position:absolute; width:500px; height:500px; border-radius:50%; background:radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;"></div>
+      <!-- Subtle secondary orb -->
+      <div style="position:absolute; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%); top:30%; left:60%; transform:translate(-50%,-50%); pointer-events:none;"></div>
+
+      <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center;">
+        <p class="gradient-text-brand" style="font-size:112px; font-weight:900; letter-spacing:-0.04em; line-height:1;">404</p>
+        <h2 style="font-size:24px; font-weight:700; letter-spacing:-0.01em; color:var(--fg-1);">Page not found</h2>
+        <p style="font-size:14px; color:var(--fg-5); max-width:320px; line-height:1.6;">The page you're looking for doesn't exist or may have been moved.</p>
+        <button class="btn-primary" style="border:none; cursor:pointer; margin-top:8px; padding:12px 28px; font-size:14px;">← Back to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+
+</div><!-- /page-content -->
+
+
+<!-- ─── Interactive JS ─── -->
+<script>
+  // Dismiss static showcase toasts
+  function dismissToast(btn) {
+    var t = btn.closest('.toast');
+    t.style.transition = 'opacity .2s ease, transform .2s ease';
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(12px)';
+    setTimeout(function() { if (t.parentNode) t.remove(); }, 220);
+  }
+
+  // Live toast trigger
+  var _toastIdx = 0;
+  var _variants = [
+    { border:'#34d399', bg:'rgba(16,185,129,0.12)', color:'#34d399', title:'Contact imported', msg:'42 contacts added successfully.', icon:'<path d="M20 6 9 17l-5-5"/>' },
+    { border:'#f87171', bg:'rgba(239,68,68,0.12)',  color:'#f87171', title:'Sync failed',       msg:'Gmail needs reauthorization.',    icon:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>' },
+    { border:'#fbbf24', bg:'rgba(245,158,11,0.12)', color:'#fbbf24', title:'3 deals inactive',  msg:'No activity for 7+ days.',        icon:'<path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/>' },
+    { border:'#818cf8', bg:'rgba(99,102,241,0.12)', color:'#818cf8', title:'Pipeline updated',  msg:'Stage order changed by Sarah K.',  icon:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>' }
+  ];
+
+  function triggerLiveToast() {
+    var v = _variants[_toastIdx % _variants.length];
+    _toastIdx++;
+    var container = document.getElementById('live-toasts');
+    var el = document.createElement('div');
+    el.className = 'toast toast-animate';
+    el.style.cssText = 'border-left:3px solid ' + v.border + '; max-width:320px; pointer-events:all;';
+    el.innerHTML =
+      '<div class="toast-icon" style="background:' + v.bg + '; color:' + v.color + ';">'
+        + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' + v.icon + '</svg>'
+      + '</div>'
+      + '<div class="toast-body">'
+        + '<div class="toast-title">' + v.title + '</div>'
+        + '<div class="toast-msg">' + v.msg + '</div>'
+      + '</div>'
+      + '<button class="toast-x" onclick="this.closest(\'.toast\').remove()">'
+        + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+      + '</button>';
+    container.appendChild(el);
+    setTimeout(function() {
+      if (el.parentNode) {
+        el.style.transition = 'opacity .2s ease, transform .2s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(12px)';
+        setTimeout(function() { if (el.parentNode) el.remove(); }, 220);
+      }
+    }, 4200);
+  }
+
+  // Notification tab toggle
+  document.querySelectorAll('.notif-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = tab.closest('.notif-panel');
+      panel.querySelectorAll('.notif-tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

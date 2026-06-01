@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="_card.css" />
+<style>html, body { background: var(--surface-950); }</style>
+</head><body><div class="ds-card"><div class="grain"></div>
+<div class="col" style="gap:12px;">
+  <div class="label">Empty state · first-run, no data</div>
+  <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;">
+    <div style="width:48px; height:48px; border-radius:14px; background:rgba(99,102,241,0.10); border:1px solid rgba(99,102,241,0.20); display:flex; align-items:center; justify-content:center; margin-bottom:4px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+    </div>
+    <p style="margin:0; font-size:15px; font-weight:600; color:var(--fg-1);">No deals yet</p>
+    <p style="margin:0; font-size:13px; color:var(--fg-5); max-width:320px;">Add your first deal to start tracking revenue. You can import from a CSV or start fresh.</p>
+    <div class="row" style="gap:8px; margin-top:6px;">
+      <button class="btn-primary" style="border:none; cursor:pointer; padding: 8px 16px; font-size:12px;">+ New deal</button>
+      <button class="btn-secondary" style="cursor:pointer; padding: 8px 16px; font-size:12px;">Import CSV</button>
+    </div>
+  </div>
+  <div style="font-size:11px; color:var(--fg-6);">Centered icon tile · title (fg-1, 15/600) · one-line description (fg-5) · primary + ghost CTAs.</div>
+</div>
+</div></body></html>

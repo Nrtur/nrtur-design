@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automation Builder — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},
+          fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['ui-monospace','SFMono-Regular','Menlo','monospace']},
+          boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)','brand-lg':'0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)'},
+          keyframes:{
+            glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}},
+            panelIn:{'0%':{opacity:0,transform:'translateX(12px)'},'100%':{opacity:1,transform:'none'}},
+          },
+          animation:{'glow-pulse':'glowPulse 3s ease-in-out infinite','panel-in':'panelIn 220ms ease-out both'},
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#07070f;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:4px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+    .canvas-grid{background-image:radial-gradient(circle,rgba(255,255,255,0.07) 1px,transparent 1px);background-size:32px 32px;}
+    .node{user-select:none;cursor:pointer;}
+    .node:hover .node-card{border-color:rgba(255,255,255,0.14);}
+    .node.selected .node-card{border-color:rgba(99,102,241,0.5)!important;box-shadow:0 0 0 2px rgba(99,102,241,0.2),0 8px 32px rgba(0,0,0,0.5);}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Clock:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Tag:p=><Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+    Bell:p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    Play:p=><Ico {...p} d={<polygon points="5 3 19 12 5 21 5 3"/>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+    ChevronDown:p=><Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+    Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+    ArrowLeft:p=><Ico {...p} d={<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>}/>,
+    Eye:p=><Ico {...p} d={<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>}/>,
+    Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>}/>,
+    Copy:p=><Ico {...p} d={<><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+  };
+
+  // ── Node type definitions ─────────────────────────────────────────────
+  const NODE_TYPES = {
+    trigger:   { label:'Trigger',   color:'#10b981', bg:'rgba(16,185,129,0.12)', ring:'rgba(16,185,129,0.35)', Icon:I.Zap },
+    action:    { label:'Action',    color:'#818cf8', bg:'rgba(99,102,241,0.12)', ring:'rgba(99,102,241,0.35)', Icon:I.Play },
+    delay:     { label:'Delay',     color:'#fbbf24', bg:'rgba(251,191,36,0.12)', ring:'rgba(251,191,36,0.35)', Icon:I.Clock },
+    condition: { label:'Condition', color:'#a78bfa', bg:'rgba(167,139,250,0.12)',ring:'rgba(167,139,250,0.35)',Icon:I.GitBranch },
+  };
+
+  const PALETTE_SECTIONS = [
+    { title:'Triggers', color:'#10b981', nodes:[
+      { type:'trigger', label:'Deal stage changes', sub:'When a deal moves to a stage' },
+      { type:'trigger', label:'New contact created', sub:'When a contact is added' },
+      { type:'trigger', label:'Email opened',        sub:'When a tracked email is opened' },
+      { type:'trigger', label:'Form submitted',      sub:'When a web form is submitted' },
+    ]},
+    { title:'Actions', color:'#818cf8', nodes:[
+      { type:'action', label:'Send email',     sub:'From connected mailbox',        Icon:I.Mail },
+      { type:'action', label:'Send SMS',       sub:'Via Twilio',                    Icon:I.MessageSq },
+      { type:'action', label:'Add tag',        sub:'Tag matching contacts',         Icon:I.Tag },
+      { type:'action', label:'Notify owner',   sub:'In-app + email alert',          Icon:I.Bell },
+      { type:'action', label:'Move deal stage',sub:'Update pipeline stage',         Icon:I.GitBranch },
+      { type:'action', label:'Assign owner',   sub:'Round-robin or specific',       Icon:I.Users },
+    ]},
+    { title:'Logic', color:'#a78bfa', nodes:[
+      { type:'delay',     label:'Wait / Delay',  sub:'Pause for a set period',     Icon:I.Clock },
+      { type:'condition', label:'If / Condition',sub:'Branch on data or behavior', Icon:I.GitBranch },
+    ]},
+  ];
+
+  // ── Flow data ─────────────────────────────────────────────────────────
+  // Node positions are in canvas-space (px from top-left of canvas)
+  // Canvas is 1600 x 900 logical px, centered
+  const NODES_INIT = [
+    { id:'n1', type:'trigger',   x:460, y:40,  label:'Deal stage → Proposal', sub:'When any deal moves to Proposal',  runs:312, ok:98, Icon:I.Zap },
+    { id:'n2', type:'action',    x:460, y:190, label:'Send email',             sub:'Template: Proposal follow-up',      runs:312, ok:97, Icon:I.Mail },
+    { id:'n3', type:'delay',     x:460, y:355, label:'Wait 2 days',            sub:'Business days only',               runs:298, ok:100, Icon:I.Clock, config:{amount:2,unit:'days'} },
+    { id:'n4', type:'condition', x:460, y:510, label:'Opened the email?',      sub:'Checks open tracking pixel',       runs:298, ok:100, Icon:I.Eye,   config:{field:'email_opened',op:'is true'} },
+    { id:'n5', type:'action',    x:200, y:680, label:'Send SMS follow-up',     sub:'Template: Quick check-in',         runs:178, ok:96, Icon:I.MessageSq, branch:'yes' },
+    { id:'n6', type:'action',    x:720, y:680, label:'Add tag: no-response',   sub:'+ Notify owner',                  runs:120, ok:100, Icon:I.Tag,  branch:'no' },
+  ];
+
+  const EDGES = [
+    { from:'n1', to:'n2' },
+    { from:'n2', to:'n3' },
+    { from:'n3', to:'n4' },
+    { from:'n4', to:'n5', label:'Yes' },
+    { from:'n4', to:'n6', label:'No' },
+  ];
+
+  const NODE_W = 260;
+  const NODE_H = 88;
+
+  // Compute connection points
+  function getAnchor(node, pos) {
+    const cx = node.x + NODE_W / 2;
+    const cy = node.y + NODE_H / 2;
+    if (pos === 'bottom') return { x: cx, y: node.y + NODE_H };
+    if (pos === 'top')    return { x: cx, y: node.y };
+    if (pos === 'bottom-left')  return { x: node.x + NODE_W * 0.3, y: node.y + NODE_H };
+    if (pos === 'bottom-right') return { x: node.x + NODE_W * 0.7, y: node.y + NODE_H };
+    return { x: cx, y: node.y };
+  }
+
+  function bezier(x1,y1,x2,y2){
+    const mid = (y2-y1)/2;
+    return `M${x1},${y1} C${x1},${y1+mid} ${x2},${y2-mid} ${x2},${y2}`;
+  }
+
+  // ── Node card ───────────────────────────────────────────────────────────
+  function NodeCard({node, selected, onClick}) {
+    const t = NODE_TYPES[node.type];
+    const isCond = node.type === 'condition';
+    const isDelay= node.type === 'delay';
+    return (
+      <div className={['node absolute', selected?'selected':''].join(' ')}
+        style={{left:node.x, top:node.y, width:NODE_W}}
+        onClick={e=>{e.stopPropagation();onClick(node.id);}}>
+
+        {/* Card */}
+        <div className="node-card rounded-2xl border border-white/[0.07] overflow-hidden transition-all duration-150"
+             style={{background:'rgba(13,13,28,0.95)',backdropFilter:'blur(12px)',boxShadow:'0 4px 24px rgba(0,0,0,0.5)'}}>
+          {/* Header */}
+          <div className="flex items-center gap-2 px-3.5 py-2.5" style={{background:t.bg,borderBottom:`1px solid ${t.ring}`}}>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{background:`${t.color}22`,border:`1px solid ${t.ring}`}}>
+              <node.Icon size={12} style={{color:t.color}}/>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{color:t.color}}>{t.label}</span>
+            {node.branch && (
+              <span className={['ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide',
+                node.branch==='yes'?'bg-emerald-500/20 text-emerald-300':'bg-red-500/20 text-red-300'].join(' ')}>
+                {node.branch}
+              </span>
+            )}
+          </div>
+          {/* Body */}
+          <div className="px-3.5 py-2.5">
+            <p className="text-[12.5px] font-semibold text-white leading-snug">{node.label}</p>
+            <p className="text-[10.5px] text-white/45 mt-0.5">{node.sub}</p>
+          </div>
+          {/* Stats bar */}
+          {node.runs && (
+            <div className="px-3.5 py-2 border-t border-white/[0.04] flex items-center justify-between">
+              <span className="text-[9.5px] text-white/35 flex items-center gap-1"><I.Play size={8} fill="currentColor" className="text-white/30"/>{node.runs} runs</span>
+              <span className="text-[9.5px]" style={{color:node.ok>=97?'#34d399':'#fbbf24'}}>{node.ok}% ok</span>
+            </div>
+          )}
+        </div>
+
+        {/* Condition branch labels */}
+        {isCond && (
+          <div className="absolute flex items-center justify-between" style={{top:NODE_H+10,left:0,width:NODE_W,pointerEvents:'none'}}>
+            <span className="text-[9.5px] font-bold text-emerald-400 uppercase tracking-wider" style={{marginLeft:NODE_W*0.3-24}}>Yes ↙</span>
+            <span className="text-[9.5px] font-bold text-red-400 uppercase tracking-wider" style={{marginRight:NODE_W*0.3-16}}>↘ No</span>
+          </div>
+        )}
+
+        {/* Plus button (add node after) */}
+        {!isCond && (
+          <div className="absolute flex items-center justify-center" style={{bottom:-20,left:NODE_W/2-10,width:20,height:20,zIndex:10}}>
+            <button className="w-5 h-5 rounded-full bg-white/[0.07] border border-white/[0.14] text-white/45 hover:bg-brand-500/20 hover:border-brand-500/40 hover:text-brand-300 flex items-center justify-center transition-all" onClick={e=>e.stopPropagation()}>
+              <I.Plus size={9} stroke={2.5}/>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Config panel ─────────────────────────────────────────────────────────
+  function ConfigPanel({node, onClose}) {
+    const t = NODE_TYPES[node.type];
+
+    const configsByType = {
+      trigger: [
+        {label:'Trigger event', value:'Deal stage changes → Proposal'},
+        {label:'Applies to', value:'All pipelines'},
+        {label:'Run for', value:'Each deal once'},
+      ],
+      action: node.Icon === I.Mail ? [
+        {label:'From', value:'alex@bloom.co'},
+        {label:'Subject', value:'{{deal_name}} — proposal inside'},
+        {label:'Template', value:'Proposal follow-up · day 2'},
+        {label:'Track opens', value:'Yes'},
+      ] : node.Icon === I.MessageSq ? [
+        {label:'From number', value:'+1 (415) 555-8200'},
+        {label:'Template', value:'Quick check-in'},
+        {label:'Personalize', value:'{{first_name}}, {{deal_name}}'},
+      ] : node.Icon === I.Tag ? [
+        {label:'Add tag', value:'no-response'},
+        {label:'Also', value:'Notify deal owner'},
+        {label:'Via', value:'In-app + email'},
+      ] : [],
+      delay: [
+        {label:'Wait', value:(node.config?.amount||2)+' '+( node.config?.unit||'days')},
+        {label:'Count', value:'Business days only'},
+        {label:'Timezone', value:'Contact\'s timezone'},
+      ],
+      condition: [
+        {label:'Check', value:'Email open status'},
+        {label:'Field', value:'last_email_opened_at'},
+        {label:'Operator', value:'Is not empty (opened)'},
+        {label:'Evaluate', value:'After delay period ends'},
+      ],
+    };
+
+    const cfg = configsByType[node.type] || [];
+
+    return (
+      <div className="w-[300px] shrink-0 border-l border-white/[0.06] flex flex-col animate-panel-in" style={{background:'#0b0b1c'}}>
+        {/* Header */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]" style={{background:'#09091a'}}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:t.bg,border:`1px solid ${t.ring}`}}>
+              <node.Icon size={13} style={{color:t.color}}/>
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-white">{t.label}</p>
+              <p className="text-[10px] text-white/40">{node.label}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.X size={13}/></button>
+        </div>
+
+        {/* Config fields */}
+        <div className="flex-1 overflow-y-auto scroll-area px-4 py-4 flex flex-col gap-3">
+          {/* Delay special UI */}
+          {node.type==='delay' && (
+            <div>
+              <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Wait duration</label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 rounded-xl px-3 py-2.5 flex-1 transition-all">
+                  <input type="number" defaultValue={2} min={1} className="w-16 bg-transparent outline-none text-[14px] text-white tabular-nums font-mono"/>
+                </div>
+                <div className="relative">
+                  <select defaultValue="days" className="appearance-none bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-[13px] text-white pr-7 outline-none cursor-pointer">
+                    <option value="minutes">minutes</option>
+                    <option value="hours">hours</option>
+                    <option value="days">days</option>
+                    <option value="weeks">weeks</option>
+                  </select>
+                  <I.ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"/>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-[11.5px] text-white/65">
+                  <input type="checkbox" defaultChecked className="w-3.5 h-3.5 rounded accent-indigo-500"/>
+                  Business days only
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Condition special UI */}
+          {node.type==='condition' && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Field to check</label>
+                <select defaultValue="email_opened" className="w-full appearance-none bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-[13px] text-white outline-none cursor-pointer">
+                  <option value="email_opened">Email opened</option>
+                  <option value="deal_value">Deal value</option>
+                  <option value="contact_status">Contact status</option>
+                  <option value="last_activity">Days since last activity</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Operator</label>
+                <select defaultValue="true" className="w-full appearance-none bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-[13px] text-white outline-none cursor-pointer">
+                  <option value="true">Is true (was opened)</option>
+                  <option value="false">Is false (not opened)</option>
+                  <option value="gte">Greater than or equal</option>
+                </select>
+              </div>
+              {/* Branch paths */}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.04]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"/>
+                  <p className="text-[12px] font-semibold text-emerald-300">Yes path</p>
+                  <span className="ml-auto text-[11px] text-white/40">{NODES_INIT.find(n=>n.id==='n5')?.label}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400"/>
+                  <p className="text-[12px] font-semibold text-red-300">No path</p>
+                  <span className="ml-auto text-[11px] text-white/40">{NODES_INIT.find(n=>n.id==='n6')?.label}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Generic config rows */}
+          {node.type!=='delay' && node.type!=='condition' && cfg.map((row,i)=>(
+            <div key={i}>
+              <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-1.5">{row.label}</label>
+              <div className="bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 rounded-xl px-3 py-2.5 transition-all">
+                <input type="text" defaultValue={row.value} className="w-full bg-transparent outline-none text-[12.5px] text-white"/>
+              </div>
+            </div>
+          ))}
+
+          {/* Run history mini */}
+          {node.runs && (
+            <div className="mt-2 rounded-xl border border-white/[0.05] bg-white/[0.015] p-3">
+              <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Run history</p>
+              <div className="flex items-end gap-1 h-10">
+                {[62,78,55,90,88,95,72,84,91,node.runs/4].map((v,i)=>(
+                  <div key={i} className="flex-1 rounded-sm" style={{height:`${(v/100)*40}px`,background:i===9?t.color:'rgba(99,102,241,0.35)'}}/>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-1.5 text-[10px] text-white/35">
+                <span>10 days</span>
+                <span className="font-semibold" style={{color:t.color}}>{node.runs} total · {node.ok}% success</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 px-4 py-3 border-t border-white/[0.06] flex items-center gap-1.5" style={{background:'#09091a'}}>
+          <button className="w-7 h-7 rounded-md text-white/45 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center transition-colors"><I.Trash size={12}/></button>
+          <button className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.Copy size={12}/></button>
+          <div className="flex-1"/>
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-[11.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+          <button className="px-3 py-1.5 rounded-lg text-[11.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={10} className="inline mr-1"/>Save</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Palette sidebar ───────────────────────────────────────────────────────
+  function Palette() {
+    const [open, setOpen] = React.useState(true);
+    return (
+      <aside className={['shrink-0 border-r border-white/[0.06] flex flex-col transition-all duration-300',open?'w-[220px]':'w-12'].join(' ')} style={{background:'#0a0a18'}}>
+        <div className={['flex items-center border-b border-white/[0.05] px-3 py-3',open?'justify-between':'justify-center'].join(' ')}>
+          {open && <p className="text-[11.5px] font-bold text-white">Node library</p>}
+          <button onClick={()=>setOpen(o=>!o)} className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+            {open?<I.ArrowLeft size={13}/>:<I.GitBranch size={13}/>}
+          </button>
+        </div>
+        {open && (
+          <div className="flex-1 overflow-y-auto scroll-area py-2">
+            {PALETTE_SECTIONS.map(sec=>(
+              <div key={sec.title} className="mb-1">
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-3 py-2" style={{color:sec.color}}>{sec.title}</p>
+                {sec.nodes.map(n=>{
+                  const t=NODE_TYPES[n.type];
+                  const Icon=n.Icon||t.Icon;
+                  return (
+                    <div key={n.label}
+                      draggable
+                      className="mx-2 mb-1 flex items-center gap-2 px-2.5 py-2 rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.10] cursor-grab transition-all group">
+                      <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{background:t.bg,border:`1px solid ${t.ring}`}}>
+                        <Icon size={11} style={{color:t.color}}/>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium text-white leading-tight truncate">{n.label}</p>
+                        <p className="text-[9.5px] text-white/35 truncate">{n.sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        {!open && (
+          <div className="flex-1 flex flex-col items-center py-2 gap-2">
+            {[I.Zap,I.Mail,I.Clock,I.GitBranch,I.Tag,I.Bell].map((Icon,i)=>(
+              <button key={i} className="w-8 h-8 rounded-md text-white/35 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+                <Icon size={14}/>
+              </button>
+            ))}
+          </div>
+        )}
+      </aside>
+    );
+  }
+
+  // ── Connection SVG ───────────────────────────────────────────────────────
+  function Connections({nodes}) {
+    const nodeMap = Object.fromEntries(nodes.map(n=>[n.id,n]));
+    return (
+      <svg className="absolute inset-0 pointer-events-none overflow-visible" style={{zIndex:0}}>
+        <defs>
+          <linearGradient id="edge-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(99,102,241,0.7)"/>
+            <stop offset="100%" stopColor="rgba(167,139,250,0.4)"/>
+          </linearGradient>
+          <linearGradient id="edge-yes" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="rgba(99,102,241,0.7)"/>
+            <stop offset="100%" stopColor="rgba(52,211,153,0.5)"/>
+          </linearGradient>
+          <linearGradient id="edge-no" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="rgba(99,102,241,0.7)"/>
+            <stop offset="100%" stopColor="rgba(248,113,113,0.5)"/>
+          </linearGradient>
+          <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="rgba(167,139,250,0.7)"/>
+          </marker>
+          <marker id="arrow-yes" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="rgba(52,211,153,0.7)"/>
+          </marker>
+          <marker id="arrow-no" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="rgba(248,113,113,0.7)"/>
+          </marker>
+        </defs>
+        {EDGES.map((e,i)=>{
+          const from=nodeMap[e.from];
+          const to=nodeMap[e.to];
+          if(!from||!to) return null;
+          const isCond=from.type==='condition';
+          let fromPt, grad, marker;
+          if(isCond && e.label==='Yes'){
+            fromPt=getAnchor(from,'bottom-left');
+            grad='url(#edge-yes)'; marker='url(#arrow-yes)';
+          } else if(isCond && e.label==='No'){
+            fromPt=getAnchor(from,'bottom-right');
+            grad='url(#edge-no)'; marker='url(#arrow-no)';
+          } else {
+            fromPt=getAnchor(from,'bottom');
+            grad='url(#edge-grad)'; marker='url(#arrow)';
+          }
+          const toPt=getAnchor(to,'top');
+          const d=bezier(fromPt.x,fromPt.y,toPt.x,toPt.y);
+          return (
+            <path key={i} d={d} fill="none" stroke={grad} strokeWidth="2" strokeLinecap="round" markerEnd={marker} opacity="0.9"/>
+          );
+        })}
+      </svg>
+    );
+  }
+
+  // ── Main canvas ───────────────────────────────────────────────────────────
+  function Canvas({selected, setSelected}) {
+    const [offset, setOffset] = React.useState({x:0, y:0});
+    const [dragging, setDragging] = React.useState(null);
+    const canvasRef = React.useRef(null);
+
+    function onMouseDown(e) {
+      if (e.target === canvasRef.current || e.target.classList.contains('canvas-grid-inner')) {
+        setSelected(null);
+        setDragging({startX:e.clientX-offset.x, startY:e.clientY-offset.y});
+      }
+    }
+    function onMouseMove(e) {
+      if (dragging) setOffset({x:e.clientX-dragging.startX, y:e.clientY-dragging.startY});
+    }
+    function onMouseUp() { setDragging(null); }
+
+    const canvasW=1400, canvasH=900;
+
+    return (
+      <div ref={canvasRef}
+        className="flex-1 overflow-hidden canvas-grid relative"
+        style={{background:'#07070f',cursor:dragging?'grabbing':'grab'}}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
+
+        {/* Vignette */}
+        <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 80% at 50% 50%,transparent 60%,rgba(7,7,15,0.6))'}}/>
+
+        {/* Glow orbs */}
+        <div className="absolute pointer-events-none" style={{width:600,height:400,background:'rgba(99,102,241,0.04)',filter:'blur(100px)',top:'20%',left:'30%',transform:'translateX(-50%)'}}/>
+
+        {/* Canvas content (panned) */}
+        <div style={{transform:`translate(${offset.x}px,${offset.y}px)`,position:'absolute',left:0,top:0,width:canvasW,height:canvasH}}>
+          <Connections nodes={NODES_INIT}/>
+          {NODES_INIT.map(node=>(
+            <NodeCard key={node.id} node={node} selected={selected===node.id} onClick={setSelected}/>
+          ))}
+        </div>
+
+        {/* Minimap hint */}
+        <div className="absolute bottom-4 right-4 text-[10px] text-white/25 px-2 py-1 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+          Drag to pan · Click node to configure
+        </div>
+
+        {/* Zoom controls */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white/[0.04] border border-white/[0.07] rounded-xl px-2 py-1.5">
+          <button className="w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center text-lg leading-none transition-colors">−</button>
+          <span className="text-[11px] text-white/45 px-2 tabular-nums">100%</span>
+          <button className="w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center text-lg leading-none transition-colors">+</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Page ───────────────────────────────────────────────────────────────────
+  function Page() {
+    const [selected, setSelected] = React.useState('n3'); // Delay node selected by default
+    const [active, setActive] = React.useState(true);
+
+    const selNode = NODES_INIT.find(n=>n.id===selected);
+
+    return (
+      <div data-screen-label="Automation Builder" className="h-full flex flex-col" style={{background:'#07070f'}}>
+
+        {/* Topbar */}
+        <header className="shrink-0 border-b border-white/[0.05] px-5 py-2.5 flex items-center justify-between gap-4" style={{background:'#09091a'}}>
+          <div className="flex items-center gap-3">
+            <a href="Automations.html" className="w-8 h-8 rounded-lg text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+              <I.ArrowLeft size={15}/>
+            </a>
+            <div className="w-px h-5 bg-white/[0.06]"/>
+            <div className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+              <I.Zap size={13}/>
+            </div>
+            <div>
+              <input defaultValue="Proposal follow-up sequence" className="bg-transparent outline-none text-[14px] font-bold text-white hover:bg-white/[0.04] focus:bg-white/[0.04] rounded px-1.5 py-0.5 transition-colors"/>
+              <div className="flex items-center gap-2 px-1.5">
+                <span className={['w-1.5 h-1.5 rounded-full',active?'bg-emerald-400 animate-glow-pulse':'bg-white/30'].join(' ')}/>
+                <span className="text-[10.5px] text-white/45">{active?'Active · running':'Paused'}</span>
+                <span className="text-[10.5px] text-white/30">·</span>
+                <span className="text-[10.5px] text-white/45">312 runs · 97% success</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">
+              <I.Eye size={12}/> Test run
+            </button>
+            {/* Toggle */}
+            <button onClick={()=>setActive(a=>!a)}
+              className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border',
+                active?'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                      :'bg-white/[0.04] text-white/65 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>
+              <span className={['w-2 h-2 rounded-full',active?'bg-emerald-400 animate-glow-pulse':'bg-white/30'].join(' ')}/>
+              {active?'Active':'Paused'}
+            </button>
+            <button className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+              <I.Check size={12} stroke={2.5}/> Save
+            </button>
+          </div>
+        </header>
+
+        {/* Body */}
+        <div className="flex-1 flex min-h-0">
+          <Palette/>
+          <Canvas selected={selected} setSelected={setSelected}/>
+          {selNode && <ConfigPanel node={selNode} onClose={()=>setSelected(null)}/>}
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

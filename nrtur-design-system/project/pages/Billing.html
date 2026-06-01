@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billing — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: { 'fade-up': 'fadeUp 400ms ease-out both', 'glow-pulse': 'glowPulse 3s ease-in-out infinite' },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #07070f; color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 8px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '', fill }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      ArrowRight:  (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>}/>,
+      Download:    (p)=> <Ico {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Check:       (p)=> <Ico {...p} d={<path d="M20 6 9 17l-5-5"/>}/>,
+      Calendar:    (p)=> <Ico {...p} d={<><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8"  x2="8"  y1="2" y2="6"/><line x1="3"  x2="21" y1="10" y2="10"/></>}/>,
+      ShieldCheck: (p)=> <Ico {...p} d={<><path d="M20 13c0 5-3.5 7.5-8 8.5-4.5-1-8-3.5-8-8.5V5l8-3 8 3z"/><path d="m9 12 2 2 4-4"/></>}/>,
+      Sparkles:    (p)=> <Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      CreditCard:  (p)=> <Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+      Building:    (p)=> <Ico {...p} d={<><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></>}/>,
+      More:        (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      LifeBuoy:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="14.83" y1="9.17" x2="18.36" y2="5.64"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></>}/>,
+    };
+
+    // ---------- Sidebar (Settings active variant) ----------
+    function Sidebar({ active = 'settings' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      const settingsActive = active === 'settings';
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const a = active === key;
+            return (
+              <button key={key} title={label}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </button>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings"
+              className={[
+                'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                settingsActive
+                  ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                  : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+              ].join(' ')}>
+              <I.Settings size={16}/>
+            </button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AM
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Topbar ----------
+    function SettingsTopbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-4 flex items-center justify-between gap-6" style={{ background:'#09091a' }}>
+          <div className="min-w-0">
+            <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">Settings</h1>
+            <p className="text-white/50 text-[13px] mt-1">Workspace · Bloom Creative</p>
+          </div>
+        </header>
+      );
+    }
+
+    // ---------- Sub-nav tabs ----------
+    function SettingsTabs({ active, setActive }) {
+      const tabs = ['General', 'Team', 'Billing', 'Integrations', 'API'];
+      return (
+        <div className="shrink-0 border-b border-white/[0.05] px-7" style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-1">
+            {tabs.map(t => {
+              const a = active === t;
+              return (
+                <button key={t} onClick={() => setActive(t)}
+                  className={[
+                    'relative px-4 py-3 text-[13px] font-medium transition-colors',
+                    a ? 'text-white' : 'text-white/45 hover:text-white/75'
+                  ].join(' ')}>
+                  {t}
+                  {a && <span className="absolute left-3 right-3 -bottom-px h-px"
+                              style={{ background: 'linear-gradient(90deg, transparent, #818cf8, transparent)', boxShadow: '0 0 12px rgba(129,140,248,0.7)' }}/>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Current Plan ----------
+    function CurrentPlanCard() {
+      return (
+        <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.03] backdrop-blur-md animate-fade-up">
+          <div className="absolute -top-32 -right-20 w-80 h-80 rounded-full pointer-events-none"
+               style={{ background: 'rgba(99,102,241,0.18)', filter: 'blur(120px)' }}/>
+          <div className="absolute -bottom-32 -left-10 w-72 h-72 rounded-full pointer-events-none"
+               style={{ background: 'rgba(124,58,237,0.12)', filter: 'blur(120px)' }}/>
+
+          <div className="relative p-6">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Current Plan</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/30">
+                    <I.Sparkles size={11} stroke={2.2}/>
+                    Pro
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-3 mb-3">
+                  <p className="text-white text-[36px] font-black leading-none tabular-nums">$59</p>
+                  <p className="text-white/55 text-[13px] leading-tight">/user / month</p>
+                </div>
+                <p className="text-[13px] text-white/65 mb-5">
+                  3 users × $59 = <span className="text-white font-semibold tabular-nums">$177</span> / month
+                </p>
+
+                <div className="flex items-center gap-2 text-[12px] text-white/55">
+                  <I.Calendar size={13} className="text-white/40"/>
+                  Next billing on <span className="text-white/85 font-medium">June 1, 2026</span>
+                  <span className="text-white/25 mx-1">·</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <I.ShieldCheck size={13} className="text-emerald-400"/>
+                    <span className="text-emerald-300">Auto-renews</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a href="#" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-300 hover:text-brand-200 transition-colors">
+                  Upgrade to Business <I.ArrowRight size={12} stroke={2.4}/>
+                </a>
+                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white
+                                   bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg
+                                   hover:-translate-y-0.5 active:translate-y-0 transition-all">
+                  Manage plan
+                  <I.ArrowRight size={13} stroke={2.4}/>
+                </button>
+              </div>
+            </div>
+
+            {/* mini included list */}
+            <div className="mt-5 pt-5 border-t border-white/[0.05] grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                'Up to 5 users',
+                '25,000 contacts',
+                'Unlimited pipelines',
+                'Advanced automations',
+              ].map(p => (
+                <div key={p} className="flex items-center gap-2 text-[12px] text-white/65">
+                  <span className="w-4 h-4 rounded-full bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0">
+                    <I.Check size={9} stroke={3}/>
+                  </span>
+                  {p}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Usage progress bar ----------
+    function UsageBar({ label, used, total, unit, sub }) {
+      const pct = Math.min(100, Math.round((used / total) * 100));
+      const high = pct >= 80;
+      const mid  = pct >= 60 && pct < 80;
+      const color = high ? '#fbbf24' : mid ? '#a5b4fc' : '#818cf8';
+      const labelColor = high ? 'text-amber-300' : 'text-white/55';
+
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[13px] font-semibold text-white">{label}</span>
+            <span className="text-[12px] tabular-nums">
+              <span className="text-white font-bold">{used.toLocaleString()}</span>
+              <span className="text-white/45"> / {total.toLocaleString()} {unit}</span>
+              <span className={['ml-2', labelColor].join(' ')}>{pct}%</span>
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-700"
+                 style={{
+                   width: `${pct}%`,
+                   background: `linear-gradient(to right, ${color}, ${color}cc)`,
+                   boxShadow: `0 0 12px ${color}55`,
+                 }}/>
+          </div>
+          {sub && <p className="text-[11px] text-white/40 mt-2">{sub}</p>}
+        </div>
+      );
+    }
+
+    function UsageCard() {
+      return (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md p-6 animate-fade-up">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Usage This Month</p>
+              <p className="text-white/45 text-[12px] mt-1">May 1 — June 1 · resets monthly</p>
+            </div>
+            <span className="text-[11px] text-white/35">Updated 2m ago</span>
+          </div>
+          <div className="flex flex-col gap-5">
+            <UsageBar label="Contacts"       used={1284} total={5000} unit="contacts" sub="138 added this month" />
+            <UsageBar label="Automations"    used={3}    total={10}   unit="active"   sub="7 more templates available" />
+            <UsageBar label="Email accounts" used={2}    total={3}    unit="included" sub="Add another inbox below for $5/mo" />
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Add-ons ----------
+    function AddOnRow({ Icon, name, price, desc, tone = 'brand' }) {
+      const [added, setAdded] = React.useState(false);
+      return (
+        <div className="flex items-center justify-between gap-4 py-4 group">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className={['w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+              tone === 'brand'
+                ? 'bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25'
+                : 'bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/25'
+            ].join(' ')}>
+              <Icon size={14}/>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <p className="text-[14px] font-semibold text-white leading-tight">{name}</p>
+                <span className="text-[12px] font-mono text-brand-300 tabular-nums">{price}</span>
+              </div>
+              <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{desc}</p>
+            </div>
+          </div>
+          {added ? (
+            <button onClick={() => setAdded(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300 bg-emerald-500/12 ring-1 ring-emerald-500/25 hover:bg-emerald-500/18 transition-all">
+              <I.Check size={12} stroke={2.6}/> Added
+            </button>
+          ) : (
+            <button onClick={() => setAdded(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] transition-all">
+              <I.Plus size={12} stroke={2.4}/> Add
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    function AddOnsCard() {
+      return (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md p-6 animate-fade-up">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Add-ons</p>
+              <p className="text-white/45 text-[12px] mt-1">Stack on top of your Pro plan. Cancel anytime.</p>
+            </div>
+          </div>
+          <div className="divide-y divide-white/[0.04]">
+            <AddOnRow tone="brand"  Icon={I.Mail}     name="Extra email sync account" price="$5/mo"
+              desc="Connect an additional Gmail or Outlook inbox beyond your plan limit."/>
+            <AddOnRow tone="violet" Icon={I.BarChart} name="White-label reports"      price="$15/mo"
+              desc="Replace the nrtur logo with your own brand on shared reports."/>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Invoice history ----------
+    function InvoiceTable() {
+      const INVOICES = [
+        { date: 'May 1, 2026', amount: '$177.00', status: 'Paid',    users: 3, id: 'INV-2026-005' },
+        { date: 'Apr 1, 2026', amount: '$177.00', status: 'Paid',    users: 3, id: 'INV-2026-004' },
+        { date: 'Mar 1, 2026', amount: '$118.00', status: 'Paid',    users: 2, id: 'INV-2026-003' },
+        { date: 'Feb 1, 2026', amount: '$118.00', status: 'Paid',    users: 2, id: 'INV-2026-002' },
+        { date: 'Jan 1, 2026', amount: '$118.00', status: 'Paid',    users: 2, id: 'INV-2026-001' },
+      ];
+      const STATUS = {
+        Paid:    { bg:'bg-emerald-500/12', fg:'text-emerald-300', ring:'ring-emerald-500/25', dot:'#34d399' },
+        Pending: { bg:'bg-amber-500/12',   fg:'text-amber-300',   ring:'ring-amber-500/25',   dot:'#fbbf24' },
+        Failed:  { bg:'bg-red-500/12',     fg:'text-red-300',     ring:'ring-red-500/25',     dot:'#f87171' },
+      };
+      const COL = '1.2fr 110px 1fr 120px 130px';
+
+      return (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md overflow-hidden animate-fade-up">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05]">
+            <div>
+              <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Invoice History</p>
+              <p className="text-white/45 text-[12px] mt-1">All invoices from the past 12 months</p>
+            </div>
+            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+              <I.Download size={12}/> Download all
+            </button>
+          </div>
+
+          <div className="grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015]"
+               style={{ gridTemplateColumns: COL }}>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Date</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Amount</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Invoice</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Status</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] text-right">Download</span>
+          </div>
+
+          {INVOICES.map((inv, i) => {
+            const s = STATUS[inv.status];
+            return (
+              <div key={inv.id} className={['grid items-center gap-4 px-6 py-3.5 hover:bg-white/[0.02] cursor-pointer transition-colors',
+                                            i !== INVOICES.length - 1 ? 'border-b border-white/[0.03]' : ''].join(' ')}
+                   style={{ gridTemplateColumns: COL }}>
+                <div>
+                  <p className="text-[13px] font-medium text-white leading-tight">{inv.date}</p>
+                  <p className="text-[11px] text-white/45 mt-0.5">{inv.users} user{inv.users === 1 ? '' : 's'}</p>
+                </div>
+                <p className="text-[13px] font-bold text-white tabular-nums">{inv.amount}</p>
+                <p className="text-[12px] font-mono text-white/60">{inv.id}</p>
+                <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 w-fit', s.bg, s.fg, s.ring].join(' ')}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.dot }}/>
+                  {inv.status}
+                </span>
+                <div className="flex items-center justify-end">
+                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 hover:text-brand-200 hover:bg-brand-500/10 transition-all">
+                    <I.Download size={12} stroke={2.2}/> PDF
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ---------- Payment method ----------
+    function PaymentMethodCard() {
+      return (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md p-6 animate-fade-up">
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Payment Method</p>
+            <button className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Update card</button>
+          </div>
+
+          {/* Card */}
+          <div className="relative rounded-xl p-5 overflow-hidden"
+               style={{
+                 background: 'linear-gradient(135deg, #1e1b4b 0%, #0c0c1a 60%, #0c0c1a 100%)',
+                 boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+               }}>
+            {/* Decorative glow */}
+            <div className="absolute -top-16 -right-12 w-44 h-44 rounded-full pointer-events-none"
+                 style={{ background:'rgba(99,102,241,0.32)', filter:'blur(50px)' }}/>
+            <div className="absolute top-0 right-0 w-2/3 h-full pointer-events-none opacity-25"
+                 style={{ background: 'radial-gradient(ellipse at top right, rgba(124,58,237,0.55), transparent 70%)' }}/>
+
+            <div className="relative">
+              <div className="flex items-start justify-between mb-12">
+                <div className="w-10 h-7 rounded-md flex items-center justify-center"
+                     style={{ background: 'linear-gradient(135deg, #fde047, #f59e0b)' }}>
+                  <span style={{ width: 16, height: 12, background: 'rgba(255,255,255,0.25)', borderRadius: 2, display:'block'}}/>
+                </div>
+                {/* Visa wordmark */}
+                <svg width="42" height="14" viewBox="0 0 42 14" fill="none" aria-label="Visa">
+                  <text x="0" y="12" fontSize="14" fontFamily="Inter, system-ui" fontWeight="900" fontStyle="italic" letterSpacing="-0.5" fill="#fff">VISA</text>
+                </svg>
+              </div>
+
+              <p className="font-mono text-white text-[15px] tracking-[0.18em] mb-5">
+                <span className="text-white/45">•••• •••• ••••</span> 4242
+              </p>
+
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.14em] text-white/40">Cardholder</p>
+                  <p className="text-[12px] font-medium text-white/90 mt-0.5">Alex Morgan</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.14em] text-white/40">Expires</p>
+                  <p className="text-[12px] font-medium text-white/90 mt-0.5 tabular-nums">09 / 27</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-start gap-2">
+            <I.ShieldCheck size={13} stroke={2.2} className="text-emerald-400 mt-0.5 shrink-0"/>
+            <p className="text-[11px] text-white/45 leading-relaxed">
+              Card secured by Stripe. Your billing info is never stored on our servers.
+            </p>
+          </div>
+
+          <button className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+            <I.CreditCard size={13}/> Update card
+          </button>
+
+          <a href="#" className="mt-3 text-[11px] text-white/40 hover:text-white/65 text-center block transition-colors">
+            Billed to <span className="text-white/65 font-medium">Bloom Creative · 240 Mission St, San Francisco CA</span>
+          </a>
+        </div>
+      );
+    }
+
+    // ---------- Help card ----------
+    function HelpCard() {
+      return (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md p-5 flex items-start gap-3 animate-fade-up">
+          <div className="w-9 h-9 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0">
+            <I.LifeBuoy size={15}/>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-white">Questions about billing?</p>
+            <p className="text-[12px] text-white/55 mt-1 leading-relaxed">We answer within an hour during business hours.</p>
+            <a href="mailto:billing@nrtur.com" className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 mt-2">
+              Email billing support <I.ArrowRight size={11} stroke={2.4}/>
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Page ----------
+    function BillingPage() {
+      const [tab, setTab] = React.useState('Billing');
+      return (
+        <div data-screen-label="Settings · Billing" className="h-full flex" style={{ background:'#07070f' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:560, height:560, background:'rgba(99,102,241,0.08)', filter:'blur(140px)', top:-220, right:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(124,58,237,0.06)', filter:'blur(140px)', bottom:-200, left:200 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="settings"/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <SettingsTopbar/>
+              <SettingsTabs active={tab} setActive={setTab}/>
+
+              <div className="flex-1 overflow-y-auto scroll-area">
+                <div className="px-7 py-6 max-w-[1280px] mx-auto flex flex-col gap-5">
+
+                  {tab !== 'Billing' && (
+                    <div className="rounded-2xl border border-dashed border-white/[0.08] p-10 text-center">
+                      <p className="text-[14px] text-white/55">The <span className="text-white font-semibold">{tab}</span> tab isn't built in this mockup — switch back to <button onClick={()=>setTab('Billing')} className="text-brand-300 hover:text-brand-200 underline">Billing</button> to see it.</p>
+                    </div>
+                  )}
+
+                  {tab === 'Billing' && (
+                    <>
+                      <CurrentPlanCard/>
+
+                      <section className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-5">
+                        <UsageCard/>
+                        <PaymentMethodCard/>
+                      </section>
+
+                      <AddOnsCard/>
+
+                      <InvoiceTable/>
+
+                      <HelpCard/>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background:'#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                  <span className="text-[11px] text-white/40">All systems operational</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">Plan changes take effect at the next billing cycle</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<BillingPage />);
+  </script>
+</body>
+</html>

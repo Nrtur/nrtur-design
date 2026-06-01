@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+            'card':     '0 0 0 1px rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4)',
+          },
+          keyframes: {
+            fadeUp:    { '0%': { opacity: 0, transform: 'translateY(12px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+            growBar:   { '0%': { height: '0%' }, '100%': {} },
+          },
+          animation: {
+            'fade-up':    'fadeUp 500ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0; background: #07070f; color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+    .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.50); }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // -------- Icon helper --------
+    const Ico = ({ d, size = 16, stroke = 2, className = '', fill }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill || 'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p) => <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>} />,
+      Users:       (p) => <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />,
+      GitBranch:   (p) => <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>} />,
+      Mail:        (p) => <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>} />,
+      Zap:         (p) => <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>} />,
+      BarChart:    (p) => <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>} />,
+      Settings:    (p) => <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>} />,
+      Search:      (p) => <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>} />,
+      Bell:        (p) => <Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>} />,
+      TrendUp:     (p) => <Ico {...p} d={<><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>} />,
+      TrendDown:   (p) => <Ico {...p} d={<><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></>} />,
+      ArrowRight:  (p) => <Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>} />,
+      Plus:        (p) => <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>} />,
+      Filter:      (p) => <Ico {...p} d={<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>} />,
+      More:        (p) => <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>} />,
+    };
+
+    // -------- Sidebar --------
+    function Sidebar() {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, active: true,  label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      active: false, label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  active: false, label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       active: false, label: 'Email' },
+        { key:'automations', Icon: I.Zap,        active: false, label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   active: false, label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]"
+               style={{ background: '#07070f' }}>
+          {/* Logo */}
+          <a href="#" className="mb-4 group" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+
+          {items.map(({ key, Icon, active, label }) => (
+            <button key={key} title={label}
+              className={[
+                'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                active
+                  ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                  : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+              ].join(' ')}>
+              <Icon size={16} />
+            </button>
+          ))}
+
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16} />
+            </button>
+            <button title="Alex Chen"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all"
+              style={{ background: '#3b82f6' }}>
+              AC
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // -------- Topbar --------
+    function Topbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-4 flex items-center justify-between"
+                style={{ background: '#09091a' }}>
+          <div>
+            <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">Dashboard</h1>
+            <p className="text-white/50 text-[13px] mt-1">
+              Good morning, Alex <span aria-hidden>👋</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button title="Search"
+              className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50
+                         hover:text-white hover:bg-white/[0.06] hover:border-white/[0.14]
+                         flex items-center justify-center transition-all">
+              <I.Search size={14} />
+            </button>
+            <button title="Notifications"
+              className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50
+                         hover:text-white hover:bg-white/[0.06] hover:border-white/[0.14]
+                         flex items-center justify-center transition-all relative">
+              <I.Bell size={14} />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-brand-400 animate-glow-pulse" />
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white
+                               bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg
+                               hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Plus size={14} stroke={2.4} />
+              New Contact
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // -------- Stat tile --------
+    function StatCard({ label, value, delta, deltaLabel, sub, accent }) {
+      const up = (delta || '').trim().startsWith('+');
+      return (
+        <div className="rounded-2xl p-5 backdrop-blur-md
+                        bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.10]
+                        transition-all duration-300 animate-fade-up">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-[11px] font-medium text-white/50 uppercase tracking-[0.14em]">{label}</p>
+            {accent}
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[32px] font-black text-white leading-none tracking-tight">{value}</p>
+            {delta && (
+              <span className={[
+                'inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full',
+                up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+              ].join(' ')}>
+                {up ? <I.TrendUp size={10} stroke={2.6}/> : <I.TrendDown size={10} stroke={2.6}/>}
+                {delta}
+              </span>
+            )}
+          </div>
+          {sub && <p className="text-[12px] text-white/45 mt-2.5">{sub}</p>}
+          {deltaLabel && !sub && <p className="text-[12px] text-white/45 mt-2.5">{deltaLabel}</p>}
+        </div>
+      );
+    }
+
+    // -------- Revenue chart --------
+    function RevenueChart() {
+      const data = [
+        { label: 'Jan', value: 62, deals: 14, revenue: '$82k' },
+        { label: 'Feb', value: 48, deals: 11, revenue: '$65k' },
+        { label: 'Mar', value: 76, deals: 18, revenue: '$98k' },
+        { label: 'Apr', value: 92, deals: 21, revenue: '$118k' },
+        { label: 'May', value: 84, deals: 19, revenue: '$108k' },
+        { label: 'Jun', value: 100, deals: 24, revenue: '$134k' },
+      ];
+      const [hovered, setHovered] = React.useState(null);
+      const totals = { revenue: '$605k', deals: 107, growth: '+38%' };
+
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 backdrop-blur-md h-full flex flex-col animate-fade-up">
+          <div className="flex items-start justify-between mb-1">
+            <div>
+              <p className="text-[11px] font-medium text-white/50 uppercase tracking-[0.14em]">Revenue by month</p>
+              <p className="text-white text-[18px] font-bold mt-1">{totals.revenue} <span className="text-emerald-400 text-[13px] font-semibold ml-1">{totals.growth}</span></p>
+              <p className="text-[12px] text-white/45">Last 6 months · {totals.deals} deals won</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {['3M','6M','1Y'].map((t, i) => (
+                <button key={t} className={[
+                  'text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors',
+                  i === 1 ? 'bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/20' : 'text-white/40 hover:text-white/70'
+                ].join(' ')}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* y axis labels */}
+          <div className="flex-1 mt-5 flex">
+            <div className="flex flex-col justify-between text-[10px] text-white/30 pr-3 pb-7 font-mono">
+              <span>$140k</span><span>$105k</span><span>$70k</span><span>$35k</span><span>$0</span>
+            </div>
+
+            {/* bars */}
+            <div className="flex-1 relative">
+              {/* gridlines */}
+              <div className="absolute inset-0 pb-7 flex flex-col justify-between pointer-events-none">
+                {[0,1,2,3,4].map(i => <div key={i} className="h-px w-full bg-white/[0.04]" />)}
+              </div>
+
+              <div className="absolute inset-x-0 top-0 bottom-7 flex items-end gap-3">
+                {data.map((b, i) => {
+                  const isHover = hovered === i;
+                  return (
+                    <div key={b.label} className="flex-1 h-full flex flex-col items-center justify-end gap-1.5"
+                         onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+                      <span className={'text-[10px] font-semibold transition-colors ' + (isHover ? 'text-brand-300' : 'text-white/40')}>
+                        {b.deals}
+                      </span>
+                      <div className="w-full relative group">
+                        <div
+                          className="w-full rounded-t-md transition-all duration-200 cursor-pointer"
+                          style={{
+                            height: `${b.value * 2.2}px`,
+                            background: isHover
+                              ? 'linear-gradient(to top, #6366f1, #a5b4fc)'
+                              : 'linear-gradient(to top, #4f46e5, #818cf8)',
+                            boxShadow: isHover ? '0 0 24px rgba(99,102,241,0.45)' : 'none',
+                          }}
+                        />
+                        {isHover && (
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-12 z-10 px-2.5 py-1.5 rounded-lg
+                                          bg-surface-925/95 backdrop-blur-md border border-white/[0.08] shadow-card
+                                          whitespace-nowrap">
+                            <p className="text-[11px] font-bold text-white leading-tight">{b.revenue}</p>
+                            <p className="text-[10px] text-white/50 leading-tight">{b.deals} deals won</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* x labels */}
+              <div className="absolute inset-x-0 bottom-0 flex gap-3 h-7 items-end">
+                {data.map(b => (
+                  <span key={b.label} className="flex-1 text-[10px] text-white/40 text-center font-medium">{b.label}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // -------- Activity --------
+    function ActivityCard() {
+      const items = [
+        { who:'Sarah Chen',     what:'closed Forge & Co for $44,000', time:'2m ago',  color:'#3b82f6', avatar:'SC', tone:'win' },
+        { who:'Jamie Kim',      what:'sent proposal to Summit Digital', time:'14m ago', color:'#8b5cf6', avatar:'JK', tone:'send' },
+        { who:'Ravi Lee',       what:'moved Pivot Studio to Proposal', time:'1h ago',  color:'#10b981', avatar:'RL', tone:'move' },
+        { who:'Marcus Rios',    what:'added 3 new contacts from import', time:'2h ago',  color:'#f59e0b', avatar:'MR', tone:'add'  },
+        { who:'Automation',     what:'sent welcome email to 8 new leads', time:'3h ago',  color:'#ec4899', avatar:'⚡', tone:'auto' },
+      ];
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 backdrop-blur-md h-full flex flex-col animate-fade-up">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-[11px] font-medium text-white/50 uppercase tracking-[0.14em]">Recent Activity</p>
+              <p className="text-white/45 text-[12px] mt-1">Live · last 24h</p>
+            </div>
+            <a href="#" className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">
+              View all <I.ArrowRight size={11} stroke={2.4}/>
+            </a>
+          </div>
+          <div className="flex flex-col gap-4 flex-1">
+            {items.map((a, i) => (
+              <div key={i} className="flex items-start gap-3 group">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                     style={{ background: a.color }}>
+                  {a.avatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] leading-snug text-white/75">
+                    <span className="font-semibold text-white">{a.who}</span> {a.what}
+                  </p>
+                  <p className="text-[11px] text-white/35 mt-0.5">{a.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------- Pipeline overview --------
+    function PipelineOverviewCard() {
+      const stages = [
+        { name: 'Prospecting', value: '$42k',  count: 8,  color: '#94a3b8', fill: 35 },
+        { name: 'Qualified',   value: '$81k',  count: 5,  color: '#818cf8', fill: 60 },
+        { name: 'Proposal',    value: '$67k',  count: 4,  color: '#a78bfa', fill: 50 },
+        { name: 'Closed Won',  value: '$134k', count: 11, color: '#34d399', fill: 95 },
+      ];
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 backdrop-blur-md h-full flex flex-col animate-fade-up">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-[11px] font-medium text-white/50 uppercase tracking-[0.14em]">Pipeline Overview</p>
+              <p className="text-white/45 text-[12px] mt-1">28 open deals · $324k in play</p>
+            </div>
+            <a href="#" className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">
+              Open pipeline <I.ArrowRight size={11} stroke={2.4}/>
+            </a>
+          </div>
+          <div className="grid grid-cols-4 gap-3 flex-1">
+            {stages.map(s => (
+              <div key={s.name} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 flex flex-col gap-2.5
+                                           hover:border-white/[0.10] hover:bg-white/[0.04] transition-all duration-200 cursor-pointer">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+                    <span className="text-[11px] font-semibold text-white/65">{s.name}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-white/45 bg-white/[0.05] rounded-full w-5 h-5 flex items-center justify-center">{s.count}</span>
+                </div>
+                <p className="text-[19px] font-black text-white leading-none">{s.value}</p>
+                <div className="mt-auto h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${s.fill}%`, background: s.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------- Top contacts --------
+    function TopContactsCard() {
+      const contacts = [
+        { name:'Sarah Chen',      company:'Bloom Creative',      value:'$44k', avatar:'SC', color:'#3b82f6', delta:'+12%' },
+        { name:'Priya Kapoor',    company:'Kapoor & Associates', value:'$31k', avatar:'PK', color:'#10b981', delta:'+8%'  },
+        { name:'Lisa Nakamura',   company:'Summit Agency',       value:'$28k', avatar:'LN', color:'#ec4899', delta:'+22%' },
+        { name:'James Whitfield', company:'Summit Digital',      value:'$18k', avatar:'JW', color:'#8b5cf6', delta:'+4%'  },
+        { name:'Tom Barrett',     company:'Barrett Digital',     value:'$14k', avatar:'TB', color:'#14b8a6', delta:'+2%'  },
+      ];
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6 backdrop-blur-md h-full flex flex-col animate-fade-up">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-[11px] font-medium text-white/50 uppercase tracking-[0.14em]">Top Contacts</p>
+              <p className="text-white/45 text-[12px] mt-1">By lifetime deal value</p>
+            </div>
+            <a href="#" className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">
+              All contacts <I.ArrowRight size={11} stroke={2.4}/>
+            </a>
+          </div>
+          <div className="flex flex-col gap-2 flex-1">
+            {contacts.map((c, i) => (
+              <div key={c.name} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer">
+                <span className="text-[11px] font-mono text-white/30 w-4">{i + 1}</span>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                     style={{ background: c.color }}>{c.avatar}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>
+                  <p className="text-[11px] text-white/45 truncate">{c.company}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-bold text-white leading-tight">{c.value}</p>
+                  <p className="text-[10px] text-emerald-400 font-semibold mt-0.5">{c.delta}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------- Page --------
+    function DashboardPage() {
+      return (
+        <div data-screen-label="Dashboard" className="h-full flex" style={{ background: '#09091a' }}>
+          {/* Ambient glows */}
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:520, height:520, background:'rgba(99,102,241,0.10)', filter:'blur(140px)', top:-200, right:-120 }} />
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(124,58,237,0.08)', filter:'blur(140px)', bottom:-160, left:200 }} />
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar />
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <Topbar />
+
+              <div className="flex-1 overflow-y-auto scroll-area">
+                <div className="p-7 max-w-[1480px] mx-auto flex flex-col gap-5">
+                  {/* Row 1 — stats */}
+                  <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <StatCard
+                      label="Total Contacts" value="1,284"
+                      delta="+12%" sub="+138 added this month"
+                      accent={<div className="w-8 h-8 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-300 flex items-center justify-center"><I.Users size={14}/></div>}
+                    />
+                    <StatCard
+                      label="Pipeline Value" value="$324k"
+                      delta="+18%" sub="28 open deals across 4 stages"
+                      accent={<div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 flex items-center justify-center"><I.GitBranch size={14}/></div>}
+                    />
+                    <StatCard
+                      label="Deals Won" value="11"
+                      sub="$134k closed this month"
+                      accent={<div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center justify-center"><I.TrendUp size={14}/></div>}
+                    />
+                    <StatCard
+                      label="Email Synced" value="2"
+                      sub={<span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>Accounts · live sync</span>}
+                      accent={<div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-center justify-center"><I.Mail size={14}/></div>}
+                    />
+                  </section>
+
+                  {/* Row 2 — chart + activity */}
+                  <section className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
+                    <div style={{ minHeight: 360 }}><RevenueChart /></div>
+                    <div style={{ minHeight: 360 }}><ActivityCard /></div>
+                  </section>
+
+                  {/* Row 3 — pipeline + contacts */}
+                  <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <PipelineOverviewCard />
+                    <TopContactsCard />
+                  </section>
+                </div>
+              </div>
+
+              {/* Status footer */}
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background: '#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse" />
+                  <span className="text-[11px] text-white/40">All systems operational</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">3 team members online</span>
+                  <div className="flex">
+                    {['#3b82f6','#8b5cf6','#10b981'].map((c, i) => (
+                      <span key={i} className="w-4 h-4 rounded-full"
+                            style={{ background: c, marginLeft: i === 0 ? 0 : -6, border: '2px solid #07070f' }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<DashboardPage />);
+  </script>
+</body>
+</html>

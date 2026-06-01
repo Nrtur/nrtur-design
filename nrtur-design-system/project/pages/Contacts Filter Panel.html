@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Filter Contacts — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'] },
+          boxShadow: {
+            'brand': '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+          },
+          keyframes: {
+            drawerIn: { '0%':{transform:'translateX(100%)',opacity:0}, '100%':{transform:'translateX(0)',opacity:1} },
+            glowPulse:{ '0%,100%':{opacity:0.5}, '50%':{opacity:1} },
+          },
+          animation: {
+            'drawer-in': 'drawerIn 260ms cubic-bezier(0.16,1,0.3,1) both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+    input[type="checkbox"].cb{appearance:none;width:15px;height:15px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);cursor:pointer;transition:all 150ms;flex-shrink:0;}
+    input[type="checkbox"].cb:checked{background:#6366f1;border-color:#6366f1;}
+    input[type="checkbox"].cb:checked::after{content:'';display:block;width:9px;height:9px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center/contain;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I = {
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Filter:p=><Ico {...p} d={<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>}/>,
+    Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    ChevronDown:p=><Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+    Calendar:p=><Ico {...p} d={<><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    Sliders:p=><Ico {...p} d={<><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="6" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="6" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="10" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="12" y2="12"/><line x1="17" x2="23" y1="16" y2="16"/></>}/>,
+    Tag:p=><Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+    Bookmark:p=><Ico {...p} d={<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>}/>,
+  };
+
+  function Sidebar() {
+    const items = [
+      {key:'dash',Icon:I.LayoutDash,label:'Dashboard',href:'Dashboard.html'},
+      {key:'contacts',Icon:I.Users,label:'Contacts',href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,label:'Pipeline',href:'Pipeline.html'},
+      {key:'email',Icon:I.Mail,label:'Email',href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,label:'SMS',href:'SMS Inbox.html'},
+      {key:'calls',Icon:I.Phone,label:'Calls',href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,label:'Automations',href:'Automations.html'},
+      {key:'reports',Icon:I.BarChart,label:'Reports',href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}>
+            <span className="text-white font-black text-sm">n</span>
+          </div>
+        </a>
+        {items.map(({key,Icon,label,href})=>(
+          <a key={key} href={href} title={label} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+            key==='contacts'?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}>
+            <Icon size={16}/>
+          </a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  // Contacts table mock (background)
+  const CONTACTS = [
+    {id:1,name:'Sarah Chen',company:'Meridian Agency',email:'sarah@meridian.co',status:'Active',last:'2h ago',value:'$24k',avatar:'SC',color:'#3b82f6'},
+    {id:2,name:'James Whitfield',company:'Summit Digital',email:'james@summit.io',status:'Follow-up',last:'Yesterday',value:'$18k',avatar:'JW',color:'#8b5cf6'},
+    {id:3,name:'Priya Kapoor',company:'Kapoor & Assoc',email:'priya@kapoor.com',status:'Follow-up',last:'3 days ago',value:'$31k',avatar:'PK',color:'#10b981'},
+    {id:4,name:'Marcus Rodriguez',company:'Pivot Studio',email:'marcus@pivot.studio',status:'New',last:'Today',value:'$8k',avatar:'MR',color:'#f59e0b'},
+    {id:5,name:'Lisa Nakamura',company:'Nova Growth',email:'lisa@novagrowth.co',status:'Active',last:'1h ago',value:'$42k',avatar:'LN',color:'#ec4899'},
+    {id:6,name:'Tom Barrett',company:'Barrett Digital',email:'tom@barrett.co',status:'Active',last:'4h ago',value:'$15k',avatar:'TB',color:'#14b8a6'},
+    {id:7,name:'Riley Voss',company:'Clearview Media',email:'riley@clearview.tv',status:'Cold',last:'2 weeks ago',value:'$0',avatar:'RV',color:'#64748b'},
+  ];
+  const STATUS_STYLE = {
+    Active:{'bg':'bg-emerald-500/10','fg':'text-emerald-400','dot':'#34d399'},
+    'Follow-up':{'bg':'bg-amber-500/10','fg':'text-amber-400','dot':'#fbbf24'},
+    New:{'bg':'bg-blue-500/10','fg':'text-blue-400','dot':'#60a5fa'},
+    Cold:{'bg':'bg-white/[0.05]','fg':'text-white/45','dot':'#94a3b8'},
+  };
+
+  // ── Section accordion ───────────────────────────────────────────────────
+  function Section({title, count, defaultOpen=true, children}) {
+    const [open,setOpen] = React.useState(defaultOpen);
+    return (
+      <div className="border-b border-white/[0.05]">
+        <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between px-5 py-3 hover:bg-white/[0.025] transition-colors">
+          <div className="flex items-center gap-2">
+            <p className="text-[12px] font-semibold text-white/80">{title}</p>
+            {count>0 && <span className="w-4 h-4 rounded-full bg-brand-500/25 text-brand-200 text-[9px] font-bold flex items-center justify-center">{count}</span>}
+          </div>
+          <I.ChevronDown size={13} className={'text-white/40 transition-transform'+(open?' rotate-0':' -rotate-90')}/>
+        </button>
+        {open && <div className="px-5 pb-4">{children}</div>}
+      </div>
+    );
+  }
+
+  // ── Filter Drawer ───────────────────────────────────────────────────────
+  function FilterDrawer({onClose}) {
+    const [statuses, setStatuses] = React.useState(['Active','Follow-up']);
+    const [tags, setTags] = React.useState(['hot-lead']);
+    const [owners, setOwners] = React.useState(['AM']);
+    const [lastContacted, setLastContacted] = React.useState('this-week');
+    const [dateFrom, setDateFrom] = React.useState('2025-05-01');
+    const [dateTo, setDateTo] = React.useState('2025-05-26');
+    const [cfRevenue, setCfRevenue] = React.useState({min:'',max:''});
+    const [savedName, setSavedName] = React.useState('');
+    const [saving, setSaving] = React.useState(false);
+
+    const ALL_STATUSES = ['Active','Follow-up','New','Cold'];
+    const ALL_TAGS = [{key:'hot-lead',label:'Hot lead',color:'#f87171'},{key:'decision-maker',label:'Decision maker',color:'#a78bfa'},{key:'pricing-discussed',label:'Pricing discussed',color:'#60a5fa'},{key:'champion',label:'Champion',color:'#34d399'},{key:'stalled',label:'Stalled',color:'#94a3b8'}];
+    const ALL_OWNERS = [{key:'AM',name:'Alex Morgan',color:'#3b82f6'},{key:'SC',name:'Sarah Chen',color:'#8b5cf6'},{key:'JW',name:'James Liu',color:'#10b981'}];
+    const LAST_OPTS = [{key:'today',label:'Today'},{key:'this-week',label:'This week'},{key:'this-month',label:'This month'},{key:'30-days',label:'Last 30 days'},{key:'custom',label:'Custom range'}];
+
+    function toggleStatus(s){setStatuses(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s]);}
+    function toggleTag(t){setTags(p=>p.includes(t)?p.filter(x=>x!==t):[...p,t]);}
+    function toggleOwner(o){setOwners(p=>p.includes(o)?p.filter(x=>x!==o):[...p,o]);}
+
+    const activeCount = statuses.length + tags.length + owners.length + (lastContacted?1:0);
+
+    React.useEffect(()=>{
+      const h=(e)=>{if(e.key==='Escape')onClose();};
+      window.addEventListener('keydown',h);
+      return ()=>window.removeEventListener('keydown',h);
+    },[onClose]);
+
+    return (
+      <>
+        {/* Backdrop */}
+        <div className="fixed inset-0 z-30 bg-[#07070f]/40" onClick={onClose}/>
+
+        {/* Drawer */}
+        <aside className="fixed right-0 top-0 bottom-0 z-40 w-[360px] flex flex-col border-l border-white/[0.08] shadow-[−32px_0_80px_rgba(0,0,0,0.6)] animate-drawer-in"
+               style={{background:'#0b0b1c'}}>
+
+          {/* Header */}
+          <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]" style={{background:'#09091a'}}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+                <I.Sliders size={12}/>
+              </div>
+              <div>
+                <p className="text-[13.5px] font-bold text-white">Filter contacts</p>
+                <p className="text-[10.5px] text-white/40">{activeCount} filter{activeCount!==1?'s':''} active · {CONTACTS.filter(c=>statuses.includes(c.status)).length} results</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={()=>{setStatuses([]);setTags([]);setOwners([]);setLastContacted('');}} className="text-[11px] text-white/45 hover:text-white/75 px-2 py-1 rounded hover:bg-white/[0.04] transition-colors">
+                Reset
+              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-md text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+                <I.X size={14}/>
+              </button>
+            </div>
+          </div>
+
+          {/* Saved filters */}
+          <div className="shrink-0 px-5 py-2.5 border-b border-white/[0.05] flex items-center gap-2 overflow-x-auto">
+            {['Active deals','Hot leads','This week'].map(f=>(
+              <button key={f} className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-white/55 bg-white/[0.04] ring-1 ring-white/[0.07] hover:bg-brand-500/10 hover:text-brand-200 hover:ring-brand-500/25 transition-all">
+                <I.Bookmark size={9}/>{f}
+              </button>
+            ))}
+          </div>
+
+          {/* Sections */}
+          <div className="flex-1 overflow-y-auto scroll-area">
+
+            {/* Status */}
+            <Section title="Status" count={statuses.length}>
+              <div className="flex flex-col gap-1.5">
+                {ALL_STATUSES.map(s=>{
+                  const st = STATUS_STYLE[s];
+                  const checked = statuses.includes(s);
+                  return (
+                    <label key={s} className="flex items-center gap-2.5 cursor-pointer group rounded-lg px-1.5 py-1.5 hover:bg-white/[0.03] transition-colors">
+                      <input type="checkbox" className="cb" checked={checked} onChange={()=>toggleStatus(s)}/>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{background:st.dot}}/>
+                      <span className={['text-[12.5px]',checked?'text-white':'text-white/65'].join(' ')}>{s}</span>
+                      <span className="ml-auto text-[10px] text-white/30">{CONTACTS.filter(c=>c.status===s).length}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </Section>
+
+            {/* Tags */}
+            <Section title="Tags" count={tags.length}>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_TAGS.map(t=>{
+                  const sel = tags.includes(t.key);
+                  return (
+                    <button key={t.key} onClick={()=>toggleTag(t.key)}
+                      className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all border',
+                        sel?'border-brand-500/40 bg-brand-500/[0.08] text-brand-200'
+                           :'border-white/[0.07] bg-white/[0.025] text-white/55 hover:text-white/85 hover:bg-white/[0.05]'].join(' ')}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{background:t.color}}/>
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">
+                <I.Plus size={10}/> Create tag
+              </button>
+            </Section>
+
+            {/* Owner */}
+            <Section title="Owner" count={owners.length}>
+              <div className="flex flex-col gap-1.5">
+                {ALL_OWNERS.map(o=>{
+                  const sel=owners.includes(o.key);
+                  return (
+                    <label key={o.key} className="flex items-center gap-2.5 cursor-pointer rounded-lg px-1.5 py-1.5 hover:bg-white/[0.03] transition-colors">
+                      <input type="checkbox" className="cb" checked={sel} onChange={()=>toggleOwner(o.key)}/>
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:o.color}}>{o.key}</span>
+                      <span className={['text-[12.5px]',sel?'text-white':'text-white/65'].join(' ')}>{o.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </Section>
+
+            {/* Last Contacted */}
+            <Section title="Last contacted" count={lastContacted?1:0}>
+              <div className="grid grid-cols-1 gap-1">
+                {LAST_OPTS.map(o=>(
+                  <label key={o.key} className="flex items-center gap-2.5 cursor-pointer rounded-lg px-1.5 py-1.5 hover:bg-white/[0.03] transition-colors">
+                    <div className={['w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-all',
+                      lastContacted===o.key?'border-brand-400 bg-brand-500':'border-white/20'].join(' ')}>
+                      {lastContacted===o.key && <div className="w-1 h-1 rounded-full bg-white"/>}
+                    </div>
+                    <input type="radio" className="hidden" checked={lastContacted===o.key} onChange={()=>setLastContacted(o.key)}/>
+                    <span className={['text-[12.5px]',lastContacted===o.key?'text-white':'text-white/65'].join(' ')}>{o.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Custom date range */}
+              {lastContacted==='custom' && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-1.5">From</label>
+                    <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 focus-within:border-brand-500/40 transition-all">
+                      <I.Calendar size={11} className="text-white/40"/>
+                      <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+                        className="flex-1 bg-transparent outline-none text-[12px] text-white"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-1.5">To</label>
+                    <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 focus-within:border-brand-500/40 transition-all">
+                      <I.Calendar size={11} className="text-white/40"/>
+                      <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+                        className="flex-1 bg-transparent outline-none text-[12px] text-white"/>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Section>
+
+            {/* Custom fields */}
+            <Section title="Custom fields" count={cfRevenue.min||cfRevenue.max?1:0} defaultOpen={false}>
+              <div className="flex flex-col gap-4">
+                {/* Revenue range */}
+                <div>
+                  <p className="text-[11px] font-medium text-white/55 mb-2">Deal value range</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 focus-within:border-brand-500/40 transition-all">
+                      <span className="text-[11px] text-white/35">$</span>
+                      <input type="number" value={cfRevenue.min} onChange={e=>setCfRevenue(p=>({...p,min:e.target.value}))}
+                        placeholder="Min"
+                        className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/28 tabular-nums"/>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 focus-within:border-brand-500/40 transition-all">
+                      <span className="text-[11px] text-white/35">$</span>
+                      <input type="number" value={cfRevenue.max} onChange={e=>setCfRevenue(p=>({...p,max:e.target.value}))}
+                        placeholder="Max"
+                        className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/28 tabular-nums"/>
+                    </div>
+                  </div>
+                </div>
+                {/* Company size */}
+                <div>
+                  <p className="text-[11px] font-medium text-white/55 mb-2">Company size</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {['1–5','6–20','21–100','100+'].map(sz=>(
+                      <button key={sz} className="px-2.5 py-1 rounded-md text-[11px] text-white/55 bg-white/[0.04] ring-1 ring-white/[0.07] hover:bg-brand-500/10 hover:text-brand-200 hover:ring-brand-500/25 transition-all">{sz}</button>
+                    ))}
+                  </div>
+                </div>
+                <button className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 self-start">
+                  <I.Plus size={10}/> Add custom field filter
+                </button>
+              </div>
+            </Section>
+          </div>
+
+          {/* Footer: save + apply */}
+          <div className="shrink-0 border-t border-white/[0.06] p-4 flex flex-col gap-2.5" style={{background:'#09091a'}}>
+            {saving ? (
+              <div className="flex items-center gap-2">
+                <input autoFocus type="text" value={savedName} onChange={e=>setSavedName(e.target.value)}
+                  placeholder="Filter name…"
+                  className="flex-1 bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 rounded-lg px-3 py-2 text-[12.5px] text-white placeholder:text-white/30 outline-none transition-all"/>
+                <button onClick={()=>setSaving(false)} className="px-3 py-2 rounded-lg text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                  Save
+                </button>
+                <button onClick={()=>setSaving(false)} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"><I.X size={13}/></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button onClick={()=>setSaving(true)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+                  <I.Bookmark size={12}/> Save filter
+                </button>
+                <button onClick={onClose} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                  <I.Check size={12} stroke={2.5}/> Apply filters
+                </button>
+              </div>
+            )}
+            <p className="text-center text-[10.5px] text-white/30">Showing {CONTACTS.filter(c=>statuses.includes(c.status)).length} of {CONTACTS.length} contacts</p>
+          </div>
+        </aside>
+      </>
+    );
+  }
+
+  // ── Contacts table (background) ─────────────────────────────────────────
+  function ContactsPage() {
+    const [drawerOpen, setDrawerOpen] = React.useState(true);
+
+    return (
+      <div data-screen-label="Contacts Filter Panel" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <Sidebar/>
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Topbar */}
+            <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{background:'#09091a'}}>
+              <div className="flex items-center gap-3">
+                <h1 className="text-white text-[18px] font-bold tracking-tight">Contacts</h1>
+                <span className="text-[11px] text-white/40">{CONTACTS.length} contacts</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 w-72">
+                  <I.Search size={12} className="text-white/40"/>
+                  <input type="text" placeholder="Search contacts…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+                </div>
+                <button onClick={()=>setDrawerOpen(true)}
+                  className={['inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all border',
+                    drawerOpen?'bg-brand-500/15 text-brand-200 border-brand-500/30 ring-1 ring-brand-500/25'
+                              :'text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>
+                  <I.Filter size={12}/>
+                  Filters
+                  {drawerOpen && <span className="w-4 h-4 rounded-full bg-brand-500/30 text-brand-100 text-[9px] font-bold flex items-center justify-center">3</span>}
+                </button>
+                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                  <I.Plus size={13} stroke={2.4}/> New contact
+                </button>
+              </div>
+            </header>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto scroll-area">
+              <table className="w-full">
+                <thead className="sticky top-0 z-10" style={{background:'#0a0a1c'}}>
+                  <tr className="border-b border-white/[0.05]">
+                    <th className="px-5 py-3 text-left"><input type="checkbox" className="cb"/></th>
+                    {['Name','Company','Status','Last contacted','Deal value',''].map(h=>(
+                      <th key={h} className="px-3 py-3 text-left text-[10.5px] font-semibold text-white/45 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {CONTACTS.map((c,i)=>{
+                    const st=STATUS_STYLE[c.status];
+                    return (
+                      <tr key={c.id} className="border-b border-white/[0.03] hover:bg-white/[0.025] transition-colors group cursor-pointer">
+                        <td className="px-5 py-3"><input type="checkbox" className="cb"/></td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{background:c.color}}>{c.avatar}</div>
+                            <div>
+                              <p className="text-[13px] font-semibold text-white">{c.name}</p>
+                              <p className="text-[11px] text-white/40">{c.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-[12.5px] text-white/65">{c.company}</td>
+                        <td className="px-3 py-3">
+                          <span className={['inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium',st.bg,st.fg].join(' ')}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-[12px] text-white/55">{c.last}</td>
+                        <td className="px-3 py-3 text-[12.5px] text-white/75 font-semibold tabular-nums">{c.value}</td>
+                        <td className="px-3 py-3 opacity-0 group-hover:opacity-100">
+                          <button className="w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center">
+                            <I.X size={11}/>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {drawerOpen && <FilterDrawer onClose={()=>setDrawerOpen(false)}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<ContactsPage/>);
+</script>
+</body>
+</html>

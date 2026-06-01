@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Integrations — nrtur Settings</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'}, surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'} },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: { 'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)', 'brand-lg':'0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)' },
+          keyframes: {
+            glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}},
+            popIn:{'0%':{opacity:0,transform:'scale(0.96) translateY(4px)'},'100%':{opacity:1,transform:'none'}},
+            modalIn:{'0%':{opacity:0,transform:'translateY(10px) scale(0.985)'},'100%':{opacity:1,transform:'none'}},
+            overlayIn:{'0%':{opacity:0},'100%':{opacity:1}},
+          },
+          animation: { 'glow-pulse':'glowPulse 3s ease-in-out infinite', 'pop-in':'popIn 180ms ease-out both', 'modal-in':'modalIn 250ms cubic-bezier(0.16,1,0.3,1) both', 'overlay-in':'overlayIn 200ms ease-out both' },
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+    input[type="text"],input[type="url"]{background:transparent;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+    Copy:p=><Ico {...p} d={<><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>}/>,
+    RefreshCw:p=><Ico {...p} d={<><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>}/>,
+    ExternalLink:p=><Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
+    Key:p=><Ico {...p} d={<><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></>}/>,
+    Globe:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>}/>,
+    Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>}/>,
+    Bell:p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Shield:p=><Ico {...p} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}/>,
+    Plug:p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+    ChevronRight:p=><Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+    AlertCircle:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>}/>,
+    Billing:p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+  };
+
+  // ── Shared: App sidebar ─────────────────────────────────────────────────
+  function AppSidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash,href:'Dashboard.html'},{key:'contacts',Icon:I.Users,href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,href:'Pipeline.html'},{key:'email',Icon:I.Mail,href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,href:'SMS Inbox.html'},{key:'calls',Icon:I.Phone,href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,href:'Automations.html'},{key:'reports',Icon:I.BarChart,href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4"><div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}><span className="text-white font-black text-sm">n</span></div></a>
+        {items.map(({key,Icon,href})=>(
+          <a key={key} href={href} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><Icon size={16}/></a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl flex items-center justify-center bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Shared: Settings sub-nav ────────────────────────────────────────────
+  const SETTINGS_NAV = [
+    {key:'general',   label:'General',       Icon:I.Settings},
+    {key:'integrations',label:'Integrations',Icon:I.Plug},
+    {key:'notifications',label:'Notifications',Icon:I.Bell},
+    {key:'privacy',   label:'Data & Privacy', Icon:I.Shield},
+    {key:'billing',   label:'Billing',       Icon:I.Billing},
+  ];
+
+  function SettingsNav({active}) {
+    const hrefs = {general:'#',integrations:'Settings Integrations.html',notifications:'Settings Notifications.html',privacy:'Settings Privacy.html',billing:'#'};
+    return (
+      <aside className="w-[210px] shrink-0 border-r border-white/[0.05] flex flex-col py-5 gap-0.5 px-3" style={{background:'#09091a'}}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35 px-3 mb-3">Settings</p>
+        {SETTINGS_NAV.map(({key,label,Icon})=>{
+          const a=active===key;
+          return (
+            <a key={key} href={hrefs[key]}
+              className={['flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all',
+                a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 font-semibold'
+                 :'text-white/55 hover:text-white hover:bg-white/[0.04] font-medium'].join(' ')}>
+              <Icon size={14}/>{label}
+              {a && <I.ChevronRight size={11} className="ml-auto text-brand-300/60"/>}
+            </a>
+          );
+        })}
+      </aside>
+    );
+  }
+
+  // ── Toggle switch ───────────────────────────────────────────────────────
+  function Toggle({on,onChange,size='md'}) {
+    const w=size==='sm'?28:36, h=size==='sm'?16:20, dot=size==='sm'?10:14;
+    const travel=w-h;
+    return (
+      <button onClick={()=>onChange(!on)} style={{width:w,height:h,borderRadius:h/2,background:on?'#6366f1':'rgba(255,255,255,0.12)',transition:'background 200ms',flexShrink:0,position:'relative',border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer'}}>
+        <span style={{position:'absolute',top:(h-dot)/2-1,left:on?travel-2:2,width:dot,height:dot,borderRadius:'50%',background:'#fff',transition:'left 200ms',boxShadow:'0 1px 4px rgba(0,0,0,0.4)'}}/>
+      </button>
+    );
+  }
+
+  // ── Integration card ────────────────────────────────────────────────────
+  function IntCard({name,glyph,color,desc,status,lastSync,onAction,actionLabel,badge}) {
+    const connected=status==='connected';
+    return (
+      <div className={['rounded-2xl border p-5 flex flex-col gap-4 transition-all',
+        connected?'border-white/[0.08] bg-white/[0.025] hover:border-white/[0.14]'
+                 :'border-white/[0.05] bg-white/[0.015] hover:border-white/[0.10]'].join(' ')}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[15px] shrink-0" style={{background:color}}>{glyph}</div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-[13.5px] font-bold text-white">{name}</p>
+                {badge && <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300">{badge}</span>}
+              </div>
+              <p className="text-[11.5px] text-white/45 mt-0.5">{desc}</p>
+            </div>
+          </div>
+          {connected ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[10px] font-medium shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10.5px] text-white/35 shrink-0">Not connected</span>
+          )}
+        </div>
+        {connected && lastSync && (
+          <div className="text-[10.5px] text-white/35 flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-emerald-400"/>
+            Last sync {lastSync}
+          </div>
+        )}
+        <div className="flex items-center gap-2 pt-1 border-t border-white/[0.04]">
+          <button onClick={onAction}
+            className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold transition-all',
+              connected?'text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18]'
+                       :'text-white bg-brand-500 hover:bg-brand-400 shadow-brand'].join(' ')}>
+            {connected ? <I.Settings size={11}/> : <I.Plus size={11} stroke={2.5}/>}
+            {actionLabel || (connected ? 'Configure' : 'Connect')}
+          </button>
+          {connected && (
+            <button className="text-[11px] text-red-300/60 hover:text-red-300 px-2 py-1.5 rounded-md hover:bg-red-500/10 transition-colors">Disconnect</button>
+          )}
+          <a href="#" className="ml-auto text-[11px] text-white/35 hover:text-white/65 inline-flex items-center gap-1 transition-colors">
+            Docs <I.ExternalLink size={9} stroke={2}/>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── API Keys ────────────────────────────────────────────────────────────
+  const SAMPLE_KEYS = [
+    {id:1, label:'Production key', key:'nrtr_live_sk_4f2a9b1c8e3d7f6a2b5c9e0d4a7f1b3e', created:'Apr 12, 2025', lastUsed:'2 minutes ago', scopes:['read','write']},
+    {id:2, label:'Zapier integration', key:'nrtr_live_sk_8c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f', created:'Mar 3, 2025',  lastUsed:'5 hours ago',    scopes:['read']},
+  ];
+
+  function APIKeys() {
+    const [keys,setKeys]=React.useState(SAMPLE_KEYS);
+    const [copied,setCopied]=React.useState(null);
+    const [generating,setGenerating]=React.useState(false);
+    const [newKeyModal,setNewKeyModal]=React.useState(false);
+
+    function copyKey(id,k){
+      navigator.clipboard?.writeText(k).catch(()=>{});
+      setCopied(id);
+      setTimeout(()=>setCopied(null),2000);
+    }
+    function generate(){
+      setGenerating(true);
+      setTimeout(()=>{
+        setKeys(p=>[...p,{id:Date.now(),label:'New key',key:'nrtr_live_sk_'+Math.random().toString(36).slice(2,34),created:'Today',lastUsed:'Never',scopes:['read','write']}]);
+        setGenerating(false);
+      },800);
+    }
+
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-[14px] font-bold text-white">API Keys</h3>
+            <p className="text-[12px] text-white/45 mt-0.5">Use these to authenticate requests to the nrtur API.</p>
+          </div>
+          <button onClick={generate} disabled={generating}
+            className={['inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+              generating?'bg-brand-500/40 text-white/60 cursor-wait':'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'].join(' ')}>
+            {generating ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg> Generating…</>
+                        : <><I.Key size={12}/> Generate key</>}
+          </button>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          {keys.map((k,i)=>(
+            <div key={k.id} className={['p-4 flex items-center gap-4',i<keys.length-1?'border-b border-white/[0.05]':''].join(' ')}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[12.5px] font-semibold text-white">{k.label}</p>
+                  {k.scopes.map(s=>(
+                    <span key={s} className="text-[9px] px-1.5 py-0.5 rounded bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 font-mono">{s}</span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-[11px] font-mono text-white/40 truncate max-w-[320px]">
+                    {k.key.slice(0,24)}{'•'.repeat(8)}
+                  </code>
+                  <span className="text-[10px] text-white/25">·</span>
+                  <span className="text-[10.5px] text-white/35">Created {k.created}</span>
+                  <span className="text-[10px] text-white/25">·</span>
+                  <span className="text-[10.5px] text-white/35">Used {k.lastUsed}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={()=>copyKey(k.id,k.key)}
+                  className={['inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',
+                    copied===k.id?'bg-emerald-500/15 text-emerald-300':'text-white/55 hover:text-white hover:bg-white/[0.06]'].join(' ')}>
+                  {copied===k.id ? <><I.Check size={11}/>Copied</> : <><I.Copy size={11}/>Copy</>}
+                </button>
+                <button className="w-7 h-7 rounded-md text-white/35 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center transition-colors">
+                  <I.Trash size={12}/>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-white/30 mt-3">Keys are only shown in full at creation. Store them securely — we can't recover them.</p>
+      </div>
+    );
+  }
+
+  // ── Webhooks ────────────────────────────────────────────────────────────
+  const WEBHOOK_EVENTS = ['contact.created','contact.updated','deal.stage_changed','deal.won','email.opened','sms.received','automation.triggered'];
+  const INIT_HOOKS = [
+    {id:1,url:'https://hooks.zapier.com/hooks/catch/1234567/abcdef/',events:['deal.stage_changed','deal.won'],status:'active',lastTrigger:'3 min ago',deliveries:'1,204'},
+    {id:2,url:'https://api.myapp.com/nrtur-webhooks',events:['contact.created','contact.updated'],status:'active',lastTrigger:'1 hour ago',deliveries:'388'},
+  ];
+
+  function Webhooks() {
+    const [hooks]=React.useState(INIT_HOOKS);
+    const [adding,setAdding]=React.useState(false);
+    const [url,setUrl]=React.useState('');
+    const [selEvents,setSelEvents]=React.useState([]);
+
+    function toggleEvt(e){setSelEvents(p=>p.includes(e)?p.filter(x=>x!==e):[...p,e]);}
+
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-[14px] font-bold text-white">Webhooks</h3>
+            <p className="text-[12px] text-white/45 mt-0.5">POST to your endpoints whenever nrtur events fire.</p>
+          </div>
+          <button onClick={()=>setAdding(a=>!a)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-medium text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+            <I.Plus size={12} stroke={2.4}/> Add endpoint
+          </button>
+        </div>
+
+        {/* Add form */}
+        {adding && (
+          <div className="mb-4 rounded-2xl border border-brand-500/25 bg-brand-500/[0.04] p-4 flex flex-col gap-3 animate-pop-in">
+            <div>
+              <label className="block text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-1.5">Endpoint URL</label>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+                <I.Globe size={12} className="text-white/40 shrink-0"/>
+                <input type="url" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://your-server.com/webhook"
+                  className="flex-1 outline-none text-[13px] text-white placeholder:text-white/28"/>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-2">Events to send</label>
+              <div className="flex flex-wrap gap-1.5">
+                {WEBHOOK_EVENTS.map(e=>{
+                  const sel=selEvents.includes(e);
+                  return (
+                    <button key={e} onClick={()=>toggleEvt(e)}
+                      className={['inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-mono transition-all border',
+                        sel?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.03] text-white/55 border-white/[0.07] hover:border-white/[0.14] hover:text-white/80'].join(' ')}>
+                      {e}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button onClick={()=>{setAdding(false);setUrl('');setSelEvents([]);}}
+                className="px-3 py-1.5 rounded-lg text-[12px] text-white/55 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+              <button disabled={!url||selEvents.length===0}
+                className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-semibold transition-all',
+                  url&&selEvents.length>0?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.05] text-white/30 cursor-not-allowed'].join(' ')}>
+                <I.Check size={11} className="inline mr-1"/>Save endpoint
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Hook list */}
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          {hooks.map((h,i)=>(
+            <div key={h.id} className={['p-4',i<hooks.length-1?'border-b border-white/[0.05]':''].join(' ')}>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/20">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-glow-pulse"/>{h.status}
+                    </span>
+                    <span className="text-[10.5px] text-white/35">{h.deliveries} deliveries · last {h.lastTrigger}</span>
+                  </div>
+                  <p className="text-[12px] font-mono text-white/75 truncate">{h.url}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.RefreshCw size={11}/></button>
+                  <button className="w-7 h-7 rounded-md text-white/35 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center transition-colors"><I.Trash size={12}/></button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {h.events.map(e=>(
+                  <span key={e} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono text-white/50 bg-white/[0.04] border border-white/[0.06]">{e}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Twilio modal launcher ───────────────────────────────────────────────
+  function TwilioSetupLink() {
+    return (
+      <a href="Twilio Setup.html"
+        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+        <I.Plus size={11} stroke={2.5}/> Connect
+      </a>
+    );
+  }
+
+  // ── Page ────────────────────────────────────────────────────────────────
+  function Page() {
+    const integrations = [
+      { name:'Gmail',    glyph:'M',  color:'#ea4335', desc:'Two-way email sync. Track opens, link emails to contacts.',      status:'connected', lastSync:'12 seconds ago',  actionLabel:'Configure' },
+      { name:'Twilio',   glyph:'T',  color:'#f22f46', desc:'SMS and voice calls. Power the SMS inbox and Calls pages.',      status:'connected', lastSync:'Live',            actionLabel:'Configure', badge:'SMS + calls' },
+      { name:'Zapier',   glyph:'Z',  color:'#ff4a00', desc:'Connect nrtur to 6,000+ apps. Trigger zaps on CRM events.',     status:'connected', lastSync:'5 minutes ago',   actionLabel:'Manage zaps' },
+      { name:'Calendly', glyph:'C',  color:'#006bff', desc:'Auto-create contacts when meetings are booked.',                status:'disconnected' },
+      { name:'Stripe',   glyph:'S',  color:'#6772e5', desc:'Sync invoices and payment status to deals automatically.',      status:'disconnected' },
+      { name:'Slack',    glyph:'#',  color:'#4a154b', desc:'Get deal and contact alerts in any Slack channel.',             status:'disconnected' },
+    ];
+
+    return (
+      <div data-screen-label="Settings Integrations" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <AppSidebar/>
+          <SettingsNav active="integrations"/>
+
+          {/* Content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="shrink-0 border-b border-white/[0.05] px-8 py-4" style={{background:'#09091a'}}>
+              <h1 className="text-[18px] font-bold text-white">Integrations</h1>
+              <p className="text-[12.5px] text-white/45 mt-0.5">Connect the tools your team already uses. nrtur stays out of the way.</p>
+            </header>
+
+            <div className="flex-1 overflow-y-auto scroll-area px-8 py-6 flex flex-col gap-10">
+
+              {/* Integration cards */}
+              <div>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/40 mb-4">Connected apps</h2>
+                <div className="grid grid-cols-3 gap-4">
+                  {integrations.map(it=>(
+                    <IntCard key={it.name} {...it}
+                      onAction={it.name==='Twilio'?()=>window.open('Twilio Setup.html','_self'):()=>{}}/>
+                  ))}
+                </div>
+              </div>
+
+              {/* API Keys */}
+              <div className="border-t border-white/[0.05] pt-8">
+                <APIKeys/>
+              </div>
+
+              {/* Webhooks */}
+              <div className="border-t border-white/[0.05] pt-8 pb-6">
+                <Webhooks/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

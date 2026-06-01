@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calls — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            modalIn:  { '0%':{opacity:0,transform:'translateY(10px) scale(0.985)'}, '100%':{opacity:1,transform:'none'} },
+            overlayIn:{ '0%':{opacity:0}, '100%':{opacity:1} },
+            glowPulse:{ '0%,100%':{opacity:0.5}, '50%':{opacity:1} },
+          },
+          animation: {
+            'modal-in':  'modalIn 240ms cubic-bezier(0.16,1,0.3,1) both',
+            'overlay-in':'overlayIn 200ms ease-out both',
+            'glow-pulse':'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin:0; background:#09091a; color:#fff; font-family:'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow:hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width:5px; height:5px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.28); border-radius: 9999px; }
+    .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.45); }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+      MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+      Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+      PhoneIn:p=><Ico {...p} d={<><polyline points="16 2 16 8 22 8"/><line x1="22" y1="2" x2="16" y2="8"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>}/>,
+      PhoneOut:p=><Ico {...p} d={<><polyline points="22 8 22 2 16 2"/><line x1="16" y1="8" x2="22" y2="2"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>}/>,
+      PhoneMissed:p=><Ico {...p} d={<><line x1="22" y1="2" x2="16" y2="8"/><line x1="16" y1="2" x2="22" y2="8"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>}/>,
+      Voicemail:p=><Ico {...p} d={<><circle cx="6" cy="12" r="4"/><circle cx="18" cy="12" r="4"/><line x1="6" y1="16" x2="18" y2="16"/></>}/>,
+      Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+      Play:p=><Ico {...p} d={<polygon points="5 3 19 12 5 21 5 3"/>}/>,
+      Pause:p=><Ico {...p} d={<><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>}/>,
+      Mic:p=><Ico {...p} d={<><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></>}/>,
+      Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      ExternalLink:p=><Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
+      More:p=><Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      Clock:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+      Tag:p=><Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+      Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+      ArrowRight:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>}/>,
+      Delete:p=><Ico {...p} d={<><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></>}/>,
+      Edit:p=><Ico {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
+    };
+
+    // ── Sidebar ─────────────────────────────────────────────────────────────
+    function Sidebar() {
+      const items = [
+        { key:'dash', Icon:I.LayoutDash, label:'Dashboard', href:'Dashboard.html' },
+        { key:'contacts', Icon:I.Users, label:'Contacts', href:'Contacts.html' },
+        { key:'pipeline', Icon:I.GitBranch, label:'Pipeline', href:'Pipeline.html' },
+        { key:'email', Icon:I.Mail, label:'Email', href:'Inbox.html' },
+        { key:'sms', Icon:I.MessageSq, label:'SMS', href:'SMS Inbox.html' },
+        { key:'calls', Icon:I.Phone, label:'Calls', href:'Calls.html' },
+        { key:'automations', Icon:I.Zap, label:'Automations', href:'Automations.html' },
+        { key:'reports', Icon:I.BarChart, label:'Reports', href:'Reports.html' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{ background:'linear-gradient(135deg,#6366f1,#7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label, href }) => {
+            const a = key === 'calls';
+            return (
+              <a key={key} href={href} title={label}
+                className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}>
+                <Icon size={16}/>
+              </a>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><I.Settings size={16}/></button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>AM</button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ── Data ───────────────────────────────────────────────────────────────
+    const CALLS = [
+      {
+        id:1, dir:'in',  outcome:'connected', name:'Sarah Chen', avatar:'SC', color:'#3b82f6',
+        phone:'+1 (415) 555-0142', duration:'12:34', day:'Today', time:'11:42 AM',
+        deal:{ name:'Q3 Engagement', value:'$24k', stage:'Proposal', stageColor:'#a78bfa' },
+        notes:'Confirmed they want to move forward. Need to send updated SOW with the deliverables tweaked from Monday\'s call. Priya from ops will be DRI on their side.',
+        recording:'2:14',
+        tags:['decision-maker', 'hot'],
+      },
+      {
+        id:2, dir:'out', outcome:'connected', name:'James Whitfield', avatar:'JW', color:'#8b5cf6',
+        phone:'+1 (646) 555-0198', duration:'08:15', day:'Today', time:'9:48 AM',
+        deal:{ name:'Summit Renewal', value:'$31k', stage:'Negotiation', stageColor:'#fbbf24' },
+        notes:'Walked through the updated agreement. James flagged the liability clause — needs section 8B clarified. Send revised version by EOD.',
+        recording:'2:14',
+      },
+      {
+        id:3, dir:'out', outcome:'voicemail', name:'Marcus Rodriguez', avatar:'MR', color:'#f59e0b',
+        phone:'+1 (512) 555-0077', duration:'00:42', day:'Today', time:'8:31 AM',
+        deal:{ name:'Pivot Studio', value:'$22.5k', stage:'Proposal', stageColor:'#a78bfa' },
+        notes:'Left voicemail re: revised scope. Will text as follow-up.',
+      },
+      {
+        id:4, dir:'in',  outcome:'missed', name:'Lisa Nakamura', avatar:'LN', color:'#ec4899',
+        phone:'+1 (310) 555-0014', duration:'—', day:'Today', time:'7:12 AM',
+        deal:null,
+        notes:'',
+      },
+      {
+        id:5, dir:'out', outcome:'connected', name:'Priya Kapoor', avatar:'PK', color:'#10b981',
+        phone:'+1 (408) 555-0231', duration:'24:08', day:'Yesterday', time:'3:14 PM',
+        deal:{ name:'Onboarding', value:'$8k', stage:'Won', stageColor:'#34d399' },
+        notes:'Onboarding kickoff call. Data migration starts Thursday. Walked through CSV import, contact mapping, and pipeline setup. Team is excited.',
+        recording:'2:14',
+      },
+      {
+        id:6, dir:'in',  outcome:'connected', name:'Tom Barrett', avatar:'TB', color:'#14b8a6',
+        phone:'+1 (917) 555-0089', duration:'03:48', day:'Yesterday', time:'1:02 PM',
+        deal:{ name:'TechVentures', value:'$18k', stage:'Qualified', stageColor:'#38bdf8' },
+        notes:'Quick intro. Tom is referring us to two more teams in their portfolio.',
+      },
+      {
+        id:7, dir:'in',  outcome:'missed', name:'Unknown', avatar:'?', color:'#475569',
+        phone:'+1 (302) 555-0163', duration:'—', day:'Yesterday', time:'10:48 AM',
+        deal:null,
+        notes:'',
+      },
+      {
+        id:8, dir:'out', outcome:'connected', name:'Riley Voss', avatar:'RV', color:'#64748b',
+        phone:'+1 (213) 555-0162', duration:'06:22', day:'Mon', time:'2:00 PM',
+        deal:{ name:'Clearview Media', value:'$14k', stage:'Stalled', stageColor:'#94a3b8' },
+        notes:'Riley is OOO through May 25. Jordan Parks (jordan@clearview.tv) is covering — looped them in.',
+      },
+      {
+        id:9, dir:'out', outcome:'no-answer', name:'Hannah Field', avatar:'HF', color:'#f97316',
+        phone:'+1 (203) 555-0044', duration:'00:00', day:'Mon', time:'11:08 AM',
+        deal:{ name:'Field Co', value:'$9k', stage:'Discovery', stageColor:'#60a5fa' },
+        notes:'',
+      },
+    ];
+
+    function CallIcon({ call, size=14 }) {
+      const { dir, outcome } = call;
+      if (outcome === 'missed')   return <I.PhoneMissed size={size} className="text-red-300"/>;
+      if (outcome === 'voicemail') return <I.Voicemail size={size} className="text-amber-300"/>;
+      if (outcome === 'no-answer') return <I.PhoneOut size={size} className="text-white/35"/>;
+      return dir === 'in' ? <I.PhoneIn size={size} className="text-emerald-300"/> : <I.PhoneOut size={size} className="text-brand-300"/>;
+    }
+
+    function outcomeLabel(o, dir) {
+      if (o === 'missed') return 'Missed';
+      if (o === 'voicemail') return 'Voicemail';
+      if (o === 'no-answer') return 'No answer';
+      return dir === 'in' ? 'Incoming' : 'Outgoing';
+    }
+
+    // ── Topbar ─────────────────────────────────────────────────────────────
+    function Topbar({ onLog, onDial }) {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-3">
+            <h1 className="text-white text-[18px] font-bold tracking-tight">Calls</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[11px] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+              Twilio · ready
+            </span>
+            <span className="text-[11px] text-white/40">·</span>
+            <span className="text-[11px] text-white/45 tabular-nums">{CALLS.length} calls this week · {CALLS.filter(c => c.outcome === 'missed').length} missed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 focus-within:bg-white/[0.05] transition-all w-72">
+              <I.Search size={12} className="text-white/40"/>
+              <input type="text" placeholder="Search calls, contacts, numbers…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+            </div>
+            <button onClick={onLog} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+              <I.Edit size={12}/>
+              Log call
+            </button>
+            <button onClick={onDial} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Phone size={13} stroke={2.4}/>
+              New call
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ── Filter rail ────────────────────────────────────────────────────────
+    function FilterRail({ filter, setFilter, counts }) {
+      const items = [
+        { key:'all',   label:'All',        Icon:null },
+        { key:'in',    label:'Incoming',   Icon:I.PhoneIn },
+        { key:'out',   label:'Outgoing',   Icon:I.PhoneOut },
+        { key:'missed',label:'Missed',     Icon:I.PhoneMissed },
+        { key:'vm',    label:'Voicemail',  Icon:I.Voicemail },
+      ];
+      return (
+        <div className="shrink-0 border-b border-white/[0.04] px-7 py-2.5 flex items-center gap-1.5" style={{ background:'#09091a' }}>
+          {items.map(it => {
+            const a = filter === it.key;
+            return (
+              <button key={it.key} onClick={() => setFilter(it.key)}
+                className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
+                  a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                    : 'text-white/55 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>
+                {it.Icon && <it.Icon size={11}/>}
+                {it.label}
+                {counts[it.key] != null && <span className="text-[10px] text-white/40 tabular-nums">{counts[it.key]}</span>}
+              </button>
+            );
+          })}
+          <div className="ml-auto inline-flex items-center gap-2 text-[10.5px] text-white/35">
+            <I.Sparkles size={10}/>
+            AI summarizes every connected call &gt; 1 min
+          </div>
+        </div>
+      );
+    }
+
+    // ── Call row ───────────────────────────────────────────────────────────
+    function CallRow({ c, selected, onClick }) {
+      return (
+        <div role="button" tabIndex={0} onClick={onClick}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+          className={['w-full text-left px-4 py-3.5 grid grid-cols-[28px_2.2fr_1fr_1fr_1fr_56px] items-center gap-4 border-b border-white/[0.03] transition-all relative cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-500/40',
+            selected ? 'bg-brand-500/[0.07] border-l-2 border-l-brand-400'
+                     : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
+          ].join(' ')}>
+          {/* Direction icon */}
+          <div className={['w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+            c.outcome === 'missed' ? 'bg-red-500/10 ring-1 ring-red-500/25' :
+            c.outcome === 'voicemail' ? 'bg-amber-500/10 ring-1 ring-amber-500/25' :
+            c.outcome === 'no-answer' ? 'bg-white/[0.05] ring-1 ring-white/[0.07]' :
+            c.dir === 'in' ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25' :
+                             'bg-brand-500/10 ring-1 ring-brand-500/25'
+          ].join(' ')}>
+            <CallIcon call={c} size={12}/>
+          </div>
+
+          {/* Contact */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ background: c.color }}>
+              {c.avatar}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-white truncate">{c.name}</p>
+              <p className="text-[11px] text-white/45 truncate font-mono">{c.phone}</p>
+            </div>
+          </div>
+
+          {/* Outcome */}
+          <div>
+            <p className="text-[12px] text-white/70">{outcomeLabel(c.outcome, c.dir)}</p>
+            {c.notes && <p className="text-[10.5px] text-white/35 mt-0.5 truncate">{c.notes.slice(0, 38)}…</p>}
+          </div>
+
+          {/* Duration */}
+          <div className="text-[12px] text-white/55 font-mono tabular-nums">
+            {c.duration}
+            {c.recording && <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-violet-300"><I.Play size={8} fill="currentColor"/> rec</span>}
+          </div>
+
+          {/* Deal */}
+          <div className="min-w-0">
+            {c.deal ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/20 max-w-full">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: c.deal.stageColor }}/>
+                <span className="truncate">{c.deal.name} · {c.deal.value}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-white/30">—</span>
+            )}
+          </div>
+
+          {/* Time + call-back button */}
+          <div className="flex items-center justify-end gap-1.5 shrink-0">
+            <div className="text-right">
+              <p className="text-[10.5px] text-white/40">{c.day}</p>
+              <p className="text-[10.5px] text-white/30 tabular-nums">{c.time}</p>
+            </div>
+            <button onClick={(e) => e.stopPropagation()}
+              title="Call back"
+              className="w-7 h-7 rounded-md text-white/55 hover:text-emerald-300 hover:bg-emerald-500/12 flex items-center justify-center transition-colors">
+              <I.Phone size={12}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Call detail panel ───────────────────────────────────────────────────
+    function CallDetail({ c }) {
+      if (!c) {
+        return (
+          <section className="w-[360px] shrink-0 border-l border-white/[0.05] flex items-center justify-center" style={{ background:'#0a0a1c' }}>
+            <div className="text-center max-w-xs px-6">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/35 mb-3">
+                <I.Phone size={20}/>
+              </div>
+              <p className="text-[13px] text-white/55">Select a call</p>
+              <p className="text-[11px] text-white/30 mt-1">See details, recording, and notes.</p>
+            </div>
+          </section>
+        );
+      }
+      const [playing, setPlaying] = React.useState(false);
+      return (
+        <section className="w-[360px] shrink-0 border-l border-white/[0.05] flex flex-col overflow-hidden" style={{ background:'#0a0a1c' }}>
+          {/* Header */}
+          <div className="shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.05]">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0" style={{ background: c.color }}>{c.avatar}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-bold text-white">{c.name}</p>
+                <p className="text-[12px] text-white/45 font-mono mt-0.5">{c.phone}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4">
+              <button className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                <I.Phone size={12} stroke={2.4}/> Call
+              </button>
+              <button className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">
+                <I.MessageSq size={12}/> Text
+              </button>
+              <button title="More" className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] border border-white/[0.08] flex items-center justify-center transition-all">
+                <I.More size={13}/>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-5">
+            {/* Summary card */}
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="inline-flex items-center gap-2">
+                  <CallIcon call={c} size={13}/>
+                  <p className="text-[12px] font-semibold text-white">{outcomeLabel(c.outcome, c.dir)}</p>
+                </div>
+                <p className="text-[10.5px] text-white/45">{c.day} · {c.time}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-[11px]">
+                <div>
+                  <p className="text-white/40 mb-0.5">Duration</p>
+                  <p className="text-white font-mono tabular-nums text-[13px]">{c.duration}</p>
+                </div>
+                <div>
+                  <p className="text-white/40 mb-0.5">Direction</p>
+                  <p className="text-white text-[13px]">{c.dir === 'in' ? 'Inbound' : 'Outbound'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recording */}
+            {c.recording && (
+              <div>
+                <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-2">Recording</p>
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5">
+                  <div className="flex items-center gap-3 mb-2">
+                    <button onClick={() => setPlaying(p => !p)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                      {playing ? <I.Pause size={12}/> : <I.Play size={12} fill="currentColor"/>}
+                    </button>
+                    <div className="flex-1">
+                      <div className="h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-violet-500" style={{ width: playing ? '36%' : '0%', transition:'width 800ms linear' }}/>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-white/40 font-mono">
+                        <span>{playing ? '0:43' : '0:00'}</span>
+                        <span>{c.duration}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="text-[11px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-1.5 mt-1">
+                    <I.Sparkles size={10}/> View AI transcript
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider">Notes</p>
+                <button className="text-[10.5px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Edit size={10}/> Edit</button>
+              </div>
+              <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3.5 min-h-[80px]">
+                {c.notes ? (
+                  <p className="text-[12.5px] text-white/75 leading-relaxed whitespace-pre-wrap">{c.notes}</p>
+                ) : (
+                  <p className="text-[12px] text-white/30 italic">No notes yet. <span className="text-brand-300 hover:text-brand-200 not-italic cursor-pointer">Add some →</span></p>
+                )}
+              </div>
+            </div>
+
+            {/* Deal */}
+            {c.deal && (
+              <div>
+                <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-2">Linked deal</p>
+                <a href="Pipeline.html" className="block rounded-xl border border-brand-500/20 bg-brand-500/[0.05] p-3.5 hover:bg-brand-500/[0.08] hover:border-brand-500/35 transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[13px] font-semibold text-white">{c.deal.name}</p>
+                    <I.ArrowRight size={12} className="text-brand-300"/>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[12px] text-white/75 font-semibold tabular-nums">{c.deal.value}</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.06] text-white/70">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.deal.stageColor }}/>
+                      {c.deal.stage}
+                    </span>
+                  </div>
+                </a>
+              </div>
+            )}
+
+            {/* Tags */}
+            {c.tags && (
+              <div>
+                <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-2">Tags</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {c.tags.map(t => (
+                    <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] text-white/65 bg-white/[0.05] ring-1 ring-white/[0.07]">
+                      <I.Tag size={8}/> {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      );
+    }
+
+    // ── Log Call modal ─────────────────────────────────────────────────────
+    function LogCallModal({ onClose }) {
+      const [dir, setDir] = React.useState('out');
+      const [outcome, setOutcome] = React.useState('connected');
+      const [mins, setMins] = React.useState(8);
+      const [secs, setSecs] = React.useState(15);
+      const [notes, setNotes] = React.useState('');
+      const [contact, setContact] = React.useState('James Whitfield');
+      const [deal, setDeal] = React.useState('Summit Renewal');
+
+      React.useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [onClose]);
+
+      const outcomes = [
+        { key:'connected', label:'Connected',  color:'#34d399', Icon:I.Check },
+        { key:'voicemail', label:'Voicemail',  color:'#fbbf24', Icon:I.Voicemail },
+        { key:'no-answer', label:'No answer',  color:'#94a3b8', Icon:I.PhoneOut },
+        { key:'missed',    label:'Missed',     color:'#f87171', Icon:I.PhoneMissed },
+      ];
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-6 animate-overlay-in" style={{ background:'rgba(7,7,15,0.72)', backdropFilter:'blur(8px)' }}>
+          <div onClick={onClose} className="absolute inset-0"/>
+
+          <div className="relative animate-modal-in w-full max-w-[560px] rounded-2xl border border-white/[0.08] shadow-[0_24px_120px_rgba(0,0,0,0.7)] overflow-hidden" style={{ background:'#0b0b1c' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+                  <I.Phone size={14}/>
+                </div>
+                <div>
+                  <p className="text-[14px] font-bold text-white">Log a call</p>
+                  <p className="text-[11px] text-white/40">Capture what was said while it's fresh.</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.X size={15}/></button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 flex flex-col gap-4 max-h-[calc(100vh-200px)] overflow-y-auto scroll-area">
+              {/* Direction toggle */}
+              <div>
+                <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Direction</label>
+                <div className="inline-flex rounded-lg p-0.5 bg-white/[0.04] border border-white/[0.07]">
+                  {[
+                    { key:'out', label:'Outgoing', Icon:I.PhoneOut },
+                    { key:'in',  label:'Incoming', Icon:I.PhoneIn },
+                  ].map(o => (
+                    <button key={o.key} onClick={() => setDir(o.key)}
+                      className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[12px] font-medium transition-all',
+                        dir === o.key ? 'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/30'
+                                      : 'text-white/55 hover:text-white/85'].join(' ')}>
+                      <o.Icon size={11}/> {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact picker */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Contact</label>
+                  <button className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14] transition-all text-left">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background:'#8b5cf6' }}>JW</span>
+                    <span className="text-[12.5px] text-white truncate flex-1">{contact}</span>
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Linked deal</label>
+                  <button className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14] transition-all text-left">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:'#fbbf24' }}/>
+                    <span className="text-[12.5px] text-white truncate flex-1">{deal}</span>
+                    <span className="text-[11px] text-white/45 tabular-nums">$31k</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Outcome */}
+              <div>
+                <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Outcome</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {outcomes.map(o => {
+                    const a = outcome === o.key;
+                    return (
+                      <button key={o.key} onClick={() => setOutcome(o.key)}
+                        className={['inline-flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all border',
+                          a ? 'bg-brand-500/12 text-brand-200 border-brand-500/30'
+                            : 'bg-white/[0.025] text-white/65 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
+                        ].join(' ')}>
+                        <span className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: `${o.color}1F`, color: o.color, boxShadow: `inset 0 0 0 1px ${o.color}40` }}>
+                          <o.Icon size={10}/>
+                        </span>
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Duration */}
+              {(outcome === 'connected' || outcome === 'voicemail') && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Duration</label>
+                  <div className="inline-flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2">
+                    <input type="number" min="0" max="59" value={mins} onChange={e => setMins(Math.max(0, Math.min(59, +e.target.value || 0)))}
+                      className="w-12 bg-transparent outline-none text-[14px] text-white text-right tabular-nums font-mono"/>
+                    <span className="text-[12px] text-white/40">min</span>
+                    <span className="text-white/25">·</span>
+                    <input type="number" min="0" max="59" value={secs} onChange={e => setSecs(Math.max(0, Math.min(59, +e.target.value || 0)))}
+                      className="w-12 bg-transparent outline-none text-[14px] text-white text-right tabular-nums font-mono"/>
+                    <span className="text-[12px] text-white/40">sec</span>
+                    <div className="w-px h-4 bg-white/[0.06] mx-1"/>
+                    <span className="text-[11px] text-white/35 font-mono">= {String(mins).padStart(2,'0')}:{String(secs).padStart(2,'0')}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-semibold text-white/55 uppercase tracking-wider">Notes</label>
+                  <button className="inline-flex items-center gap-1 text-[11px] text-violet-300 hover:text-violet-200">
+                    <I.Sparkles size={10}/> Summarize from recording
+                  </button>
+                </div>
+                <textarea rows={5} value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="What did you discuss? Next steps? Any blockers?"
+                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-3 text-[13px] text-white placeholder:text-white/28 outline-none resize-none leading-relaxed transition-all"/>
+              </div>
+
+              {/* Quick tags */}
+              <div>
+                <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Quick tags</label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['next-steps', 'decision-maker', 'pricing-discussed', 'send-follow-up', 'hot', 'needs-demo'].map(t => (
+                    <button key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-white/65 bg-white/[0.04] ring-1 ring-white/[0.07] hover:bg-brand-500/10 hover:text-brand-200 hover:ring-brand-500/25 transition-all">
+                      <I.Plus size={9}/> {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3" style={{ background:'#09091a' }}>
+              <p className="text-[10.5px] text-white/35">Logged calls auto-attach to contact timeline.</p>
+              <div className="flex items-center gap-2">
+                <button onClick={onClose} className="px-4 py-2 rounded-lg text-[12px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">
+                  Cancel
+                </button>
+                <button onClick={onClose}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                  <I.Check size={12} stroke={2.5}/> Save call
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Dialer dock (click-to-call) ───────────────────────────────────────
+    function Dialer({ onClose }) {
+      const [num, setNum] = React.useState('');
+      const keys = [['1','2','3'],['4','5','6'],['7','8','9'],['*','0','#']];
+      const sub  = { '2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ' };
+      return (
+        <div className="fixed bottom-6 right-6 z-40 w-72 rounded-2xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.7)] animate-modal-in overflow-hidden" style={{ background:'#0b0b1c' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]" style={{ background:'#09091a' }}>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+              <p className="text-[12.5px] font-bold text-white">Dial out</p>
+              <span className="text-[10.5px] text-white/40">+1 415-555-8200</span>
+            </div>
+            <button onClick={onClose} className="w-7 h-7 rounded-md text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.X size={13}/></button>
+          </div>
+          <div className="px-4 py-3 border-b border-white/[0.05]">
+            <input type="text" value={num} onChange={e => setNum(e.target.value)}
+              placeholder="Enter number…"
+              className="w-full bg-transparent outline-none text-center text-[20px] text-white font-mono tabular-nums placeholder:text-white/25"/>
+          </div>
+          <div className="grid grid-cols-3 gap-1 p-3">
+            {keys.flat().map(k => (
+              <button key={k} onClick={() => setNum(n => n + k)}
+                className="aspect-square rounded-xl bg-white/[0.03] hover:bg-white/[0.08] flex flex-col items-center justify-center transition-all group">
+                <span className="text-[19px] font-semibold text-white">{k}</span>
+                {sub[k] && <span className="text-[8.5px] text-white/35 tracking-widest">{sub[k]}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-center gap-3 px-3 pb-4">
+            <button onClick={() => setNum(n => n.slice(0,-1))} title="Delete" className="w-10 h-10 rounded-full text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+              <I.Delete size={16}/>
+            </button>
+            <button disabled={!num.trim()}
+              className={['w-12 h-12 rounded-full flex items-center justify-center transition-all',
+                num.trim()
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_24px_rgba(16,185,129,0.4)]'
+                  : 'bg-white/[0.05] text-white/25'].join(' ')}>
+              <I.Phone size={17} stroke={2.4}/>
+            </button>
+            <button title="Mute" className="w-10 h-10 rounded-full text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+              <I.Mic size={15}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Page ───────────────────────────────────────────────────────────────
+    function CallsPage() {
+      const [selected, setSelected] = React.useState(1);
+      const [filter, setFilter] = React.useState('all');
+      const [logOpen, setLogOpen] = React.useState(false);
+      const [dialOpen, setDialOpen] = React.useState(false);
+
+      const visible = CALLS.filter(c => {
+        if (filter === 'all') return true;
+        if (filter === 'in')  return c.dir === 'in' && c.outcome !== 'missed';
+        if (filter === 'out') return c.dir === 'out' && c.outcome !== 'missed' && c.outcome !== 'no-answer';
+        if (filter === 'missed') return c.outcome === 'missed';
+        if (filter === 'vm') return c.outcome === 'voicemail';
+        return true;
+      });
+
+      const counts = {
+        all: CALLS.length,
+        missed: CALLS.filter(c => c.outcome === 'missed').length,
+        vm: CALLS.filter(c => c.outcome === 'voicemail').length,
+      };
+
+      const current = CALLS.find(c => c.id === selected);
+
+      // Group by day
+      const grouped = [];
+      let lastDay = null;
+      visible.forEach(c => {
+        if (c.day !== lastDay) { grouped.push({ type:'day', label: c.day }); lastDay = c.day; }
+        grouped.push({ type:'call', c });
+      });
+
+      return (
+        <div data-screen-label="Calls" className="h-full flex" style={{ background:'#09091a' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:500, height:500, background:'rgba(99,102,241,0.055)', filter:'blur(140px)', top:-200, right:-100 }}/>
+            <div className="absolute rounded-full" style={{ width:380, height:380, background:'rgba(124,58,237,0.045)', filter:'blur(140px)', bottom:-160, left:220 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <Topbar onLog={() => setLogOpen(true)} onDial={() => setDialOpen(true)}/>
+              <FilterRail filter={filter} setFilter={setFilter} counts={counts}/>
+
+              <div className="flex-1 flex min-h-0">
+                {/* List */}
+                <div className="flex-1 overflow-y-auto scroll-area">
+                  {grouped.map((item, i) =>
+                    item.type === 'day' ? (
+                      <div key={`d-${i}`} className="px-7 pt-5 pb-2 sticky top-0 z-10 flex items-center gap-3" style={{ background:'#09091a' }}>
+                        <p className="text-[10.5px] font-semibold text-white/45 uppercase tracking-[0.14em]">{item.label}</p>
+                        <div className="flex-1 h-px bg-white/[0.05]"/>
+                      </div>
+                    ) : (
+                      <CallRow key={item.c.id} c={item.c} selected={selected === item.c.id} onClick={() => setSelected(item.c.id)}/>
+                    )
+                  )}
+                  {visible.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center">
+                      <I.Phone size={22} className="text-white/20"/>
+                      <p className="text-[12px] text-white/35">No calls match this filter.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detail */}
+                <CallDetail c={current}/>
+              </div>
+            </div>
+          </div>
+
+          {logOpen  && <LogCallModal onClose={() => setLogOpen(false)}/>}
+          {dialOpen && <Dialer       onClose={() => setDialOpen(false)}/>}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<CallsPage/>);
+  </script>
+</body>
+</html>

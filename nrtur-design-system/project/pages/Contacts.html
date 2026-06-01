@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contacts — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+            'card':     '0 0 0 1px rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4)',
+          },
+          keyframes: {
+            fadeUp:    { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: {
+            'fade-up':    'fadeUp 400ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0; background: #09091a; color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+
+    input[type="checkbox"].cb {
+      appearance: none; -webkit-appearance: none;
+      width: 16px; height: 16px; border-radius: 5px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; transition: all 150ms ease;
+      flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    }
+    input[type="checkbox"].cb:hover { border-color: rgba(255,255,255,0.30); }
+    input[type="checkbox"].cb:checked {
+      background: #6366f1; border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    }
+    input[type="checkbox"].cb:checked::after {
+      content: ''; width: 9px; height: 9px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center / contain;
+    }
+    input[type="checkbox"].cb.indet {
+      background: #6366f1; border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    }
+    input[type="checkbox"].cb.indet::after {
+      content: ''; width: 8px; height: 2px; background: white; border-radius: 9999px;
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '' }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      Search:      (p)=> <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Bell:        (p)=> <Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Filter:      (p)=> <Ico {...p} d={<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>}/>,
+      Download:    (p)=> <Ico {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>}/>,
+      Upload:      (p)=> <Ico {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></>}/>,
+      More:        (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      ChevronLeft: (p)=> <Ico {...p} d={<polyline points="15 18 9 12 15 6"/>}/>,
+      ChevronRight:(p)=> <Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+      X:           (p)=> <Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+      MailOpen:    (p)=> <Ico {...p} d={<><path d="M21.2 8.4c.5.38.8.97.8 1.6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10a2 2 0 0 1 .8-1.6l8-6a2 2 0 0 1 2.4 0l8 6Z"/><path d="m22 10-10 7L2 10"/></>}/>,
+      Trash:       (p)=> <Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>}/>,
+    };
+
+    // ---------- Sidebar (shared with Dashboard) ----------
+    function Sidebar({ active = 'contacts' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const isActive = active === key;
+            return (
+              <button key={key} title={label}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  isActive
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </button>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16}/>
+            </button>
+            <button title="Alex Chen" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AC
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Contact data ----------
+    const STATUS = {
+      Active:      { bg:'bg-emerald-500/10', fg:'text-emerald-400', dot:'#34d399' },
+      'Follow-up': { bg:'bg-amber-500/10',   fg:'text-amber-400',   dot:'#fbbf24' },
+      New:         { bg:'bg-blue-500/10',    fg:'text-blue-400',    dot:'#60a5fa' },
+      Cold:        { bg:'bg-white/[0.05]',   fg:'text-white/45',    dot:'#94a3b8' },
+    };
+
+    const CONTACTS = [
+      { id:1, name:'Sarah Chen',       company:'Meridian Agency',  email:'sarah@meridian.co',   phone:'+1 (415) 555-0142', status:'Active',    last:'2 hours ago',  value:'$24k', avatar:'SC', color:'#3b82f6' },
+      { id:2, name:'James Whitfield',  company:'Summit Digital',   email:'james@summit.io',     phone:'+1 (212) 555-0184', status:'Follow-up', last:'Yesterday',    value:'$18k', avatar:'JW', color:'#8b5cf6' },
+      { id:3, name:'Priya Kapoor',     company:'Kapoor & Assoc',   email:'priya@kapoor.com',    phone:'+1 (650) 555-0117', status:'Follow-up', last:'3 days ago',   value:'$31k', avatar:'PK', color:'#10b981' },
+      { id:4, name:'Marcus Rodriguez', company:'Pivot Studio',     email:'marcus@pivot.studio', phone:'+1 (303) 555-0190', status:'New',       last:'Today',        value:'$8k',  avatar:'MR', color:'#f59e0b' },
+      { id:5, name:'Lisa Nakamura',    company:'Nova Growth',      email:'lisa@novagrowth.co',  phone:'+1 (415) 555-0163', status:'Active',    last:'1 hour ago',   value:'$42k', avatar:'LN', color:'#ec4899' },
+      { id:6, name:'Tom Barrett',      company:'Barrett Digital',  email:'tom@barrett.co',      phone:'+1 (917) 555-0129', status:'Active',    last:'4 hours ago',  value:'$15k', avatar:'TB', color:'#14b8a6' },
+      { id:7, name:'Riley Voss',       company:'Clearview Media',  email:'riley@clearview.tv',  phone:'+1 (213) 555-0108', status:'Cold',      last:'2 weeks ago',  value:'$0',   avatar:'RV', color:'#64748b' },
+      { id:8, name:'Jordan Parks',     company:'Atlas Consulting', email:'jordan@atlas.dev',    phone:'+1 (646) 555-0175', status:'Active',    last:'Yesterday',    value:'$29k', avatar:'JP', color:'#3b82f6' },
+    ];
+
+    // ---------- Topbar ----------
+    function ContactsTopbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-4 flex items-center justify-between gap-6"
+                style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-3">
+            <h1 className="text-white text-[22px] font-bold tracking-tight">Contacts</h1>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">1,284</span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2
+                            focus-within:border-brand-500/40 focus-within:bg-white/[0.05]
+                            focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]
+                            transition-all w-72">
+              <I.Search size={14} className="text-white/40"/>
+              <input type="text" placeholder="Search contacts, companies, emails…"
+                     className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30"/>
+              <span className="text-[10px] font-mono text-white/30 px-1.5 py-0.5 rounded bg-white/[0.05]">⌘K</span>
+            </div>
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white
+                               bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18]
+                               transition-all">
+              <I.Filter size={13}/> Filter
+            </button>
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white
+                               bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18]
+                               transition-all">
+              <I.Upload size={13}/> Import
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white
+                               bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg
+                               hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Plus size={14} stroke={2.4}/>
+              New Contact
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ---------- Filter tab strip ----------
+    function FilterTabs({ active, onChange, counts }) {
+      const tabs = [
+        { key: 'all',          label: 'All',           count: counts.all },
+        { key: 'mine',         label: 'My Contacts',   count: counts.mine },
+        { key: 'uncontacted',  label: 'Uncontacted',   count: counts.uncontacted },
+        { key: 'converted',    label: 'Converted',     count: counts.converted },
+      ];
+      return (
+        <div className="flex items-center gap-1.5">
+          {tabs.map(t => {
+            const a = active === t.key;
+            return (
+              <button key={t.key} onClick={() => onChange(t.key)}
+                className={[
+                  'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                    : 'text-white/50 hover:text-white/85 hover:bg-white/[0.04]',
+                ].join(' ')}
+              >
+                {t.label}
+                <span className={[
+                  'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                  a ? 'bg-brand-500/20 text-brand-200' : 'bg-white/[0.06] text-white/40'
+                ].join(' ')}>
+                  {t.count.toLocaleString()}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ---------- Status badge ----------
+    function StatusBadge({ status }) {
+      const s = STATUS[status];
+      return (
+        <span className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium', s.bg, s.fg].join(' ')}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.dot }}/>
+          {status}
+        </span>
+      );
+    }
+
+    // ---------- Table ----------
+    function ContactsTable() {
+      const [selected, setSelected] = React.useState(new Set());
+      const allChecked = selected.size === CONTACTS.length;
+      const someChecked = selected.size > 0 && !allChecked;
+
+      const toggleAll = () => {
+        if (allChecked || someChecked) setSelected(new Set());
+        else setSelected(new Set(CONTACTS.map(c => c.id)));
+      };
+      const toggleOne = (id) => {
+        const next = new Set(selected);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelected(next);
+      };
+
+      const COL = '32px minmax(220px,1.5fr) minmax(190px,1.2fr) minmax(160px,1fr) 130px 140px 110px 36px';
+
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden animate-fade-up">
+          {/* Header */}
+          <div className="grid items-center gap-4 px-5 py-3 border-b border-white/[0.06] bg-white/[0.015]"
+               style={{ gridTemplateColumns: COL }}>
+            <div className="flex items-center justify-center">
+              <input type="checkbox" className={'cb ' + (someChecked ? 'indet' : '')}
+                     checked={allChecked} onChange={toggleAll} aria-label="Select all" />
+            </div>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Name / Company</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Email</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Phone</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Status</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Last Contacted</span>
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] text-right">Pipeline</span>
+            <span/>
+          </div>
+
+          {/* Rows */}
+          <div>
+            {CONTACTS.map((c, idx) => {
+              const isSel = selected.has(c.id);
+              return (
+                <div key={c.id}
+                     className={[
+                       'grid items-center gap-4 px-5 py-3 transition-colors cursor-pointer group',
+                       idx !== CONTACTS.length - 1 ? 'border-b border-white/[0.03]' : '',
+                       isSel ? 'bg-brand-500/[0.06]' : 'hover:bg-white/[0.02]'
+                     ].join(' ')}
+                     style={{ gridTemplateColumns: COL }}
+                >
+                  <div className="flex items-center justify-center" onClick={(e)=>e.stopPropagation()}>
+                    <input type="checkbox" className="cb" checked={isSel} onChange={()=>toggleOne(c.id)} aria-label={`Select ${c.name}`} />
+                  </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                         style={{ background: c.color }}>{c.avatar}</div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>
+                      <p className="text-[11px] text-white/45 truncate mt-0.5">{c.company}</p>
+                    </div>
+                  </div>
+                  <span className="text-[13px] text-white/65 truncate group-hover:text-white/85">{c.email}</span>
+                  <span className="text-[13px] text-white/55 font-mono tracking-tight truncate">{c.phone}</span>
+                  <StatusBadge status={c.status}/>
+                  <span className="text-[12px] text-white/50">{c.last}</span>
+                  <span className={[
+                    'text-[13px] font-bold text-right tabular-nums',
+                    c.value === '$0' ? 'text-white/30' : 'text-white'
+                  ].join(' ')}>{c.value}</span>
+                  <button className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06]"
+                          onClick={(e)=>e.stopPropagation()}>
+                    <I.More size={14}/>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Pagination ----------
+    function Pagination() {
+      const [page, setPage] = React.useState(1);
+      const total = 161; // 1284 / 8
+      const pages = [1, 2, 3, '…', 161];
+      return (
+        <div className="flex items-center justify-between mt-5 px-1">
+          <p className="text-[12px] text-white/45">
+            Showing <span className="text-white/70 font-medium">1–8</span> of <span className="text-white/70 font-medium">1,284</span> contacts
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(Math.max(1, page-1))}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.14] transition-all">
+              <I.ChevronLeft size={14}/>
+            </button>
+            {pages.map((p, i) => p === '…' ? (
+              <span key={`ellipsis-${i}`} className="px-1.5 text-white/30 text-[12px]">…</span>
+            ) : (
+              <button key={`page-${p}`} onClick={() => setPage(p)}
+                className={[
+                  'min-w-[32px] h-8 px-2 rounded-lg flex items-center justify-center text-[12px] font-semibold transition-all border',
+                  page === p
+                    ? 'bg-brand-500 text-white border-brand-500 shadow-brand'
+                    : 'text-white/55 hover:text-white border-white/[0.06] hover:border-white/[0.14] hover:bg-white/[0.05]'
+                ].join(' ')}>
+                {p}
+              </button>
+            ))}
+            <button onClick={() => setPage(Math.min(total, page+1))}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.14] transition-all">
+              <I.ChevronRight size={14}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Page ----------
+    function ContactsPage() {
+      const [activeTab, setActiveTab] = React.useState('all');
+      const counts = { all: 1284, mine: 412, uncontacted: 87, converted: 296 };
+
+      return (
+        <div data-screen-label="Contacts" className="h-full flex" style={{ background:'#09091a' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:520, height:520, background:'rgba(99,102,241,0.08)', filter:'blur(140px)', top:-200, right:-120 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(124,58,237,0.06)', filter:'blur(140px)', bottom:-160, left:200 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="contacts"/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <ContactsTopbar/>
+
+              {/* Sub-bar: tabs */}
+              <div className="shrink-0 border-b border-white/[0.05] px-7 py-3 flex items-center justify-between" style={{ background:'#09091a' }}>
+                <FilterTabs active={activeTab} onChange={setActiveTab} counts={counts}/>
+                <div className="flex items-center gap-3 text-[11px] text-white/35">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                    Synced just now
+                  </span>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto scroll-area">
+                <div className="px-7 py-6">
+                  <ContactsTable/>
+                  <Pagination/>
+                </div>
+              </div>
+
+              {/* Status footer */}
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background:'#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                  <span className="text-[11px] text-white/40">All systems operational</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">3 team members online</span>
+                  <div className="flex">
+                    {['#3b82f6','#8b5cf6','#10b981'].map((c, i) => (
+                      <span key={i} className="w-4 h-4 rounded-full"
+                            style={{ background: c, marginLeft: i === 0 ? 0 : -6, border: '2px solid #07070f' }}/>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<ContactsPage />);
+  </script>
+</body>
+</html>

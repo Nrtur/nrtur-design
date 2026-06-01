@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipeline Stages — nrtur Settings</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},fontFamily:{sans:['Inter','system-ui','sans-serif']},boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)'},keyframes:{glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},animation:{'glow-pulse':'glowPulse 3s ease-in-out infinite'}}}}
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Bell:p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Shield:p=><Ico {...p} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}/>,
+    Plug:p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+    Billing:p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+    UserX:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></>}/>,
+    ChevronRight:p=><Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>}/>,
+    Grip:p=><Ico {...p} d={<><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></>}/>,
+    Edit:p=><Ico {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
+    Trophy:p=><Ico {...p} d={<><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>}/>,
+  };
+
+  const SWATCHES = ['#94a3b8','#60a5fa','#818cf8','#a78bfa','#f472b6','#fbbf24','#fb923c','#f87171','#34d399','#2dd4bf'];
+
+  function AppSidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash,href:'Dashboard.html'},{key:'contacts',Icon:I.Users,href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,href:'Pipeline.html'},{key:'email',Icon:I.Mail,href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,href:'SMS Inbox.html'},{key:'calls',Icon:I.Phone,href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,href:'Automations.html'},{key:'reports',Icon:I.BarChart,href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4"><div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}><span className="text-white font-black text-sm">n</span></div></a>
+        {items.map(({key,Icon,href})=>(
+          <a key={key} href={href} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><Icon size={16}/></a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  function SettingsNav({active}) {
+    const hrefs={general:'#',team:'Remove User Modal.html',integrations:'Settings Integrations.html',notifications:'Settings Notifications.html',privacy:'Settings Privacy.html',billing:'#',pipeline:'Settings Pipeline.html',unsub:'Settings Unsubscribes.html'};
+    const items=[
+      {key:'general',label:'General',Icon:I.Settings},{key:'team',label:'Team',Icon:I.Users},
+      {key:'integrations',label:'Integrations',Icon:I.Plug},
+      {key:'notifications',label:'Notifications',Icon:I.Bell},{key:'privacy',label:'Data & Privacy',Icon:I.Shield},
+      {key:'pipeline',label:'Pipeline stages',Icon:I.GitBranch},{key:'billing',label:'Billing',Icon:I.Billing},
+      {key:'unsub',label:'Unsubscribes',Icon:I.UserX},
+    ];
+    return (
+      <aside className="w-[210px] shrink-0 border-r border-white/[0.05] flex flex-col py-5 gap-0.5 px-3" style={{background:'#09091a'}}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35 px-3 mb-3">Settings</p>
+        {items.map(({key,label,Icon})=>{
+          const a=active===key;
+          return (
+            <a key={key} href={hrefs[key]} className={['flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all',
+              a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 font-semibold':'text-white/55 hover:text-white hover:bg-white/[0.04] font-medium'].join(' ')}>
+              <Icon size={14}/>{label}{a&&<I.ChevronRight size={11} className="ml-auto text-brand-300/60"/>}
+            </a>
+          );
+        })}
+      </aside>
+    );
+  }
+
+  const INIT_STAGES = [
+    {id:1, name:'Lead',        color:'#94a3b8', prob:10,  dealCount:8,  protected:false, archived:false},
+    {id:2, name:'Qualified',   color:'#60a5fa', prob:25,  dealCount:5,  protected:false, archived:false},
+    {id:3, name:'Proposal',    color:'#a78bfa', prob:50,  dealCount:4,  protected:false, archived:false},
+    {id:4, name:'Negotiation', color:'#fbbf24', prob:75,  dealCount:3,  protected:false, archived:false},
+    {id:5, name:'Won',         color:'#34d399', prob:100, dealCount:11, protected:true,  archived:false},
+    {id:6, name:'Lost',        color:'#f87171', prob:0,   dealCount:7,  protected:true,  archived:false},
+  ];
+
+  function StageRow({stage, onEdit, onDelete, onDragStart, onDragOver, onDrop, isDragOver}) {
+    const [editing, setEditing] = React.useState(false);
+    const [name, setName] = React.useState(stage.name);
+    const [prob, setProb] = React.useState(stage.prob);
+    const [color, setColor] = React.useState(stage.color);
+    const [archived, setArchived] = React.useState(stage.archived || false);
+
+    function save() {
+      onEdit({...stage, name, prob, color, archived});
+      setEditing(false);
+    }
+
+    return (
+      <div draggable={!stage.protected}
+        onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
+        className={['rounded-xl border transition-all',
+          isDragOver?'border-brand-500/40 bg-brand-500/[0.04]':'border-white/[0.06] bg-white/[0.025]',
+          archived && !editing ? 'opacity-50' : ''].join(' ')}>
+        {!editing ? (
+          <div className="flex items-center gap-3 px-4 py-3">
+            {!stage.protected && (
+              <span className="text-white/25 cursor-grab hover:text-white/50 shrink-0"><I.Grip size={13}/></span>
+            )}
+            {stage.protected && <span className="w-5 shrink-0"/>}
+            {/* Color swatch */}
+            <span className="w-4 h-4 rounded-full shrink-0" style={{background:stage.color}}/>
+            {/* Name */}
+            <span className="text-[13.5px] font-semibold text-white flex-1">{stage.name}</span>
+            {/* Probability */}
+            <div className="flex items-center gap-2 w-28">
+              <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="h-full rounded-full" style={{width:`${stage.prob}%`,background:stage.color}}/>
+              </div>
+              <span className="text-[11px] text-white/45 tabular-nums w-8 text-right">{stage.prob}%</span>
+            </div>
+            {/* Deals */}
+            <span className="text-[11px] text-white/35 w-16 text-right tabular-nums">{stage.dealCount} deals</span>
+            {/* Archive toggle */}
+            <div className="flex items-center gap-2 w-[108px] justify-end shrink-0">
+              {!stage.protected ? (
+                <>
+                  <span className={['text-[10px] font-medium transition-colors', archived ? 'text-white/30' : 'text-emerald-400/80'].join(' ')}>
+                    {archived ? 'Archived' : 'Active'}
+                  </span>
+                  <button
+                    onClick={() => setArchived(a => !a)}
+                    className={['relative w-8 h-4 rounded-full transition-colors duration-200 shrink-0',
+                      !archived ? 'bg-emerald-500/60' : 'bg-white/[0.10]'
+                    ].join(' ')}
+                    role="switch" aria-checked={!archived}>
+                    <span className={['absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200',
+                      !archived ? 'left-[18px]' : 'left-0.5'
+                    ].join(' ')}/>
+                  </button>
+                </>
+              ) : (
+                <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white/[0.06] text-white/35 uppercase tracking-wider">Fixed</span>
+              )}
+            </div>
+            {/* Actions */}
+            <div className="flex items-center gap-1 shrink-0 w-14 justify-end">
+              <button onClick={()=>setEditing(true)} className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+                <I.Edit size={12}/>
+              </button>
+              {!stage.protected && (
+                <button onClick={()=>onDelete(stage.id)} className="w-7 h-7 rounded-md text-white/35 hover:text-red-300 hover:bg-red-500/10 flex items-center justify-center transition-colors">
+                  <I.Trash size={12}/>
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-1.5">Stage name</label>
+                <input autoFocus type="text" value={name} onChange={e=>setName(e.target.value)}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 rounded-xl px-3 py-2 text-[13px] text-white outline-none transition-all"/>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-1.5">Win probability</label>
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 rounded-xl px-3 py-2 transition-all">
+                  <input type="number" min="0" max="100" value={prob} onChange={e=>setProb(+e.target.value)}
+                    className="flex-1 bg-transparent outline-none text-[13px] text-white tabular-nums"/>
+                  <span className="text-[12px] text-white/40">%</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Color</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {SWATCHES.map(s=>(
+                  <button key={s} onClick={()=>setColor(s)}
+                    className={['w-6 h-6 rounded-full transition-all',color===s?'ring-2 ring-white ring-offset-2 ring-offset-[#0b0b1c]':'hover:scale-110'].join(' ')}
+                    style={{background:s}}/>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button onClick={()=>setEditing(false)} className="px-3 py-1.5 rounded-lg text-[12px] text-white/55 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+              <button onClick={save} className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                <I.Check size={11}/> Save stage
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function Page() {
+    const [stages, setStages] = React.useState(INIT_STAGES);
+    const [dragIdx, setDragIdx] = React.useState(null);
+    const [overIdx, setOverIdx] = React.useState(null);
+    const [adding, setAdding] = React.useState(false);
+    const [newName, setNewName] = React.useState('');
+    const [saved, setSaved] = React.useState(false);
+
+    function editStage(updated) {
+      setStages(p=>p.map(s=>s.id===updated.id?updated:s));
+    }
+    function deleteStage(id) {
+      setStages(p=>p.filter(s=>s.id!==id));
+    }
+    function addStage() {
+      if (!newName.trim()) return;
+      setStages(p=>[...p.slice(0,-2),{id:Date.now(),name:newName.trim(),color:'#818cf8',prob:50,dealCount:0,protected:false},...p.slice(-2)]);
+      setNewName('');
+      setAdding(false);
+    }
+    function onDragStart(i) { setDragIdx(i); }
+    function onDragOver(e,i) { e.preventDefault(); setOverIdx(i); }
+    function onDrop(i) {
+      if (dragIdx===null||dragIdx===i) { setDragIdx(null);setOverIdx(null);return; }
+      const arr=[...stages];
+      const [item]=arr.splice(dragIdx,1);
+      arr.splice(i,0,item);
+      setStages(arr);
+      setDragIdx(null);setOverIdx(null);
+    }
+    function save() { setSaved(true); setTimeout(()=>setSaved(false),2000); }
+
+    return (
+      <div data-screen-label="Settings Pipeline Stages" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <AppSidebar/>
+          <SettingsNav active="pipeline"/>
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="shrink-0 border-b border-white/[0.05] px-8 py-4 flex items-center justify-between" style={{background:'#09091a'}}>
+              <div>
+                <h1 className="text-[18px] font-bold text-white">Pipeline stages</h1>
+                <p className="text-[12.5px] text-white/45 mt-0.5">Drag to reorder. Changes apply to all pipelines immediately.</p>
+              </div>
+              <button onClick={save}
+                className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold transition-all',
+                  saved?'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30':'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'].join(' ')}>
+                {saved?<><I.Check size={12}/>Saved</>:<>Save order</>}
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto scroll-area px-8 py-6 max-w-[800px]">
+              {/* Column headers */}
+              <div className="grid items-center gap-3 px-4 pb-2 text-[10px] font-semibold text-white/35 uppercase tracking-wider" style={{gridTemplateColumns:'20px 16px 1fr 140px 80px 120px 56px'}}>
+                <span/>
+                <span/>
+                <span>Stage name</span>
+                <span>Win probability</span>
+                <span className="text-right">Deals</span>
+                <span className="text-right">Status</span>
+                <span/>
+              </div>
+
+              {/* Stage list */}
+              <div className="flex flex-col gap-2 mb-4">
+                {stages.map((s,i)=>(
+                  <StageRow key={s.id} stage={s}
+                    onEdit={editStage} onDelete={deleteStage}
+                    onDragStart={()=>onDragStart(i)}
+                    onDragOver={e=>onDragOver(e,i)}
+                    onDrop={()=>onDrop(i)}
+                    isDragOver={overIdx===i&&dragIdx!==i}/>
+                ))}
+              </div>
+
+              {/* Add stage */}
+              {!adding ? (
+                <button onClick={()=>setAdding(true)}
+                  className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-white/[0.10] hover:border-brand-500/35 hover:bg-brand-500/[0.04] text-white/45 hover:text-brand-300 transition-all">
+                  <I.Plus size={14} stroke={2.4}/> <span className="text-[13px]">Add stage</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-brand-500/30 bg-brand-500/[0.05]">
+                  <input autoFocus type="text" value={newName} onChange={e=>setNewName(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter')addStage();if(e.key==='Escape'){setAdding(false);setNewName('');}}}
+                    placeholder="Stage name…"
+                    className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30"/>
+                  <button onClick={addStage} disabled={!newName.trim()}
+                    className={['px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all',
+                      newName.trim()?'bg-brand-500 text-white hover:bg-brand-400':'bg-white/[0.05] text-white/30 cursor-not-allowed'].join(' ')}>
+                    Add
+                  </button>
+                  <button onClick={()=>{setAdding(false);setNewName('');}} className="text-white/35 hover:text-white w-7 h-7 flex items-center justify-center"><I.X size={13}/></button>
+                </div>
+              )}
+
+              {/* Info */}
+              <div className="mt-6 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
+                <div className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.05] bg-white/[0.015]">
+                  <I.Trophy size={15} className="text-amber-300 shrink-0 mt-0.5"/>
+                  <div>
+                    <p className="text-[12.5px] font-semibold text-white mb-0.5">Won and Lost are fixed</p>
+                    <p className="text-[11.5px] text-white/55 leading-relaxed">These two stages are required by nrtur and can't be removed or reordered. Their position at the end is always maintained.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.05] bg-white/[0.015]">
+                  <I.GitBranch size={15} className="text-brand-300 shrink-0 mt-0.5"/>
+                  <div>
+                    <p className="text-[12.5px] font-semibold text-white mb-0.5">Win probability affects forecasting</p>
+                    <p className="text-[11.5px] text-white/55 leading-relaxed">The probability % is used to calculate weighted pipeline value in Reports. Set it to reflect your team's historical win rates per stage.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

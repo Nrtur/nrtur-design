@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="_card.css" />
+<style>
+  html, body { background: var(--surface-950); }
+  
+</style>
+</head><body><div class="ds-card"><div class="grain"></div>
+<div class="col" style="gap:12px;">
+  <div class="label">Noise overlay · grain texture</div>
+  <div class="row" style="gap:14px;">
+    <div style="position:relative; flex:1; height:140px; border-radius:12px; overflow:hidden; background:var(--surface-925); border:1px solid var(--border-3);">
+      <div style="position:absolute; inset:0;"></div>
+      <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--fg-6); font-size:11px;">No grain</div>
+    </div>
+    <div style="position:relative; flex:1; height:140px; border-radius:12px; overflow:hidden; background:var(--surface-925); border:1px solid var(--border-3);">
+      <div style="position:absolute; inset:0; opacity:0.08; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:128px 128px;"></div>
+      <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--fg-3); font-size:11px;">With grain (boosted 8%)</div>
+    </div>
+  </div>
+  <div style="font-size:11px; color:var(--fg-6);">Fixed full-page overlay · 2.5% opacity in production · SVG feTurbulence, baseFrequency 0.9.</div>
+</div>
+</div></body></html>

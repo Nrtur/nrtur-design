@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="_card.css" />
+<style>
+  html, body { background: var(--surface-950); }
+  
+</style>
+</head><body><div class="ds-card"><div class="grain"></div>
+<div class="col" style="gap: 12px;">
+  <div class="label">Kanban deal card</div>
+  <div class="row" style="gap:14px; align-items:flex-start;">
+    <div style="width:200px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:6px;height:6px;border-radius:9999px;background:#818cf8;"></div>
+          <span style="font-size:11px; font-weight:600; color:var(--fg-4);">Qualified</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:10px;color:var(--fg-7);">$81k</span>
+          <span style="font-size:10px;background:rgba(255,255,255,0.06);width:16px;height:16px;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:var(--fg-6);">5</span>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:10px;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px;">
+          <p style="font-size:12px; font-weight:500; color:var(--fg-2); margin:0; line-height:1.3;">Pivot Studio</p>
+          <span style="font-size:11px; color:var(--fg-8);">⋯</span>
+        </div>
+        <p style="font-size:11px; font-weight:600; color:var(--fg-4); margin:0 0 8px 0;">$22,500</p>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:20px; height:20px; border-radius:9999px; background:rgba(99,102,241,0.20); border:1px solid rgba(99,102,241,0.20); color:#818cf8; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center;">SC</div>
+          <span style="font-size:9px; font-weight:500; padding:2px 8px; border-radius:9999px; background:rgba(245,158,11,0.15); color:#fbbf24;">Proposal sent</span>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1; font-size:11px; color:var(--fg-6); line-height:1.5;">
+      <p style="margin:0 0 8px 0;"><strong style="color:var(--fg-3);">Header:</strong> stage dot + name (white/50, 11/600), $value + count chip aligned right.</p>
+      <p style="margin:0 0 8px 0;"><strong style="color:var(--fg-3);">Card:</strong> bg white/3, border white/5, radius 12, p 10px.</p>
+      <p style="margin:0;"><strong style="color:var(--fg-3);">Hover:</strong> border → white/10, bg → white/5. Reveals ⋯ menu.</p>
+    </div>
+  </div>
+</div>
+</div></body></html>

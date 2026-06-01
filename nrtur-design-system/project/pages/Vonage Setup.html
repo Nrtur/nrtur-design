@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect Vonage — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18' },
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            modalIn:   { '0%':{opacity:0,transform:'translateY(14px) scale(0.985)'},'100%':{opacity:1,transform:'none'} },
+            overlayIn: { '0%':{opacity:0},'100%':{opacity:1} },
+            glowPulse: { '0%,100%':{opacity:0.5},'50%':{opacity:1} },
+            slideX:    { '0%':{opacity:0,transform:'translateX(12px)'},'100%':{opacity:1,transform:'none'} },
+            checkPop:  { '0%':{transform:'scale(0)'},'60%':{transform:'scale(1.15)'},'100%':{transform:'scale(1)'} },
+          },
+          animation: {
+            'modal-in':   'modalIn 280ms cubic-bezier(0.16,1,0.3,1) both',
+            'overlay-in': 'overlayIn 200ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+            'slide-x':    'slideX 320ms cubic-bezier(0.16,1,0.3,1) both',
+            'check-pop':  'checkPop 340ms cubic-bezier(0.16,1,0.3,1) both',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root { height:100%; }
+    body { margin:0; background:#09091a; color:#fff; font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; overflow:hidden; }
+    ::selection { background:rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width:5px; }
+    .scroll-area::-webkit-scrollbar-track { background:transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background:rgba(99,102,241,0.28); border-radius:9999px; }
+    .spin { animation:spin 0.9s linear infinite; }
+    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I = {
+    X:           p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Check:       p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    CheckCircle: p=><Ico {...p} d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}/>,
+    ArrowRight:  p=><Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>}/>,
+    ArrowLeft:   p=><Ico {...p} d={<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>}/>,
+    Key:         p=><Ico {...p} d={<><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></>}/>,
+    Eye:         p=><Ico {...p} d={<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>}/>,
+    EyeOff:      p=><Ico {...p} d={<><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></>}/>,
+    Lock:        p=><Ico {...p} d={<><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}/>,
+    Phone:       p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    MessageSq:   p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Send:        p=><Ico {...p} d={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>}/>,
+    Info:        p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>}/>,
+    ExternalLink:p=><Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
+    Search:      p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+    Loader:      p=><Ico {...p} d={<><line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/></>}/>,
+    LayoutDash:  p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Mail:        p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Users:       p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+    Plug:        p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+  };
+
+  // ── Background mock ───────────────────────────────────────────────────
+  function BackgroundMock() {
+    const integrations = [
+      { name:'Gmail',    glyph:'M', color:'#ea4335', connected:true },
+      { name:'Vonage',   glyph:'V', color:'#FF6600', connected:false, highlight:true },
+      { name:'Stripe',   glyph:'S', color:'#6772e5', connected:true },
+      { name:'Slack',    glyph:'#', color:'#4a154b', connected:true },
+      { name:'Calendly', glyph:'C', color:'#006bff', connected:true },
+      { name:'Zapier',   glyph:'Z', color:'#ff4a00', connected:false },
+    ];
+    return (
+      <div className="absolute inset-0 pointer-events-none" style={{ filter:'blur(1.5px) saturate(0.85)' }}>
+        <div className="h-full flex" style={{ background:'#09091a' }}>
+          <aside className="w-14 shrink-0 border-r border-white/[0.05] flex flex-col items-center py-5 gap-1.5" style={{ background:'#07070f' }}>
+            <div className="w-8 h-8 rounded-lg mb-4" style={{ background:'linear-gradient(135deg,#6366f1,#7c3aed)' }}/>
+            {[I.LayoutDash,I.Users,I.Mail,I.MessageSq,I.Phone,null,null].map((Icon,i) => (
+              <div key={i} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-white/30">
+                {Icon && <Icon size={14}/>}
+              </div>
+            ))}
+          </aside>
+          <div className="flex-1 flex flex-col">
+            <header className="border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{ background:'#09091a' }}>
+              <h1 className="text-white text-[18px] font-bold">Integrations</h1>
+              <div className="h-9 w-64 rounded-xl bg-white/[0.04] border border-white/[0.08]"/>
+            </header>
+            <div className="flex-1 px-7 py-6">
+              <div className="grid grid-cols-3 gap-4 max-w-[1100px]">
+                {integrations.map(it => (
+                  <div key={it.name} className={['rounded-2xl border p-5', it.highlight?'border-[rgba(255,102,0,0.40)] bg-[rgba(255,102,0,0.04)] ring-1 ring-[rgba(255,102,0,0.20)]':'border-white/[0.06] bg-white/[0.025]'].join(' ')}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[15px]" style={{ background:it.color }}>{it.glyph}</div>
+                      {it.connected
+                        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25"><span className="w-1 h-1 rounded-full bg-emerald-400"/> Connected</span>
+                        : <span className="text-[10px] text-white/40">Not connected</span>}
+                    </div>
+                    <p className="text-[13px] font-bold text-white mb-1">{it.name}</p>
+                    <div className="h-8 rounded-lg bg-white/[0.04] border border-white/[0.07] mt-4"/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Stepper ───────────────────────────────────────────────────────────
+  function Stepper({ step }) {
+    const steps = [
+      { label:'Connect Vonage', sub:'API key & secret' },
+      { label:'Phone number',   sub:'Choose a number'  },
+      { label:'Test setup',     sub:'Send a test SMS'  },
+    ];
+    return (
+      <div className="flex items-center gap-2">
+        {steps.map((s, i) => {
+          const idx = i + 1;
+          const done   = idx < step;
+          const active = idx === step;
+          return (
+            <React.Fragment key={s.label}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all',
+                  done   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40' :
+                  active ? 'bg-brand-500 text-white ring-2 ring-brand-500/30 shadow-[0_0_18px_rgba(99,102,241,0.5)]' :
+                           'bg-white/[0.05] text-white/40 ring-1 ring-white/[0.08]'].join(' ')}>
+                  {done ? <I.Check size={12} stroke={3} className="animate-check-pop"/> : idx}
+                </div>
+                <div className="min-w-0 hidden md:block">
+                  <p className={['text-[12px] font-semibold leading-tight transition-colors', active?'text-white':done?'text-white/75':'text-white/45'].join(' ')}>{s.label}</p>
+                  <p className="text-[10px] text-white/35 mt-0.5">{s.sub}</p>
+                </div>
+              </div>
+              {i < steps.length-1 && <div className={['flex-1 h-px min-w-[24px] transition-colors', done?'bg-emerald-500/40':'bg-white/[0.07]'].join(' ')}/>}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Step 1: Credentials ───────────────────────────────────────────────
+  function StepCreds({ form, setForm, validating, validated, error }) {
+    const [showSecret, setShowSecret] = React.useState(false);
+    return (
+      <div className="flex flex-col gap-5 animate-slide-x">
+        <div>
+          <p className="text-[15px] font-bold text-white">Connect your Vonage account</p>
+          <p className="text-[12.5px] text-white/55 mt-1">Enter your Vonage API credentials below. Your secret is encrypted at rest and never exposed in the UI.</p>
+        </div>
+
+        <div className="flex flex-col gap-3.5">
+          {/* API Key */}
+          <div>
+            <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">API Key</label>
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+              <I.Key size={13} className="text-white/40 shrink-0"/>
+              <input type="text" value={form.apiKey} onChange={e=>setForm({...form,apiKey:e.target.value})}
+                placeholder="e.g. a1b2c3d4"
+                className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/28 font-mono"/>
+              {form.apiKey && <span className="text-[10.5px] font-mono text-white/30 tabular-nums">{form.apiKey.length} chars</span>}
+            </div>
+            <p className="text-[10.5px] text-white/35 mt-1.5">8-character alphanumeric string from your Vonage dashboard.</p>
+          </div>
+
+          {/* API Secret */}
+          <div>
+            <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">API Secret</label>
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+              <I.Lock size={13} className="text-white/40 shrink-0"/>
+              <input type={showSecret?'text':'password'} value={form.apiSecret} onChange={e=>setForm({...form,apiSecret:e.target.value})}
+                placeholder="••••••••••••••••"
+                className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/28 font-mono"/>
+              <button type="button" onClick={()=>setShowSecret(s=>!s)} className="text-white/45 hover:text-white/85 transition-colors">
+                {showSecret ? <I.EyeOff size={13}/> : <I.Eye size={13}/>}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Validation feedback */}
+        {validating && (
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[12px] text-white/65 self-start">
+            <I.Loader size={12} className="spin text-brand-300"/>
+            Validating credentials with Vonage…
+          </div>
+        )}
+        {validated && !validating && (
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[12px] text-emerald-200 self-start">
+            <I.CheckCircle size={13}/>
+            Connected to <span className="font-semibold">Bloom.co</span> · 3 numbers available
+          </div>
+        )}
+        {error && (
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-[12px] text-red-200 self-start">
+            <I.Info size={13}/> {error}
+          </div>
+        )}
+
+        {/* Dashboard link */}
+        <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center text-white font-black text-[13px] shrink-0" style={{ background:'#FF6600' }}>V</div>
+            <p className="text-[12px] text-white/60 leading-snug">Find your API key and secret under <span className="text-white/80 font-medium">Account → Settings</span> in the Vonage dashboard.</p>
+          </div>
+          <a href="#" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200 shrink-0 transition-colors">
+            Vonage dashboard <I.ExternalLink size={10} stroke={2.2}/>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 2: Phone number ──────────────────────────────────────────────
+  const ALL_NUMBERS = [
+    { num:'+1 (212) 555-0143', area:'212', city:'New York, NY',      sms:true,  voice:true,  monthly:'$1.25/mo' },
+    { num:'+1 (212) 555-0287', area:'212', city:'New York, NY',      sms:true,  voice:false, monthly:'$0.90/mo' },
+    { num:'+1 (415) 555-0198', area:'415', city:'San Francisco, CA', sms:true,  voice:true,  monthly:'$1.25/mo' },
+    { num:'+1 (415) 555-0364', area:'415', city:'San Francisco, CA', sms:true,  voice:true,  monthly:'$1.25/mo' },
+    { num:'+1 (617) 555-0211', area:'617', city:'Boston, MA',        sms:true,  voice:false, monthly:'$0.90/mo' },
+    { num:'+1 (312) 555-0099', area:'312', city:'Chicago, IL',       sms:true,  voice:true,  monthly:'$1.25/mo' },
+    { num:'+1 (512) 555-0450', area:'512', city:'Austin, TX',        sms:true,  voice:true,  monthly:'$1.25/mo' },
+    { num:'+1 (720) 555-0177', area:'720', city:'Denver, CO',        sms:true,  voice:false, monthly:'$0.90/mo' },
+  ];
+
+  function CapBadge({ label, color }) {
+    const cls = {
+      SMS:   'bg-emerald-500/12 text-emerald-300 ring-emerald-500/20',
+      Voice: 'bg-brand-500/12 text-brand-300 ring-brand-500/20',
+    }[label] || 'bg-white/[0.06] text-white/50 ring-white/[0.08]';
+    return <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9.5px] font-semibold ring-1 ${cls}`}>{label}</span>;
+  }
+
+  function StepNumber({ form, setForm }) {
+    const [query, setQuery] = React.useState('');
+    const shown = query.trim()
+      ? ALL_NUMBERS.filter(n => n.area.startsWith(query.trim()) || n.city.toLowerCase().includes(query.toLowerCase()))
+      : ALL_NUMBERS;
+
+    return (
+      <div className="flex flex-col gap-4 animate-slide-x">
+        <div>
+          <p className="text-[15px] font-bold text-white">Choose a phone number</p>
+          <p className="text-[12.5px] text-white/55 mt-1">This is the number your SMS messages will be sent from. You can update it later in Settings.</p>
+        </div>
+
+        {/* Search filter */}
+        <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.10)] transition-all">
+          <I.Search size={13} className="text-white/40 shrink-0"/>
+          <input type="text" value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="Filter by area code or city…"
+            className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30 font-mono"/>
+          {query && <button onClick={()=>setQuery('')} className="text-white/35 hover:text-white/70 transition-colors text-[11px]">Clear</button>}
+        </div>
+
+        {/* Table header */}
+        <div className="rounded-2xl border border-white/[0.06] overflow-hidden">
+          <div className="grid px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-white/35 border-b border-white/[0.05]"
+            style={{ gridTemplateColumns:'56px 1fr 1fr 120px 80px 36px' }}>
+            <span>Area</span>
+            <span>Number</span>
+            <span>Location</span>
+            <span>Capabilities</span>
+            <span className="text-right">Cost</span>
+            <span></span>
+          </div>
+
+          <div className="overflow-y-auto scroll-area" style={{ maxHeight:340 }}>
+            {shown.length === 0 ? (
+              <p className="text-center text-[12.5px] text-white/40 py-10">No numbers match "{query}".</p>
+            ) : shown.map((n,i) => {
+              const sel = form.phone === n.num;
+              return (
+                <button key={n.num} onClick={()=>setForm({...form,phone:n.num})}
+                  className={['grid items-center px-4 py-3 w-full text-left transition-all', sel?'bg-brand-500/[0.07]':'hover:bg-white/[0.02]', i<shown.length-1?'border-b border-white/[0.04]':''].join(' ')}
+                  style={{ gridTemplateColumns:'56px 1fr 1fr 120px 80px 36px' }}>
+
+                  {/* Area code */}
+                  <span className="font-mono text-[13px] font-bold tabular-nums" style={{ color: sel ? '#a5b4fc' : 'rgba(255,255,255,0.65)' }}>
+                    {n.area}
+                  </span>
+
+                  {/* Number */}
+                  <span className="font-mono text-[13px] font-semibold text-white tabular-nums">{n.num}</span>
+
+                  {/* City */}
+                  <span className="text-[12px] text-white/50">{n.city}</span>
+
+                  {/* Capabilities */}
+                  <div className="flex items-center gap-1.5">
+                    {n.sms   && <CapBadge label="SMS"/>}
+                    {n.voice && <CapBadge label="Voice"/>}
+                  </div>
+
+                  {/* Cost */}
+                  <span className="text-[12px] text-white/55 font-medium text-right tabular-nums">{n.monthly}</span>
+
+                  {/* Radio */}
+                  <div className="flex justify-end">
+                    <div className={['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all', sel?'border-brand-400 bg-brand-500':'border-white/20'].join(' ')}>
+                      {sel && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {form.phone && (
+          <div className="inline-flex items-center gap-2 text-[12px] text-emerald-300 animate-slide-x self-start">
+            <I.CheckCircle size={13}/>
+            Selected <span className="font-mono text-white/90 ml-0.5">{form.phone}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Step 3: Test setup ────────────────────────────────────────────────
+  function StepTest({ form, setForm }) {
+    const [status, setStatus] = React.useState('idle'); // idle | sending | sent
+
+    function send() {
+      setStatus('sending');
+      setTimeout(()=>setStatus('sent'), 1400);
+    }
+    function reset() { setStatus('idle'); }
+
+    const ready = !!form.testTo;
+
+    return (
+      <div className="flex flex-col gap-5 animate-slide-x">
+        <div>
+          <p className="text-[15px] font-bold text-white">Test your setup</p>
+          <p className="text-[12.5px] text-white/55 mt-1">
+            Send a live SMS from{' '}
+            <span className="font-mono text-white/85">{form.phone || '+1 (415) 555-0198'}</span>{' '}
+            to confirm everything's working end-to-end.
+          </p>
+        </div>
+
+        {/* Phone number input */}
+        <div>
+          <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Send a test SMS to…</label>
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-3 transition-all">
+            <I.Phone size={14} className="text-white/40 shrink-0"/>
+            <input type="tel" value={form.testTo||''} onChange={e=>{ setForm({...form,testTo:e.target.value}); if(status==='sent') reset(); }}
+              placeholder="+1 (555) 123-4567"
+              className="flex-1 bg-transparent outline-none text-[14px] text-white placeholder:text-white/28 font-mono tabular-nums"/>
+            {form.testTo && <span className="text-[10.5px] text-white/35 shrink-0">Your own number works best</span>}
+          </div>
+        </div>
+
+        {/* Send button + status */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={send} disabled={!ready || status==='sending'}
+              className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',
+                status==='sending'
+                  ? 'bg-brand-500/40 text-white/70 cursor-wait'
+                  : status==='sent'
+                    ? 'bg-emerald-600/80 hover:bg-emerald-600 text-white'
+                    : ready
+                      ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand hover:shadow-brand-lg'
+                      : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+              ].join(' ')}>
+              {status==='sending' ? <><I.Loader size={13} className="spin"/> Sending…</>
+               : status==='sent'  ? <><I.Check size={13} stroke={3}/> Sent!</>
+               : <><I.Send size={12} stroke={2.4}/> Send test message</>}
+            </button>
+            {status==='sent' && (
+              <span className="inline-flex items-center gap-2 text-[12px] font-medium text-emerald-300 animate-slide-x">
+                <I.CheckCircle size={14}/> Delivered · check your phone
+              </span>
+            )}
+          </div>
+
+          {/* Status track */}
+          <div className="flex items-center gap-2.5 mt-1">
+            {[
+              {key:'idle',    label:'Waiting',  done: status!=='idle' },
+              {key:'sending', label:'Sending',  done: status==='sent' },
+              {key:'sent',    label:'Delivered',done: status==='sent' },
+            ].map((s,i,arr) => {
+              const active = (s.key==='idle' && status==='idle') || (s.key==='sending' && status==='sending') || (s.key==='sent' && status==='sent');
+              return (
+                <React.Fragment key={s.key}>
+                  <div className="flex items-center gap-1.5">
+                    <div className={['w-4 h-4 rounded-full flex items-center justify-center transition-all shrink-0',
+                      s.done ? 'bg-emerald-500/20 ring-1 ring-emerald-500/40' : active ? 'bg-brand-500/20 ring-1 ring-brand-500/40' : 'bg-white/[0.06] ring-1 ring-white/[0.08]'
+                    ].join(' ')}>
+                      {s.done
+                        ? <I.Check size={9} stroke={3} className="text-emerald-300"/>
+                        : active && status==='sending' && s.key==='sending'
+                          ? <I.Loader size={8} className="spin text-brand-300"/>
+                          : <div className={['w-1.5 h-1.5 rounded-full', active?'bg-brand-400':'bg-white/20'].join(' ')}/>}
+                    </div>
+                    <span className={['text-[11px] font-medium transition-colors', s.done?'text-emerald-300':active?'text-white/80':'text-white/35'].join(' ')}>{s.label}</span>
+                  </div>
+                  {i < arr.length-1 && <div className={['flex-1 h-px max-w-[40px] transition-colors', s.done?'bg-emerald-500/40':'bg-white/[0.06]'].join(' ')}/>}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Compliance tip */}
+        <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-3.5 flex items-start gap-3 mt-auto">
+          <div className="w-7 h-7 rounded-md bg-amber-500/12 ring-1 ring-amber-500/25 text-amber-300 flex items-center justify-center shrink-0">
+            <I.Info size={13}/>
+          </div>
+          <div className="text-[11.5px] text-white/60 leading-relaxed">
+            <p className="font-medium text-white/85 mb-0.5">GDPR & carrier compliance</p>
+            <p>Always include an opt-out instruction in commercial messages. nrtur automatically appends "Reply STOP to unsubscribe" when sending via Vonage.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step done ─────────────────────────────────────────────────────────
+  function StepDone({ form, onClose }) {
+    return (
+      <div className="flex flex-col items-center text-center py-6 animate-slide-x">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30 flex items-center justify-center mb-4 shadow-[0_0_32px_rgba(16,185,129,0.25)]">
+          <I.Check size={28} stroke={3} className="text-emerald-300 animate-check-pop"/>
+        </div>
+        <p className="text-[18px] font-bold text-white">Vonage is connected.</p>
+        <p className="text-[13px] text-white/55 mt-1.5 max-w-md">SMS messages will now send through Vonage. Automations, sequences, and bulk sends all pick up the new channel automatically.</p>
+
+        <div className="mt-5 w-full max-w-md rounded-xl border border-white/[0.06] bg-white/[0.025] p-4 text-left">
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-[11.5px] text-white/45">Account</span>
+            <span className="text-[12px] text-white font-medium">Bloom Creative</span>
+          </div>
+          <div className="flex items-center justify-between py-1.5 border-t border-white/[0.04]">
+            <span className="text-[11.5px] text-white/45">Phone number</span>
+            <span className="text-[12px] text-white font-mono tabular-nums">{form.phone||'+1 (415) 555-0198'}</span>
+          </div>
+          <div className="flex items-center justify-between py-1.5 border-t border-white/[0.04]">
+            <span className="text-[11.5px] text-white/45">Test send</span>
+            <span className="inline-flex items-center gap-1 text-[12px] text-emerald-300"><I.CheckCircle size={12}/> Delivered</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mt-6">
+          <a href="SMS Inbox.html" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+            <I.MessageSq size={13}/> Go to SMS inbox
+          </a>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Wizard ────────────────────────────────────────────────────────────
+  function Wizard({ onClose }) {
+    const [step, setStep] = React.useState(1);
+    const [form, setForm] = React.useState({ apiKey:'', apiSecret:'', phone:'', testTo:'' });
+    const [validating, setValidating] = React.useState(false);
+    const [validated, setValidated] = React.useState(false);
+    const [error, setError] = React.useState(null);
+    const [done, setDone] = React.useState(false);
+
+    React.useEffect(() => {
+      const h = e => { if(e.key==='Escape') onClose(); };
+      window.addEventListener('keydown', h);
+      return () => window.removeEventListener('keydown', h);
+    }, [onClose]);
+
+    function next() {
+      if (step === 1) {
+        if (form.apiKey.length < 4 || form.apiSecret.length < 4) { setError('Please enter both your API Key and API Secret.'); return; }
+        setError(null); setValidating(true);
+        setTimeout(() => {
+          setValidating(false); setValidated(true);
+          setStep(2);
+          setForm(f=>({...f, phone: f.phone||'+1 (415) 555-0198'}));
+        }, 1100);
+        return;
+      }
+      if (step === 2) { setStep(3); return; }
+      if (step === 3) { setDone(true); return; }
+    }
+    function back() { if(step>1) setStep(step-1); }
+
+    const canNext =
+      step===1 ? (form.apiKey.length>=4 && form.apiSecret.length>=4 && !validating) :
+      step===2 ? !!form.phone :
+      true;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-6 animate-overlay-in" style={{ background:'rgba(7,7,15,0.72)', backdropFilter:'blur(8px)' }}>
+        <div onClick={onClose} className="absolute inset-0"/>
+
+        <div className="relative animate-modal-in w-full max-w-[680px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl border border-white/[0.08] shadow-[0_24px_120px_rgba(0,0,0,0.7)] overflow-hidden" style={{ background:'#0b0b1c' }}>
+          {/* Header */}
+          <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]" style={{ background:'#09091a' }}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[15px] shrink-0" style={{ background:'#FF6600' }}>V</div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[15px] font-bold text-white">Connect Vonage</p>
+                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono text-white/45 bg-white/[0.05]">SMS API</span>
+                  </div>
+                  <p className="text-[11.5px] text-white/45 mt-0.5">Send SMS messages through Vonage from inside nrtur.</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors shrink-0">
+                <I.X size={15}/>
+              </button>
+            </div>
+            <Stepper step={done ? 4 : step}/>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto scroll-area px-6 py-6">
+            {done        ? <StepDone  form={form} onClose={onClose}/> :
+             step===1    ? <StepCreds form={form} setForm={setForm} validating={validating} validated={validated} error={error}/> :
+             step===2    ? <StepNumber form={form} setForm={setForm}/> :
+                           <StepTest  form={form} setForm={setForm}/>}
+          </div>
+
+          {/* Footer */}
+          {!done && (
+            <div className="shrink-0 px-6 py-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3" style={{ background:'#09091a' }}>
+              <div className="flex items-center gap-2">
+                {step > 1 && (
+                  <button onClick={back} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">
+                    <I.ArrowLeft size={12}/> Back
+                  </button>
+                )}
+                <p className="text-[10.5px] text-white/35">Step {step} of 3</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={onClose} className="px-3 py-2 rounded-lg text-[12px] font-medium text-white/55 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+                <button onClick={next} disabled={!canNext}
+                  className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                    canNext ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand' : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                  ].join(' ')}>
+                  {step===3 ? 'Finish setup' : 'Continue'}
+                  {step!==3 && <I.ArrowRight size={12} stroke={2.5}/>}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Page ──────────────────────────────────────────────────────────────
+  function Page() {
+    const [open, setOpen] = React.useState(true);
+    return (
+      <div data-screen-label="Vonage Setup" className="h-full relative" style={{ background:'#09091a' }}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{ width:600,height:600,background:'rgba(99,102,241,0.07)',filter:'blur(160px)',top:-220,right:-150 }}/>
+          <div className="absolute rounded-full" style={{ width:420,height:420,background:'rgba(255,102,0,0.04)',filter:'blur(160px)',bottom:-180,left:200 }}/>
+        </div>
+        <BackgroundMock/>
+        {open && <Wizard onClose={()=>setOpen(false)}/>}
+        {!open && (
+          <div className="absolute inset-0 flex items-center justify-center z-40">
+            <button onClick={()=>setOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white shadow-brand transition-all hover:-translate-y-0.5" style={{ background:'#FF6600' }}>
+              <I.Plug size={14}/> Reopen Vonage setup
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

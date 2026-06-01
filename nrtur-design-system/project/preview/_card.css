@@ -1,0 +1,61 @@
+/* Shared card chrome for design system preview tiles.
+   Each card is its own HTML file at ~700px wide. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-950);
+  color: var(--fg-1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ds-card {
+  width: 100%;
+  min-height: 100%;
+  padding: 28px 32px;
+  box-sizing: border-box;
+  background: var(--surface-950);
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-card .grain {
+  position: absolute; inset: 0;
+  opacity: 0.022;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.between { display: flex; align-items: center; justify-content: space-between; }
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-6);
+}
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-5);
+}
+.swatch-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--border-3);
+}
+.swatch-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+.swatch-row .meta { display: flex; flex-direction: column; gap: 2px; }
+.swatch-row .name { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+.swatch-row .var { font-size: 11px; color: var(--fg-6); font-family: var(--font-mono); }
+.swatch-row .hex { font-size: 11px; color: var(--fg-5); font-family: var(--font-mono); }

@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Pipeline — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            fadeUp:    { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: {
+            'fade-up':    'fadeUp 400ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #09091a; color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 8px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+    .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.45); }
+
+    /* Deal cards can show a drag handle row on hover */
+    .deal-card { transition: all 200ms ease; }
+    .deal-card:hover { transform: translateY(-1px); }
+
+    /* Card drop shadow when active */
+    .deal-card:active { box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.40); cursor: grabbing; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '' }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Filter:      (p)=> <Ico {...p} d={<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>}/>,
+      Search:      (p)=> <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      TrendUp:     (p)=> <Ico {...p} d={<><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>}/>,
+      TrendDown:   (p)=> <Ico {...p} d={<><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></>}/>,
+      More:        (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      Calendar:    (p)=> <Ico {...p} d={<><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8"  x2="8"  y1="2" y2="6"/><line x1="3"  x2="21" y1="10" y2="10"/></>}/>,
+      Target:      (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>}/>,
+      Sparkles:    (p)=> <Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      Grip:        (p)=> <Ico {...p} d={<><circle cx="9"  cy="6"  r="1"/><circle cx="15" cy="6"  r="1"/><circle cx="9"  cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9"  cy="18" r="1"/><circle cx="15" cy="18" r="1"/></>}/>,
+      Clock:       (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+      FlagTriangle:(p)=> <Ico {...p} d={<><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></>}/>,
+      Diamond:     (p)=> <Ico {...p} d={<polygon points="12 2 22 12 12 22 2 12"/>}/>,
+      Hourglass:   (p)=> <Ico {...p} d={<><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></>}/>,
+    };
+
+    // ---------- Sidebar ----------
+    function Sidebar({ active = 'pipeline' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const a = active === key;
+            return (
+              <button key={key} title={label}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </button>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16}/>
+            </button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AM
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Topbar ----------
+    function PipelineTopbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-4 flex items-center justify-between gap-6" style={{ background:'#09091a' }}>
+          <div className="min-w-0">
+            <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">Sales Pipeline</h1>
+            <p className="text-white/50 text-[13px] mt-1">Q2 2026 · 28 open deals · $324k total</p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {/* Forecast badge */}
+            <div className="hidden md:inline-flex items-center gap-2 rounded-xl bg-brand-500/[0.08] border border-brand-500/20 px-3 py-1.5">
+              <I.Target size={13} className="text-brand-300"/>
+              <div className="flex flex-col leading-tight">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-brand-300/70 font-semibold">Forecast</span>
+                <span className="text-[13px] font-bold text-white tabular-nums">$218k <span className="text-brand-300/80 font-medium text-[11px]">weighted</span></span>
+              </div>
+            </div>
+
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+              <I.Filter size={13}/> Filter
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Plus size={14} stroke={2.4}/>
+              New Deal
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ---------- Metric pill row ----------
+    function MetricPill({ label, value, delta, up, accent }) {
+      return (
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.10] transition-all">
+          {accent}
+          <div className="flex flex-col leading-tight">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-white/45 font-semibold">{label}</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-[16px] font-bold text-white tabular-nums">{value}</span>
+              {delta && (
+                <span className={[
+                  'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                  up ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                ].join(' ')}>
+                  {up ? <I.TrendUp size={9} stroke={2.6}/> : <I.TrendDown size={9} stroke={2.6}/>}
+                  {delta}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function MetricRow() {
+      return (
+        <div className="shrink-0 border-b border-white/[0.05] px-7 py-3 flex items-center gap-3 overflow-x-auto scroll-area" style={{ background:'#09091a' }}>
+          <MetricPill
+            label="Pipeline" value="$324k" delta="+12%" up
+            accent={<div className="w-7 h-7 rounded-lg bg-brand-500/10 border border-brand-500/20 text-brand-300 flex items-center justify-center"><I.GitBranch size={13}/></div>}
+          />
+          <MetricPill
+            label="Won" value="$134k" delta="+31%" up
+            accent={<div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center justify-center"><I.TrendUp size={13}/></div>}
+          />
+          <MetricPill
+            label="Avg deal size" value="$11.5k" delta="+4%" up
+            accent={<div className="w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 flex items-center justify-center"><I.BarChart size={13}/></div>}
+          />
+          <MetricPill
+            label="Win rate" value="68%" delta="-2%" up={false}
+            accent={<div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-center"><I.Target size={13}/></div>}
+          />
+
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5
+                            focus-within:border-brand-500/40 focus-within:bg-white/[0.05]
+                            focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] transition-all">
+              <I.Search size={13} className="text-white/40"/>
+              <input type="text" placeholder="Search deals…"
+                     className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/>
+            </div>
+            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+              <I.Calendar size={12}/> This quarter
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Stage data ----------
+    const STAGES = [
+      {
+        key: 'prospecting', name: 'Prospecting', color: '#94a3b8',
+        count: 8, value: '$42k',
+        deals: [
+          { company:'Meridian Agency', value:'$8,400',  owner:'SC', ownerColor:'#3b82f6', tag:'Follow up',   tagBg:'bg-blue-500/15',    tagFg:'text-blue-300',    age:'8d', closeDays:5,  score: 'cold'  },
+          { company:'Bloom Creative',  value:'$12,000', owner:'JK', ownerColor:'#8b5cf6', tag:'New lead',    tagBg:'bg-emerald-500/15', tagFg:'text-emerald-300', age:'2d', score: 'warm'  },
+          { company:'Vertex Labs',     value:'$6,200',  owner:'RL', ownerColor:'#10b981', tag:'Call booked', tagBg:'bg-violet-500/15',  tagFg:'text-violet-300',  age:'1d', score: 'hot'   },
+        ],
+      },
+      {
+        key: 'qualified', name: 'Qualified', color: '#818cf8',
+        count: 5, value: '$81k',
+        deals: [
+          { company:'Pivot Studio',  value:'$22,500', owner:'SC', ownerColor:'#3b82f6', tag:'Proposal sent', tagBg:'bg-amber-500/15', tagFg:'text-amber-300', age:'3d', closeDays:4, score: 'warm' },
+          { company:'Atlas Consult', value:'$18,000', owner:'MR', ownerColor:'#f59e0b', tag:'Demo done',     tagBg:'bg-brand-500/15', tagFg:'text-brand-300', age:'4d', score: 'warm' },
+        ],
+      },
+      {
+        key: 'proposal', name: 'Proposal', color: '#a78bfa',
+        count: 4, value: '$67k',
+        deals: [
+          { company:'Summit Digital', value:'$31,000', owner:'JK', ownerColor:'#8b5cf6', tag:'Negotiating', tagBg:'bg-orange-500/15', tagFg:'text-orange-300', age:'1d', closeDays:12, score: 'hot'  },
+          { company:'Nova Growth',    value:'$15,500', owner:'RL', ownerColor:'#10b981', tag:'Review',      tagBg:'bg-pink-500/15',   tagFg:'text-pink-300',    age:'2d', score: 'warm' },
+        ],
+      },
+      {
+        key: 'negotiation', name: 'Negotiation', color: '#fbbf24',
+        count: 3, value: '$58k',
+        deals: [
+          { company:'Kapoor & Assoc', value:'$28,000', owner:'MR', ownerColor:'#f59e0b', tag:'Contract sent', tagBg:'bg-amber-500/15', tagFg:'text-amber-300', age:'today', closeDays:3, score: 'hot' },
+        ],
+      },
+      {
+        key: 'won', name: 'Won', color: '#34d399',
+        count: 11, value: '$134k',
+        deals: [
+          { company:'Forge & Co',      value:'$44,000', owner:'SC', ownerColor:'#3b82f6', tag:'Won 🎉', tagBg:'bg-emerald-500/15', tagFg:'text-emerald-300', age:'2h',  score: 'won' },
+          { company:'Barrett Digital', value:'$22,000', owner:'JK', ownerColor:'#8b5cf6', tag:'Won 🎉', tagBg:'bg-emerald-500/15', tagFg:'text-emerald-300', age:'1d',  score: 'won' },
+        ],
+      },
+    ];
+
+    // ---------- Deal card ----------
+    function DealCard({ deal, stageColor }) {
+      const [hover, setHover] = React.useState(false);
+      const HEALTH = {
+        hot:  { label:'Hot',      bg:'bg-red-500/12',    fg:'text-red-300',     dot:'#f87171', ring:'ring-red-500/25',    icon:'🔥' },
+        warm: { label:'On track', bg:'bg-emerald-500/10',fg:'text-emerald-300', dot:'#34d399', ring:'ring-emerald-500/20', icon:null },
+        cold: { label:'At risk',  bg:'bg-amber-500/10',  fg:'text-amber-300',   dot:'#fbbf24', ring:'ring-amber-500/20',  icon:null },
+        won:  { label:'Won',      bg:'bg-emerald-500/10',fg:'text-emerald-300', dot:'#34d399', ring:'ring-emerald-500/20', icon:'🎉' },
+        stalled: { label:'Stalled', bg:'bg-white/[0.05]', fg:'text-white/50', dot:'#94a3b8', ring:'ring-white/[0.08]', icon:null },
+      };
+      const h = HEALTH[deal.score] || HEALTH.warm;
+      const AGE_MAP = {'today':0,'2h':0,'1d':1,'2d':2,'3d':3,'4d':4,'5d':5,'8d':8,'1w':7,'2w':14};
+      const ageDays = AGE_MAP[deal.age] ?? 0;
+      const isOverdue = ageDays > 4 && deal.score !== 'won';
+      const amount = parseInt((deal.value || '').replace(/[$,]/g,'')) || 0;
+      const isWon = deal.score === 'won';
+      const isHighValue = !isWon && amount > 20000;
+      const isStalled   = !isWon && ageDays >= 7;
+      const isAtRisk    = !isWon && deal.closeDays != null && deal.closeDays < 7 && ageDays >= 2;
+
+      return (
+        <div
+          className="deal-card rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] p-3.5 cursor-grab group animate-fade-up"
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          title={`${deal.company} · ${deal.value}`}
+        >
+          {/* Drag handle row */}
+          <div className="flex items-center justify-between mb-2 h-3">
+            <span className={'inline-flex items-center transition-opacity ' + (hover ? 'opacity-100' : 'opacity-0')} aria-hidden>
+              <I.Grip size={12} className="text-white/30"/>
+            </span>
+            <button className={'w-5 h-5 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all '
+                                + (hover ? 'opacity-100' : 'opacity-0')}
+                    onClick={(e) => e.stopPropagation()}>
+              <I.More size={12}/>
+            </button>
+          </div>
+
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="text-[13px] font-semibold text-white leading-tight">{deal.company}</p>
+            <span className="text-[14px] font-bold text-white tabular-nums leading-none whitespace-nowrap">{deal.value}</span>
+          </div>
+
+          {/* Health badge + tag row */}
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            <span className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', h.bg, h.fg, h.ring].join(' ')}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: h.dot }}/>
+              {h.label}{h.icon ? ` ${h.icon}` : ''}
+            </span>
+            <span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium', deal.tagBg, deal.tagFg].join(' ')}>
+              {deal.tag}
+            </span>
+          </div>
+
+          {/* Flag badges */}
+          {(isHighValue || isStalled || isAtRisk) && (
+            <div className="flex items-center gap-1 flex-wrap mb-3">
+              {isHighValue && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-semibold bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/20">
+                  <I.Diamond size={8} stroke={2.5}/> High Value
+                </span>
+              )}
+              {isStalled && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-semibold bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/20">
+                  <I.Hourglass size={8} stroke={2.5}/> Stalled
+                </span>
+              )}
+              {isAtRisk && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-semibold bg-red-500/15 text-red-300 ring-1 ring-red-500/20">
+                  <I.FlagTriangle size={8} stroke={2.5}/> At Risk
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background: deal.ownerColor }}>{deal.owner}</div>
+              <span className="text-[10px] text-white/50">{deal.owner}</span>
+            </div>
+            <span className={['text-[10px] inline-flex items-center gap-1', isOverdue ? 'text-amber-300' : 'text-white/30'].join(' ')}>
+              <I.Clock size={9} stroke={2}/>
+              {deal.age}
+              {isOverdue && ' — overdue'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Column ----------
+    function Column({ stage }) {
+      const isWon = stage.key === 'won';
+      return (
+        <div className="w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border border-white/[0.05] overflow-hidden">
+          {/* Header */}
+          <div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10"
+               style={{ background: 'rgba(11,11,24,0.75)', backdropFilter: 'blur(12px)' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full" style={{
+                  background: stage.color,
+                  boxShadow: `0 0 12px ${stage.color}80`,
+                }}/>
+                <span className="text-[13px] font-semibold text-white">{stage.name}</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{stage.count}</span>
+              </div>
+              <button className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all">
+                <I.More size={13}/>
+              </button>
+            </div>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[12px] font-bold text-white tabular-nums">{stage.value}</span>
+              {isWon && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300 font-medium">
+                  <I.Sparkles size={10}/> +31% MoM
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Cards */}
+          <div className="flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[140px]">
+            {stage.deals.map(d => <DealCard key={d.company} deal={d} stageColor={stage.color} />)}
+            <button className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02]
+                               rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all
+                               flex items-center justify-center gap-1.5">
+              <I.Plus size={11} stroke={2.4}/> Add deal
+            </button>
+
+            {stage.deals.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-[11px] text-white/35 italic">No deals in this stage yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Page ----------
+    function PipelinePage() {
+      return (
+        <div data-screen-label="Pipeline" className="h-full flex" style={{ background:'#09091a' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:600, height:600, background:'rgba(99,102,241,0.08)', filter:'blur(140px)', top:-260, right:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:480, height:480, background:'rgba(124,58,237,0.07)', filter:'blur(140px)', bottom:-200, left:200 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="pipeline"/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <PipelineTopbar/>
+              <MetricRow/>
+
+              {/* Board */}
+              <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
+                <div className="h-full p-6 flex gap-4 min-w-max">
+                  {STAGES.map(stage => <Column key={stage.key} stage={stage}/>)}
+                </div>
+              </div>
+
+              {/* Status footer */}
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background:'#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                  <span className="text-[11px] text-white/40">All systems operational</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">Drag deals between stages to move them</span>
+                  <div className="w-px h-3 bg-white/[0.06]"/>
+                  <span className="text-[11px] text-white/30">3 team members online</span>
+                  <div className="flex">
+                    {['#3b82f6','#8b5cf6','#10b981'].map((c, i) => (
+                      <span key={i} className="w-4 h-4 rounded-full"
+                            style={{ background: c, marginLeft: i === 0 ? 0 : -6, border: '2px solid #07070f' }}/>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<PipelinePage />);
+  </script>
+</body>
+</html>

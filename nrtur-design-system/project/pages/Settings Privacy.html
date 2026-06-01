@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data & Privacy — nrtur Settings</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},
+          fontFamily:{sans:['Inter','system-ui','sans-serif']},
+          boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)'},
+          keyframes:{
+            glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}},
+            modalIn:{'0%':{opacity:0,transform:'translateY(10px) scale(0.985)'},'100%':{opacity:1,transform:'none'}},
+            overlayIn:{'0%':{opacity:0},'100%':{opacity:1}},
+            popIn:{'0%':{opacity:0,transform:'scale(0.96)'},'100%':{opacity:1,transform:'none'}},
+          },
+          animation:{
+            'glow-pulse':'glowPulse 3s ease-in-out infinite',
+            'modal-in':'modalIn 250ms cubic-bezier(0.16,1,0.3,1) both',
+            'overlay-in':'overlayIn 200ms ease-out both',
+            'pop-in':'popIn 200ms ease-out both',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Bell:p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Shield:p=><Ico {...p} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}/>,
+    Plug:p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+    Billing:p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+    ChevronRight:p=><Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+    ChevronDown:p=><Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+    Download:p=><Ico {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    AlertTriangle:p=><Ico {...p} d={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>}/>,
+    Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>}/>,
+    Clock:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+    FileText:p=><Ico {...p} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></>}/>,
+    Lock:p=><Ico {...p} d={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}/>,
+    Info:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>}/>,
+  };
+
+  function AppSidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash,href:'Dashboard.html'},{key:'contacts',Icon:I.Users,href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,href:'Pipeline.html'},{key:'email',Icon:I.Mail,href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,href:'SMS Inbox.html'},{key:'calls',Icon:I.Phone,href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,href:'Automations.html'},{key:'reports',Icon:I.BarChart,href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4"><div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}><span className="text-white font-black text-sm">n</span></div></a>
+        {items.map(({key,Icon,href})=>(
+          <a key={key} href={href} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><Icon size={16}/></a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl flex items-center justify-center bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  function SettingsNav({active}) {
+    const hrefs={general:'#',integrations:'Settings Integrations.html',notifications:'Settings Notifications.html',privacy:'Settings Privacy.html',billing:'#'};
+    const items=[
+      {key:'general',label:'General',Icon:I.Settings},{key:'integrations',label:'Integrations',Icon:I.Plug},
+      {key:'notifications',label:'Notifications',Icon:I.Bell},{key:'privacy',label:'Data & Privacy',Icon:I.Shield},
+      {key:'billing',label:'Billing',Icon:I.Billing},
+    ];
+    return (
+      <aside className="w-[210px] shrink-0 border-r border-white/[0.05] flex flex-col py-5 gap-0.5 px-3" style={{background:'#09091a'}}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35 px-3 mb-3">Settings</p>
+        {items.map(({key,label,Icon})=>{
+          const a=active===key;
+          return (
+            <a key={key} href={hrefs[key]} className={['flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all',
+              a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 font-semibold':'text-white/55 hover:text-white hover:bg-white/[0.04] font-medium'].join(' ')}>
+              <Icon size={14}/>{label}{a&&<I.ChevronRight size={11} className="ml-auto text-brand-300/60"/>}
+            </a>
+          );
+        })}
+      </aside>
+    );
+  }
+
+  // ── Section card wrapper ─────────────────────────────────────────────────
+  function SectionCard({icon:Icon, iconColor='#818cf8', title, desc, children, danger=false}) {
+    return (
+      <div className={['rounded-2xl border p-6',danger?'border-red-500/20 bg-red-500/[0.03]':'border-white/[0.07] bg-white/[0.02]'].join(' ')}>
+        <div className="flex items-start gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+               style={{background:`${iconColor}18`,border:`1px solid ${iconColor}30`}}>
+            <Icon size={16} style={{color:iconColor}}/>
+          </div>
+          <div>
+            <h3 className={['text-[14px] font-bold',danger?'text-red-200':'text-white'].join(' ')}>{title}</h3>
+            <p className="text-[12px] text-white/45 mt-0.5">{desc}</p>
+          </div>
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  // ── Delete account modal ─────────────────────────────────────────────────
+  function DeleteModal({onClose}) {
+    const [step, setStep] = React.useState(1); // 1=warning, 2=confirm, 3=done
+    const [input, setInput] = React.useState('');
+    const [deleting, setDeleting] = React.useState(false);
+    const CONFIRM_PHRASE = 'delete my workspace';
+
+    function doDelete() {
+      setDeleting(true);
+      setTimeout(()=>{setStep(3);setDeleting(false);},1400);
+    }
+
+    React.useEffect(()=>{
+      const h=(e)=>{if(e.key==='Escape'&&step!==3)onClose();};
+      window.addEventListener('keydown',h);
+      return ()=>window.removeEventListener('keydown',h);
+    },[onClose,step]);
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-6 animate-overlay-in" style={{background:'rgba(7,7,15,0.75)',backdropFilter:'blur(8px)'}}>
+        <div onClick={onClose} className="absolute inset-0"/>
+        <div className="relative animate-modal-in w-full max-w-md rounded-2xl border shadow-[0_24px_100px_rgba(0,0,0,0.8)] overflow-hidden"
+             style={{background:'#100808',borderColor:'rgba(239,68,68,0.25)'}}>
+
+          {step===3 ? (
+            <div className="p-8 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/15 ring-1 ring-red-500/30 text-red-300 flex items-center justify-center mx-auto mb-4">
+                <I.Check size={20}/>
+              </div>
+              <p className="text-[16px] font-bold text-white">Workspace deletion scheduled.</p>
+              <p className="text-[13px] text-white/55 mt-2">All data will be permanently deleted within 30 days. You'll receive a confirmation email at alex@bloom.co.</p>
+              <button onClick={onClose} className="mt-5 px-4 py-2 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">Close</button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-red-500/15">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/15 ring-1 ring-red-500/25 text-red-300 flex items-center justify-center"><I.Trash size={14}/></div>
+                  <p className="text-[14px] font-bold text-red-200">Delete workspace</p>
+                </div>
+                <button onClick={onClose} className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.X size={13}/></button>
+              </div>
+
+              {step===1 && (
+                <div className="p-5 flex flex-col gap-4">
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-4 flex items-start gap-3">
+                    <I.AlertTriangle size={16} className="text-red-300 shrink-0 mt-0.5"/>
+                    <div className="text-[12.5px] text-white/75 leading-relaxed">
+                      <p className="font-semibold text-red-200 mb-1">This cannot be undone.</p>
+                      <p>Deleting your workspace will permanently remove:</p>
+                      <ul className="mt-2 flex flex-col gap-1">
+                        {['All contacts (2,400+)','All deals and pipeline history','Email and SMS history','All automations and templates','API keys and integrations'].map(item=>(
+                          <li key={item} className="flex items-center gap-2 text-white/60">
+                            <span className="w-1 h-1 rounded-full bg-red-400 shrink-0"/>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={onClose} className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] transition-all">Cancel</button>
+                    <button onClick={()=>setStep(2)} className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-semibold text-red-200 bg-red-500/15 hover:bg-red-500/25 border border-red-500/25 transition-all">
+                      I understand, continue
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {step===2 && (
+                <div className="p-5 flex flex-col gap-4">
+                  <div>
+                    <p className="text-[12.5px] text-white/65 mb-3">To confirm, type <span className="font-mono text-red-300 bg-red-500/10 px-1.5 py-0.5 rounded">{CONFIRM_PHRASE}</span> below:</p>
+                    <input type="text" value={input} onChange={e=>setInput(e.target.value)}
+                      placeholder={CONFIRM_PHRASE}
+                      className="w-full bg-white/[0.04] border focus:border-red-500/50 border-white/[0.08] rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/25 outline-none transition-all"/>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={()=>setStep(1)} className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] transition-all">Back</button>
+                    <button onClick={doDelete} disabled={input!==CONFIRM_PHRASE||deleting}
+                      className={['flex-1 px-3 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                        input===CONFIRM_PHRASE&&!deleting?'bg-red-500 hover:bg-red-400 text-white':'bg-red-500/20 text-red-300/40 cursor-not-allowed'].join(' ')}>
+                      {deleting?<><svg className="inline animate-spin mr-1" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" strokeOpacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"/></svg>Deleting…</>:'Delete permanently'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Export progress ──────────────────────────────────────────────────────
+  function ExportProgress({type, onDone}) {
+    const [pct, setPct] = React.useState(0);
+    React.useEffect(()=>{
+      const iv=setInterval(()=>{
+        setPct(p=>{if(p>=100){clearInterval(iv);setTimeout(onDone,400);return 100;}return p+8;});
+      },120);
+      return ()=>clearInterval(iv);
+    },[]);
+    return (
+      <div className="mt-3 p-3 rounded-xl border border-brand-500/25 bg-brand-500/[0.05] flex items-center gap-3 animate-pop-in">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[11.5px] font-medium text-white">{type==='workspace'?'Workspace export':'GDPR data package'}</p>
+            <span className="text-[10.5px] text-white/45 tabular-nums">{pct}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-violet-500 transition-all duration-150" style={{width:`${pct}%`}}/>
+          </div>
+        </div>
+        {pct===100 && (
+          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+            <I.Download size={11}/> Download
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Page ────────────────────────────────────────────────────────────────
+  function Page() {
+    const [wsExporting, setWsExporting] = React.useState(false);
+    const [gdprExporting, setGdprExporting] = React.useState(false);
+    const [retention, setRetention] = React.useState('2yr');
+    const [deleteOpen, setDeleteOpen] = React.useState(false);
+
+    const retentionOpts=[
+      {k:'1yr',l:'1 year',sub:'Contacts inactive >1yr are anonymised'},
+      {k:'2yr',l:'2 years',sub:'Recommended for most teams'},
+      {k:'5yr',l:'5 years',sub:'Required for some compliance regimes'},
+      {k:'forever',l:'Indefinitely',sub:'Never auto-purge any data'},
+    ];
+
+    return (
+      <div data-screen-label="Settings Data & Privacy" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <AppSidebar/>
+          <SettingsNav active="privacy"/>
+
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="shrink-0 border-b border-white/[0.05] px-8 py-4" style={{background:'#09091a'}}>
+              <h1 className="text-[18px] font-bold text-white">Data & Privacy</h1>
+              <p className="text-[12.5px] text-white/45 mt-0.5">Control your workspace data. nrtur never sells data or uses it for training.</p>
+            </header>
+
+            <div className="flex-1 overflow-y-auto scroll-area px-8 py-6 flex flex-col gap-5 max-w-[860px]">
+
+              {/* Export workspace */}
+              <SectionCard icon={I.Download} iconColor="#818cf8" title="Export workspace data"
+                desc="Download all your contacts, deals, activities, and notes as CSV files. Exports are available for 24 hours.">
+                <div className="flex items-center justify-between">
+                  <div className="text-[12px] text-white/45 flex items-center gap-2">
+                    <I.Clock size={12}/>
+                    Last export: <span className="text-white/65">May 12, 2025</span>
+                    <span className="text-white/25">·</span>
+                    Contacts, deals, activity log, notes
+                  </div>
+                  <button onClick={()=>setWsExporting(true)} disabled={wsExporting}
+                    className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                      wsExporting?'bg-brand-500/40 text-white/60 cursor-wait':'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'].join(' ')}>
+                    <I.Download size={12}/>{wsExporting?'Preparing…':'Export as CSV'}
+                  </button>
+                </div>
+                {wsExporting && <ExportProgress type="workspace" onDone={()=>setWsExporting(false)}/>}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {['Contacts','Deals','Activities','Notes','Email history','SMS history','Call logs'].map(f=>(
+                    <span key={f} className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] text-white/45 bg-white/[0.04] border border-white/[0.06]">{f}</span>
+                  ))}
+                </div>
+              </SectionCard>
+
+              {/* GDPR */}
+              <SectionCard icon={I.FileText} iconColor="#60a5fa" title="Download account data (GDPR)"
+                desc="Request a full export of all personal data nrtur holds about your account. Delivered to your email within 72 hours.">
+                <div className="flex items-center justify-between">
+                  <div className="text-[12px] text-white/45 flex items-center gap-2">
+                    <I.Lock size={12}/>
+                    Includes profile, billing, audit log, and session history
+                  </div>
+                  <button onClick={()=>setGdprExporting(true)} disabled={gdprExporting}
+                    className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-medium border transition-all',
+                      gdprExporting?'bg-white/[0.03] text-white/40 border-white/[0.06] cursor-wait':'text-white/75 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>
+                    <I.Download size={12}/>{gdprExporting?'Preparing…':'Request data export'}
+                  </button>
+                </div>
+                {gdprExporting && <ExportProgress type="gdpr" onDone={()=>setGdprExporting(false)}/>}
+                <div className="mt-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.015] flex items-start gap-2.5">
+                  <I.Info size={12} className="text-white/40 mt-0.5 shrink-0"/>
+                  <p className="text-[11.5px] text-white/50 leading-relaxed">Under GDPR Article 20, you have the right to receive your data in a portable format. We process these requests within 72 hours and send the package to the verified email on your account.</p>
+                </div>
+              </SectionCard>
+
+              {/* Data retention */}
+              <SectionCard icon={I.Clock} iconColor="#fbbf24" title="Data retention policy"
+                desc="Set how long inactive contact records are kept before they're anonymised. Active contacts are never auto-purged.">
+                <div className="grid grid-cols-2 gap-2">
+                  {retentionOpts.map(o=>{
+                    const sel=retention===o.k;
+                    return (
+                      <button key={o.k} onClick={()=>setRetention(o.k)}
+                        className={['flex items-start gap-3 text-left p-3.5 rounded-xl border transition-all',
+                          sel?'border-brand-500/40 bg-brand-500/[0.06] ring-1 ring-brand-500/20':'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]'].join(' ')}>
+                        <div className={['w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-all',
+                          sel?'border-brand-400 bg-brand-500':'border-white/20'].join(' ')}>
+                          {sel&&<div className="w-1 h-1 rounded-full bg-white"/>}
+                        </div>
+                        <div>
+                          <p className={['text-[13px] font-semibold',sel?'text-white':'text-white/75'].join(' ')}>{o.l}</p>
+                          <p className="text-[11px] text-white/40 mt-0.5">{o.sub}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-[11px] text-white/35">Changes take effect at midnight UTC. Contacts in active deals are never purged.</p>
+                  <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                    <I.Check size={11}/> Save policy
+                  </button>
+                </div>
+              </SectionCard>
+
+              {/* Danger zone */}
+              <div className="rounded-2xl border border-red-500/25 overflow-hidden">
+                <div className="px-5 py-3 border-b border-red-500/15 flex items-center gap-2" style={{background:'rgba(239,68,68,0.05)'}}>
+                  <I.AlertTriangle size={13} className="text-red-400"/>
+                  <p className="text-[11.5px] font-bold uppercase tracking-wider text-red-300">Danger zone</p>
+                </div>
+                <div className="p-5 flex flex-col gap-4" style={{background:'rgba(239,68,68,0.025)'}}>
+                  {/* Pause workspace */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[13px] font-semibold text-white">Pause workspace</p>
+                      <p className="text-[12px] text-white/45">Suspend all automations and email sync. Data is preserved. Can be resumed anytime.</p>
+                    </div>
+                    <button className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-medium text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all">
+                      Pause workspace
+                    </button>
+                  </div>
+                  <div className="border-t border-red-500/[0.12]"/>
+                  {/* Delete */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[13px] font-semibold text-red-200">Delete workspace</p>
+                      <p className="text-[12px] text-white/45">Permanently delete this workspace and all its data. This cannot be undone. <span className="text-red-300">Scheduled 30-day grace period.</span></p>
+                    </div>
+                    <button onClick={()=>setDeleteOpen(true)}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-red-200 bg-red-500/12 hover:bg-red-500/22 border border-red-500/30 hover:border-red-500/50 transition-all">
+                      <I.Trash size={12}/> Delete workspace
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer note */}
+              <p className="text-[11.5px] text-white/30 text-center pb-2">
+                nrtur is SOC 2 Type II audited · GDPR compliant · Data stored in EU-West and US-East regions
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {deleteOpen && <DeleteModal onClose={()=>setDeleteOpen(false)}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

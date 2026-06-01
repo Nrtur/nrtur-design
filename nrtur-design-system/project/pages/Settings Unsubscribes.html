@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unsubscribes — nrtur Settings</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},fontFamily:{sans:['Inter','system-ui','sans-serif']},boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)','brand-lg':'0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)'},keyframes:{fadeUp:{'0%':{opacity:0,transform:'translateY(6px)'},'100%':{opacity:1,transform:'translateY(0)'}},glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},animation:{'fade-up':'fadeUp 320ms ease-out both','glow-pulse':'glowPulse 3s ease-in-out infinite'}}}}
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const { useState, useEffect } = React;
+
+  // ---------- Icons ----------
+  const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I = {
+    LayoutDash:  p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:       p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+    GitBranch:   p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:        p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:         p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:    p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:    p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+    Plug:        p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+    Bell:        p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Shield:      p=><Ico {...p} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}/>,
+    Billing:     p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+    ChevronRight:p=><Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+    UserX:       p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></>}/>,
+    UserCheck:   p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></>}/>,
+    MessageSq:   p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Download:    p=><Ico {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>}/>,
+    X:           p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Check:       p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    AlertTriangle:p=><Ico {...p} d={<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>}/>,
+  };
+
+  // ---------- Sidebar ----------
+  function AppSidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash},{key:'contacts',Icon:I.Users},{key:'pipeline',Icon:I.GitBranch},
+      {key:'email',Icon:I.Mail},{key:'automations',Icon:I.Zap},{key:'reports',Icon:I.BarChart},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}>
+            <span className="text-white font-black text-sm">n</span>
+          </div>
+        </a>
+        {items.map(({key,Icon})=>(
+          <button key={key} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+            <Icon size={16}/>
+          </button>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center">
+            <I.Settings size={16}/>
+          </button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  // ---------- Settings nav ----------
+  function SettingsNav() {
+    const items=[
+      {key:'general',    label:'General',        Icon:I.Settings,  href:'#'},
+      {key:'team',       label:'Team',            Icon:I.Users,     href:'Remove User Modal.html'},
+      {key:'integrations',label:'Integrations',   Icon:I.Plug,      href:'Settings Integrations.html'},
+      {key:'notifications',label:'Notifications', Icon:I.Bell,      href:'Settings Notifications.html'},
+      {key:'privacy',    label:'Data & Privacy',  Icon:I.Shield,    href:'Settings Privacy.html'},
+      {key:'pipeline',   label:'Pipeline stages', Icon:I.GitBranch, href:'Settings Pipeline.html'},
+      {key:'billing',    label:'Billing',         Icon:I.Billing,   href:'#'},
+      {key:'unsub',      label:'Unsubscribes',    Icon:I.UserX,     href:'Settings Unsubscribes.html'},
+    ];
+    return (
+      <aside className="w-[210px] shrink-0 border-r border-white/[0.05] flex flex-col py-5 gap-0.5 px-3" style={{background:'#09091a'}}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35 px-3 mb-3">Settings</p>
+        {items.map(({key,label,Icon,href})=>{
+          const a = key==='unsub';
+          return (
+            <a key={key} href={href}
+              className={['flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all',
+                a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 font-semibold'
+                  : 'text-white/55 hover:text-white hover:bg-white/[0.04] font-medium'].join(' ')}>
+              <Icon size={14}/>{label}
+              {a && <I.ChevronRight size={11} className="ml-auto text-brand-300/60"/>}
+            </a>
+          );
+        })}
+      </aside>
+    );
+  }
+
+  // ---------- Seed data ----------
+  const SEED = [
+    {id:1,  name:'Sarah Chen',      init:'SC', color:'#8b5cf6', channel:'sms',   date:'May 28, 2026', reason:'STOP reply'},
+    {id:2,  name:'Marcus Rios',     init:'MR', color:'#ec4899', channel:'email', date:'May 25, 2026', reason:'Unsubscribed via link'},
+    {id:3,  name:'Jamie Kim',       init:'JK', color:'#10b981', channel:'sms',   date:'May 22, 2026', reason:'Too frequent'},
+    {id:4,  name:'Priya Kapoor',    init:'PK', color:'#f59e0b', channel:'email', date:'May 20, 2026', reason:'Not relevant'},
+    {id:5,  name:'David Osei',      init:'DO', color:'#3b82f6', channel:'sms',   date:'May 18, 2026', reason:'STOP reply'},
+    {id:6,  name:'Lily Nakamura',   init:'LN', color:'#a78bfa', channel:'sms',   date:'May 16, 2026', reason:'Manual removal'},
+    {id:7,  name:'Carlos Vega',     init:'CV', color:'#14b8a6', channel:'email', date:'May 14, 2026', reason:'Marked as spam'},
+    {id:8,  name:'Emma Thornton',   init:'ET', color:'#f87171', channel:'sms',   date:'May 12, 2026', reason:'STOP reply'},
+    {id:9,  name:'Ravi Singh',      init:'RS', color:'#fbbf24', channel:'email', date:'May 10, 2026', reason:'Unsubscribed via link'},
+    {id:10, name:'Nadia Petrov',    init:'NP', color:'#6366f1', channel:'sms',   date:'May 9, 2026',  reason:'Too frequent'},
+    {id:11, name:'Tyler Brooks',    init:'TB', color:'#34d399', channel:'email', date:'May 7, 2026',  reason:'Not relevant'},
+    {id:12, name:'Sofia Reyes',     init:'SR', color:'#f472b6', channel:'sms',   date:'May 5, 2026',  reason:'STOP reply'},
+    {id:13, name:'Kwame Asante',    init:'KA', color:'#60a5fa', channel:'sms',   date:'May 3, 2026',  reason:'Manual removal'},
+    {id:14, name:'Hannah Lee',      init:'HL', color:'#c084fc', channel:'email', date:'May 1, 2026',  reason:'Unsubscribed via link'},
+    {id:15, name:'Omar Shaikh',     init:'OS', color:'#fb923c', channel:'sms',   date:'Apr 29, 2026', reason:'STOP reply'},
+    {id:16, name:'Aisha Diallo',    init:'AD', color:'#4ade80', channel:'email', date:'Apr 27, 2026', reason:'Too frequent'},
+    {id:17, name:'Ben Carter',      init:'BC', color:'#818cf8', color:'#818cf8', channel:'sms',   date:'Apr 25, 2026', reason:'STOP reply'},
+    {id:18, name:'Mia Fontaine',    init:'MF', color:'#2dd4bf', channel:'email', date:'Apr 23, 2026', reason:'Marked as spam'},
+    {id:19, name:'Jake Morrison',   init:'JM', color:'#f43f5e', channel:'sms',   date:'Apr 21, 2026', reason:'Too frequent'},
+    {id:20, name:'Yuki Tanaka',     init:'YT', color:'#a78bfa', channel:'sms',   date:'Apr 19, 2026', reason:'Manual removal'},
+    {id:21, name:'Rosa Alvarado',   init:'RA', color:'#fbbf24', channel:'email', date:'Apr 17, 2026', reason:'Not relevant'},
+    {id:22, name:'Sam Nguyen',      init:'SN', color:'#38bdf8', channel:'sms',   date:'Apr 15, 2026', reason:'STOP reply'},
+    {id:23, name:'Farida Okon',     init:'FO', color:'#86efac', channel:'email', date:'Apr 12, 2026', reason:'Unsubscribed via link'},
+  ];
+
+  // ---------- Re-subscribe modal ----------
+  function ResubModal({contact, onConfirm, onClose}) {
+    const [done, setDone] = useState(false);
+    function confirm() { setDone(true); setTimeout(()=>{ onConfirm(contact.id); onClose(); }, 900); }
+    const ch = contact.channel==='sms' ? 'SMS' : 'Email';
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.65)',backdropFilter:'blur(6px)'}}>
+        <div className="w-[400px] rounded-2xl border border-white/[0.10] shadow-[0_32px_80px_rgba(0,0,0,0.6)] p-6 animate-fade-up" style={{background:'#0d0d1f'}}>
+          {done ? (
+            <div className="text-center py-2">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30 text-emerald-300 flex items-center justify-center mx-auto mb-3">
+                <I.Check size={18}/>
+              </div>
+              <p className="text-[15px] font-bold text-white">{contact.name} re-subscribed.</p>
+              <p className="text-[12.5px] text-white/50 mt-1">{ch} messages re-enabled.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/12 ring-1 ring-emerald-500/25 text-emerald-300 flex items-center justify-center shrink-0">
+                  <I.UserCheck size={15}/>
+                </div>
+                <div>
+                  <p className="text-[14.5px] font-bold text-white leading-snug">Re-subscribe {contact.name}?</p>
+                  <p className="text-[12px] text-white/50 mt-0.5">This will re-enable <span className="text-white/75 font-medium">{ch}</span> messages to this contact.</p>
+                </div>
+                <button onClick={onClose} className="ml-auto w-7 h-7 rounded-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-all shrink-0">
+                  <I.X size={13}/>
+                </button>
+              </div>
+
+              {/* Contact preview */}
+              <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-white/[0.025] border border-white/[0.06] mb-5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:contact.color}}>
+                  {contact.init}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-white">{contact.name}</p>
+                  <p className="text-[11px] text-white/40">Opted out: {contact.date} · {contact.reason}</p>
+                </div>
+                <ChannelBadge channel={contact.channel}/>
+              </div>
+
+              <div className="flex items-center gap-2 justify-end">
+                <button onClick={onClose} className="px-4 py-2 rounded-lg text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/[0.05] transition-all">Cancel</button>
+                <button onClick={confirm}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all">
+                  <I.UserCheck size={14}/> Re-subscribe
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Channel badge ----------
+  function ChannelBadge({channel}) {
+    return channel==='sms' ? (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25">
+        <I.MessageSq size={9}/> SMS
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-blue-500/12 text-blue-300 ring-1 ring-blue-500/25">
+        <I.Mail size={9}/> Email
+      </span>
+    );
+  }
+
+  // ---------- Summary card ----------
+  function StatCard({label, value, icon: Icon, bg, fg, ring, glow}) {
+    return (
+      <div className={['rounded-2xl border p-5 flex items-start gap-4', ring].join(' ')} style={{background: bg}}>
+        <div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0', fg].join(' ')} style={{boxShadow:glow}}>
+          <Icon size={18}/>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-white/45 mb-1">{label}</p>
+          <p className="text-[32px] font-black text-white leading-none tabular-nums">{value}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Page ----------
+  function UnsubscribesPage() {
+    const [records, setRecords] = useState(SEED);
+    const [filter, setFilter] = useState('all');
+    const [modal, setModal] = useState(null); // contact object | null
+    const [exported, setExported] = useState(false);
+
+    const filtered = filter==='all' ? records : records.filter(r=>r.channel===filter);
+    const smsCount = records.filter(r=>r.channel==='sms').length;
+    const emailCount = records.filter(r=>r.channel==='email').length;
+
+    function resubscribe(id) {
+      setRecords(prev=>prev.filter(r=>r.id!==id));
+    }
+
+    function exportCSV() {
+      const header = 'Contact,Channel,Date,Reason';
+      const rows = filtered.map(r=>`"${r.name}","${r.channel}","${r.date}","${r.reason}"`).join('\n');
+      const blob = new Blob([header+'\n'+rows], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='unsubscribes.csv'; a.click();
+      URL.revokeObjectURL(url);
+      setExported(true); setTimeout(()=>setExported(false),1600);
+    }
+
+    const REASON_COLORS = {
+      'STOP reply':          'text-amber-300/90',
+      'Too frequent':        'text-orange-300/90',
+      'Not relevant':        'text-white/55',
+      'Marked as spam':      'text-red-300/90',
+      'Unsubscribed via link':'text-white/55',
+      'Manual removal':      'text-white/55',
+    };
+
+    const filters = [{key:'all',label:'All',count:records.length},{key:'sms',label:'SMS',count:smsCount},{key:'email',label:'Email',count:emailCount}];
+
+    return (
+      <div data-screen-label="Settings Unsubscribes" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:480,height:480,background:'rgba(99,102,241,0.06)',filter:'blur(140px)',top:-180,right:-120}}/>
+        </div>
+
+        <div className="relative z-10 flex w-full h-full">
+          <AppSidebar/>
+          <SettingsNav/>
+
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header */}
+            <header className="shrink-0 border-b border-white/[0.05] px-8 py-4 flex items-center justify-between" style={{background:'#09091a'}}>
+              <div>
+                <h1 className="text-[18px] font-bold text-white">Unsubscribes</h1>
+                <p className="text-[12.5px] text-white/45 mt-0.5">{records.length} contacts have opted out of messages</p>
+              </div>
+              <button onClick={exportCSV}
+                className={['inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all', exported?'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30':'text-white/75 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>
+                {exported?<><I.Check size={14}/> Exported!</>:<><I.Download size={14}/> Export CSV</>}
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto scroll-area px-8 py-6">
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <StatCard
+                  label="Total opted out" value={records.length}
+                  icon={I.UserX}
+                  bg="rgba(99,102,241,0.06)" ring="border-brand-500/20"
+                  fg="bg-brand-500/15 text-brand-300"
+                  glow="0 0 20px rgba(99,102,241,0.25)"
+                />
+                <StatCard
+                  label="SMS unsubscribes" value={smsCount}
+                  icon={I.MessageSq}
+                  bg="rgba(245,158,11,0.06)" ring="border-amber-500/20"
+                  fg="bg-amber-500/12 text-amber-300"
+                  glow="0 0 20px rgba(245,158,11,0.20)"
+                />
+                <StatCard
+                  label="Email unsubscribes" value={emailCount}
+                  icon={I.Mail}
+                  bg="rgba(59,130,246,0.06)" ring="border-blue-500/20"
+                  fg="bg-blue-500/12 text-blue-300"
+                  glow="0 0 20px rgba(59,130,246,0.18)"
+                />
+              </div>
+
+              {/* Filter tabs */}
+              <div className="flex items-center gap-1 mb-4">
+                {filters.map(f=>{
+                  const a = filter===f.key;
+                  return (
+                    <button key={f.key} onClick={()=>setFilter(f.key)}
+                      className={['inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all',
+                        a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25' : 'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}>
+                      {f.label}
+                      <span className={['text-[11px] tabular-nums px-1.5 py-0.5 rounded-full font-semibold', a?'bg-brand-500/20 text-brand-200':'bg-white/[0.07] text-white/40'].join(' ')}>{f.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Table */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.018] overflow-hidden">
+                {/* Table header */}
+                <div className="grid px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-white/35 border-b border-white/[0.05]"
+                  style={{gridTemplateColumns:'1fr 100px 130px 1fr 130px'}}>
+                  <span>Contact</span>
+                  <span>Channel</span>
+                  <span>Date opted out</span>
+                  <span>Reason</span>
+                  <span></span>
+                </div>
+
+                {/* Rows */}
+                {filtered.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <div className="w-10 h-10 rounded-xl bg-white/[0.04] text-white/30 flex items-center justify-center mx-auto mb-3">
+                      <I.Check size={18}/>
+                    </div>
+                    <p className="text-[14px] font-semibold text-white/70">All clear</p>
+                    <p className="text-[12.5px] text-white/40 mt-1">No unsubscribes in this category.</p>
+                  </div>
+                ) : filtered.map((r, i) => (
+                  <div key={r.id}
+                    className={['grid items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]', i<filtered.length-1?'border-b border-white/[0.04]':''].join(' ')}
+                    style={{gridTemplateColumns:'1fr 100px 130px 1fr 130px', animationDelay:`${i*25}ms`}}>
+
+                    {/* Contact */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:r.color}}>
+                        {r.init}
+                      </div>
+                      <span className="text-[13.5px] font-semibold text-white truncate">{r.name}</span>
+                    </div>
+
+                    {/* Channel badge */}
+                    <div><ChannelBadge channel={r.channel}/></div>
+
+                    {/* Date */}
+                    <span className="text-[12.5px] text-white/50 tabular-nums">{r.date}</span>
+
+                    {/* Reason */}
+                    <span className={['text-[12.5px] font-medium', REASON_COLORS[r.reason]||'text-white/55'].join(' ')}>{r.reason}</span>
+
+                    {/* Re-subscribe */}
+                    <div className="flex justify-end">
+                      <button onClick={()=>setModal(r)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300/80 hover:text-emerald-200 border border-emerald-500/20 hover:border-emerald-500/40 bg-transparent hover:bg-emerald-500/[0.07] transition-all">
+                        <I.UserCheck size={12}/> Re-subscribe
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer note */}
+              {filtered.length > 0 && (
+                <p className="mt-4 text-[11.5px] text-white/35 leading-relaxed">
+                  <I.AlertTriangle size={11} className="inline-block mr-1 text-white/25 relative -top-px"/>
+                  Re-subscribing a contact overrides their opt-out. Only do this with explicit written consent from the contact.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {modal && <ResubModal contact={modal} onConfirm={resubscribe} onClose={()=>setModal(null)}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<UnsubscribesPage/>);
+</script>
+</body>
+</html>

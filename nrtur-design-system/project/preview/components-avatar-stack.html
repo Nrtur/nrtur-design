@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<title>card</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="_card.css" />
+<style>
+  html, body { background: var(--surface-950); }
+  
+</style>
+</head><body><div class="ds-card"><div class="grain"></div>
+<div class="col" style="gap: 14px;">
+  <div class="label">Avatar stack & online dot</div>
+  <div class="row" style="gap:24px;">
+    <div class="row" style="gap:8px;">
+      <span style="font-size:11px; color:var(--fg-6);">3 team members online</span>
+      <div style="display:flex;">
+        <div style="width:18px;height:18px;border-radius:9999px;background:#3b82f6;border:2px solid var(--surface-950);"></div>
+        <div style="width:18px;height:18px;border-radius:9999px;background:#8b5cf6;border:2px solid var(--surface-950); margin-left:-6px;"></div>
+        <div style="width:18px;height:18px;border-radius:9999px;background:#10b981;border:2px solid var(--surface-950); margin-left:-6px;"></div>
+      </div>
+    </div>
+    <div class="row" style="gap:6px;">
+      <span style="width:6px; height:6px; border-radius:9999px; background:#34d399;" class="glow-pulse"></span>
+      <span style="font-size:11px; color:var(--fg-6);">All systems operational</span>
+    </div>
+    <div class="row" style="gap:6px;">
+      <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.20); padding:4px 10px; border-radius:9999px;">
+        <span style="width:6px; height:6px; border-radius:9999px; background:#34d399;"></span>
+        <span style="font-size:11px; color:#34d399; font-weight:500;">Live sync</span>
+      </span>
+    </div>
+  </div>
+  <div style="font-size:11px; color:var(--fg-6);">Stack: 2px surface-950 border, -6px overlap. Online dot pulses (glowPulse, 3s).</div>
+</div>
+</div></body></html>

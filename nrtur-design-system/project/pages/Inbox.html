@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inbox — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: { 'fade-up': 'fadeUp 400ms ease-out both', 'glow-pulse': 'glowPulse 3s ease-in-out infinite' },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #09091a; color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 8px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+    .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.45); }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '', fill }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      Search:      (p)=> <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Pen:         (p)=> <Ico {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
+      Inbox:       (p)=> <Ico {...p} d={<><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></>}/>,
+      Star:        (p)=> <Ico {...p} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>}/>,
+      Drafts:      (p)=> <Ico {...p} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></>}/>,
+      Send:        (p)=> <Ico {...p} d={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>}/>,
+      Archive:     (p)=> <Ico {...p} d={<><polyline points="21 8 21 21 3 21 3 8"/><rect width="22" height="5" x="1" y="3"/><line x1="10" x2="14" y1="12" y2="12"/></>}/>,
+      Trash:       (p)=> <Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>}/>,
+      Tag:         (p)=> <Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+      Paperclip:   (p)=> <Ico {...p} d={<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>}/>,
+      Reply:       (p)=> <Ico {...p} d={<><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></>}/>,
+      ReplyAll:    (p)=> <Ico {...p} d={<><polyline points="7 17 2 12 7 7"/><polyline points="12 17 7 12 12 7"/><path d="M22 18v-2a4 4 0 0 0-4-4H7"/></>}/>,
+      Forward:     (p)=> <Ico {...p} d={<><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></>}/>,
+      More:        (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      Sparkles:    (p)=> <Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      ExternalLink:(p)=> <Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
+      ChevronDown: (p)=> <Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+      Smile:       (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></>}/>,
+      Image:       (p)=> <Ico {...p} d={<><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></>}/>,
+    };
+
+    // ---------- Sidebar ----------
+    function Sidebar({ active = 'email' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const a = active === key;
+            return (
+              <button key={key} title={label}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </button>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16}/>
+            </button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AM
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Topbar ----------
+    function InboxTopbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-6 py-3.5 flex items-center justify-between gap-6" style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="text-white text-[18px] font-bold tracking-tight">Inbox</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[11px] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+              Gmail · live sync
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2
+                            focus-within:border-brand-500/40 focus-within:bg-white/[0.05]
+                            focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] transition-all w-96">
+              <I.Search size={13} className="text-white/40"/>
+              <input type="text" placeholder="Search emails, contacts, deals…"
+                     className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+              <span className="text-[10px] font-mono text-white/30 px-1.5 py-0.5 rounded bg-white/[0.05]">⌘K</span>
+            </div>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white
+                               bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg
+                               hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Pen size={13} stroke={2.4}/>
+              Compose
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ---------- Folder rail ----------
+    const FOLDERS = [
+      { key:'inbox',    label:'Inbox',     Icon: I.Inbox,   count: 24 },
+      { key:'starred',  label:'Starred',   Icon: I.Star,    count: 8  },
+      { key:'drafts',   label:'Drafts',    Icon: I.Drafts,  count: 2  },
+      { key:'sent',     label:'Sent',      Icon: I.Send                },
+      { key:'archived', label:'Archived',  Icon: I.Archive             },
+      { key:'trash',    label:'Trash',     Icon: I.Trash               },
+    ];
+    const LABELS = [
+      { key:'active',     label:'Active Deals', color: '#34d399', count: 11 },
+      { key:'cold',       label:'Cold Leads',   color: '#94a3b8', count: 6  },
+      { key:'customers',  label:'Customers',    color: '#818cf8', count: 14 },
+      { key:'follow-up',  label:'Follow-up',    color: '#fbbf24', count: 3  },
+    ];
+
+    function FolderRail({ active, setActive }) {
+      return (
+        <aside className="w-[224px] shrink-0 border-r border-white/[0.05] flex flex-col" style={{ background:'#09091a' }}>
+          <div className="px-4 pt-4 pb-2">
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-2 mb-2">Mailboxes</p>
+            <div className="flex flex-col gap-0.5">
+              {FOLDERS.map(f => {
+                const a = active === f.key;
+                return (
+                  <button key={f.key} onClick={() => setActive(f.key)}
+                    className={[
+                      'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 group',
+                      a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                        : 'text-white/55 hover:text-white hover:bg-white/[0.04]'
+                    ].join(' ')}>
+                    <f.Icon size={14} stroke={2}/>
+                    <span className="flex-1 text-left font-medium">{f.label}</span>
+                    {f.count != null && (
+                      <span className={['text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                        a ? 'bg-brand-500/30 text-brand-100' : 'bg-white/[0.06] text-white/45'].join(' ')}>
+                        {f.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="px-4 pt-4 pb-2">
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-2 mb-2 flex items-center justify-between">
+              Labels
+              <button className="text-white/35 hover:text-white/65 transition-colors">
+                <I.Plus size={11} stroke={2.4}/>
+              </button>
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {LABELS.map(l => (
+                <button key={l.key}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-white/55 hover:text-white hover:bg-white/[0.04] transition-all">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: l.color }}/>
+                  <span className="flex-1 text-left">{l.label}</span>
+                  <span className="text-[10px] font-mono text-white/35">{l.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Connected accounts */}
+          <div className="mt-auto p-4 border-t border-white/[0.05]">
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] mb-3">Connected accounts</p>
+            <div className="flex flex-col gap-2.5">
+              {[
+                { addr: 'sarah@bloom.co',  initials:'SC', color:'#3b82f6' },
+                { addr: 'alex@bloom.co',   initials:'AM', color:'#8b5cf6' },
+              ].map(a => (
+                <div key={a.addr} className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: a.color }}>{a.initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-white/85 truncate">{a.addr}</p>
+                    <p className="text-[10px] text-emerald-400 inline-flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400"/> Synced
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <button className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 mt-1">
+                <I.Plus size={11} stroke={2.4}/> Connect account
+              </button>
+            </div>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Email list ----------
+    const EMAILS = [
+      {
+        id:1, unread:true, starred:true, attach:true,
+        from:'Sarah Chen', fromShort:'Sarah Chen', avatar:'SC', color:'#3b82f6',
+        subject:'Re: Proposal for Q3 engagement',
+        preview:"Love what you've shared — can we jump on a call to finalize the scope? I'm free Thursday after 2pm PT.",
+        time:'11:42 AM', date:'Today',
+        labelKey:'active', linkedDeal: { name: 'Q3 Engagement', value: '$24k', stage: 'Proposal', stageColor:'#a78bfa' },
+        contact: { name:'Sarah Chen', title:'CEO · Meridian Agency', avatar:'SC', color:'#3b82f6' },
+        thread: [
+          { from:'Sarah Chen', addr:'sarah@meridian.co', avatar:'SC', color:'#3b82f6', date:'Today · 11:42 AM',
+            body: [
+              "Hey Alex,",
+              "Love what you've shared in the proposal — the scope is super clear and the timeline looks workable on our end. A couple of small things on the deliverables section I want to align on before we sign.",
+              "Can we jump on a 30-minute call to finalize? I'm free Thursday after 2pm PT or any time Friday morning. Let me know what works.",
+              "Also looping in Priya from our ops team — she'll be the day-to-day point of contact once we kick off.",
+              "Sarah",
+            ],
+            attachments: [
+              { name: 'Meridian-Q3-Notes.pdf', size: '184 KB' }
+            ],
+          },
+          { from:'Alex Morgan', addr:'alex@bloom.co', avatar:'AM', color:'#8b5cf6', date:'Yesterday · 4:18 PM',
+            body: [
+              "Hi Sarah,",
+              "Attaching the Q3 proposal we just put together. Happy to walk through it live whenever you're ready — wanted to give you the headlines first:",
+              "  · Two-quarter engagement, $24k total, kickoff June 12",
+              "  · One shared Slack channel + bi-weekly check-ins",
+              "  · 20% off if we sign before EOW",
+              "Let me know if anything's off and I'll revise.",
+              "Best, Alex",
+            ],
+          },
+        ],
+      },
+      {
+        id:2, unread:true, starred:false, attach:false,
+        from:'James Whitfield', fromShort:'James W.', avatar:'JW', color:'#8b5cf6',
+        subject:'Summit Digital contract renewal',
+        preview:"We're ready to proceed. Need the updated agreement before end of week — let me know who I should loop in on our side.",
+        time:'9:12 AM', date:'Today',
+        labelKey:'active', linkedDeal: { name: 'Summit Renewal', value: '$31k', stage: 'Negotiation', stageColor:'#fbbf24' },
+      },
+      {
+        id:3, unread:true, starred:false, attach:true,
+        from:'Marcus Rodriguez', fromShort:'Marcus R.', avatar:'MR', color:'#f59e0b',
+        subject:'Pivot Studio — proposal v2 (revised scope)',
+        preview:'Attached the revised scope with the timeline you asked for. The big change is we moved kickoff up by 2 weeks.',
+        time:'8:04 AM', date:'Today',
+        labelKey:'active', linkedDeal: { name: 'Pivot Studio', value: '$22.5k', stage: 'Proposal', stageColor:'#a78bfa' },
+      },
+      {
+        id:4, unread:false, starred:false, attach:false,
+        from:'Priya Kapoor', fromShort:'Priya K.', avatar:'PK', color:'#10b981',
+        subject:'Onboarding check-in',
+        preview:'Team is settled in, starting the data migration tomorrow. Will share a status update by EOD Thursday.',
+        time:'Mon', date:'May 18',
+        labelKey:'customers',
+      },
+      {
+        id:5, unread:false, starred:true, attach:false,
+        from:'Lisa Nakamura', fromShort:'Lisa N.', avatar:'LN', color:'#ec4899',
+        subject:'Quick question about API limits',
+        preview:'Do the API limits reset monthly or per billing period? Trying to plan a backfill and want to avoid hitting the cap…',
+        time:'Fri', date:'May 15',
+        labelKey:'customers',
+      },
+      {
+        id:6, unread:false, starred:false, attach:false,
+        from:'Tom Barrett', fromShort:'Tom B.', avatar:'TB', color:'#14b8a6',
+        subject:'Coffee next Tuesday?',
+        preview:"Was just talking with Mateo about your tool — long overdue catch-up. Quick coffee next Tuesday around 10?",
+        time:'Thu', date:'May 14',
+        labelKey:'cold',
+      },
+      {
+        id:7, unread:false, starred:false, attach:false,
+        from:'nrtur Automation', fromShort:'nrtur', avatar:'⚡', color:'#6366f1',
+        subject:'Weekly pipeline digest · May 12',
+        preview:'5 new deals created · $86k added · 2 deals closed won totaling $66k. Win rate this week: 71%.',
+        time:'May 12', date:'May 12',
+        labelKey:'follow-up', automation: true,
+      },
+      {
+        id:8, unread:false, starred:false, attach:true,
+        from:'Riley Voss', fromShort:'Riley V.', avatar:'RV', color:'#64748b',
+        subject:'Out of office — re: Clearview Media',
+        preview:'Out through May 25. For anything urgent please reach out to Jordan Parks on my team (jordan@clearview.tv).',
+        time:'May 10', date:'May 10',
+        labelKey:'cold',
+      },
+    ];
+
+    function EmailListItem({ email, selected, onClick }) {
+      const labelColor = (LABELS.find(l => l.key === email.labelKey) || {}).color;
+      return (
+        <button onClick={onClick}
+          className={[
+            'w-full text-left px-4 py-3 border-b border-white/[0.03] transition-colors flex gap-3',
+            selected ? 'bg-brand-500/[0.08] border-l-2 border-l-brand-400' : 'hover:bg-white/[0.025] border-l-2 border-l-transparent'
+          ].join(' ')}>
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: email.color }}>
+              {email.avatar}
+            </div>
+            {email.unread && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-400 ring-2 ring-[#09091a]"/>}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className={['text-[13px] truncate', email.unread ? 'text-white font-bold' : 'text-white/70 font-medium'].join(' ')}>{email.fromShort}</p>
+                {email.starred && <I.Star size={10} stroke={0} fill="#fbbf24" className="text-amber-400 shrink-0"/>}
+              </div>
+              <span className="text-[11px] text-white/40 shrink-0">{email.time}</span>
+            </div>
+            <p className={['text-[12.5px] truncate mb-1', email.unread ? 'text-white/85 font-medium' : 'text-white/55'].join(' ')}>
+              {email.subject}
+            </p>
+            <p className="text-[11.5px] text-white/40 truncate leading-snug">{email.preview}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {email.linkedDeal && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/20">
+                  <span className="w-1 h-1 rounded-full" style={{ background: email.linkedDeal.stageColor }}/>
+                  {email.linkedDeal.name} · {email.linkedDeal.value}
+                </span>
+              )}
+              {labelColor && !email.linkedDeal && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] text-white/55 bg-white/[0.04] ring-1 ring-white/[0.06]">
+                  <span className="w-1 h-1 rounded-sm" style={{ background: labelColor }}/>
+                  {(LABELS.find(l => l.key === email.labelKey) || {}).label}
+                </span>
+              )}
+              {email.attach && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-white/45">
+                  <I.Paperclip size={9} stroke={2.2}/> 1
+                </span>
+              )}
+              {email.automation && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-violet-300">
+                  <I.Sparkles size={9} stroke={2}/> Automation
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    function EmailList({ selectedId, setSelectedId }) {
+      return (
+        <section className="w-[400px] shrink-0 border-r border-white/[0.05] flex flex-col" style={{ background:'#0a0a1c' }}>
+          <div className="px-4 py-3 border-b border-white/[0.05] flex items-center justify-between" style={{ background:'#0a0a1c' }}>
+            <div className="flex items-center gap-2">
+              <p className="text-[13px] font-semibold text-white">All Inboxes</p>
+              <span className="text-[11px] text-white/40">·</span>
+              <span className="text-[11px] text-white/40 tabular-nums">{EMAILS.filter(e => e.unread).length} unread</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button title="Sort" className="w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center text-[10px] font-mono">↕</button>
+              <button title="More" className="w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"><I.More size={13}/></button>
+            </div>
+          </div>
+
+          {/* Smart filter chips */}
+          <div className="px-3 py-2 border-b border-white/[0.04] flex items-center gap-1.5 overflow-x-auto scroll-area" style={{ background:'#0a0a1c' }}>
+            {['All', 'Unread', 'With deals', 'Needs reply'].map((c, i) => (
+              <button key={c}
+                className={[
+                  'shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all',
+                  i === 0 ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                          : 'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                {c}
+              </button>
+            ))}
+            <div className="ml-auto text-[10px] text-white/35 shrink-0 inline-flex items-center gap-1.5 px-2">
+              <I.Sparkles size={9} stroke={2}/> AI sort
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto scroll-area">
+            {EMAILS.map(e => (
+              <EmailListItem key={e.id} email={e} selected={selectedId === e.id} onClick={() => setSelectedId(e.id)}/>
+            ))}
+            <div className="p-5 text-center">
+              <p className="text-[11px] text-white/30">Inbox zero by Friday — keep going.</p>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ---------- Email detail ----------
+    function EmailDetail({ email }) {
+      if (!email) {
+        return (
+          <section className="flex-1 min-w-0 flex items-center justify-center" style={{ background:'#09091a' }}>
+            <div className="text-center max-w-xs">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/40 mb-3">
+                <I.Mail size={20}/>
+              </div>
+              <p className="text-[14px] text-white/55">Pick an email to read.</p>
+            </div>
+          </section>
+        );
+      }
+
+      const hasThread = Array.isArray(email.thread);
+
+      return (
+        <section className="flex-1 min-w-0 flex flex-col" style={{ background:'#09091a' }}>
+          {/* Detail toolbar */}
+          <div className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              <button title="Archive" className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.Archive size={14}/></button>
+              <button title="Delete"  className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.Trash   size={14}/></button>
+              <button title="Snooze"  className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all">
+                <Ico size={14} d={<><circle cx="12" cy="13" r="8"/><path d="M5 3 2 6"/><path d="M22 6l-3-3"/><path d="M12 9v4l3 1"/></>}/>
+              </button>
+              <div className="w-px h-5 bg-white/[0.06] mx-1.5"/>
+              <button title="Star" className="w-8 h-8 rounded-lg text-white/55 hover:text-amber-300 hover:bg-amber-500/10 flex items-center justify-center transition-all">
+                <I.Star size={14} stroke={2} fill={email.starred ? '#fbbf24' : 'none'} className={email.starred ? 'text-amber-400' : ''}/>
+              </button>
+              <button title="Tag"  className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.Tag size={14}/></button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+                <I.Reply size={12}/> Reply
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+                <I.ReplyAll size={12}/> Reply all
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+                <I.Forward size={12}/> Forward
+              </button>
+              <button className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={14}/></button>
+            </div>
+          </div>
+
+          {/* CRM context strip */}
+          {email.contact && email.linkedDeal && (
+            <div className="shrink-0 mx-6 mt-4 rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] backdrop-blur-md p-3.5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-bold text-white ring-2 ring-brand-500/30 shrink-0" style={{ background: email.contact.color }}>
+                {email.contact.avatar}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-[13px] font-semibold text-white">{email.contact.name}</p>
+                  <span className="text-white/30 text-[12px]">·</span>
+                  <p className="text-[12px] text-white/65">{email.contact.title}</p>
+                </div>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.06] text-white/70">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: email.linkedDeal.stageColor }}/>
+                    {email.linkedDeal.stage}
+                  </span>
+                  <span className="text-[11px] text-white/55">
+                    <span className="text-white font-semibold">{email.linkedDeal.value}</span> · {email.linkedDeal.name}
+                  </span>
+                </div>
+              </div>
+              <a href="#" className="text-[12px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 shrink-0">
+                View contact <I.ExternalLink size={11} stroke={2.2}/>
+              </a>
+            </div>
+          )}
+
+          {/* Thread / single */}
+          <div className="flex-1 overflow-y-auto scroll-area px-6 pt-6 pb-6">
+            <div className="max-w-3xl">
+              <h2 className="text-white text-[22px] font-bold tracking-tight leading-tight">{email.subject}</h2>
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-white/45 flex-wrap">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-sm bg-emerald-400"/>
+                  Inbox
+                </span>
+                <span className="text-white/25">·</span>
+                <span>{hasThread ? email.thread.length : 1} message{hasThread && email.thread.length > 1 ? 's' : ''}</span>
+                <span className="text-white/25">·</span>
+                <span>Last activity {email.time}</span>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-4">
+                {hasThread ? email.thread.map((m, i) => <Message key={i} m={m} expanded={i === 0}/>)
+                          : <Message m={{ from: email.from, addr: email.from.toLowerCase().replace(/\s+/g,'.') + '@example.com', avatar: email.avatar, color: email.color, date: `${email.date} · ${email.time}`, body: [email.preview] }} expanded/>}
+              </div>
+
+              <ReplyComposer name={email.contact ? email.contact.name.split(' ')[0] : email.from.split(' ')[0]}/>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function Message({ m, expanded }) {
+      const [open, setOpen] = React.useState(!!expanded);
+      return (
+        <article className="rounded-2xl border border-white/[0.06] bg-white/[0.025] backdrop-blur-md overflow-hidden">
+          <header className="flex items-start gap-3 px-5 py-4 cursor-pointer" onClick={() => setOpen(!open)}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ background: m.color }}>{m.avatar}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-white">{m.from} <span className="text-white/40 font-normal">&lt;{m.addr}&gt;</span></p>
+                  <p className="text-[11px] text-white/45 mt-0.5">to <span className="text-white/65">me</span>{m.cc ? <span>, <span className="text-white/65">{m.cc}</span></span> : null}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-white/45">{m.date}</span>
+                  <I.ChevronDown size={12} className={'text-white/40 transition-transform ' + (open ? '' : '-rotate-90')}/>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {open && (
+            <div className="px-5 pb-5">
+              <div className="pt-2 border-t border-white/[0.04]">
+                <div className="text-[13.5px] text-white/80 leading-relaxed mt-4 flex flex-col gap-3 whitespace-pre-wrap">
+                  {m.body.map((para, i) => <p key={i} className="m-0">{para}</p>)}
+                </div>
+
+                {m.attachments && (
+                  <div className="mt-5 flex items-center gap-2 flex-wrap">
+                    {m.attachments.map(a => (
+                      <div key={a.name} className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] cursor-pointer transition-all">
+                        <div className="w-8 h-8 rounded-md bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+                          <I.Drafts size={13}/>
+                        </div>
+                        <div>
+                          <p className="text-[12px] font-medium text-white leading-tight">{a.name}</p>
+                          <p className="text-[10px] text-white/45">{a.size} · PDF</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </article>
+      );
+    }
+
+    function ReplyComposer({ name }) {
+      const [val, setVal] = React.useState('');
+      return (
+        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-md overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/[0.05] flex items-center justify-between">
+            <p className="text-[12px] text-white/55">
+              Replying to <span className="text-white font-medium">{name}</span>
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button className="text-[11px] text-white/50 hover:text-white px-2 py-1 rounded-md hover:bg-white/[0.04] transition-colors">Reply all</button>
+              <button className="text-[11px] text-white/50 hover:text-white px-2 py-1 rounded-md hover:bg-white/[0.04] transition-colors">Forward</button>
+            </div>
+          </div>
+          <textarea
+            rows={4}
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            placeholder={`Hi ${name},`}
+            className="w-full bg-transparent outline-none resize-none px-5 py-4 text-[13.5px] text-white placeholder:text-white/30 leading-relaxed"
+          />
+          <div className="flex items-center justify-between px-3 py-2.5 border-t border-white/[0.05]">
+            <div className="flex items-center gap-1">
+              <button title="Attach"  className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"><I.Paperclip size={14}/></button>
+              <button title="Image"   className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"><I.Image     size={14}/></button>
+              <button title="Emoji"   className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"><I.Smile     size={14}/></button>
+              <div className="w-px h-5 bg-white/[0.06] mx-1"/>
+              <button title="AI draft" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 transition-colors">
+                <I.Sparkles size={11} stroke={2.2}/> AI draft
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="text-[12px] text-white/50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors">Save draft</button>
+              <button
+                disabled={!val.trim()}
+                className={[
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-semibold transition-all',
+                  val.trim()
+                    ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'
+                    : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                ].join(' ')}>
+                <I.Send size={11} stroke={2.4}/>
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Page ----------
+    function InboxPage() {
+      const [folder, setFolder] = React.useState('inbox');
+      const [selectedId, setSelectedId] = React.useState(1);
+      const email = EMAILS.find(e => e.id === selectedId);
+
+      return (
+        <div data-screen-label="Inbox" className="h-full flex" style={{ background:'#09091a' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:560, height:560, background:'rgba(99,102,241,0.06)', filter:'blur(140px)', top:-220, right:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(124,58,237,0.05)', filter:'blur(140px)', bottom:-200, left:200 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="email"/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <InboxTopbar/>
+
+              <div className="flex-1 flex min-h-0">
+                <FolderRail active={folder} setActive={setFolder}/>
+                <EmailList selectedId={selectedId} setSelectedId={setSelectedId}/>
+                <EmailDetail email={email}/>
+              </div>
+
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background:'#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                  <span className="text-[11px] text-white/40">Gmail synced 12s ago · 2 accounts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">Press <span className="font-mono px-1 py-0.5 rounded bg-white/[0.06] text-white/55">R</span> to reply · <span className="font-mono px-1 py-0.5 rounded bg-white/[0.06] text-white/55">E</span> to archive</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<InboxPage />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMS Templates — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            modalIn: { '0%':{opacity:0,transform:'translateY(8px) scale(0.985)'}, '100%':{opacity:1,transform:'none'} },
+            overlayIn:{ '0%':{opacity:0}, '100%':{opacity:1} },
+            glowPulse:{ '0%,100%':{opacity:0.5}, '50%':{opacity:1} },
+          },
+          animation: {
+            'modal-in':   'modalIn 250ms ease-out both',
+            'overlay-in': 'overlayIn 200ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin:0; background:#09091a; color:#fff; font-family:'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow:hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width:5px; height:5px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.28); border-radius: 9999px; }
+    .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.45); }
+    .token { background:rgba(99,102,241,0.16); color:#a5b4fc; padding:1px 5px; border-radius:5px; font-family:ui-monospace,Menlo,monospace; font-size:0.92em; border:1px solid rgba(99,102,241,0.30); }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+
+    const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+      MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+      Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+      Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+      Copy:p=><Ico {...p} d={<><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>}/>,
+      Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>}/>,
+      Edit:p=><Ico {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
+      Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      Send:p=><Ico {...p} d={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>}/>,
+      Bolt:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      Tag:p=><Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+      Clock:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+      Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+      Hash:p=><Ico {...p} d={<><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></>}/>,
+      More:p=><Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+    };
+
+    // ── Sidebar ────────────────────────────────────────────────────────────
+    function Sidebar({ active='sms' }) {
+      const items = [
+        { key:'dash', Icon:I.LayoutDash, label:'Dashboard', href:'Dashboard.html' },
+        { key:'contacts', Icon:I.Users, label:'Contacts', href:'Contacts.html' },
+        { key:'pipeline', Icon:I.GitBranch, label:'Pipeline', href:'Pipeline.html' },
+        { key:'email', Icon:I.Mail, label:'Email', href:'Inbox.html' },
+        { key:'sms', Icon:I.MessageSq, label:'SMS', href:'SMS Inbox.html' },
+        { key:'calls', Icon:I.Phone, label:'Calls', href:'Calls.html' },
+        { key:'automations', Icon:I.Zap, label:'Automations', href:'Automations.html' },
+        { key:'reports', Icon:I.BarChart, label:'Reports', href:'Reports.html' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{ background:'linear-gradient(135deg,#6366f1,#7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label, href }) => {
+            const a = active === key;
+            return (
+              <a key={key} href={href} title={label}
+                className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}>
+                <Icon size={16}/>
+              </a>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><I.Settings size={16}/></button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>AM</button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ── Top bar ────────────────────────────────────────────────────────────
+    function PageTopbar({ openNew }) {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-3">
+            <a href="SMS Inbox.html" className="text-[12px] text-white/45 hover:text-white/70 transition-colors">SMS</a>
+            <span className="text-white/25">/</span>
+            <h1 className="text-white text-[18px] font-bold tracking-tight">Templates</h1>
+            <span className="text-[11px] text-white/40 tabular-nums">8 active</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 focus-within:bg-white/[0.05] transition-all w-72">
+              <I.Search size={12} className="text-white/40"/>
+              <input type="text" placeholder="Search templates…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+            </div>
+            <button onClick={openNew}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <I.Plus size={13} stroke={2.4}/>
+              New template
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ── Data ──────────────────────────────────────────────────────────────
+    const CATEGORIES = [
+      { key:'follow-up',  label:'Follow-up',   color:'#fbbf24' },
+      { key:'intro',      label:'Intro',       color:'#34d399' },
+      { key:'meeting',    label:'Meetings',    color:'#60a5fa' },
+      { key:'pricing',    label:'Pricing',     color:'#a78bfa' },
+      { key:'renewal',    label:'Renewals',    color:'#f472b6' },
+      { key:'win-back',   label:'Win-back',    color:'#94a3b8' },
+    ];
+
+    const TOKENS = [
+      { token:'{{first_name}}',  example:'Sarah',           desc:'Contact\'s first name' },
+      { token:'{{last_name}}',   example:'Chen',            desc:'Contact\'s last name' },
+      { token:'{{company}}',     example:'Meridian Agency', desc:'Account or company' },
+      { token:'{{deal_name}}',   example:'Q3 Engagement',   desc:'Linked deal name' },
+      { token:'{{deal_value}}',  example:'$24,000',         desc:'Deal amount' },
+      { token:'{{stage}}',       example:'Proposal',        desc:'Pipeline stage' },
+      { token:'{{my_name}}',     example:'Alex',            desc:'Your first name' },
+      { token:'{{meeting_link}}', example:'cal.com/alex',   desc:'Your scheduling link' },
+    ];
+
+    const TEMPLATES = [
+      {
+        id:1, name:'Proposal follow-up · day 2', category:'follow-up', favorite:true,
+        body: `Hey {{first_name}}, just circling back on the proposal for {{deal_name}}. Anything I can clarify before you take it to the team? Happy to jump on a quick 15-min call: {{meeting_link}}`,
+        usage: 142, lastEdit:'2 days ago',
+      },
+      {
+        id:2, name:'New lead intro', category:'intro',
+        body: `Hi {{first_name}} — this is {{my_name}} from nrtur. Saw you signed up for the trial. If you want a guided walkthrough, here's my calendar: {{meeting_link}}. No pressure either way.`,
+        usage: 311, lastEdit:'1 week ago',
+      },
+      {
+        id:3, name:'Meeting confirmation', category:'meeting',
+        body: `Confirming our chat tomorrow about {{deal_name}}. I'll send the call link 10 min before. If anything comes up, just text — {{my_name}}.`,
+        usage: 89, lastEdit:'Today',
+      },
+      {
+        id:4, name:'Discount expires Friday', category:'pricing', favorite:true,
+        body: `{{first_name}}, friendly heads up — the 20% promo on {{deal_name}} ({{deal_value}}) wraps up Friday EOD. Want me to send the updated invoice?`,
+        usage: 67, lastEdit:'4 days ago',
+      },
+      {
+        id:5, name:'Renewal · 30 days out', category:'renewal',
+        body: `Hey {{first_name}}, {{company}}'s renewal is up in 30 days. The team's been loving the results — want to lock in another year at the same rate before it ticks?`,
+        usage: 54, lastEdit:'2 weeks ago',
+      },
+      {
+        id:6, name:'Quiet pipeline nudge', category:'win-back',
+        body: `Been a minute, {{first_name}}. Things still moving on your side with {{deal_name}}? Totally okay if the timing isn't right — just let me know either way and I'll stop bugging you.`,
+        usage: 38, lastEdit:'1 month ago',
+      },
+      {
+        id:7, name:'Call recap', category:'follow-up',
+        body: `Quick recap of our call: agreed on {{stage}} for {{deal_name}} at {{deal_value}}. Sending the paperwork over today. Let me know if I missed anything — {{my_name}}.`,
+        usage: 198, lastEdit:'Yesterday',
+      },
+      {
+        id:8, name:'Demo no-show', category:'follow-up',
+        body: `Missed you on the demo, {{first_name}} — totally happens. Want to grab a new slot? {{meeting_link}}`,
+        usage: 23, lastEdit:'5 days ago',
+      },
+    ];
+
+    function renderPreview(body) {
+      // Replace tokens with example values, return as React fragment with highlights
+      const parts = body.split(/(\{\{[a-z_]+\}\})/g);
+      return parts.map((part, i) => {
+        const t = TOKENS.find(t => t.token === part);
+        if (t) return <span key={i} className="text-brand-300 font-medium">{t.example}</span>;
+        return <span key={i}>{part}</span>;
+      });
+    }
+
+    function highlightTokens(body) {
+      const parts = body.split(/(\{\{[a-z_]+\}\})/g);
+      return parts.map((part, i) => {
+        if (/^\{\{[a-z_]+\}\}$/.test(part)) {
+          return <span key={i} className="token">{part}</span>;
+        }
+        return <span key={i}>{part}</span>;
+      });
+    }
+
+    // ── Template card ──────────────────────────────────────────────────────
+    function TemplateCard({ t, onEdit }) {
+      const cat = CATEGORIES.find(c => c.key === t.category);
+      const len = t.body.length;
+      return (
+        <article onClick={onEdit}
+          className="group cursor-pointer rounded-2xl border border-white/[0.06] bg-white/[0.025] backdrop-blur-sm p-5 hover:border-white/[0.14] hover:bg-white/[0.035] hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/[0.05] text-white/65 ring-1 ring-white/[0.06]">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: cat.color }}/>
+                {cat.label}
+              </span>
+              {t.favorite && <I.Sparkles size={11} className="text-amber-300" stroke={2}/>}
+            </div>
+            <button onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all">
+              <I.More size={13}/>
+            </button>
+          </div>
+
+          {/* Name */}
+          <h3 className="text-[14px] font-semibold text-white leading-snug mb-2">{t.name}</h3>
+
+          {/* Body preview */}
+          <p className="text-[12.5px] text-white/55 leading-relaxed flex-1 line-clamp-4 mb-4">
+            {highlightTokens(t.body)}
+          </p>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/[0.04]">
+            <div className="flex items-center gap-3 text-[10.5px] text-white/40">
+              <span className="inline-flex items-center gap-1"><I.Send size={9} stroke={2.2}/>{t.usage} sent</span>
+              <span className="inline-flex items-center gap-1"><I.Hash size={9} stroke={2.2}/>{len} ch</span>
+            </div>
+            <span className="text-[10.5px] text-white/35">{t.lastEdit}</span>
+          </div>
+        </article>
+      );
+    }
+
+    // ── Edit modal ─────────────────────────────────────────────────────────
+    function EditModal({ template, onClose }) {
+      const isNew = !template?.id;
+      const [name, setName] = React.useState(template?.name || '');
+      const [category, setCategory] = React.useState(template?.category || 'follow-up');
+      const [body, setBody] = React.useState(template?.body || '');
+      const textareaRef = React.useRef(null);
+
+      function insertToken(token) {
+        const el = textareaRef.current;
+        if (!el) return;
+        const start = el.selectionStart ?? body.length;
+        const end = el.selectionEnd ?? body.length;
+        const newBody = body.slice(0, start) + token + body.slice(end);
+        setBody(newBody);
+        // restore cursor after the inserted token
+        requestAnimationFrame(() => {
+          el.focus();
+          const pos = start + token.length;
+          el.setSelectionRange(pos, pos);
+        });
+      }
+
+      const charCount = body.length;
+      const segments = Math.max(1, Math.ceil(charCount / 160));
+      const remain = charCount === 0 ? 160 : (160 * segments) - charCount;
+
+      // Esc to close
+      React.useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [onClose]);
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-6 animate-overlay-in" style={{ background:'rgba(7,7,15,0.72)', backdropFilter:'blur(8px)' }}>
+          <div onClick={onClose} className="absolute inset-0"/>
+          <div className="relative animate-modal-in w-full max-w-[1080px] max-h-full overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_24px_120px_rgba(0,0,0,0.7)]"
+               style={{ background:'#0b0b1c' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+                  <I.MessageSq size={14}/>
+                </div>
+                <div>
+                  <p className="text-[14px] font-bold text-white">{isNew ? 'New SMS template' : 'Edit template'}</p>
+                  <p className="text-[11px] text-white/40">Use tokens to personalize for each contact.</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+                <I.X size={15}/>
+              </button>
+            </div>
+
+            {/* Body grid */}
+            <div className="grid grid-cols-[1.15fr_0.85fr] divide-x divide-white/[0.05]" style={{ height:'min(640px, calc(100vh - 200px))' }}>
+
+              {/* Editor side */}
+              <div className="flex flex-col overflow-y-auto scroll-area">
+                <div className="p-6 flex flex-col gap-4">
+
+                  {/* Name */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Name</label>
+                    <input type="text" value={name} onChange={e=>setName(e.target.value)}
+                      placeholder="e.g. Proposal follow-up · day 2"
+                      className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/30 outline-none transition-all"/>
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Category</label>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {CATEGORIES.map(c => {
+                        const a = category === c.key;
+                        return (
+                          <button key={c.key} onClick={() => setCategory(c.key)}
+                            className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium transition-all',
+                              a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                                : 'bg-white/[0.04] text-white/55 hover:text-white/85 hover:bg-white/[0.07] ring-1 ring-white/[0.06]'].join(' ')}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }}/>
+                            {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Token picker */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[11px] font-semibold text-white/55 uppercase tracking-wider">Personalization tokens</label>
+                      <span className="text-[10px] text-white/35">Click to insert at cursor</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                      {TOKENS.map(t => (
+                        <button key={t.token} onClick={() => insertToken(t.token)}
+                          title={`${t.desc} · e.g. "${t.example}"`}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-mono text-brand-300 bg-brand-500/10 ring-1 ring-brand-500/25 hover:bg-brand-500/20 hover:text-brand-200 transition-all">
+                          <I.Plus size={9} stroke={2.5}/>
+                          {t.token}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Body editor */}
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[11px] font-semibold text-white/55 uppercase tracking-wider">Message</label>
+                      <div className="flex items-center gap-3 text-[10.5px] text-white/40 tabular-nums">
+                        <span>{charCount} ch</span>
+                        <span className="text-white/20">·</span>
+                        <span>{segments} segment{segments > 1 ? 's' : ''}</span>
+                        {charCount > 0 && (
+                          <>
+                            <span className="text-white/20">·</span>
+                            <span className={remain < 20 ? 'text-amber-300' : ''}>{remain} left</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <textarea ref={textareaRef} value={body} onChange={e => setBody(e.target.value)}
+                      placeholder="Hey {{first_name}}, …"
+                      rows={6}
+                      className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-3 text-[13.5px] text-white placeholder:text-white/28 outline-none resize-none leading-relaxed transition-all"/>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 transition-colors">
+                        <I.Sparkles size={11} stroke={2}/> Improve with AI
+                      </button>
+                      <span className="text-[10px] text-white/30">Suggests tighter copy and adds tokens.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview side */}
+              <div className="flex flex-col overflow-y-auto scroll-area" style={{ background:'#08081a' }}>
+                <div className="p-6 flex flex-col gap-4 flex-1">
+                  <div>
+                    <p className="text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-1">Live preview</p>
+                    <p className="text-[11px] text-white/35">As Sarah Chen at Meridian Agency would see it.</p>
+                  </div>
+
+                  {/* Phone-style preview */}
+                  <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.025] to-white/[0.005] p-5 flex-1 min-h-[280px]">
+                    {/* Recipient line */}
+                    <div className="flex items-center gap-2 pb-3 border-b border-white/[0.05] mb-4">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background:'#3b82f6' }}>SC</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-white">Sarah Chen</p>
+                        <p className="text-[10px] text-white/40">+1 (415) 555-0142</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-white/40">
+                        <I.Clock size={9} stroke={2.2}/>
+                        Sends in a few seconds
+                      </span>
+                    </div>
+
+                    {/* Bubble */}
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%]">
+                        <div className="px-4 py-2.5 rounded-2xl rounded-br-sm text-[13.5px] text-white leading-relaxed"
+                             style={{ background:'linear-gradient(135deg,#6366f1,#7c3aed)' }}>
+                          {body ? renderPreview(body) : <span className="text-white/55 italic">Start typing on the left…</span>}
+                        </div>
+                        <p className="text-right text-[10px] text-white/30 mt-1">Just now</p>
+                      </div>
+                    </div>
+
+                    {/* Empty state space */}
+                    {!body && (
+                      <p className="text-center text-[11px] text-white/30 mt-6">
+                        Tokens are replaced live with sample contact data.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Sample data ref */}
+                  <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3.5">
+                    <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-2">Sample values</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                      {TOKENS.slice(0,6).map(t => (
+                        <div key={t.token} className="flex items-center gap-1.5 min-w-0">
+                          <code className="text-brand-300 truncate font-mono text-[10.5px]">{t.token}</code>
+                          <span className="text-white/30 text-[10px]">→</span>
+                          <span className="text-white/65 truncate">{t.example}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3" style={{ background:'#09091a' }}>
+              <div className="flex items-center gap-2">
+                {!isNew && (
+                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors">
+                    <I.Trash size={12}/> Delete
+                  </button>
+                )}
+                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/55 hover:text-white hover:bg-white/[0.05] transition-colors">
+                  <I.Copy size={12}/> Duplicate
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={onClose} className="px-4 py-2 rounded-lg text-[12px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">
+                  Cancel
+                </button>
+                <button onClick={onClose}
+                  disabled={!name.trim() || !body.trim()}
+                  className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                    (name.trim() && body.trim())
+                      ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'
+                      : 'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>
+                  <I.Check size={12} stroke={2.5}/>
+                  {isNew ? 'Create template' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // ── Page ───────────────────────────────────────────────────────────────
+    function TemplatesPage() {
+      const [editing, setEditing] = React.useState(null); // template object or {} for new
+      const [filter, setFilter] = React.useState('all');
+
+      const visible = TEMPLATES.filter(t => filter === 'all' ? true : t.category === filter);
+
+      return (
+        <div data-screen-label="SMS Templates" className="h-full flex">
+          {/* Ambient */}
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:500, height:500, background:'rgba(99,102,241,0.055)', filter:'blur(140px)', top:-200, right:-100 }}/>
+            <div className="absolute rounded-full" style={{ width:380, height:380, background:'rgba(124,58,237,0.045)', filter:'blur(140px)', bottom:-160, left:220 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <PageTopbar openNew={() => setEditing({})}/>
+
+              {/* Category filter rail */}
+              <div className="shrink-0 border-b border-white/[0.04] px-7 py-3 flex items-center gap-1.5 overflow-x-auto scroll-area" style={{ background:'#09091a' }}>
+                <button onClick={() => setFilter('all')}
+                  className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
+                    filter === 'all' ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                                     : 'text-white/55 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>
+                  All <span className="ml-1 text-[10px] text-white/40">{TEMPLATES.length}</span>
+                </button>
+                {CATEGORIES.map(c => {
+                  const a = filter === c.key;
+                  const count = TEMPLATES.filter(t => t.category === c.key).length;
+                  return (
+                    <button key={c.key} onClick={() => setFilter(c.key)}
+                      className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all',
+                        a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                          : 'text-white/55 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }}/>
+                      {c.label}
+                      <span className="text-[10px] text-white/40">{count}</span>
+                    </button>
+                  );
+                })}
+                <div className="ml-auto inline-flex items-center gap-1.5 text-[10.5px] text-white/35 px-2 shrink-0">
+                  <I.Sparkles size={10}/> AI suggests templates based on your sent messages
+                </div>
+              </div>
+
+              {/* Grid */}
+              <div className="flex-1 overflow-y-auto scroll-area px-7 py-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-[1320px]">
+                  {visible.map(t => (
+                    <TemplateCard key={t.id} t={t} onEdit={() => setEditing(t)}/>
+                  ))}
+                  {/* Empty add card */}
+                  <button onClick={() => setEditing({})}
+                    className="group cursor-pointer rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/35 hover:bg-brand-500/[0.04] p-5 flex flex-col items-center justify-center text-center min-h-[210px] transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-white/[0.04] group-hover:bg-brand-500/15 ring-1 ring-white/[0.07] group-hover:ring-brand-500/30 text-white/50 group-hover:text-brand-300 flex items-center justify-center mb-3 transition-all">
+                      <I.Plus size={16} stroke={2.4}/>
+                    </div>
+                    <p className="text-[13px] font-semibold text-white/75 group-hover:text-white">New template</p>
+                    <p className="text-[11px] text-white/40 mt-1">Or duplicate one above to start.</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {editing && <EditModal template={editing} onClose={() => setEditing(null)}/>}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<TemplatesPage/>);
+  </script>
+</body>
+</html>

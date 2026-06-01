@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sarah Chen — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: {
+            'fade-up': 'fadeUp 400ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #07070f; color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '', fill }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      Phone:       (p)=> <Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+      MapPin:      (p)=> <Ico {...p} d={<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></>}/>,
+      Building:    (p)=> <Ico {...p} d={<><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></>}/>,
+      Clock:       (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+      UserCog:     (p)=> <Ico {...p} d={<><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/><circle cx="18" cy="15" r="3"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Send:        (p)=> <Ico {...p} d={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>}/>,
+      PhoneCall:   (p)=> <Ico {...p} d={<><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>}/>,
+      Note:        (p)=> <Ico {...p} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></>}/>,
+      More:        (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>}/>,
+      ChevronRight:(p)=> <Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+      ChevronLeft: (p)=> <Ico {...p} d={<polyline points="15 18 9 12 15 6"/>}/>,
+      Star:        (p)=> <Ico {...p} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>} stroke={1.5}/>,
+      MailReceived:(p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      MailSent:    (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      ArrowMove:   (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>}/>,
+      UserPlus:    (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></>}/>,
+      Search:      (p)=> <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Bell:        (p)=> <Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    };
+
+    // ---------- Sidebar ----------
+    function Sidebar({ active = 'contacts' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="#" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const a = active === key;
+            return (
+              <button key={key} title={label}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </button>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16}/>
+            </button>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AM
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Topbar ----------
+    function ContactTopbar() {
+      return (
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{ background:'#09091a' }}>
+          <div className="flex items-center gap-2 text-[13px]">
+            <a href="#" className="text-white/45 hover:text-white transition-colors">Contacts</a>
+            <I.ChevronRight size={12} className="text-white/25" stroke={2}/>
+            <span className="text-white font-semibold">Sarah Chen</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button title="Previous contact" className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.14] flex items-center justify-center transition-all">
+              <I.ChevronLeft size={14}/>
+            </button>
+            <button title="Next contact" className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.14] flex items-center justify-center transition-all">
+              <I.ChevronRight size={14}/>
+            </button>
+            <div className="w-px h-5 bg-white/[0.06] mx-1"/>
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+              <I.Star size={13}/> Star
+            </button>
+            <button className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all">
+              <I.More size={14}/>
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    // ---------- Left: Profile card ----------
+    function InfoRow({ Icon, label, value, accent }) {
+      return (
+        <div className="flex items-start gap-3 py-2.5">
+          <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 shrink-0 mt-px">
+            <Icon size={13}/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">{label}</p>
+            <p className={['text-[13px] mt-1 truncate', accent ? 'text-brand-300 hover:text-brand-200 cursor-pointer' : 'text-white/85'].join(' ')}>{value}</p>
+          </div>
+        </div>
+      );
+    }
+
+    function DealCard({ deal }) {
+      return (
+        <div className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all cursor-pointer group">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <p className="text-[13px] font-semibold text-white leading-tight">{deal.name}</p>
+            <span className="text-[14px] font-bold text-white tabular-nums">{deal.value}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: deal.stageColor }}/>
+              <span className="text-[11px] font-medium text-white/60">{deal.stage}</span>
+            </div>
+            <span className="text-[10px] text-white/35">{deal.updated}</span>
+          </div>
+          <div className="mt-3 h-1 rounded-full bg-white/[0.05] overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${deal.progress}%`, background: deal.stageColor }}/>
+          </div>
+        </div>
+      );
+    }
+
+    function ProfilePanel() {
+      const tags = ['agency', 'top-lead', 'q2-focus'];
+      const [owner, setOwner] = React.useState('AM');
+      const [ownerOpen, setOwnerOpen] = React.useState(false);
+      const [status, setStatus] = React.useState('prospect');
+      const [statusOpen, setStatusOpen] = React.useState(false);
+      const ownerObj = OWNERS.find(o => o.key === owner) || OWNERS[0];
+      const statusObj = STATUSES.find(s => s.key === status) || STATUSES[0];
+      const deals = [
+        { name: 'Q3 Engagement',  value: '$24k', stage: 'Proposal',  stageColor: '#a78bfa', updated: 'Updated 3d ago', progress: 65 },
+        { name: 'Annual Retainer', value: '$48k', stage: 'Qualified', stageColor: '#818cf8', updated: 'Updated 1w ago', progress: 40 },
+      ];
+
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden animate-fade-up">
+          {/* Header — avatar + name */}
+          <div className="relative p-6 pb-5 border-b border-white/[0.05]"
+               style={{ background: 'radial-gradient(circle at top, rgba(59,130,246,0.10), transparent 70%)' }}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]"
+                     style={{ background:'#3b82f6' }}>SC</div>
+                <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-[#0c0c1a] animate-glow-pulse" title="Online"/>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-white text-[20px] font-bold tracking-tight leading-tight truncate">Sarah Chen</h2>
+                <p className="text-[13px] text-white/55 mt-1 truncate">CEO · Meridian Agency</p>
+                {/* Status badge — clickable */}
+                <div className="relative mt-2.5">
+                  <button onClick={()=>setStatusOpen(o=>!o)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ring-1 transition-all hover:ring-2"
+                    style={{ background:`${statusObj.color}18`, color:statusObj.color, ringColor:`${statusObj.color}40` }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background:statusObj.color }}/>
+                    {statusObj.label}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.5 }}><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  {statusOpen && (
+                    <div className="absolute top-full left-0 mt-1.5 w-44 rounded-xl border border-white/[0.10] shadow-[0_16px_50px_rgba(0,0,0,0.55)] overflow-hidden z-30"
+                         style={{ background:'#0d0d1f' }}>
+                      {STATUSES.map(s => (
+                        <button key={s.key} onClick={()=>{ setStatus(s.key); setStatusOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] transition-colors">
+                          <span className="w-2 h-2 rounded-full" style={{ background:s.color }}/>
+                          <span className="text-[12.5px] text-white">{s.label}</span>
+                          {status===s.key && <svg className="ml-auto" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </button>
+                      ))}
+                      <div className="border-t border-white/[0.05]">
+                        <button className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] text-[12px] text-white/50 hover:text-white transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                          Custom status…
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="grid grid-cols-4 gap-2">
+              <button className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/20 hover:border-brand-500/40 text-brand-300 transition-all">
+                <I.Send size={14}/>
+                <span className="text-[10px] font-medium">Send Email</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white transition-all">
+                <I.PhoneCall size={14}/>
+                <span className="text-[10px] font-medium">Log Call</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white transition-all">
+                <I.Note size={14}/>
+                <span className="text-[10px] font-medium">Add Note</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white transition-all">
+                <I.More size={14}/>
+                <span className="text-[10px] font-medium">More</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="px-6 py-4 border-b border-white/[0.05]">
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2">Contact info</p>
+            <div className="divide-y divide-white/[0.03]">
+              <InfoRow Icon={I.Mail}     label="Email"          value="sarah@meridian.co"    accent />
+              <InfoRow Icon={I.Phone}    label="Phone"          value="+1 (555) 234-8901"    accent />
+              <InfoRow Icon={I.Building} label="Company"        value="Meridian Agency"      accent />
+              <InfoRow Icon={I.MapPin}   label="Location"       value="San Francisco, CA"    />
+              <InfoRow Icon={I.Clock}    label="Last contacted" value="2 hours ago"          />
+              {/* Owner — interactive dropdown */}
+              <div className="flex items-start gap-3 py-2.5 relative">
+                <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 shrink-0 mt-px">
+                  <I.UserCog size={13}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Contact owner</p>
+                  <button onClick={()=>setOwnerOpen(o=>!o)}
+                    className="mt-1 inline-flex items-center gap-2 group">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ background:ownerObj.color }}>{ownerObj.key}</span>
+                    <span className="text-[13px] text-white/85 group-hover:text-white transition-colors">{ownerObj.name}</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/35 group-hover:text-white/65 transition-colors"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  {ownerOpen && (
+                    <div className="absolute left-0 mt-1.5 w-52 rounded-xl border border-white/[0.10] shadow-[0_16px_50px_rgba(0,0,0,0.55)] overflow-hidden z-30"
+                         style={{ background:'#0d0d1f' }}>
+                      <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-3 pt-3 pb-1.5">Reassign to</p>
+                      {OWNERS.map(o => (
+                        <button key={o.key} onClick={()=>{ setOwner(o.key); setOwnerOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/[0.04] transition-colors">
+                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background:o.color }}>{o.key}</span>
+                          <span className="text-[12.5px] text-white flex-1 text-left">{o.name}</span>
+                          {owner===o.key && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="px-6 py-4 border-b border-white/[0.05]">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Tags</p>
+              <button className="text-[11px] text-white/45 hover:text-brand-300 inline-flex items-center gap-1">
+                <I.Plus size={11} stroke={2.4}/> Add tag
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map(t => (
+                <span key={t} className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 hover:bg-brand-500/20 cursor-pointer transition-colors">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Deals */}
+          <div className="px-6 py-4 border-b border-white/[0.05]">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Associated Deals · 2</p>
+              <button className="text-[11px] text-white/45 hover:text-brand-300 inline-flex items-center gap-1">
+                <I.Plus size={11} stroke={2.4}/> New deal
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {deals.map(d => <DealCard key={d.name} deal={d}/>)}
+            </div>
+          </div>
+
+          {/* Custom fields */}
+          <div className="px-6 py-4">
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Custom fields</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-[12px] text-white/50">Monthly budget</span>
+                <span className="text-[13px] font-semibold text-white tabular-nums">$8k</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-[12px] text-white/50">Source</span>
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-white/85">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400"/>
+                  Referral
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-[12px] text-white/50">Lifecycle stage</span>
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-white/85">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"/>
+                  Prospect
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Right: Activity timeline ----------
+    const OWNERS = [
+      { key:'AM', name:'Alex Morgan',    color:'#3b82f6' },
+      { key:'SC', name:'Sarah Chen',     color:'#8b5cf6' },
+      { key:'JK', name:'Jamie Kim',      color:'#10b981' },
+      { key:'RL', name:'Ravi Lee',       color:'#f59e0b' },
+    ];
+
+    const STATUSES = [
+      { key:'lead',      label:'Lead',      color:'#60a5fa' },
+      { key:'prospect',  label:'Prospect',  color:'#fbbf24' },
+      { key:'customer',  label:'Customer',  color:'#34d399' },
+      { key:'lost',      label:'Lost',      color:'#f87171' },
+    ];
+
+    const ACTIVITY = [
+      {
+        kind: 'sms', time: '45m ago', label: 'SMS RECEIVED',
+        chipBg: 'bg-violet-500/15 ring-violet-500/25 text-violet-300',
+        Icon: I.Bell, iconColor: '#a78bfa', dotColor: '#a78bfa',
+        title: 'SMS from Sarah Chen',
+        body: "Thursday works perfectly. I'll send a calendar invite — looking forward to the call.",
+        meta: 'Via Twilio · +1 (415) 555-0142',
+      },
+      {
+        kind: 'call', time: '1h ago', label: 'CALL LOGGED',
+        chipBg: 'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300',
+        Icon: I.PhoneCall, iconColor: '#34d399', dotColor: '#34d399',
+        title: 'Outbound call · 12:34',
+        body: 'Confirmed they want to move forward. Need to send updated SOW. Priya from ops will be DRI on their side.',
+        meta: 'Logged by Alex Morgan',
+      },
+      {
+        kind: 'email-in', time: '2h ago', label: 'EMAIL RECEIVED',
+        chipBg: 'bg-blue-500/15 ring-blue-500/25 text-blue-300',
+        Icon: I.MailReceived, iconColor: '#60a5fa', dotColor: '#60a5fa',
+        title: 'Re: Proposal for Q3 engagement',
+        body: "Love what you've shared — can we jump on a call to finalize the scope? I'm free Thursday after 2pm PT.",
+        meta: 'From sarah@meridian.co', extra: { Icon: I.Mail, text: 'Open thread' }
+      },
+      {
+        kind: 'note', time: 'Yesterday · 3:42 PM', label: 'NOTE',
+        chipBg: 'bg-amber-500/15 ring-amber-500/25 text-amber-300',
+        Icon: I.Note, iconColor: '#fbbf24', dotColor: '#fbbf24',
+        title: 'Called Sarah, very interested in annual plan',
+        body: "She wants to move forward with the annual retainer instead of the Q3 trial. Asked for a 2-page summary by EOW. Budget approved at $48k.",
+        meta: 'Added by Alex Morgan',
+      },
+      {
+        kind: 'deal-move', time: '3 days ago', label: 'PIPELINE',
+        chipBg: 'bg-violet-500/15 ring-violet-500/25 text-violet-300',
+        Icon: I.GitBranch, iconColor: '#a78bfa', dotColor: '#a78bfa',
+        title: <>Deal moved <span className="text-white/55 font-normal">·</span> <span className="text-white">Q3 Engagement</span></>,
+        body: <>Qualified <I.ArrowMove size={11} stroke={2.4} className="inline mx-1.5 -mt-0.5 text-white/45"/> Proposal</>,
+        meta: 'Moved by Alex Morgan',
+      },
+      {
+        kind: 'email-out', time: '1 week ago', label: 'EMAIL SENT',
+        chipBg: 'bg-brand-500/15 ring-brand-500/25 text-brand-300',
+        Icon: I.MailSent, iconColor: '#818cf8', dotColor: '#818cf8',
+        title: 'Initial outreach',
+        body: "Hi Sarah — appreciated the intro from Mateo at Bloom. Wanted to share how we've been helping agencies like Meridian replace HubSpot for a quarter of the cost…",
+        meta: 'Sent by Alex Morgan',
+      },
+      {
+        kind: 'created', time: '2 weeks ago', label: 'CONTACT CREATED',
+        chipBg: 'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300',
+        Icon: I.UserPlus, iconColor: '#34d399', dotColor: '#34d399',
+        title: 'Contact created',
+        body: 'Imported from a referral by Mateo Reyes (Bloom Creative).',
+        meta: 'By Alex Morgan',
+      },
+    ];
+
+    function TimelineFilterTabs({ active, setActive, counts }) {
+      const tabs = [
+        { key: 'all',    label: 'All' },
+        { key: 'sms',    label: 'SMS' },
+        { key: 'emails', label: 'Emails' },
+        { key: 'calls',  label: 'Calls' },
+        { key: 'notes',  label: 'Notes' },
+        { key: 'deals',  label: 'Deals' },
+      ];
+      return (
+        <div className="flex items-center gap-1">
+          {tabs.map(t => {
+            const a = active === t.key;
+            const n = counts?.[t.key] ?? null;
+            return (
+              <button key={t.key} onClick={() => setActive(t.key)}
+                className={[
+                  'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-all duration-150',
+                  a ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25'
+                    : 'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                {t.label}
+                {n != null && (
+                  <span className={['text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                    a ? 'bg-brand-500/25 text-brand-200' : 'bg-white/[0.06] text-white/40'].join(' ')}>{n}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function TimelineItem({ entry, isLast }) {
+      const { Icon } = entry;
+      return (
+        <div className="relative pl-12">
+          {/* Vertical line */}
+          {!isLast && <div className="absolute left-[18px] top-9 bottom-[-24px] w-px bg-white/[0.06]" aria-hidden/>}
+          {/* Node */}
+          <div className="absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md"
+               style={{ background: 'rgba(15,15,28,0.85)', boxShadow: '0 0 0 1px rgba(255,255,255,0.06)' }}>
+            <span style={{ color: entry.iconColor }}><Icon size={15}/></span>
+          </div>
+
+          <div className="pb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={['inline-flex items-center text-[10px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full ring-1', entry.chipBg].join(' ')}>
+                {entry.label}
+              </span>
+              <span className="text-[11px] text-white/35">·</span>
+              <span className="text-[11px] text-white/45">{entry.time}</span>
+            </div>
+
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all">
+              <p className="text-[14px] font-semibold text-white leading-tight">{entry.title}</p>
+              <p className="text-[13px] text-white/55 leading-relaxed mt-2">{entry.body}</p>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.04]">
+                <span className="text-[11px] text-white/35">{entry.meta}</span>
+                {entry.extra && (
+                  <button className="inline-flex items-center gap-1 text-[11px] text-brand-300 hover:text-brand-200">
+                    <entry.extra.Icon size={11}/> {entry.extra.text}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ActivityPanel() {
+      const [tab, setTab] = React.useState('all');
+      const [search, setSearch] = React.useState('');
+      const [note, setNote] = React.useState('');
+
+      const kindMatch = (e) => {
+        if (tab === 'all')    return true;
+        if (tab === 'sms')    return e.kind === 'sms';
+        if (tab === 'emails') return e.kind.startsWith('email');
+        if (tab === 'calls')  return e.kind === 'call';
+        if (tab === 'notes')  return e.kind === 'note';
+        if (tab === 'deals')  return e.kind === 'deal-move';
+        return true;
+      };
+      const filtered = ACTIVITY.filter(e => {
+        if (!kindMatch(e)) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          return (typeof e.title === 'string' ? e.title : '').toLowerCase().includes(q)
+            || (e.body||'').toString().toLowerCase().includes(q)
+            || (e.meta||'').toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      const counts = {
+        all:    ACTIVITY.length,
+        sms:    ACTIVITY.filter(e=>e.kind==='sms').length,
+        emails: ACTIVITY.filter(e=>e.kind.startsWith('email')).length,
+        calls:  ACTIVITY.filter(e=>e.kind==='call').length,
+        notes:  ACTIVITY.filter(e=>e.kind==='note').length,
+        deals:  ACTIVITY.filter(e=>e.kind==='deal-move').length,
+      };
+
+      return (
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md flex flex-col animate-fade-up">
+          {/* Header */}
+          <div className="px-5 py-3.5 border-b border-white/[0.05]">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-white font-semibold text-[15px]">Activity</p>
+                <p className="text-[11px] text-white/45 mt-0.5">{ACTIVITY.length} events · oldest 2 weeks ago</p>
+              </div>
+              {/* Search */}
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.07] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.10)] rounded-xl px-3 py-1.5 transition-all w-52">
+                <I.Search size={12} className="text-white/38 shrink-0"/>
+                <input type="text" value={search} onChange={e=>setSearch(e.target.value)}
+                  placeholder="Search activity…"
+                  className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/28"/>
+                {search && (
+                  <button onClick={()=>setSearch('')} className="text-white/35 hover:text-white/70 transition-colors">
+                    <I.ChevronRight size={10} className="rotate-180"/>
+                  </button>
+                )}
+              </div>
+            </div>
+            <TimelineFilterTabs active={tab} setActive={setTab} counts={counts}/>
+          </div>
+
+          {/* Timeline */}
+          <div className="p-6">
+            {filtered.length === 0 ? (
+              <p className="text-[13px] text-white/40 italic text-center py-12">No events match this filter.</p>
+            ) : (
+              filtered.map((e, i) => (
+                <TimelineItem key={i} entry={e} isLast={i === filtered.length - 1}/>
+              ))
+            )}
+          </div>
+
+          {/* Add note */}
+          <div className="border-t border-white/[0.05] p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5" style={{ background:'#3b82f6' }}>AM</div>
+              <div className="flex-1 group">
+                <div className={['rounded-xl bg-white/[0.04] border transition-all',
+                                 'focus-within:border-brand-500/40 focus-within:bg-white/[0.05]',
+                                 'focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]',
+                                 'hover:border-white/[0.12]',
+                                 'border-white/[0.08]'].join(' ')}>
+                  <textarea
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Add a note about Sarah… (Cmd+Enter to save)"
+                    className="w-full bg-transparent outline-none resize-none px-4 py-3 text-[13px] text-white placeholder:text-white/30"
+                  />
+                  <div className="flex items-center justify-between px-3 pb-2.5">
+                    <div className="flex items-center gap-1">
+                      <button title="Mention teammate" className="w-7 h-7 rounded-md flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors text-[12px] font-semibold">@</button>
+                      <button title="Add tag"          className="w-7 h-7 rounded-md flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors text-[12px] font-semibold">#</button>
+                      <button title="Attach"           className="w-7 h-7 rounded-md flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors">
+                        <Ico size={13} d={<><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></>}/>
+                      </button>
+                    </div>
+                    <button
+                      disabled={!note.trim()}
+                      className={[
+                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all',
+                        note.trim()
+                          ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'
+                          : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                      ].join(' ')}>
+                      <I.Send size={11} stroke={2.4}/>
+                      Add note
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Page ----------
+    function ContactDetailPage() {
+      return (
+        <div data-screen-label="Contact · Sarah Chen" className="h-full flex" style={{ background:'#07070f' }}>
+          {/* Ambient glows */}
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:560, height:560, background:'rgba(99,102,241,0.10)', filter:'blur(140px)', top:-220, right:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(59,130,246,0.06)',  filter:'blur(140px)', top:120, left:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:520, height:520, background:'rgba(124,58,237,0.06)',  filter:'blur(140px)', bottom:-200, left:'40%' }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="contacts"/>
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <ContactTopbar/>
+
+              <div className="flex-1 overflow-y-auto scroll-area">
+                <div className="px-7 py-6 max-w-[1400px] mx-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,_35fr)_minmax(0,_65fr)] gap-5 items-start">
+                    <ProfilePanel/>
+                    <ActivityPanel/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status footer */}
+              <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{ background:'#07070f' }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                  <span className="text-[11px] text-white/40">All systems operational</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/30">3 team members online</span>
+                  <div className="flex">
+                    {['#3b82f6','#8b5cf6','#10b981'].map((c, i) => (
+                      <span key={i} className="w-4 h-4 rounded-full"
+                            style={{ background: c, marginLeft: i === 0 ? 0 : -6, border: '2px solid #07070f' }}/>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<ContactDetailPage />);
+  </script>
+</body>
+</html>

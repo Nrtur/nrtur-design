@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications — nrtur Settings</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},
+          fontFamily:{sans:['Inter','system-ui','sans-serif']},
+          boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)'},
+          keyframes:{glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},
+          animation:{'glow-pulse':'glowPulse 3s ease-in-out infinite'},
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Bell:p=><Ico {...p} d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>}/>,
+    Shield:p=><Ico {...p} d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}/>,
+    Plug:p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+    ChevronRight:p=><Ico {...p} d={<polyline points="9 18 15 12 9 6"/>}/>,
+    Billing:p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></>}/>,
+    Monitor:p=><Ico {...p} d={<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    Moon:p=><Ico {...p} d={<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>}/>,
+    Volume2:p=><Ico {...p} d={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></>}/>,
+    Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+  };
+
+  function Toggle({on,onChange}) {
+    return (
+      <button onClick={()=>onChange(!on)} style={{width:36,height:20,borderRadius:10,background:on?'#6366f1':'rgba(255,255,255,0.12)',transition:'background 200ms',flexShrink:0,position:'relative',border:'1px solid rgba(255,255,255,0.08)',cursor:'pointer'}}>
+        <span style={{position:'absolute',top:2,left:on?16:2,width:14,height:14,borderRadius:'50%',background:'#fff',transition:'left 200ms',boxShadow:'0 1px 4px rgba(0,0,0,0.4)'}}/>
+      </button>
+    );
+  }
+
+  function AppSidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash,href:'Dashboard.html'},{key:'contacts',Icon:I.Users,href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,href:'Pipeline.html'},{key:'email',Icon:I.Mail,href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,href:'SMS Inbox.html'},{key:'calls',Icon:I.Phone,href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,href:'Automations.html'},{key:'reports',Icon:I.BarChart,href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4"><div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}><span className="text-white font-black text-sm">n</span></div></a>
+        {items.map(({key,Icon,href})=>(
+          <a key={key} href={href} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all"><Icon size={16}/></a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl flex items-center justify-center bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  function SettingsNav({active}) {
+    const hrefs={general:'#',integrations:'Settings Integrations.html',notifications:'Settings Notifications.html',privacy:'Settings Privacy.html',billing:'#'};
+    const items=[
+      {key:'general',label:'General',Icon:I.Settings},{key:'integrations',label:'Integrations',Icon:I.Plug},
+      {key:'notifications',label:'Notifications',Icon:I.Bell},{key:'privacy',label:'Data & Privacy',Icon:I.Shield},
+      {key:'billing',label:'Billing',Icon:I.Billing},
+    ];
+    return (
+      <aside className="w-[210px] shrink-0 border-r border-white/[0.05] flex flex-col py-5 gap-0.5 px-3" style={{background:'#09091a'}}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35 px-3 mb-3">Settings</p>
+        {items.map(({key,label,Icon})=>{
+          const a=active===key;
+          return (
+            <a key={key} href={hrefs[key]} className={['flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all',
+              a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 font-semibold':'text-white/55 hover:text-white hover:bg-white/[0.04] font-medium'].join(' ')}>
+              <Icon size={14}/>{label}{a && <I.ChevronRight size={11} className="ml-auto text-brand-300/60"/>}
+            </a>
+          );
+        })}
+      </aside>
+    );
+  }
+
+  // ── Notification data ───────────────────────────────────────────────────
+  const SECTIONS = [
+    {
+      key:'activity', title:'Activity', desc:'Things that happen to your contacts and deals.',
+      rows:[
+        {key:'sms_received',    label:'SMS received',          sub:'When a contact replies to an SMS', icon:I.MessageSq, iconColor:'#a78bfa'},
+        {key:'email_opened',    label:'Email opened',          sub:'When a tracked email is opened',   icon:I.Mail,      iconColor:'#60a5fa'},
+        {key:'deal_moved',      label:'Deal stage changed',    sub:'When any deal moves between stages',icon:I.GitBranch, iconColor:'#34d399'},
+        {key:'contact_assigned',label:'New contact assigned',  sub:'When a contact is assigned to you',icon:I.Users,     iconColor:'#fbbf24'},
+        {key:'deal_won',        label:'Deal marked Won',       sub:'When any deal is closed as won',   icon:I.Sparkles,  iconColor:'#f472b6'},
+        {key:'call_missed',     label:'Missed call',           sub:'When an inbound call is not answered',icon:I.Phone,  iconColor:'#f87171'},
+      ],
+    },
+    {
+      key:'automations', title:'Automations', desc:'Alerts from automated workflows.',
+      rows:[
+        {key:'automation_run',  label:'Automation triggered',  sub:'When an automation fires for a contact',icon:I.Zap,    iconColor:'#818cf8'},
+        {key:'automation_fail', label:'Automation error',      sub:'When a step fails or is skipped',icon:I.Zap,         iconColor:'#f87171'},
+      ],
+    },
+    {
+      key:'digests', title:'Digests & reports', desc:'Periodic summaries sent to your email.',
+      rows:[
+        {key:'daily_digest',    label:'Daily activity digest', sub:'Top deals, contacts, tasks for the day',icon:I.Bell,  iconColor:'#94a3b8'},
+        {key:'weekly_report',   label:'Weekly pipeline report',sub:'Revenue, win rate, top performers',icon:I.BarChart,   iconColor:'#60a5fa'},
+      ],
+    },
+  ];
+
+  const CHANNELS = [
+    {key:'inapp',   label:'In-app',   Icon:I.Monitor },
+    {key:'email',   label:'Email',    Icon:I.Mail    },
+    {key:'browser', label:'Browser',  Icon:I.Monitor },
+  ];
+
+  // Default state: all in-app on, email varies, browser off
+  function mkDefaults() {
+    const s={};
+    SECTIONS.forEach(sec=>sec.rows.forEach(r=>{
+      s[r.key]={inapp:true, email:['sms_received','deal_won','call_missed','deal_moved'].includes(r.key), browser:false};
+    }));
+    return s;
+  }
+
+  function Page() {
+    const [prefs, setPrefs] = React.useState(mkDefaults());
+    const [quietHours, setQuietHours] = React.useState(true);
+    const [quietFrom, setQuietFrom] = React.useState('22:00');
+    const [quietTo, setQuietTo] = React.useState('08:00');
+    const [digest, setDigest] = React.useState('daily');
+    const [saved, setSaved] = React.useState(false);
+
+    function togglePref(row, channel) {
+      setPrefs(p=>({...p,[row]:{...p[row],[channel]:!p[row][channel]}}));
+    }
+    function save() {
+      setSaved(true);
+      setTimeout(()=>setSaved(false), 2000);
+    }
+
+    // Column header toggle — turn all on/off for a channel
+    function toggleChannel(ch) {
+      const allOn=SECTIONS.every(s=>s.rows.every(r=>prefs[r.key]?.[ch]));
+      setPrefs(p=>{
+        const n={...p};
+        SECTIONS.forEach(s=>s.rows.forEach(r=>{n[r.key]={...n[r.key],[ch]:!allOn};}));
+        return n;
+      });
+    }
+
+    return (
+      <div data-screen-label="Settings Notifications" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <AppSidebar/>
+          <SettingsNav active="notifications"/>
+
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="shrink-0 border-b border-white/[0.05] px-8 py-4 flex items-center justify-between" style={{background:'#09091a'}}>
+              <div>
+                <h1 className="text-[18px] font-bold text-white">Notifications</h1>
+                <p className="text-[12.5px] text-white/45 mt-0.5">Choose how and when nrtur alerts you. Settings apply to your account only.</p>
+              </div>
+              <button onClick={save}
+                className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold transition-all',
+                  saved?'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30':'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'].join(' ')}>
+                {saved?<><I.Check size={12}/>Saved</>:<>Save preferences</>}
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto scroll-area px-8 py-6 flex flex-col gap-8">
+
+              {/* Matrix table */}
+              <div>
+                {/* Column headers */}
+                <div className="grid gap-3 mb-2 items-center" style={{gridTemplateColumns:'1fr repeat(3,80px)'}}>
+                  <div/>
+                  {CHANNELS.map(ch=>(
+                    <button key={ch.key} onClick={()=>toggleChannel(ch.key)}
+                      className="flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors group">
+                      <ch.Icon size={13} className="text-white/45 group-hover:text-white/70"/>
+                      <span className="text-[10px] font-semibold text-white/45 group-hover:text-white/70 uppercase tracking-wider">{ch.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {SECTIONS.map(sec=>(
+                  <div key={sec.key} className="mb-6">
+                    {/* Section header */}
+                    <div className="mb-2 pb-2 border-b border-white/[0.05]">
+                      <p className="text-[12px] font-bold text-white">{sec.title}</p>
+                      <p className="text-[11px] text-white/40">{sec.desc}</p>
+                    </div>
+
+                    {sec.rows.map((row,ri)=>(
+                      <div key={row.key}
+                        className={['grid gap-3 items-center py-3',ri<sec.rows.length-1?'border-b border-white/[0.03]':''].join(' ')}
+                        style={{gridTemplateColumns:'1fr repeat(3,80px)'}}>
+                        {/* Row label */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                               style={{background:`${row.iconColor}18`,border:`1px solid ${row.iconColor}30`}}>
+                            <row.icon size={12} style={{color:row.iconColor}}/>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12.5px] font-medium text-white">{row.label}</p>
+                            <p className="text-[11px] text-white/40 truncate">{row.sub}</p>
+                          </div>
+                        </div>
+                        {/* Channel toggles */}
+                        {CHANNELS.map(ch=>(
+                          <div key={ch.key} className="flex items-center justify-center">
+                            <Toggle on={prefs[row.key]?.[ch.key]||false} onChange={()=>togglePref(row.key,ch.key)}/>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {/* Quiet hours */}
+              <div className="border-t border-white/[0.05] pt-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-[14px] font-bold text-white flex items-center gap-2">
+                      <I.Moon size={14} className="text-violet-300"/> Quiet hours
+                    </h3>
+                    <p className="text-[12px] text-white/45 mt-0.5">Silence all notifications during these hours. Urgent alerts still come through.</p>
+                  </div>
+                  <Toggle on={quietHours} onChange={setQuietHours}/>
+                </div>
+                {quietHours && (
+                  <div className="flex items-center gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11.5px] text-white/55 w-8">From</span>
+                      <input type="time" value={quietFrom} onChange={e=>setQuietFrom(e.target.value)}
+                        className="bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 rounded-lg px-3 py-1.5 text-[13px] text-white outline-none transition-all"/>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11.5px] text-white/55 w-4">to</span>
+                      <input type="time" value={quietTo} onChange={e=>setQuietTo(e.target.value)}
+                        className="bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 rounded-lg px-3 py-1.5 text-[13px] text-white outline-none transition-all"/>
+                    </div>
+                    <p className="text-[11px] text-white/35 ml-2">Notifications resume at {quietTo}.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Digest frequency */}
+              <div className="border-t border-white/[0.05] pt-6 pb-6">
+                <h3 className="text-[14px] font-bold text-white mb-1 flex items-center gap-2">
+                  <I.Volume2 size={14} className="text-brand-300"/> Digest frequency
+                </h3>
+                <p className="text-[12px] text-white/45 mb-4">How often you receive summary emails (if enabled above).</p>
+                <div className="flex items-center gap-2">
+                  {[{k:'daily',l:'Daily'},{k:'weekly',l:'Weekly'},{k:'never',l:'Never'}].map(o=>(
+                    <button key={o.k} onClick={()=>setDigest(o.k)}
+                      className={['px-4 py-2 rounded-lg text-[12.5px] font-medium border transition-all',
+                        digest===o.k?'bg-brand-500/15 text-brand-200 border-brand-500/30 ring-1 ring-brand-500/20'
+                                    :'text-white/55 border-white/[0.07] bg-white/[0.025] hover:text-white/85 hover:bg-white/[0.05]'].join(' ')}>
+                      {o.l}
+                    </button>
+                  ))}
+                  <p className="ml-3 text-[11px] text-white/35">Digest emails send at 8 AM in your timezone.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

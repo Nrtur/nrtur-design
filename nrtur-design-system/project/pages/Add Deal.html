@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Deal — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18'}},
+          fontFamily:{sans:['Inter','system-ui','sans-serif']},
+          boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)'},
+          keyframes:{
+            modalIn:{'0%':{opacity:0,transform:'translateY(12px) scale(0.985)'},'100%':{opacity:1,transform:'none'}},
+            overlayIn:{'0%':{opacity:0},'100%':{opacity:1}},
+            popIn:{'0%':{opacity:0,transform:'translateY(4px) scale(0.96)'},'100%':{opacity:1,transform:'none'}},
+          },
+          animation:{'modal-in':'modalIn 260ms cubic-bezier(0.16,1,0.3,1) both','overlay-in':'overlayIn 200ms ease-out both','pop-in':'popIn 180ms ease-out both'},
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    ChevronDown:p=><Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+    Calendar:p=><Ico {...p} d={<><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+    Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+    DollarSign:p=><Ico {...p} d={<><line x1="12" x2="12" y1="1" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>}/>,
+    Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+  };
+
+  const STAGES=[
+    {key:'lead',      label:'Lead',       color:'#94a3b8', pct:10},
+    {key:'qualified', label:'Qualified',  color:'#60a5fa', pct:25},
+    {key:'proposal',  label:'Proposal',   color:'#a78bfa', pct:50},
+    {key:'negotiation',label:'Negotiation',color:'#fbbf24',pct:75},
+    {key:'won',       label:'Won',        color:'#34d399', pct:100},
+  ];
+  const CURRENCIES=['USD','EUR','GBP','CAD','AUD'];
+  const CONTACTS_LIST=[
+    {id:1,name:'Sarah Chen',company:'Meridian Agency',avatar:'SC',color:'#3b82f6'},
+    {id:2,name:'James Whitfield',company:'Summit Digital',avatar:'JW',color:'#8b5cf6'},
+    {id:3,name:'Priya Kapoor',company:'Kapoor & Assoc',avatar:'PK',color:'#10b981'},
+    {id:4,name:'Marcus Rodriguez',company:'Pivot Studio',avatar:'MR',color:'#f59e0b'},
+    {id:5,name:'Lisa Nakamura',company:'Nova Growth',avatar:'LN',color:'#ec4899'},
+  ];
+  const OWNERS=[
+    {key:'AM',name:'Alex Morgan',color:'#3b82f6'},
+    {key:'SC',name:'Sarah Chen',color:'#8b5cf6'},
+    {key:'JW',name:'James Liu',color:'#10b981'},
+  ];
+
+  // Input wrapper
+  function Field({label, hint, required, children}) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[11px] font-semibold text-white/55 uppercase tracking-wider">
+            {label}{required && <span className="text-brand-400 ml-0.5">*</span>}
+          </label>
+          {hint && <span className="text-[10.5px] text-white/35">{hint}</span>}
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  // Contact picker dropdown
+  function ContactPicker({value, setValue}) {
+    const [open,setOpen]=React.useState(false);
+    const [q,setQ]=React.useState('');
+    const filtered=CONTACTS_LIST.filter(c=>!q||c.name.toLowerCase().includes(q.toLowerCase())||c.company.toLowerCase().includes(q.toLowerCase()));
+    const sel=CONTACTS_LIST.find(c=>c.id===value);
+    return (
+      <div className="relative">
+        <button onClick={()=>setOpen(o=>!o)}
+          className={['w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all text-left',
+            open?'border-brand-500/40 bg-white/[0.05] shadow-[0_0_0_3px_rgba(99,102,241,0.12)]':'border-white/[0.08] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.05]'].join(' ')}>
+          {sel ? (
+            <>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:sel.color}}>{sel.avatar}</span>
+              <span className="flex-1 text-[13px] text-white">{sel.name}</span>
+              <span className="text-[11px] text-white/40 truncate">{sel.company}</span>
+            </>
+          ) : (
+            <>
+              <I.Users size={13} className="text-white/40"/>
+              <span className="flex-1 text-[13px] text-white/35">Link a contact…</span>
+            </>
+          )}
+          <I.ChevronDown size={12} className="text-white/40 shrink-0"/>
+        </button>
+        {open && (
+          <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border border-white/[0.10] shadow-[0_16px_50px_rgba(0,0,0,0.55)] z-30 overflow-hidden animate-pop-in" style={{background:'#0d0d1f'}}>
+            <div className="px-3 py-2 border-b border-white/[0.05] flex items-center gap-2">
+              <I.Search size={11} className="text-white/40"/>
+              <input autoFocus type="text" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search contacts…"
+                className="flex-1 bg-transparent outline-none text-[12.5px] text-white placeholder:text-white/30"/>
+            </div>
+            <div className="max-h-52 overflow-y-auto scroll-area py-1">
+              {filtered.map(c=>(
+                <button key={c.id} onClick={()=>{setValue(c.id);setOpen(false);setQ('');}}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors">
+                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:c.color}}>{c.avatar}</span>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-[12.5px] font-medium text-white">{c.name}</p>
+                    <p className="text-[11px] text-white/45">{c.company}</p>
+                  </div>
+                  {value===c.id && <I.Check size={12} className="text-brand-300"/>}
+                </button>
+              ))}
+              <button className="w-full flex items-center gap-2 px-3 py-2 text-brand-300 hover:text-brand-200 hover:bg-brand-500/10 transition-colors border-t border-white/[0.05]">
+                <I.Plus size={11}/><span className="text-[12px]">Create new contact</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function AddDealModal({onClose}) {
+    const [title,setTitle]=React.useState('');
+    const [amount,setAmount]=React.useState('');
+    const [currency,setCurrency]=React.useState('USD');
+    const [stage,setStage]=React.useState('proposal');
+    const [closeDate,setCloseDate]=React.useState('2025-06-30');
+    const [contact,setContact]=React.useState(1);
+    const [owner,setOwner]=React.useState('AM');
+    const [notes,setNotes]=React.useState('');
+    const [currencyOpen,setCurrencyOpen]=React.useState(false);
+
+    React.useEffect(()=>{
+      const h=(e)=>{if(e.key==='Escape')onClose();};
+      window.addEventListener('keydown',h);
+      return ()=>window.removeEventListener('keydown',h);
+    },[onClose]);
+
+    const canSave=title.trim()&&amount&&stage;
+    const selStage=STAGES.find(s=>s.key===stage);
+    const selOwner=OWNERS.find(o=>o.key===owner);
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-6 animate-overlay-in" style={{background:'rgba(7,7,15,0.72)',backdropFilter:'blur(8px)'}}>
+        <div onClick={onClose} className="absolute inset-0"/>
+        <div className="relative animate-modal-in w-full max-w-[620px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl border border-white/[0.08] shadow-[0_24px_120px_rgba(0,0,0,0.7)] overflow-hidden" style={{background:'#0b0b1c'}}>
+
+          {/* Header */}
+          <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]" style={{background:'#09091a'}}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center">
+                <I.GitBranch size={14}/>
+              </div>
+              <div>
+                <p className="text-[14px] font-bold text-white">Add deal</p>
+                <p className="text-[11px] text-white/40">Create a new opportunity in your pipeline.</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.X size={15}/></button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
+
+            {/* Title */}
+            <Field label="Deal title" required>
+              <input type="text" value={title} onChange={e=>setTitle(e.target.value)}
+                placeholder="e.g. Q3 Engagement — Meridian Agency"
+                autoFocus
+                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-2.5 text-[13.5px] text-white placeholder:text-white/28 outline-none transition-all"/>
+            </Field>
+
+            {/* Amount + currency */}
+            <Field label="Deal value" required>
+              <div className="flex items-center gap-2">
+                {/* Currency selector */}
+                <div className="relative">
+                  <button onClick={()=>setCurrencyOpen(o=>!o)}
+                    className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] text-[13px] text-white font-mono tabular-nums transition-all">
+                    {currency} <I.ChevronDown size={11} className="text-white/40"/>
+                  </button>
+                  {currencyOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-28 rounded-xl border border-white/[0.10] shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden z-30 animate-pop-in" style={{background:'#0d0d1f'}}>
+                      {CURRENCIES.map(c=>(
+                        <button key={c} onClick={()=>{setCurrency(c);setCurrencyOpen(false);}}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.04] text-[12.5px] text-white transition-colors">
+                          {c}{currency===c&&<I.Check size={11} className="text-brand-300"/>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Amount */}
+                <div className="flex-1 flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-2.5 transition-all">
+                  <I.DollarSign size={13} className="text-white/40"/>
+                  <input type="number" value={amount} onChange={e=>setAmount(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 bg-transparent outline-none text-[13.5px] text-white placeholder:text-white/28 tabular-nums"/>
+                </div>
+              </div>
+            </Field>
+
+            {/* Stage */}
+            <Field label="Pipeline stage" required>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-1.5">
+                  {STAGES.map(s=>{
+                    const sel=stage===s.key;
+                    return (
+                      <button key={s.key} onClick={()=>setStage(s.key)}
+                        className={['flex-1 py-2 rounded-lg text-[11.5px] font-medium transition-all border',
+                          sel?'text-white border-transparent':'text-white/50 border-white/[0.06] bg-white/[0.025] hover:text-white/85 hover:bg-white/[0.05]'].join(' ')}
+                        style={sel?{background:`${s.color}22`,borderColor:`${s.color}55`,color:s.color}:{}}>
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{width:`${selStage?.pct||0}%`,background:selStage?.color}}/>
+                </div>
+                <p className="text-[10.5px] text-white/35">{selStage?.pct}% probability · {STAGES.findIndex(s=>s.key===stage)+1} of {STAGES.length} stages</p>
+              </div>
+            </Field>
+
+            {/* Close date */}
+            <Field label="Expected close date" hint="Used in pipeline forecasts">
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+                <I.Calendar size={13} className="text-white/40"/>
+                <input type="date" value={closeDate} onChange={e=>setCloseDate(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-[13px] text-white"/>
+              </div>
+            </Field>
+
+            {/* Linked contact */}
+            <Field label="Linked contact">
+              <ContactPicker value={contact} setValue={setContact}/>
+            </Field>
+
+            {/* Owner */}
+            <Field label="Deal owner">
+              <div className="flex items-center gap-1.5">
+                {OWNERS.map(o=>{
+                  const sel=owner===o.key;
+                  return (
+                    <button key={o.key} onClick={()=>setOwner(o.key)}
+                      className={['inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-[12.5px] font-medium',
+                        sel?'border-brand-500/40 bg-brand-500/[0.08] text-brand-200':'border-white/[0.06] bg-white/[0.025] text-white/65 hover:text-white/85 hover:bg-white/[0.05]'].join(' ')}>
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:o.color}}>{o.key}</span>
+                      {o.name.split(' ')[0]}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            {/* Notes */}
+            <Field label="Notes" hint="Optional">
+              <textarea rows={3} value={notes} onChange={e=>setNotes(e.target.value)}
+                placeholder="Context, next steps, or anything the team should know…"
+                className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-3 text-[13px] text-white placeholder:text-white/28 outline-none resize-none leading-relaxed transition-all"/>
+            </Field>
+
+            {/* AI suggestion strip */}
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3.5 flex items-start gap-3">
+              <div className="w-7 h-7 rounded-md bg-violet-500/15 ring-1 ring-violet-500/25 text-violet-300 flex items-center justify-center shrink-0">
+                <I.Sparkles size={12}/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11.5px] text-white/75 leading-relaxed">
+                  Based on similar deals, <span className="text-white font-medium">Q3 Engagement</span> typically closes within 3 weeks at this stage. Setting close date to <span className="text-violet-300 font-medium">June 30</span> looks right.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="shrink-0 px-5 py-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3" style={{background:'#09091a'}}>
+            <p className="text-[10.5px] text-white/35">Deals are visible to your whole team.</p>
+            <div className="flex items-center gap-2">
+              <button onClick={onClose} className="px-4 py-2 rounded-lg text-[12px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+              <button onClick={onClose} disabled={!canSave}
+                className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                  canSave?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>
+                <I.Check size={12} stroke={2.5}/> Add deal
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Background: pipeline kanban
+  function PipelineBg() {
+    const cols=[
+      {label:'Lead',color:'#94a3b8',deals:[{name:'TechVentures Intro',val:'$18k'},{name:'Field Co Discovery',val:'$9k'}]},
+      {label:'Qualified',color:'#60a5fa',deals:[{name:'Barrett Digital',val:'$15k'}]},
+      {label:'Proposal',color:'#a78bfa',deals:[{name:'Q3 Engagement',val:'$24k'},{name:'Pivot Studio',val:'$22.5k'}]},
+      {label:'Negotiation',color:'#fbbf24',deals:[{name:'Summit Renewal',val:'$31k'}]},
+      {label:'Won',color:'#34d399',deals:[{name:'Onboarding Pack',val:'$8k'}]},
+    ];
+    return (
+      <div className="absolute inset-0 overflow-hidden" style={{filter:'blur(1px) saturate(0.8)'}}>
+        <div className="h-full flex flex-col" style={{background:'#09091a'}}>
+          <header className="border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'#09091a'}}>
+            <h1 className="text-white text-[18px] font-bold">Pipeline</h1>
+            <div className="h-9 w-32 rounded-xl bg-brand-500/60"/>
+          </header>
+          <div className="flex-1 flex gap-3 px-6 py-4 overflow-hidden">
+            {cols.map(col=>(
+              <div key={col.label} className="flex-1 flex flex-col gap-2 min-w-0">
+                <div className="flex items-center gap-2 px-1 mb-1">
+                  <span className="w-2 h-2 rounded-full" style={{background:col.color}}/>
+                  <p className="text-[12px] font-semibold text-white/65">{col.label}</p>
+                  <span className="text-[10px] text-white/30 ml-auto">{col.deals.length}</span>
+                </div>
+                {col.deals.map(d=>(
+                  <div key={d.name} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                    <p className="text-[12px] font-semibold text-white/80">{d.name}</p>
+                    <p className="text-[11px] text-white/40 mt-1 tabular-nums">{d.val}</p>
+                  </div>
+                ))}
+                <div className="rounded-xl border border-dashed border-white/[0.08] p-3 flex items-center justify-center text-white/20">
+                  <span className="text-[11px]">+ Add deal</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function Page(){
+    const [open,setOpen]=React.useState(true);
+    return (
+      <div data-screen-label="Add Deal" className="h-full relative" style={{background:'#09091a'}}>
+        <PipelineBg/>
+        {open && <AddDealModal onClose={()=>setOpen(false)}/>}
+        {!open && (
+          <div className="absolute inset-0 flex items-center justify-center z-40">
+            <button onClick={()=>setOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+              <I.GitBranch size={14}/> Reopen Add Deal
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect Twilio — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18' },
+          },
+          fontFamily: { sans:['Inter','system-ui','sans-serif'], mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            modalIn:  { '0%':{opacity:0,transform:'translateY(14px) scale(0.985)'}, '100%':{opacity:1,transform:'none'} },
+            overlayIn:{ '0%':{opacity:0}, '100%':{opacity:1} },
+            glowPulse:{ '0%,100%':{opacity:0.5}, '50%':{opacity:1} },
+            slideX:   { '0%':{opacity:0,transform:'translateX(12px)'}, '100%':{opacity:1,transform:'none'} },
+            checkPop: { '0%':{transform:'scale(0)'}, '60%':{transform:'scale(1.15)'}, '100%':{transform:'scale(1)'} },
+          },
+          animation: {
+            'modal-in':   'modalIn 280ms cubic-bezier(0.16,1,0.3,1) both',
+            'overlay-in': 'overlayIn 200ms ease-out both',
+            'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+            'slide-x':    'slideX 320ms cubic-bezier(0.16,1,0.3,1) both',
+            'check-pop':  'checkPop 340ms cubic-bezier(0.16,1,0.3,1) both',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin:0; background:#09091a; color:#fff; font-family:'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow:hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width:5px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.28); border-radius: 9999px; }
+    .spin { animation: spin 0.9s linear infinite; }
+    @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const Ico = ({d,size=16,stroke=2,className='',fill}) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+      Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+      CheckCircle:p=><Ico {...p} d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}/>,
+      ArrowRight:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>}/>,
+      ArrowLeft:p=><Ico {...p} d={<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>}/>,
+      Key:p=><Ico {...p} d={<><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></>}/>,
+      Eye:p=><Ico {...p} d={<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>}/>,
+      EyeOff:p=><Ico {...p} d={<><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></>}/>,
+      Lock:p=><Ico {...p} d={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}/>,
+      Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+      MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+      Send:p=><Ico {...p} d={<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>}/>,
+      Info:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>}/>,
+      ExternalLink:p=><Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
+      Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Globe:p=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>}/>,
+      Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+      Loader:p=><Ico {...p} d={<><line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/></>}/>,
+      Copy:p=><Ico {...p} d={<><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>}/>,
+      LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></>}/>,
+      Plug:p=><Ico {...p} d={<><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></>}/>,
+      Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/></>}/>,
+    };
+
+    // ── Background mock: integrations settings page ───────────────────────
+    function BackgroundMock() {
+      const integrations = [
+        { name:'Gmail',    sub:'Email sync · 2 accounts', connected:true,  color:'#ea4335', glyph:'M' },
+        { name:'Twilio',   sub:'SMS & calls',             connected:false, color:'#f22f46', glyph:'T', highlight:true },
+        { name:'Stripe',   sub:'Billing & invoices',      connected:true,  color:'#6772e5', glyph:'S' },
+        { name:'Slack',    sub:'Notifications',           connected:true,  color:'#4a154b', glyph:'#' },
+        { name:'Calendly', sub:'Meetings',                connected:true,  color:'#006bff', glyph:'C' },
+        { name:'Zapier',   sub:'Workflows · 3 zaps',      connected:false, color:'#ff4a00', glyph:'Z' },
+      ];
+      return (
+        <div className="absolute inset-0 pointer-events-none" style={{ filter:'blur(1.5px) saturate(0.85)' }}>
+          <div className="h-full flex" style={{ background:'#09091a' }}>
+            {/* Sidebar */}
+            <aside className="w-14 shrink-0 border-r border-white/[0.05] flex flex-col items-center py-5 gap-1.5" style={{ background:'#07070f' }}>
+              <div className="w-8 h-8 rounded-lg mb-4" style={{ background:'linear-gradient(135deg,#6366f1,#7c3aed)' }}/>
+              {[I.LayoutDash, I.Users, I.Mail, I.MessageSq, I.Phone, null, null].map((Icon, i) => (
+                <div key={i} className="w-9 h-9 rounded-xl bg-white/[0.04] flex items-center justify-center text-white/30">
+                  {Icon && <Icon size={14}/>}
+                </div>
+              ))}
+            </aside>
+
+            {/* Main */}
+            <div className="flex-1 flex flex-col">
+              {/* Topbar */}
+              <header className="border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{ background:'#09091a' }}>
+                <div className="flex items-center gap-3">
+                  <p className="text-white/55 text-[13px]">Settings</p>
+                  <span className="text-white/25">/</span>
+                  <h1 className="text-white text-[18px] font-bold">Integrations</h1>
+                </div>
+                <div className="h-9 w-72 rounded-xl bg-white/[0.04] border border-white/[0.08]"/>
+              </header>
+
+              {/* Body */}
+              <div className="flex-1 px-7 py-6 overflow-hidden">
+                <div className="max-w-[1100px]">
+                  <p className="text-[12.5px] text-white/55 mb-5">Connect the tools your team already uses. nrtur stays out of the way.</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {integrations.map(it => (
+                      <div key={it.name}
+                        className={['rounded-2xl border p-5 backdrop-blur-sm',
+                          it.highlight ? 'border-brand-500/40 bg-brand-500/[0.06] ring-1 ring-brand-500/25'
+                                       : 'border-white/[0.06] bg-white/[0.025]'].join(' ')}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[15px]" style={{ background: it.color }}>
+                            {it.glyph}
+                          </div>
+                          {it.connected ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25">
+                              <span className="w-1 h-1 rounded-full bg-emerald-400"/> Connected
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-white/40">Not connected</span>
+                          )}
+                        </div>
+                        <p className="text-[13px] font-bold text-white mb-1">{it.name}</p>
+                        <p className="text-[11.5px] text-white/45 mb-4">{it.sub}</p>
+                        <div className="h-8 rounded-lg bg-white/[0.04] border border-white/[0.07]"/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Stepper ───────────────────────────────────────────────────────────
+    function Stepper({ step }) {
+      const steps = [
+        { label:'Credentials', sub:'API SID & token' },
+        { label:'Phone number',sub:'Choose or buy' },
+        { label:'Test send',   sub:'Verify it works' },
+      ];
+      return (
+        <div className="flex items-center gap-2">
+          {steps.map((s, i) => {
+            const idx = i + 1;
+            const done   = idx < step;
+            const active = idx === step;
+            return (
+              <React.Fragment key={s.label}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all',
+                    done   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40' :
+                    active ? 'bg-brand-500 text-white ring-2 ring-brand-500/30 shadow-[0_0_18px_rgba(99,102,241,0.5)]' :
+                             'bg-white/[0.05] text-white/40 ring-1 ring-white/[0.08]'
+                  ].join(' ')}>
+                    {done ? <I.Check size={12} stroke={3} className="animate-check-pop"/> : idx}
+                  </div>
+                  <div className="min-w-0 hidden md:block">
+                    <p className={['text-[12px] font-semibold leading-tight transition-colors',
+                      active ? 'text-white' : done ? 'text-white/75' : 'text-white/45'].join(' ')}>{s.label}</p>
+                    <p className="text-[10px] text-white/35 mt-0.5">{s.sub}</p>
+                  </div>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={['flex-1 h-px min-w-[24px] transition-colors',
+                    done ? 'bg-emerald-500/40' : 'bg-white/[0.07]'].join(' ')}/>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── Step 1: Credentials ───────────────────────────────────────────────
+    function StepCreds({ form, setForm, validating, validated, error }) {
+      const [show, setShow] = React.useState(false);
+      return (
+        <div className="flex flex-col gap-5 animate-slide-x">
+          <div>
+            <p className="text-[15px] font-bold text-white">Connect your Twilio account</p>
+            <p className="text-[12.5px] text-white/55 mt-1">Find these in Twilio Console under Account → API keys. We only store the SID — your auth token is encrypted at rest.</p>
+          </div>
+
+          <div className="flex flex-col gap-3.5">
+            <div>
+              <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Account SID</label>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+                <I.Key size={13} className="text-white/40 shrink-0"/>
+                <input type="text" value={form.sid} onChange={e => setForm({...form, sid:e.target.value})}
+                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/28 font-mono"/>
+                {form.sid && (
+                  <span className="text-[10.5px] font-mono text-white/30 tabular-nums">{form.sid.length}/34</span>
+                )}
+              </div>
+              <p className="text-[10.5px] text-white/35 mt-1.5">Starts with <code className="text-white/55 font-mono">AC</code> — 34 characters.</p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Auth token</label>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+                <I.Lock size={13} className="text-white/40 shrink-0"/>
+                <input type={show ? 'text' : 'password'} value={form.token} onChange={e => setForm({...form, token:e.target.value})}
+                  placeholder="••••••••••••••••••••••••••••••••"
+                  className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/28 font-mono"/>
+                <button type="button" onClick={() => setShow(s => !s)} className="text-white/45 hover:text-white/85 transition-colors">
+                  {show ? <I.EyeOff size={13}/> : <I.Eye size={13}/>}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Status */}
+          {validating && (
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[12px] text-white/65 self-start">
+              <I.Loader size={12} className="spin text-brand-300"/>
+              Validating credentials with Twilio…
+            </div>
+          )}
+          {validated && !validating && (
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[12px] text-emerald-200 self-start">
+              <I.CheckCircle size={13}/>
+              Connected to <span className="font-semibold">Bloom.co · Trial</span> · 1 phone number found
+            </div>
+          )}
+          {error && (
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-[12px] text-red-200 self-start">
+              <I.Info size={13}/> {error}
+            </div>
+          )}
+
+          {/* Help footer */}
+          <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-3.5 flex items-start gap-3 mt-1">
+            <div className="w-7 h-7 rounded-md bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0">
+              <I.Info size={13}/>
+            </div>
+            <div className="flex-1 text-[11.5px] text-white/60 leading-relaxed">
+              <p>Don't have a Twilio account?  <a href="#" className="text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">Create one free <I.ExternalLink size={9} stroke={2.2}/></a> — you get $15 in trial credit to test.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Step 2: Phone number ───────────────────────────────────────────────
+    function StepNumber({ form, setForm }) {
+      const [mode, setMode] = React.useState('existing'); // existing or buy
+      const [areaCode, setAreaCode] = React.useState('415');
+
+      const existing = [
+        { num:'+1 (415) 555-8200', label:'Main line',   sms:true, voice:true,  mms:true,  monthly:'$1.15/mo' },
+      ];
+      const buyOptions = [
+        { num:'+1 (415) 555-0142', city:'San Francisco, CA', sms:true, voice:true,  mms:true,  monthly:'$1.15/mo' },
+        { num:'+1 (415) 555-0288', city:'San Francisco, CA', sms:true, voice:true,  mms:false, monthly:'$1.15/mo' },
+        { num:'+1 (415) 555-0341', city:'San Francisco, CA', sms:true, voice:false, mms:true,  monthly:'$1.15/mo' },
+        { num:'+1 (415) 555-0577', city:'San Francisco, CA', sms:true, voice:true,  mms:true,  monthly:'$1.15/mo' },
+      ];
+
+      return (
+        <div className="flex flex-col gap-5 animate-slide-x">
+          <div>
+            <p className="text-[15px] font-bold text-white">Choose a phone number</p>
+            <p className="text-[12.5px] text-white/55 mt-1">This is the number your texts and calls send from. You can change it later.</p>
+          </div>
+
+          {/* Mode toggle */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { key:'existing', label:'Use existing',    sub:'Pick from your Twilio account' },
+              { key:'buy',      label:'Buy a new number',sub:'Provision in seconds, $1.15/mo' },
+            ].map(o => {
+              const a = mode === o.key;
+              return (
+                <button key={o.key} onClick={() => setMode(o.key)}
+                  className={['text-left rounded-xl p-3.5 border transition-all',
+                    a ? 'border-brand-500/40 bg-brand-500/[0.06] ring-1 ring-brand-500/25'
+                      : 'border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.04] hover:border-white/[0.14]'
+                  ].join(' ')}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={['text-[13px] font-semibold', a ? 'text-white' : 'text-white/85'].join(' ')}>{o.label}</p>
+                    <div className={['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all',
+                      a ? 'border-brand-400 bg-brand-500' : 'border-white/20'].join(' ')}>
+                      {a && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                    </div>
+                  </div>
+                  <p className="text-[11.5px] text-white/50">{o.sub}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Existing */}
+          {mode === 'existing' && (
+            <div>
+              <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mb-2">Found on your account</p>
+              <div className="flex flex-col gap-1.5">
+                {existing.map(n => {
+                  const sel = form.phone === n.num;
+                  return (
+                    <button key={n.num} onClick={() => setForm({...form, phone:n.num})}
+                      className={['flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all text-left',
+                        sel ? 'border-brand-500/40 bg-brand-500/[0.06] ring-1 ring-brand-500/25'
+                            : 'border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.04] hover:border-white/[0.14]'
+                      ].join(' ')}>
+                      <div className={['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all',
+                        sel ? 'border-brand-400 bg-brand-500' : 'border-white/20'].join(' ')}>
+                        {sel && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13.5px] font-bold text-white font-mono tabular-nums">{n.num}</p>
+                          <span className="text-[10.5px] text-white/40 px-1.5 py-0.5 rounded bg-white/[0.05]">{n.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {n.sms   && <span className="text-[10px] text-emerald-300 inline-flex items-center gap-1"><I.MessageSq size={9}/>SMS</span>}
+                          {n.voice && <span className="text-[10px] text-brand-300 inline-flex items-center gap-1"><I.Phone size={9}/>Voice</span>}
+                          {n.mms   && <span className="text-[10px] text-violet-300 inline-flex items-center gap-1">MMS</span>}
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-white/45 shrink-0">{n.monthly}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <a href="#" className="inline-flex items-center gap-1.5 text-[11.5px] text-brand-300 hover:text-brand-200 mt-3">
+                Add another number in Twilio <I.ExternalLink size={9} stroke={2.2}/>
+              </a>
+            </div>
+          )}
+
+          {/* Buy new */}
+          {mode === 'buy' && (
+            <div className="flex flex-col gap-3">
+              {/* Filter row */}
+              <div className="grid grid-cols-[1fr_140px] gap-2">
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 focus-within:bg-white/[0.05] transition-all">
+                  <I.Globe size={12} className="text-white/40"/>
+                  <span className="text-[12px] text-white/70">United States</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 transition-all">
+                  <I.Search size={12} className="text-white/40"/>
+                  <input type="text" value={areaCode} onChange={e => setAreaCode(e.target.value)}
+                    placeholder="Area code"
+                    className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 font-mono tabular-nums w-full"/>
+                </div>
+              </div>
+
+              <p className="text-[10.5px] font-semibold text-white/50 uppercase tracking-wider mt-1">Available numbers</p>
+              <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto scroll-area pr-1">
+                {buyOptions.map(n => {
+                  const sel = form.phone === n.num;
+                  return (
+                    <button key={n.num} onClick={() => setForm({...form, phone:n.num})}
+                      className={['flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all text-left',
+                        sel ? 'border-brand-500/40 bg-brand-500/[0.06] ring-1 ring-brand-500/25'
+                            : 'border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.04] hover:border-white/[0.14]'
+                      ].join(' ')}>
+                      <div className={['w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all',
+                        sel ? 'border-brand-400 bg-brand-500' : 'border-white/20'].join(' ')}>
+                        {sel && <div className="w-1.5 h-1.5 rounded-full bg-white"/>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-white font-mono tabular-nums">{n.num}</p>
+                        <p className="text-[11px] text-white/45 mt-0.5">{n.city}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {n.sms   && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/20">SMS</span>}
+                        {n.voice && <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20">Voice</span>}
+                        {n.mms   && <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/20">MMS</span>}
+                      </div>
+                      <span className="text-[11px] text-white/55 shrink-0 font-medium ml-2">{n.monthly}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Step 3: Test send ─────────────────────────────────────────────────
+    function StepTest({ form, setForm }) {
+      const [msg, setMsg] = React.useState("Hey — this is a test from nrtur. If you got this, the integration is working. Reply STOP to opt out.");
+      const [status, setStatus] = React.useState('idle'); // idle | sending | sent
+      const charCount = msg.length;
+      const segments = Math.max(1, Math.ceil(charCount / 160));
+
+      function send() {
+        setStatus('sending');
+        setTimeout(() => setStatus('sent'), 1400);
+      }
+
+      return (
+        <div className="flex flex-col gap-5 animate-slide-x">
+          <div>
+            <p className="text-[15px] font-bold text-white">Send a test message</p>
+            <p className="text-[12.5px] text-white/55 mt-1">Confirm everything's wired up. We'll send from <span className="font-mono text-white/85">{form.phone || '+1 (415) 555-8200'}</span>.</p>
+          </div>
+
+          <div className="grid grid-cols-[1fr_240px] gap-4">
+            {/* Form */}
+            <div className="flex flex-col gap-3.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-white/55 uppercase tracking-wider mb-2">Send to</label>
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3 py-2.5 transition-all">
+                  <I.Phone size={13} className="text-white/40 shrink-0"/>
+                  <input type="tel" value={form.testTo || ''} onChange={e => setForm({...form, testTo:e.target.value})}
+                    placeholder="+1 (555) 123-4567"
+                    className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/28 font-mono tabular-nums"/>
+                  <span className="text-[10.5px] text-white/35">Your own number works best</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-semibold text-white/55 uppercase tracking-wider">Message</label>
+                  <div className="text-[10.5px] text-white/40 tabular-nums">
+                    {charCount} ch · {segments} segment{segments > 1 ? 's' : ''}
+                  </div>
+                </div>
+                <textarea rows={5} value={msg} onChange={e => setMsg(e.target.value)}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] rounded-xl px-3.5 py-3 text-[13px] text-white placeholder:text-white/28 outline-none resize-none leading-relaxed transition-all"/>
+              </div>
+
+              {/* Send button + status */}
+              <div className="flex items-center gap-3">
+                <button onClick={send} disabled={status === 'sending' || !form.testTo}
+                  className={['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all',
+                    status === 'sending'
+                      ? 'bg-brand-500/40 text-white/70 cursor-wait'
+                      : form.testTo
+                          ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand hover:shadow-brand-lg'
+                          : 'bg-white/[0.05] text-white/30 cursor-not-allowed'
+                  ].join(' ')}>
+                  {status === 'sending'
+                    ? <><I.Loader size={13} className="spin"/> Sending…</>
+                    : <><I.Send size={12} stroke={2.4}/> Send test</>}
+                </button>
+                {status === 'sent' && (
+                  <span className="inline-flex items-center gap-2 text-[12px] font-medium text-emerald-300 animate-slide-x">
+                    <I.CheckCircle size={14}/>
+                    Delivered in 1.2s — you should see it now.
+                  </span>
+                )}
+              </div>
+
+              {/* Compliance */}
+              <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] p-3.5 flex items-start gap-3 mt-1">
+                <div className="w-7 h-7 rounded-md bg-amber-500/12 ring-1 ring-amber-500/25 text-amber-300 flex items-center justify-center shrink-0">
+                  <I.Info size={13}/>
+                </div>
+                <div className="flex-1 text-[11.5px] text-white/60 leading-relaxed">
+                  <p className="font-medium text-white/85 mb-0.5">A2P 10DLC registration recommended</p>
+                  <p>U.S. carriers require business SMS to be registered. nrtur can submit this for you — takes about 3 business days. <a href="#" className="text-brand-300 hover:text-brand-200">Start registration →</a></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Phone preview */}
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.025] to-white/[0.005] p-4 self-start">
+              <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider mb-3">Preview</p>
+              <div className="rounded-xl bg-black/40 border border-white/[0.05] p-3 min-h-[200px]">
+                <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-white/[0.05]">
+                  <div className="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-white text-[10px] font-bold">n</div>
+                  <div>
+                    <p className="text-[12px] font-semibold text-white leading-tight">nrtur</p>
+                    <p className="text-[10px] text-white/40 font-mono leading-tight mt-0.5">{form.phone || '+1 (415) 555-8200'}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-start gap-2">
+                  <div className="max-w-[85%]">
+                    <div className="px-3 py-2 rounded-2xl rounded-bl-sm text-[12px] text-white/90 bg-white/[0.07] border border-white/[0.08] leading-relaxed">
+                      {msg || <span className="text-white/35 italic">Your message…</span>}
+                    </div>
+                    <p className="text-[9.5px] text-white/30 mt-1">
+                      {status === 'sent' ? 'Delivered' : status === 'sending' ? 'Sending…' : 'Just now'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Step 3.5 (success) ────────────────────────────────────────────────
+    function StepDone({ form, onClose }) {
+      return (
+        <div className="flex flex-col items-center text-center py-6 animate-slide-x">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30 flex items-center justify-center mb-4 shadow-[0_0_32px_rgba(16,185,129,0.25)]">
+            <I.Check size={28} stroke={3} className="text-emerald-300 animate-check-pop"/>
+          </div>
+          <p className="text-[18px] font-bold text-white">Twilio is connected.</p>
+          <p className="text-[13px] text-white/55 mt-1.5 max-w-md">You can now send texts and make calls from any contact. Templates and automations will pick up the new channel automatically.</p>
+
+          {/* Summary card */}
+          <div className="mt-5 w-full max-w-md rounded-xl border border-white/[0.06] bg-white/[0.025] p-4 text-left">
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-[11.5px] text-white/45">Account</span>
+              <span className="text-[12px] text-white font-medium">Bloom.co · Trial</span>
+            </div>
+            <div className="flex items-center justify-between py-1.5 border-t border-white/[0.04]">
+              <span className="text-[11.5px] text-white/45">Number</span>
+              <span className="text-[12px] text-white font-mono tabular-nums">{form.phone || '+1 (415) 555-8200'}</span>
+            </div>
+            <div className="flex items-center justify-between py-1.5 border-t border-white/[0.04]">
+              <span className="text-[11.5px] text-white/45">Test send</span>
+              <span className="inline-flex items-center gap-1 text-[12px] text-emerald-300"><I.CheckCircle size={12}/> Delivered</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mt-6">
+            <a href="SMS Inbox.html" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+              <I.MessageSq size={13}/> Go to SMS inbox
+            </a>
+            <button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Wizard modal ──────────────────────────────────────────────────────
+    function Wizard({ onClose }) {
+      const [step, setStep] = React.useState(1);
+      const [form, setForm] = React.useState({ sid:'', token:'', phone:'', testTo:'' });
+      const [validating, setValidating] = React.useState(false);
+      const [validated, setValidated] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [done, setDone] = React.useState(false);
+
+      // Esc to close
+      React.useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [onClose]);
+
+      function next() {
+        if (step === 1) {
+          // simulate validation
+          if (form.sid.length < 6 || form.token.length < 6) {
+            setError('Please enter both your SID and auth token.');
+            return;
+          }
+          setError(null);
+          setValidating(true);
+          setTimeout(() => {
+            setValidating(false);
+            setValidated(true);
+            setStep(2);
+            // pre-pick the existing number for convenience
+            setForm(f => ({ ...f, phone: f.phone || '+1 (415) 555-8200' }));
+          }, 1100);
+          return;
+        }
+        if (step === 2) { setStep(3); return; }
+        if (step === 3) { setDone(true); return; }
+      }
+      function back() {
+        if (step > 1) setStep(step - 1);
+      }
+
+      const canNext =
+        step === 1 ? (form.sid.length >= 6 && form.token.length >= 6 && !validating) :
+        step === 2 ? !!form.phone :
+        true;
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-6 animate-overlay-in" style={{ background:'rgba(7,7,15,0.72)', backdropFilter:'blur(8px)' }}>
+          <div onClick={onClose} className="absolute inset-0"/>
+
+          <div className="relative animate-modal-in w-full max-w-[720px] max-h-[calc(100vh-48px)] flex flex-col rounded-2xl border border-white/[0.08] shadow-[0_24px_120px_rgba(0,0,0,0.7)] overflow-hidden" style={{ background:'#0b0b1c' }}>
+
+            {/* Header */}
+            <div className="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]" style={{ background:'#09091a' }}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[15px] shrink-0" style={{ background:'#f22f46' }}>
+                    T
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[15px] font-bold text-white">Connect Twilio</p>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-mono text-white/45 bg-white/[0.05]">v2.4</span>
+                    </div>
+                    <p className="text-[11.5px] text-white/45 mt-0.5">Power SMS and calls right inside nrtur.</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="w-8 h-8 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors">
+                  <I.X size={15}/>
+                </button>
+              </div>
+
+              {/* Stepper */}
+              <Stepper step={done ? 4 : step}/>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto scroll-area px-6 py-6">
+              {done                ? <StepDone   form={form} onClose={onClose}/> :
+               step === 1          ? <StepCreds  form={form} setForm={setForm} validating={validating} validated={validated} error={error}/> :
+               step === 2          ? <StepNumber form={form} setForm={setForm}/> :
+                                     <StepTest   form={form} setForm={setForm}/>}
+            </div>
+
+            {/* Footer */}
+            {!done && (
+              <div className="shrink-0 px-6 py-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3" style={{ background:'#09091a' }}>
+                <div className="flex items-center gap-2">
+                  {step > 1 && (
+                    <button onClick={back} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-white/65 hover:text-white hover:bg-white/[0.05] transition-colors">
+                      <I.ArrowLeft size={12}/> Back
+                    </button>
+                  )}
+                  <p className="text-[10.5px] text-white/35">Step {step} of 3</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={onClose} className="px-3 py-2 rounded-lg text-[12px] font-medium text-white/55 hover:text-white hover:bg-white/[0.05] transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={next} disabled={!canNext}
+                    className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12.5px] font-semibold transition-all',
+                      canNext
+                        ? 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand'
+                        : 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                    ].join(' ')}>
+                    {step === 3 ? 'Finish setup' : 'Continue'}
+                    {step !== 3 && <I.ArrowRight size={12} stroke={2.5}/>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Page ───────────────────────────────────────────────────────────────
+    function Page() {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <div data-screen-label="Twilio Setup" className="h-full relative" style={{ background:'#09091a' }}>
+          {/* Ambient */}
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:600, height:600, background:'rgba(99,102,241,0.07)', filter:'blur(160px)', top:-220, right:-150 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(242,47,70,0.04)', filter:'blur(160px)', bottom:-180, left:200 }}/>
+          </div>
+          <BackgroundMock/>
+          {open && <Wizard onClose={() => setOpen(false)}/>}
+          {!open && (
+            <div className="absolute inset-0 flex items-center justify-center z-40">
+              <button onClick={() => setOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                <I.Plug size={14}/> Reopen Twilio setup
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+  </script>
+</body>
+</html>

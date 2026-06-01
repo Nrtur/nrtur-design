@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMS Sequences — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',
+              400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',
+              800:'#3730a3',900:'#312e81',
+            },
+            surface: { 950:'#07070f', 925:'#09091a', 900:'#0b0b18', 850:'#0d0d1a' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['ui-monospace','SFMono-Regular','Menlo','monospace'] },
+          boxShadow: {
+            'brand':    '0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)',
+            'brand-lg': '0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            glowPulse: { '0%,100%': { opacity: 0.5 }, '50%': { opacity: 1 } },
+          },
+          animation: { 'fade-up': 'fadeUp 360ms ease-out both', 'glow-pulse': 'glowPulse 3s ease-in-out infinite' },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #09091a; color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    ::selection { background: rgba(99,102,241,0.35); }
+    .scroll-area::-webkit-scrollbar { width: 6px; height: 8px; }
+    .scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.30); border-radius: 9999px; }
+    textarea { resize: none; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    // ---------- Icons ----------
+    const Ico = ({ d, size = 16, stroke = 2, className = '', fill }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+    );
+    const I = {
+      LayoutDash:  (p)=> <Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+      Users:       (p)=> <Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+      GitBranch:   (p)=> <Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+      Mail:        (p)=> <Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+      Zap:         (p)=> <Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+      BarChart:    (p)=> <Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+      Settings:    (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>}/>,
+      Plus:        (p)=> <Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+      Search:      (p)=> <Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+      Clock:       (p)=> <Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
+      MessageSquare:(p)=> <Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+      Braces:      (p)=> <Ico {...p} d={<><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></>}/>,
+      Trash:       (p)=> <Ico {...p} d={<><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></>}/>,
+      ChevronDown: (p)=> <Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+      Save:        (p)=> <Ico {...p} d={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>}/>,
+      Pause:       (p)=> <Ico {...p} d={<><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></>}/>,
+      Play:        (p)=> <Ico {...p} d={<polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/>}/>,
+      Check:       (p)=> <Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+      CornerDownRight:(p)=> <Ico {...p} d={<><polyline points="15 10 20 15 15 20"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></>}/>,
+      Edit:        (p)=> <Ico {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>}/>,
+      X:           (p)=> <Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    };
+
+    // ---------- Sidebar ----------
+    function Sidebar({ active = 'automations' }) {
+      const items = [
+        { key:'dash',        Icon: I.LayoutDash, label: 'Dashboard' },
+        { key:'contacts',    Icon: I.Users,      label: 'Contacts' },
+        { key:'pipeline',    Icon: I.GitBranch,  label: 'Pipeline' },
+        { key:'email',       Icon: I.Mail,       label: 'Email' },
+        { key:'automations', Icon: I.Zap,        label: 'Automations' },
+        { key:'reports',     Icon: I.BarChart,   label: 'Reports' },
+      ];
+      return (
+        <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{ background:'#07070f' }}>
+          <a href="Automations.html" className="mb-4" title="nrtur">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand"
+                 style={{ background: 'linear-gradient(135deg, #6366f1, #7c3aed)' }}>
+              <span className="text-white font-black text-sm leading-none">n</span>
+            </div>
+          </a>
+          {items.map(({ key, Icon, label }) => {
+            const a = active === key;
+            const href = key === 'automations' ? 'Automations.html' : '#';
+            return (
+              <a key={key} title={label} href={href}
+                className={[
+                  'w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',
+                  a
+                    ? 'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]'
+                    : 'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'
+                ].join(' ')}>
+                <Icon size={16}/>
+              </a>
+            );
+          })}
+          <div className="mt-auto flex flex-col items-center gap-3">
+            <a title="Settings" href="Settings Pipeline.html" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all">
+              <I.Settings size={16}/>
+            </a>
+            <button title="Alex Morgan" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{ background:'#3b82f6' }}>
+              AM
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    // ---------- Status helpers ----------
+    const STATUS = {
+      active: { label:'Active',  dot:'bg-emerald-400', text:'text-emerald-300', ring:'ring-emerald-500/25', bg:'bg-emerald-500/12', pulse:true },
+      paused: { label:'Paused',  dot:'bg-amber-400',   text:'text-amber-300',   ring:'ring-amber-500/25',   bg:'bg-amber-500/12',   pulse:false },
+      draft:  { label:'Draft',   dot:'bg-white/35',    text:'text-white/55',    ring:'ring-white/[0.10]',   bg:'bg-white/[0.05]',   pulse:false },
+    };
+
+    const TOKENS = [
+      { key:'first_name', label:'First name', sample:'Sarah' },
+      { key:'company',    label:'Company',    sample:'Meridian' },
+      { key:'deal_name',  label:'Deal name',  sample:'Q3 Retainer' },
+    ];
+
+    const DELAY_OPTIONS = [
+      { key:'1hr',    label:'1 hr' },
+      { key:'1day',   label:'1 day' },
+      { key:'1week',  label:'1 week' },
+      { key:'custom', label:'Custom' },
+    ];
+    const CUSTOM_UNITS = ['minutes','hours','days','weeks'];
+
+    function delaySummary(step) {
+      if (step.delay === '1hr')  return '1 hour';
+      if (step.delay === '1day') return '1 day';
+      if (step.delay === '1week')return '1 week';
+      return `${step.customN} ${step.customUnit}`;
+    }
+
+    // ---------- Generic dropdown ----------
+    function Dropdown({ value, options, onChange, width = 'auto', align = 'left', renderValue, renderOption }) {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+      useEffect(() => {
+        function onDoc(e){ if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+      }, []);
+      const sel = options.find(o => o.value === value);
+      return (
+        <div className="relative" ref={ref} style={{ width }}>
+          <button onClick={()=>setOpen(o=>!o)}
+            className="w-full inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.16] text-[12px] font-medium text-white/80 transition-all">
+            <span className="truncate">{renderValue ? renderValue(sel) : (sel ? sel.label : '—')}</span>
+            <I.ChevronDown size={11} className={'text-white/40 transition-transform ' + (open ? 'rotate-180' : '')}/>
+          </button>
+          {open && (
+            <div className={['absolute top-full mt-1 min-w-full rounded-xl border border-white/[0.10] shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden z-30 py-1', align==='right'?'right-0':'left-0'].join(' ')} style={{ background:'#0d0d1f' }}>
+              {options.map(o => (
+                <button key={o.value} onClick={()=>{ onChange(o.value); setOpen(false); }}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors">
+                  <span className="text-[12.5px] text-white/85 whitespace-nowrap">{renderOption ? renderOption(o) : o.label}</span>
+                  {value === o.value && <I.Check size={12} className="text-brand-300 shrink-0"/>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---------- Token picker ----------
+    function TokenPicker({ onInsert }) {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+      useEffect(() => {
+        function onDoc(e){ if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+      }, []);
+      return (
+        <div className="relative" ref={ref}>
+          <button onClick={()=>setOpen(o=>!o)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/25 hover:border-brand-500/40 text-[12px] font-medium text-brand-200 transition-all">
+            <I.Braces size={12}/> Insert token
+          </button>
+          {open && (
+            <div className="absolute bottom-full mb-1.5 left-0 w-56 rounded-xl border border-white/[0.10] shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden z-30" style={{ background:'#0d0d1f' }}>
+              <div className="px-3 py-2 border-b border-white/[0.06]">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Merge tokens</p>
+              </div>
+              {TOKENS.map(t => (
+                <button key={t.key} onClick={()=>{ onInsert(t.key); setOpen(false); }}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-[11.5px] text-brand-300 bg-brand-500/10 px-1.5 py-0.5 rounded">{'{{'+t.key+'}}'}</span>
+                  </div>
+                  <span className="text-[11px] text-white/35 group-hover:text-white/55 shrink-0">{t.sample}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---------- Step card ----------
+    function StepCard({ step, index, total, onChange, onDelete }) {
+      const taRef = useRef(null);
+      const len = step.message.length;
+      const segments = Math.max(1, Math.ceil(len / 160));
+      const over = len > 160;
+      const remaining = 160 - (len % 160 === 0 && len > 0 ? 160 : len % 160);
+
+      function insertToken(tok) {
+        const ta = taRef.current;
+        const token = '{{' + tok + '}}';
+        let next;
+        if (ta && typeof ta.selectionStart === 'number') {
+          const s = ta.selectionStart, e = ta.selectionEnd;
+          next = step.message.slice(0, s) + token + step.message.slice(e);
+          onChange({ ...step, message: next });
+          requestAnimationFrame(() => {
+            ta.focus();
+            const pos = s + token.length;
+            ta.setSelectionRange(pos, pos);
+          });
+        } else {
+          onChange({ ...step, message: step.message + token });
+        }
+      }
+
+      // step number choices for the "skip to" selector (any step except this one)
+      const stepChoices = Array.from({ length: total }, (_, i) => i + 1)
+        .filter(n => n !== index + 1)
+        .map(n => ({ value: n, label: `Step ${n}` }));
+
+      return (
+        <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.025] hover:border-white/[0.14] transition-all animate-fade-up">
+          {/* Header: number + delay + delete */}
+          <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-white/[0.05]">
+            <div className="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 flex items-center justify-center text-[13px] font-bold shrink-0 tabular-nums">
+              {index + 1}
+            </div>
+
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-white/40 shrink-0">
+                <I.Clock size={12}/> {index === 0 ? 'Send after' : 'Then wait'}
+              </span>
+              {/* Delay segmented selector */}
+              <div className="inline-flex items-center p-0.5 rounded-lg bg-black/30 border border-white/[0.06] gap-0.5">
+                {DELAY_OPTIONS.map(opt => {
+                  const a = step.delay === opt.key;
+                  return (
+                    <button key={opt.key} onClick={()=>onChange({ ...step, delay: opt.key })}
+                      className={[
+                        'px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all',
+                        a ? 'bg-brand-500 text-white shadow-[0_2px_8px_rgba(99,102,241,0.35)]' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.05]'
+                      ].join(' ')}>
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Custom inline */}
+              {step.delay === 'custom' && (
+                <div className="flex items-center gap-1.5">
+                  <input type="number" min="1" value={step.customN}
+                    onChange={(e)=>onChange({ ...step, customN: Math.max(1, parseInt(e.target.value)||1) })}
+                    className="w-14 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none text-[12px] text-white text-center tabular-nums"/>
+                  <Dropdown
+                    value={step.customUnit}
+                    onChange={(v)=>onChange({ ...step, customUnit: v })}
+                    options={CUSTOM_UNITS.map(u => ({ value:u, label:u }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            <button onClick={onDelete} title="Delete step"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 transition-all shrink-0">
+              <I.Trash size={13}/>
+            </button>
+          </div>
+
+          {/* Composer */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                <I.MessageSquare size={12}/> SMS message
+              </span>
+            </div>
+            <div className={['rounded-xl border bg-black/25 transition-all', over ? 'border-amber-500/40' : 'border-white/[0.08] focus-within:border-brand-500/40 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.10)]'].join(' ')}>
+              <textarea
+                ref={taRef}
+                value={step.message}
+                onChange={(e)=>onChange({ ...step, message: e.target.value })}
+                rows={3}
+                placeholder="Type your message… use Insert token to personalize."
+                className="w-full bg-transparent outline-none px-3.5 py-3 text-[13.5px] leading-relaxed text-white placeholder:text-white/25"
+              />
+              <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-white/[0.05]">
+                <TokenPicker onInsert={insertToken}/>
+                <div className="flex items-center gap-2.5 text-[11px] font-mono tabular-nums">
+                  <span className={over ? 'text-amber-300' : 'text-white/45'}>{len}/160</span>
+                  <span className="text-white/20">·</span>
+                  <span className={['inline-flex items-center gap-1', segments > 1 ? 'text-amber-300/90' : 'text-white/35'].join(' ')}>
+                    {segments} {segments === 1 ? 'segment' : 'segments'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {/* Token chips hint */}
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <span className="text-[10.5px] text-white/30">Available:</span>
+              {TOKENS.map(t => (
+                <button key={t.key} onClick={()=>insertToken(t.key)}
+                  className="font-mono text-[10.5px] text-white/45 hover:text-brand-200 bg-white/[0.03] hover:bg-brand-500/10 border border-white/[0.06] hover:border-brand-500/25 px-1.5 py-0.5 rounded transition-all">
+                  {'{{'+t.key+'}}'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Condition */}
+          <div className="px-4 pb-4">
+            <div className={['rounded-xl border px-3.5 py-2.5 transition-all', step.condition.enabled ? 'border-brand-500/25 bg-brand-500/[0.05]' : 'border-white/[0.06] bg-white/[0.015]'].join(' ')}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={()=>onChange({ ...step, condition: { ...step.condition, enabled: !step.condition.enabled } })}
+                  className={['relative w-9 h-5 rounded-full transition-all duration-200 shrink-0', step.condition.enabled ? 'bg-brand-500 shadow-[0_0_12px_rgba(99,102,241,0.4)]' : 'bg-white/[0.10] ring-1 ring-white/[0.08]'].join(' ')}
+                  role="switch" aria-checked={step.condition.enabled}>
+                  <span className={['absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-200', step.condition.enabled ? 'left-[18px]' : 'left-0.5'].join(' ')}/>
+                </button>
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] text-white/70">
+                  <I.CornerDownRight size={13} className={step.condition.enabled ? 'text-brand-300' : 'text-white/35'}/>
+                  If no reply → skip to
+                </span>
+                <div className={step.condition.enabled ? '' : 'opacity-40 pointer-events-none'}>
+                  <Dropdown
+                    value={step.condition.target}
+                    onChange={(v)=>onChange({ ...step, condition: { ...step.condition, target: v } })}
+                    options={stepChoices.length ? stepChoices : [{ value: 0, label: '—' }]}
+                    align="left"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Flow connector ----------
+    function Connector({ label }) {
+      return (
+        <div className="flex flex-col items-center py-1.5" aria-hidden>
+          <div className="w-px h-4" style={{ background:'linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(99,102,241,0.1))' }}/>
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/40 border border-white/[0.06] text-[10px] text-white/45 font-medium">
+            <I.Clock size={9}/> wait {label}
+          </span>
+          <div className="w-px h-4" style={{ background:'linear-gradient(to bottom, rgba(99,102,241,0.1), rgba(99,102,241,0.4))' }}/>
+        </div>
+      );
+    }
+
+    // ---------- Left list item ----------
+    function SequenceListItem({ seq, active, onClick }) {
+      const s = STATUS[seq.status];
+      return (
+        <button onClick={onClick}
+          className={[
+            'w-full text-left rounded-xl border px-3.5 py-3 transition-all',
+            active
+              ? 'bg-brand-500/[0.10] border-brand-500/30 shadow-[0_0_0_1px_rgba(99,102,241,0.15)]'
+              : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.12]'
+          ].join(' ')}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className={['w-1.5 h-1.5 rounded-full shrink-0', s.dot, s.pulse ? 'animate-glow-pulse' : ''].join(' ')}/>
+            <span className={['text-[13.5px] font-semibold truncate flex-1', active ? 'text-white' : 'text-white/85'].join(' ')}>{seq.name}</span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-white/40 pl-3.5">
+            <span className="inline-flex items-center gap-1">
+              <I.MessageSquare size={10}/> {seq.steps.length} {seq.steps.length === 1 ? 'step' : 'steps'}
+            </span>
+            <span className="text-white/15">·</span>
+            <span className="inline-flex items-center gap-1">
+              <I.Users size={10}/> <span className="tabular-nums">{seq.enrolled}</span> enrolled
+            </span>
+          </div>
+        </button>
+      );
+    }
+
+    // ---------- Editable name ----------
+    function EditableName({ value, onChange }) {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(value);
+      const inputRef = useRef(null);
+      useEffect(()=>{ setDraft(value); }, [value]);
+      useEffect(()=>{ if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, [editing]);
+      function commit(){ const v = draft.trim() || value; onChange(v); setEditing(false); }
+      if (editing) {
+        return (
+          <input ref={inputRef} value={draft}
+            onChange={(e)=>setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e)=>{ if (e.key==='Enter') commit(); if (e.key==='Escape'){ setDraft(value); setEditing(false); } }}
+            className="text-[20px] font-bold tracking-tight bg-white/[0.05] border border-brand-500/40 rounded-lg px-2.5 py-1 outline-none text-white shadow-[0_0_0_3px_rgba(99,102,241,0.12)] min-w-0 w-[360px] max-w-full"/>
+        );
+      }
+      return (
+        <button onClick={()=>setEditing(true)}
+          className="group inline-flex items-center gap-2 px-2.5 py-1 -ml-2.5 rounded-lg hover:bg-white/[0.04] transition-colors max-w-full">
+          <span className="text-[20px] font-bold tracking-tight text-white truncate">{value}</span>
+          <I.Edit size={14} className="text-white/25 group-hover:text-white/55 transition-colors shrink-0"/>
+        </button>
+      );
+    }
+
+    // ---------- Right editor ----------
+    function SequenceEditor({ seq, onUpdate, onDelete }) {
+      const [saved, setSaved] = useState(false);
+      const s = STATUS[seq.status];
+
+      function updateStep(stepId, next) {
+        onUpdate({ ...seq, steps: seq.steps.map(st => st.id === stepId ? next : st) });
+      }
+      function deleteStep(stepId) {
+        onUpdate({ ...seq, steps: seq.steps.filter(st => st.id !== stepId) });
+      }
+      function addStep() {
+        const nid = Math.max(0, ...seq.steps.map(st => st.id)) + 1;
+        const newStep = { id: nid, delay:'1day', customN:3, customUnit:'days', message:'', condition:{ enabled:false, target: seq.steps.length + 1 } };
+        onUpdate({ ...seq, steps: [...seq.steps, newStep] });
+      }
+      function save() { setSaved(true); setTimeout(()=>setSaved(false), 1800); }
+      function togglePause() {
+        onUpdate({ ...seq, status: seq.status === 'active' ? 'paused' : 'active' });
+      }
+
+      const totalContacts = seq.enrolled;
+
+      return (
+        <div className="flex flex-col h-full">
+          {/* Topbar */}
+          <header className="shrink-0 border-b border-white/[0.05] px-6 py-3.5 flex items-center justify-between gap-4" style={{ background:'#0b0b18' }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <EditableName value={seq.name} onChange={(v)=>onUpdate({ ...seq, name: v })}/>
+              <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium ring-1 shrink-0', s.bg, s.text, s.ring].join(' ')}>
+                <span className={['w-1.5 h-1.5 rounded-full', s.dot, s.pulse ? 'animate-glow-pulse' : ''].join(' ')}/>
+                {s.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={save}
+                className={['inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-semibold transition-all', saved ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' : 'bg-brand-500 hover:bg-brand-400 text-white shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0'].join(' ')}>
+                {saved ? <><I.Check size={13}/> Saved</> : <><I.Save size={13}/> Save</>}
+              </button>
+              <button onClick={togglePause}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all">
+                {seq.status === 'active' ? <><I.Pause size={13}/> Pause</> : <><I.Play size={11}/> Resume</>}
+              </button>
+              <button onClick={onDelete}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12.5px] font-medium text-red-300/80 hover:text-red-200 bg-transparent hover:bg-red-500/10 border border-red-500/20 hover:border-red-500/40 transition-all">
+                <I.Trash size={13}/> Delete
+              </button>
+            </div>
+          </header>
+
+          {/* Flow */}
+          <div className="flex-1 overflow-y-auto scroll-area">
+            <div className="max-w-[680px] mx-auto px-6 py-7">
+              {/* Enrollment summary */}
+              <div className="flex items-center gap-2 mb-5 text-[12px] text-white/45">
+                <I.Users size={13} className="text-white/35"/>
+                <span><span className="text-white/80 font-semibold tabular-nums">{totalContacts}</span> contacts enrolled</span>
+                <span className="text-white/15">·</span>
+                <span><span className="text-white/80 font-semibold tabular-nums">{seq.steps.length}</span>-step sequence</span>
+              </div>
+
+              {/* Start node */}
+              <div className="flex items-center gap-2.5 mb-1">
+                <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
+                  <I.Play size={11} className="text-emerald-400"/>
+                </div>
+                <div>
+                  <p className="text-[12.5px] font-semibold text-white/80">Contact enrolled</p>
+                  <p className="text-[11px] text-white/35">Sequence begins</p>
+                </div>
+              </div>
+
+              {/* Steps */}
+              {seq.steps.map((step, i) => (
+                <React.Fragment key={step.id}>
+                  <Connector label={delaySummary(step)}/>
+                  <StepCard
+                    step={step}
+                    index={i}
+                    total={seq.steps.length}
+                    onChange={(next)=>updateStep(step.id, next)}
+                    onDelete={()=>deleteStep(step.id)}
+                  />
+                </React.Fragment>
+              ))}
+
+              {seq.steps.length === 0 && (
+                <div className="text-center py-10 text-white/40 text-[13px]">No steps yet. Add your first message below.</div>
+              )}
+
+              {/* Add step */}
+              <div className="flex flex-col items-center pt-2">
+                <div className="w-px h-5" style={{ background:'linear-gradient(to bottom, rgba(99,102,241,0.4), rgba(99,102,241,0.05))' }}/>
+                <button onClick={addStep}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-brand-200 bg-brand-500/10 hover:bg-brand-500/20 border border-dashed border-brand-500/30 hover:border-brand-500/50 transition-all">
+                  <I.Plus size={15} stroke={2.4}/> Add step
+                </button>
+              </div>
+
+              {/* End node */}
+              <div className="flex flex-col items-center pt-4">
+                <div className="w-px h-5 bg-white/[0.08]"/>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] text-white/40">
+                  Sequence complete
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Empty right state ----------
+    function EmptyState() {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center px-8">
+          <div className="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center mb-4">
+            <I.MessageSquare size={24}/>
+          </div>
+          <p className="text-[16px] font-bold text-white">Select a sequence</p>
+          <p className="text-[13px] text-white/45 mt-1.5 max-w-xs">Pick a sequence from the list to edit its steps, or create a new one to get started.</p>
+        </div>
+      );
+    }
+
+    // ---------- Seed data ----------
+    const INITIAL = [
+      {
+        id: 1, name: 'Welcome Drip', status: 'active', enrolled: 128,
+        steps: [
+          { id:1, delay:'1hr',  customN:3, customUnit:'days',  message:'Hi {{first_name}}! Thanks for connecting with us at {{company}}. Reply YES and I’ll send over a quick intro.', condition:{ enabled:false, target:2 } },
+          { id:2, delay:'1day', customN:2, customUnit:'days',  message:'Just checking in {{first_name}} — happy to walk you through how teams like {{company}} use us. Want a 15-min demo?', condition:{ enabled:true, target:4 } },
+          { id:3, delay:'1day', customN:3, customUnit:'days',  message:'Sharing a 2-min video that covers the basics. Any questions on {{deal_name}}?', condition:{ enabled:false, target:4 } },
+          { id:4, delay:'1week',customN:1, customUnit:'weeks', message:'Last note from me {{first_name}} — I’ll leave the door open. Reply anytime and we’ll pick {{deal_name}} back up.', condition:{ enabled:false, target:1 } },
+        ],
+      },
+      {
+        id: 2, name: 'Trial Nudge', status: 'active', enrolled: 56,
+        steps: [
+          { id:1, delay:'1day',  customN:1, customUnit:'days', message:'Hey {{first_name}}, you’re 3 days into your trial. Need a hand setting up {{deal_name}}?', condition:{ enabled:true, target:3 } },
+          { id:2, delay:'1week', customN:1, customUnit:'weeks',message:'Your trial wraps soon. Want me to extend it for {{company}}? Just reply EXTEND.', condition:{ enabled:false, target:3 } },
+          { id:3, delay:'1day',  customN:2, customUnit:'days', message:'Ready to go live, {{first_name}}? I can get {{company}} onboarded today.', condition:{ enabled:false, target:1 } },
+        ],
+      },
+      {
+        id: 3, name: 'Re-engage Cold Leads', status: 'paused', enrolled: 0,
+        steps: [
+          { id:1, delay:'1hr',  customN:1, customUnit:'hours', message:'{{first_name}}, it’s been a while! Is {{deal_name}} still on your radar?', condition:{ enabled:true, target:5 } },
+          { id:2, delay:'1week',customN:1, customUnit:'weeks', message:'No worries if the timing’s off. What changed for {{company}}?', condition:{ enabled:false, target:5 } },
+          { id:3, delay:'1week',customN:2, customUnit:'weeks', message:'Sharing a case study from a team like {{company}} — might spark something.', condition:{ enabled:false, target:5 } },
+          { id:4, delay:'1week',customN:2, customUnit:'weeks', message:'Should I close out {{deal_name}}, or keep it warm?', condition:{ enabled:true, target:5 } },
+          { id:5, delay:'1week',customN:4, customUnit:'weeks', message:'Final check-in {{first_name}}. Reply anytime to restart.', condition:{ enabled:false, target:1 } },
+        ],
+      },
+      {
+        id: 4, name: 'Demo No-Show Follow-up', status: 'draft', enrolled: 12,
+        steps: [
+          { id:1, delay:'1hr',  customN:1, customUnit:'hours', message:'Sorry we missed you, {{first_name}}! Want to grab a new time for the {{deal_name}} demo?', condition:{ enabled:true, target:2 } },
+          { id:2, delay:'1day', customN:1, customUnit:'days',  message:'Here’s my calendar link — pick whatever works for {{company}}.', condition:{ enabled:false, target:1 } },
+        ],
+      },
+      {
+        id: 5, name: 'Renewal Reminder', status: 'active', enrolled: 34,
+        steps: [
+          { id:1, delay:'1week',customN:2, customUnit:'weeks', message:'{{first_name}}, {{company}}’s plan renews in 2 weeks. All good to continue?', condition:{ enabled:false, target:2 } },
+          { id:2, delay:'1week',customN:1, customUnit:'weeks', message:'Quick heads up — renewal is next week. Reply if you’d like to adjust {{deal_name}}.', condition:{ enabled:true, target:3 } },
+          { id:3, delay:'1day', customN:2, customUnit:'days',  message:'Renews tomorrow! Thanks for staying with us, {{first_name}}.', condition:{ enabled:false, target:1 } },
+        ],
+      },
+    ];
+
+    // ---------- Page ----------
+    function SMSSequencesPage() {
+      const [sequences, setSequences] = useState(INITIAL);
+      const [selectedId, setSelectedId] = useState(1);
+      const [query, setQuery] = useState('');
+
+      const selected = sequences.find(s => s.id === selectedId) || null;
+      const filtered = sequences.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+
+      function updateSeq(next) {
+        setSequences(prev => prev.map(s => s.id === next.id ? next : s));
+      }
+      function deleteSeq(id) {
+        setSequences(prev => {
+          const rest = prev.filter(s => s.id !== id);
+          if (selectedId === id) setSelectedId(rest[0]?.id ?? null);
+          return rest;
+        });
+      }
+      function newSequence() {
+        const nid = Math.max(0, ...sequences.map(s => s.id)) + 1;
+        const seq = {
+          id: nid, name: 'Untitled sequence', status: 'draft', enrolled: 0,
+          steps: [{ id:1, delay:'1day', customN:3, customUnit:'days', message:'', condition:{ enabled:false, target:1 } }],
+        };
+        setSequences(prev => [seq, ...prev]);
+        setSelectedId(nid);
+      }
+
+      const activeCount = sequences.filter(s => s.status === 'active').length;
+
+      return (
+        <div data-screen-label="SMS Sequences" className="h-full flex" style={{ background:'#09091a' }}>
+          <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute rounded-full" style={{ width:560, height:560, background:'rgba(99,102,241,0.07)', filter:'blur(140px)', top:-220, right:-160 }}/>
+            <div className="absolute rounded-full" style={{ width:420, height:420, background:'rgba(124,58,237,0.06)', filter:'blur(140px)', bottom:-180, left:240 }}/>
+          </div>
+
+          <div className="relative z-10 flex w-full h-full">
+            <Sidebar active="automations"/>
+
+            {/* Left panel — 30% */}
+            <div className="flex flex-col border-r border-white/[0.05] shrink-0" style={{ width:'30%', minWidth:320, maxWidth:440, background:'#0a0a16' }}>
+              <div className="shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center">
+                    <I.MessageSquare size={14}/>
+                  </div>
+                  <h1 className="text-white text-[17px] font-bold tracking-tight">SMS Sequences</h1>
+                </div>
+                <p className="text-[12px] text-white/45 mb-4 pl-0.5">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-glow-pulse"/>
+                    {activeCount} active
+                  </span>
+                  <span className="text-white/20 mx-1.5">·</span>
+                  {sequences.length} total
+                </p>
+                <button onClick={newSequence}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0 transition-all">
+                  <I.Plus size={15} stroke={2.4}/> New Sequence
+                </button>
+              </div>
+
+              <div className="px-5 pt-3.5 pb-2 shrink-0">
+                <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.07] rounded-lg px-2.5 py-1.5 focus-within:border-brand-500/40 transition-all">
+                  <I.Search size={12} className="text-white/40"/>
+                  <input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search sequences…"
+                    className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto scroll-area px-5 pb-5 pt-1.5 flex flex-col gap-2">
+                {filtered.map(seq => (
+                  <SequenceListItem key={seq.id} seq={seq} active={seq.id === selectedId} onClick={()=>setSelectedId(seq.id)}/>
+                ))}
+                {filtered.length === 0 && (
+                  <p className="text-center text-[12px] text-white/35 py-8">No sequences match “{query}”.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Right panel — 70% */}
+            <div className="flex-1 min-w-0" style={{ background:'#09091a' }}>
+              {selected
+                ? <SequenceEditor seq={selected} onUpdate={updateSeq} onDelete={()=>deleteSeq(selected.id)}/>
+                : <EmptyState/>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<SMSSequencesPage />);
+  </script>
+</body>
+</html>

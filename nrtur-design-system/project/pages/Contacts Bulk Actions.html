@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bulk Actions — nrtur</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/nrtur-mark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},
+            surface:{950:'#07070f',925:'#09091a',900:'#0b0b18',850:'#0d0d1a'},
+          },
+          fontFamily:{sans:['Inter','system-ui','sans-serif']},
+          boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)'},
+          keyframes:{
+            toolbarIn:{'0%':{opacity:0,transform:'translateY(12px) scale(0.97)'},'100%':{opacity:1,transform:'none'}},
+            popIn:{'0%':{opacity:0,transform:'translateY(4px) scale(0.96)'},'100%':{opacity:1,transform:'none'}},
+            glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}},
+          },
+          animation:{
+            'toolbar-in':'toolbarIn 250ms cubic-bezier(0.16,1,0.3,1) both',
+            'pop-in':'popIn 180ms ease-out both',
+            'glow-pulse':'glowPulse 3s ease-in-out infinite',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    html,body,#root{height:100%;}
+    body{margin:0;background:#09091a;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+    ::selection{background:rgba(99,102,241,0.35);}
+    .scroll-area::-webkit-scrollbar{width:5px;}
+    .scroll-area::-webkit-scrollbar-track{background:transparent;}
+    .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.28);border-radius:9999px;}
+    input[type="checkbox"].cb{appearance:none;width:15px;height:15px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);cursor:pointer;transition:all 150ms;flex-shrink:0;}
+    input[type="checkbox"].cb:hover{border-color:rgba(255,255,255,0.3);}
+    input[type="checkbox"].cb:checked{background:#6366f1;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.18);}
+    input[type="checkbox"].cb:checked::after{content:'';display:block;width:9px;height:9px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") no-repeat center/contain;}
+    input[type="checkbox"].cb.indet{background:#6366f1;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.18);}
+    input[type="checkbox"].cb.indet::after{content:'';display:block;width:8px;height:2px;background:white;border-radius:9999px;}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+  const Ico=({d,size=16,stroke=2,className='',fill})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill||'none'} stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+  );
+  const I={
+    LayoutDash:p=><Ico {...p} d={<><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></>}/>,
+    Users:p=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+    GitBranch:p=><Ico {...p} d={<><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>}/>,
+    Mail:p=><Ico {...p} d={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/></>}/>,
+    Zap:p=><Ico {...p} d={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}/>,
+    BarChart:p=><Ico {...p} d={<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>}/>,
+    Settings:p=><Ico {...p} d={<><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>}/>,
+    MessageSq:p=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
+    Phone:p=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
+    Filter:p=><Ico {...p} d={<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>}/>,
+    Search:p=><Ico {...p} d={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>}/>,
+    Plus:p=><Ico {...p} d={<><path d="M5 12h14"/><path d="M12 5v14"/></>}/>,
+    X:p=><Ico {...p} d={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>}/>,
+    Tag:p=><Ico {...p} d={<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>}/>,
+    Trash:p=><Ico {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></>}/>,
+    ChevronDown:p=><Ico {...p} d={<polyline points="6 9 12 15 18 9"/>}/>,
+    Check:p=><Ico {...p} d={<polyline points="20 6 9 17 4 12"/>}/>,
+    Sparkles:p=><Ico {...p} d={<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>}/>,
+  };
+
+  const CONTACTS=[
+    {id:1,name:'Sarah Chen',company:'Meridian Agency',email:'sarah@meridian.co',status:'Active',last:'2h ago',value:'$24k',avatar:'SC',color:'#3b82f6'},
+    {id:2,name:'James Whitfield',company:'Summit Digital',email:'james@summit.io',status:'Follow-up',last:'Yesterday',value:'$18k',avatar:'JW',color:'#8b5cf6'},
+    {id:3,name:'Priya Kapoor',company:'Kapoor & Assoc',email:'priya@kapoor.com',status:'Follow-up',last:'3 days ago',value:'$31k',avatar:'PK',color:'#10b981'},
+    {id:4,name:'Marcus Rodriguez',company:'Pivot Studio',email:'marcus@pivot.studio',status:'New',last:'Today',value:'$8k',avatar:'MR',color:'#f59e0b'},
+    {id:5,name:'Lisa Nakamura',company:'Nova Growth',email:'lisa@novagrowth.co',status:'Active',last:'1h ago',value:'$42k',avatar:'LN',color:'#ec4899'},
+    {id:6,name:'Tom Barrett',company:'Barrett Digital',email:'tom@barrett.co',status:'Active',last:'4h ago',value:'$15k',avatar:'TB',color:'#14b8a6'},
+    {id:7,name:'Riley Voss',company:'Clearview Media',email:'riley@clearview.tv',status:'Cold',last:'2 wks ago',value:'$0',avatar:'RV',color:'#64748b'},
+    {id:8,name:'Jordan Parks',company:'Atlas Consulting',email:'jordan@atlas.dev',status:'Active',last:'Yesterday',value:'$29k',avatar:'JP',color:'#3b82f6'},
+  ];
+  const STATUS_STYLE={
+    Active:{bg:'bg-emerald-500/10',fg:'text-emerald-400',dot:'#34d399'},
+    'Follow-up':{bg:'bg-amber-500/10',fg:'text-amber-400',dot:'#fbbf24'},
+    New:{bg:'bg-blue-500/10',fg:'text-blue-400',dot:'#60a5fa'},
+    Cold:{bg:'bg-white/[0.05]',fg:'text-white/45',dot:'#94a3b8'},
+  };
+  const TAGS=[{key:'hot-lead',label:'Hot lead',color:'#f87171'},{key:'decision-maker',label:'Decision maker',color:'#a78bfa'},{key:'follow-up',label:'Follow-up',color:'#fbbf24'},{key:'champion',label:'Champion',color:'#34d399'}];
+  const STATUS_OPTS=['Active','Follow-up','New','Cold'];
+
+  function Sidebar() {
+    const items=[
+      {key:'dash',Icon:I.LayoutDash,href:'Dashboard.html'},{key:'contacts',Icon:I.Users,href:'Contacts.html'},
+      {key:'pipeline',Icon:I.GitBranch,href:'Pipeline.html'},{key:'email',Icon:I.Mail,href:'Inbox.html'},
+      {key:'sms',Icon:I.MessageSq,href:'SMS Inbox.html'},{key:'calls',Icon:I.Phone,href:'Calls.html'},
+      {key:'automations',Icon:I.Zap,href:'Automations.html'},{key:'reports',Icon:I.BarChart,href:'Reports.html'},
+    ];
+    return (
+      <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
+        <a href="#" className="mb-4"><div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-brand" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)'}}><span className="text-white font-black text-sm">n</span></div></a>
+        {items.map(({key,Icon,href})=>(
+          <a key={key} href={href} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all',key==='contacts'?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></a>
+        ))}
+        <div className="mt-auto flex flex-col items-center gap-3">
+          <button className="w-9 h-9 rounded-xl text-white/30 hover:text-white/70 hover:bg-white/[0.04] flex items-center justify-center"><I.Settings size={16}/></button>
+          <button className="w-8 h-8 rounded-full text-white text-xs font-bold ring-1 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</button>
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Status menu ─────────────────────────────────────────────────────────
+  function StatusMenu({onClose}) {
+    return (
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-52 rounded-xl border border-white/[0.10] shadow-[0_16px_50px_rgba(0,0,0,0.55)] overflow-hidden z-50 animate-pop-in" style={{background:'#0d0d1f'}}>
+        <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider px-3.5 pt-3 pb-1.5">Set status for all</p>
+        {STATUS_OPTS.map(s=>{
+          const st=STATUS_STYLE[s];
+          return (
+            <button key={s} onClick={onClose} className="w-full flex items-center gap-2.5 px-3.5 py-2 hover:bg-white/[0.04] transition-colors">
+              <span className="w-2 h-2 rounded-full" style={{background:st.dot}}/>
+              <span className="text-[12.5px] text-white">{s}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Tag menu ─────────────────────────────────────────────────────────────
+  function TagMenu({onClose}) {
+    const [sel,setSel]=React.useState([]);
+    return (
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-60 rounded-xl border border-white/[0.10] shadow-[0_16px_50px_rgba(0,0,0,0.55)] overflow-hidden z-50 animate-pop-in" style={{background:'#0d0d1f'}}>
+        <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider px-3.5 pt-3 pb-1.5">Add tags</p>
+        {TAGS.map(t=>{
+          const active=sel.includes(t.key);
+          return (
+            <button key={t.key} onClick={()=>setSel(p=>p.includes(t.key)?p.filter(x=>x!==t.key):[...p,t.key])}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2 hover:bg-white/[0.04] transition-colors">
+              <span className="w-2 h-2 rounded-full" style={{background:t.color}}/>
+              <span className="text-[12.5px] text-white flex-1 text-left">{t.label}</span>
+              {active && <I.Check size={12} className="text-brand-300"/>}
+            </button>
+          );
+        })}
+        <div className="px-3.5 py-2.5 border-t border-white/[0.05]">
+          <button onClick={onClose} disabled={sel.length===0}
+            className={['w-full py-1.5 rounded-lg text-[12px] font-semibold transition-all',
+              sel.length>0?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.04] text-white/30 cursor-not-allowed'].join(' ')}>
+            Apply {sel.length>0?`${sel.length} tag${sel.length>1?'s':''}`:''} 
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Delete confirm ────────────────────────────────────────────────────────
+  function DeleteConfirm({count,onConfirm,onCancel}) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(7,7,15,0.72)',backdropFilter:'blur(8px)'}}>
+        <div onClick={onCancel} className="absolute inset-0"/>
+        <div className="relative animate-pop-in rounded-2xl border border-red-500/25 bg-[#120812] p-6 max-w-sm w-full mx-6 shadow-[0_24px_80px_rgba(0,0,0,0.7)]">
+          <div className="w-10 h-10 rounded-xl bg-red-500/15 ring-1 ring-red-500/30 text-red-300 flex items-center justify-center mb-4">
+            <I.Trash size={16}/>
+          </div>
+          <p className="text-[15px] font-bold text-white mb-1">Delete {count} contact{count>1?'s':''}?</p>
+          <p className="text-[13px] text-white/55 mb-5">This can't be undone. Linked deals and activities will be unassigned.</p>
+          <div className="flex items-center gap-2">
+            <button onClick={onCancel} className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">
+              Cancel
+            </button>
+            <button onClick={onConfirm} className="flex-1 px-3 py-2 rounded-lg text-[12.5px] font-semibold text-white bg-red-500 hover:bg-red-400 transition-all">
+              Delete permanently
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Bulk toolbar ──────────────────────────────────────────────────────────
+  function BulkToolbar({selected,onDeselect}) {
+    const n=selected.length;
+    const [menu,setMenu]=React.useState(null); // 'tag'|'status'|null
+    const [deleteOpen,setDeleteOpen]=React.useState(false);
+
+    function closeMenu(){setMenu(null);}
+
+    return (
+      <>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-toolbar-in">
+          <div className="flex items-center gap-1 px-2 py-2 rounded-2xl border border-white/[0.12] shadow-[0_8px_50px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)]"
+               style={{background:'#13131f',backdropFilter:'blur(20px)'}}>
+
+            {/* Count */}
+            <div className="flex items-center gap-2 px-3 pr-4">
+              <div className="w-5 h-5 rounded bg-brand-500/25 text-brand-200 text-[10px] font-bold flex items-center justify-center">{n}</div>
+              <p className="text-[12.5px] font-semibold text-white whitespace-nowrap">{n} contact{n>1?'s':''} selected</p>
+              <button onClick={onDeselect} title="Deselect all" className="w-5 h-5 rounded text-white/45 hover:text-white flex items-center justify-center transition-colors">
+                <I.X size={11}/>
+              </button>
+            </div>
+
+            <div className="w-px h-7 bg-white/[0.08]"/>
+
+            {/* Tag */}
+            <div className="relative">
+              <button onClick={()=>setMenu(m=>m==='tag'?null:'tag')}
+                className={['inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all',
+                  menu==='tag'?'bg-white/[0.10] text-white':'text-white/75 hover:text-white hover:bg-white/[0.06]'].join(' ')}>
+                <I.Tag size={13}/> Tag <I.ChevronDown size={10} className="text-white/45"/>
+              </button>
+              {menu==='tag' && <TagMenu onClose={closeMenu}/>}
+            </div>
+
+            {/* Email */}
+            <button className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/75 hover:text-white hover:bg-white/[0.06] transition-all">
+              <I.Mail size={13}/> Email
+            </button>
+
+            {/* SMS */}
+            <button className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/75 hover:text-white hover:bg-white/[0.06] transition-all">
+              <I.MessageSq size={13}/> SMS
+            </button>
+
+            {/* Change status */}
+            <div className="relative">
+              <button onClick={()=>setMenu(m=>m==='status'?null:'status')}
+                className={['inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all',
+                  menu==='status'?'bg-white/[0.10] text-white':'text-white/75 hover:text-white hover:bg-white/[0.06]'].join(' ')}>
+                <I.Sparkles size={13}/> Change status <I.ChevronDown size={10} className="text-white/45"/>
+              </button>
+              {menu==='status' && <StatusMenu onClose={closeMenu}/>}
+            </div>
+
+            <div className="w-px h-7 bg-white/[0.08]"/>
+
+            {/* Delete */}
+            <button onClick={()=>setDeleteOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-all">
+              <I.Trash size={13}/> Delete
+            </button>
+          </div>
+        </div>
+
+        {deleteOpen && <DeleteConfirm count={n} onConfirm={()=>{setDeleteOpen(false);onDeselect();}} onCancel={()=>setDeleteOpen(false)}/>}
+      </>
+    );
+  }
+
+  // ── Page ─────────────────────────────────────────────────────────────────
+  function Page() {
+    const [checked,setChecked]=React.useState(new Set([1,2,5]));
+
+    function toggle(id){setChecked(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});}
+    function toggleAll(){
+      if(checked.size===CONTACTS.length) setChecked(new Set());
+      else setChecked(new Set(CONTACTS.map(c=>c.id)));
+    }
+    const allChecked=checked.size===CONTACTS.length;
+    const someChecked=checked.size>0&&checked.size<CONTACTS.length;
+
+    return (
+      <div data-screen-label="Bulk Actions" className="h-full flex" style={{background:'#09091a'}}>
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(99,102,241,0.055)',filter:'blur(140px)',top:-200,right:-100}}/>
+        </div>
+        <div className="relative z-10 flex w-full h-full">
+          <Sidebar/>
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Topbar */}
+            <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'#09091a'}}>
+              <div className="flex items-center gap-3">
+                <h1 className="text-white text-[18px] font-bold tracking-tight">Contacts</h1>
+                <span className="text-[11px] text-white/40">{CONTACTS.length} contacts</span>
+                {checked.size>0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25 text-[11px] font-medium">
+                    {checked.size} selected
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 w-72">
+                  <I.Search size={12} className="text-white/40"/>
+                  <input type="text" placeholder="Search contacts…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/>
+                </div>
+                <button className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/75 hover:text-white bg-white/[0.04] border border-white/[0.08] transition-all">
+                  <I.Filter size={12}/> Filters
+                </button>
+                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">
+                  <I.Plus size={13} stroke={2.4}/> New contact
+                </button>
+              </div>
+            </header>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto scroll-area pb-24">
+              <table className="w-full">
+                <thead className="sticky top-0 z-10" style={{background:'#0a0a1c'}}>
+                  <tr className="border-b border-white/[0.05]">
+                    <th className="px-5 py-3 text-left w-12">
+                      <input type="checkbox" className={['cb',someChecked?'indet':''].join(' ')}
+                        checked={allChecked} onChange={toggleAll}/>
+                    </th>
+                    {['Name','Company','Status','Last contacted','Deal value',''].map(h=>(
+                      <th key={h} className="px-3 py-3 text-left text-[10.5px] font-semibold text-white/45 uppercase tracking-wider">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {CONTACTS.map(c=>{
+                    const isChecked=checked.has(c.id);
+                    const st=STATUS_STYLE[c.status];
+                    return (
+                      <tr key={c.id} onClick={()=>toggle(c.id)}
+                        className={['border-b border-white/[0.03] transition-colors cursor-pointer group',
+                          isChecked?'bg-brand-500/[0.05]':'hover:bg-white/[0.025]'].join(' ')}>
+                        <td className="px-5 py-3" onClick={e=>e.stopPropagation()}>
+                          <input type="checkbox" className="cb" checked={isChecked} onChange={()=>toggle(c.id)}/>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{background:c.color}}>{c.avatar}</div>
+                            <div>
+                              <p className="text-[13px] font-semibold text-white">{c.name}</p>
+                              <p className="text-[11px] text-white/40">{c.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-[12.5px] text-white/65">{c.company}</td>
+                        <td className="px-3 py-3">
+                          <span className={['inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium',st.bg,st.fg].join(' ')}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{c.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-[12px] text-white/55">{c.last}</td>
+                        <td className="px-3 py-3 text-[12.5px] text-white/75 font-semibold tabular-nums">{c.value}</td>
+                        <td className="px-3 py-3"/>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {checked.size>0 && <BulkToolbar selected={[...checked]} onDeselect={()=>setChecked(new Set())}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
+</script>
+</body>
+</html>
