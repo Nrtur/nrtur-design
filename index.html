@@ -357,16 +357,12 @@ function NotifDropdown({close,goTo}){
 // ?? AppSidebar ????????????????????????????????????????????????????????????????
 function AppSidebar({active,goTo}){
   const items=[
-    {key:'dashboard',  Icon:I.LayoutDash,label:'Dashboard'},
-    {key:'contacts',   Icon:I.Users,     label:'Contacts'},
-    {key:'pipeline',   Icon:I.GitBranch, label:'Pipeline'},
-    {key:'email-inbox',Icon:I.Mail,      label:'Email'},
-    {key:'calls',      Icon:I.Phone,     label:'Calls'},
-    {key:'automations',Icon:I.Zap,       label:'Automations'},
-    {key:'reports',    Icon:I.BarChart,  label:'Reports'},
+    {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
+    {key:'contacts', Icon:I.Users,     label:'Contacts'},
+    {key:'pipeline', Icon:I.GitBranch, label:'Pipeline'},
+    {key:'inbox',    Icon:I.Inbox,     label:'Inbox'},
+    {key:'reports',  Icon:I.BarChart,  label:'Reports'},
   ];
-  const inAutoSection=['automations','automation-builder','sms-sequences','email-sequences','sms-templates'].includes(active);
-  const inEmailSection=['email-inbox','sms-inbox'].includes(active);
   const settActive=active&&active.startsWith('settings');
   const [addOpen,setAddOpen]=React.useState(false);
   const addRef=React.useRef(null);
@@ -378,33 +374,15 @@ function AppSidebar({active,goTo}){
         <button onClick={()=>setAddOpen(v=>!v)} title="Quick add" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',addOpen?'bg-brand-500 text-white shadow-brand':'text-brand-300 hover:text-brand-200 hover:bg-brand-500/15'].join(' ')}><I.Plus size={18} stroke={2.4}/></button>
         {addOpen&&(<div className="absolute left-[44px] top-0 z-50 w-52 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
           <p className="px-3 py-2 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] border-b border-white/[0.06]">Quick add</p>
-          {[{l:'New contact',Icon:I.UserPlus,p:'add-contact'},{l:'New deal',Icon:I.GitBranch,p:'add-deal'},{l:'Log a call',Icon:I.Phone,p:'calls'},{l:'New automation',Icon:I.Zap,p:'automation-builder'}].map(it=>(
+          {[{l:'New contact',Icon:I.UserPlus,p:'add-contact'},{l:'New deal',Icon:I.GitBranch,p:'add-deal'},{l:'Compose',Icon:I.Mail,p:'inbox'},{l:'New automation',Icon:I.Zap,p:'settings-automations'}].map(it=>(
             <button key={it.l} onClick={()=>{setAddOpen(false);goTo(it.p);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-6 h-6 rounded-md bg-white/[0.05] flex items-center justify-center text-brand-300"><it.Icon size={13}/></span>{it.l}</button>
           ))}
         </div>)}
       </div>
       <div className="w-6 h-px bg-white/[0.06] my-1.5"/>
       {items.map(({key,Icon,label})=>{
-        const a=active===key||(key==='automations'&&inAutoSection)||(key==='email-inbox'&&inEmailSection);
-        return(
-          <React.Fragment key={key}>
-            <button onClick={()=>goTo(key)} title={label} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></button>
-            {key==='email-inbox'&&inEmailSection&&(
-              <div className="flex flex-col gap-1">
-                {[{p:'email-inbox',icon:I.Mail,t:'Email'},{p:'sms-inbox',icon:I.Hash,t:'SMS Inbox'}].map(({p,icon:Sub,t})=>(
-                  <button key={p} onClick={()=>goTo(p)} title={t} className={['w-7 h-7 rounded-lg flex items-center justify-center transition-all',active===p?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/25 hover:text-white/60 hover:bg-white/[0.04]'].join(' ')} style={{marginLeft:2}}><Sub size={11}/></button>
-                ))}
-              </div>
-            )}
-            {key==='automations'&&inAutoSection&&(
-              <div className="flex flex-col gap-1">
-                {[{p:'email-sequences',icon:I.Mail,t:'Email Seq'},{p:'sms-sequences',icon:I.Layers,t:'SMS Seq'},{p:'sms-templates',icon:I.Hash,t:'SMS Templates'}].map(({p,icon:Sub,t})=>(
-                  <button key={p} onClick={()=>goTo(p)} title={t} className={['w-7 h-7 rounded-lg flex items-center justify-center transition-all',active===p?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/25 hover:text-white/60 hover:bg-white/[0.04]'].join(' ')} style={{marginLeft:2}}><Sub size={11}/></button>
-                ))}
-              </div>
-            )}
-          </React.Fragment>
-        );
+        const a=active===key;
+        return(<button key={key} onClick={()=>goTo(key)} title={label} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></button>);
       })}
       <div className="mt-auto flex flex-col items-center gap-3">
         <button onClick={()=>goTo('settings-general')} title="Settings" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',settActive?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Settings size={16}/></button>
@@ -480,6 +458,7 @@ function SettingsSubNav({active,goTo}){
       {label:'Pipeline',page:'settings-pipeline',Icon:I.GitBranch},
     ]},
     {title:'Communication',items:[
+      {label:'Automations',page:'settings-automations',Icon:I.Zap},
       {label:'Notifications',page:'settings-notifications',Icon:I.Bell},
       {label:'Unsubscribes',page:'settings-unsubscribes',Icon:I.Ban},
       {label:'Integrations',page:'settings-integrations',Icon:I.Plug},
@@ -512,10 +491,9 @@ const ALL_PAGES=[
   'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5',
   'dashboard','contacts','contact-detail','add-contact','edit-contact',
   'pipeline','deal-detail','add-deal',
-  'email-inbox','sms-inbox','calls',
-  'automations','automation-builder','email-sequences','sms-sequences','sms-templates',
+  'inbox','automation-builder',
   'reports',
-  'settings-billing','settings-team','settings-general','settings-integrations',
+  'settings-billing','settings-team','settings-general','settings-automations','settings-integrations',
   'settings-pipeline','settings-notifications','settings-unsubscribes','settings-privacy',
   'profile',
 ];
@@ -921,92 +899,205 @@ function OnboardingPage({step,goTo}){
 function DashboardSkeleton({goTo}){
   return(<div className="h-full flex" style={{background:'#09091a'}}><AppSidebar active="dashboard" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo}/><div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1480px] mx-auto"><div className="mb-6"><Skel w="260px" h="28px" r="7px"/><Skel w="200px" h="13px" r="5px" s={{marginTop:8}}/></div><div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">{[0,1,2,3].map(i=>(<div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4"><div className="flex items-center justify-between mb-3"><Skel w="80px" h="10px"/><Skel w="32px" h="32px" r="8px"/></div><Skel w="90px" h="30px" r="6px"/><Skel w="56px" h="10px" r="4px" s={{marginTop:8}}/></div>))}</div></div></div><AppFooter/></div></div>);
 }
+// ?? Customizable Dashboard ????????????????????????????????????????????????????
+const WACCENT={brand:'bg-brand-500/10 ring-brand-500/20 text-brand-300',emerald:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300',amber:'bg-amber-500/10 ring-amber-500/20 text-amber-300',violet:'bg-violet-500/10 ring-violet-500/20 text-violet-300',blue:'bg-blue-500/10 ring-blue-500/20 text-blue-300',red:'bg-red-500/10 ring-red-500/20 text-red-300'};
+const DASH_STAGES=[{name:'Prospecting',count:8,val:42,fill:35,color:'#94a3b8'},{name:'Qualified',count:5,val:81,fill:60,color:'#818cf8'},{name:'Proposal',count:4,val:67,fill:50,color:'#a78bfa'},{name:'Negotiation',count:3,val:58,fill:43,color:'#fbbf24'},{name:'Won',count:11,val:134,fill:100,color:'#34d399'}];
+const DASH_ACT=[{kind:'email',label:'EMAIL SENT',title:'Sent proposal to Summit Digital',sub:'James Rivera · $31k',time:'12m',chip:'bg-brand-500/15 ring-brand-500/25 text-brand-300'},{kind:'deal',label:'DEAL WON',title:'Forge & Co moved to Won',sub:'Alex Morgan · $44k',time:'2h',chip:'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300'},{kind:'note',label:'NOTE',title:'Called Sarah, ready to proceed',sub:'Sarah Chen · Meridian',time:'5h',chip:'bg-amber-500/15 ring-amber-500/25 text-amber-300'},{kind:'new',label:'NEW CONTACT',title:'Barrett Digital added',sub:'By Jamie Kim',time:'1d',chip:'bg-violet-500/15 ring-violet-500/25 text-violet-300'}];
+const DASH_CONTACTS=[{name:'Sarah Chen',co:'Meridian Agency',avatar:'SC',color:'#3b82f6',status:'Active',deal:'$24k'},{name:'James Rivera',co:'Summit Digital',avatar:'JR',color:'#8b5cf6',status:'Hot',deal:'$31k'},{name:'Maria Lopez',co:'Bloom Creative',avatar:'ML',color:'#ec4899',status:'Warm',deal:'$18k'},{name:'Marcus Rios',co:'Kapoor & Assoc',avatar:'MR',color:'#f59e0b',status:'Warm',deal:'$28k'}];
+const DASH_REPS=[{name:'Alex Morgan',avatar:'AM',color:'#3b82f6',val:'$134k',pct:82},{name:'Sarah Chen',avatar:'SC',color:'#ec4899',val:'$98k',pct:71},{name:'Jamie Kim',avatar:'JK',color:'#8b5cf6',val:'$76k',pct:58},{name:'Marcus Rios',avatar:'MR',color:'#f59e0b',val:'$41k',pct:32}];
+const DASH_STATUS_C={Active:'text-emerald-300 bg-emerald-500/12 ring-emerald-500/25',Hot:'text-red-300 bg-red-500/12 ring-red-500/25',Warm:'text-amber-300 bg-amber-500/12 ring-amber-500/25',New:'text-blue-300 bg-blue-500/12 ring-blue-500/25'};
+const WIDGET_DEFS={
+  'pipeline-value':{name:'Pipeline Value',desc:'Total open pipeline',Icon:I.GitBranch,cat:'Pipeline',size:1,type:'stat',d:{value:'$324k',delta:'+12%',up:true,accent:'brand',Icon:I.GitBranch}},
+  'weighted-forecast':{name:'Weighted Forecast',desc:'Probability-weighted revenue',Icon:I.TrendUp,cat:'Pipeline',size:1,type:'stat',d:{value:'$218k',delta:'+8%',up:true,accent:'emerald',Icon:I.TrendUp}},
+  'win-rate':{name:'Win Rate',desc:'Won vs closed deals',Icon:I.Target,cat:'Pipeline',size:1,type:'stat',d:{value:'68%',delta:'-2%',up:false,accent:'amber',Icon:I.Target}},
+  'avg-cycle':{name:'Avg Deal Cycle',desc:'Days from create to won',Icon:I.Clock,cat:'Pipeline',size:1,type:'stat',d:{value:'14d',delta:'-3d',up:true,accent:'violet',Icon:I.Clock}},
+  'deals-by-stage':{name:'Deals by Stage',desc:'Pipeline value per stage',Icon:I.BarChart,cat:'Pipeline',size:2,type:'bars'},
+  'deals-donut':{name:'Deals Donut',desc:'Stage distribution',Icon:I.Target,cat:'Pipeline',size:1,type:'donut'},
+  'top-contacts':{name:'Top Contacts',desc:'Most active this week',Icon:I.Users,cat:'Contacts',size:2,type:'contacts'},
+  'new-this-week':{name:'New This Week',desc:'Contacts added recently',Icon:I.Sparkles,cat:'Contacts',size:1,type:'count',d:{value:3,Icon:I.Sparkles,accent:'brand',sub:'new contacts',rows:['Barrett Digital','Nova Growth','Helix Partners']}},
+  'needs-followup':{name:'Needs Follow-up',desc:'Contacts going cold',Icon:I.Bell,cat:'Contacts',size:1,type:'count',d:{value:2,Icon:I.Bell,accent:'amber',sub:'need a nudge',rows:['Luca Bianchi · 21d','Priya Nair · 10d']}},
+  'uncontacted-count':{name:'Uncontacted',desc:'No activity 30d+',Icon:I.Clock,cat:'Contacts',size:1,type:'count',d:{value:1,Icon:I.Clock,accent:'red',sub:'at risk',rows:['Marcus Rios · 35d']}},
+  'contact-growth':{name:'Contact Growth',desc:'Cumulative over time',Icon:I.TrendUp,cat:'Contacts',size:2,type:'line'},
+  'recent-activity':{name:'Recent Activity',desc:'Latest team actions',Icon:I.Zap,cat:'Activity',size:2,type:'activity',d:DASH_ACT},
+  'calls-logged':{name:'Calls Logged',desc:'Calls this period',Icon:I.Phone,cat:'Activity',size:1,type:'stat',d:{value:'34',delta:'+6',up:true,accent:'blue',Icon:I.Phone}},
+  'emails-sent':{name:'Emails Sent',desc:'Outbound emails',Icon:I.Mail,cat:'Activity',size:1,type:'stat',d:{value:'184',delta:'+22',up:true,accent:'brand',Icon:I.Mail}},
+  'tasks':{name:'My Tasks',desc:'Open to-dos',Icon:I.CheckSquare,cat:'Activity',size:1,type:'empty',d:{dataType:'tasks',expl:'Create a task to keep follow-ups on track.',cta:'Create task',page:null}},
+  'team-leaderboard':{name:'Team Leaderboard',desc:'Revenue by rep',Icon:I.Trophy,cat:'Team',size:2,type:'leaderboard',d:DASH_REPS},
+  'team-activity':{name:'Team Activity',desc:'What the team is doing',Icon:I.Zap,cat:'Team',size:2,type:'activity',d:DASH_ACT},
+  'rep-performance':{name:'Rep Performance',desc:'Quota by rep',Icon:I.BarChart,cat:'Team',size:2,type:'bars'},
+  'team-goal':{name:'Team Goal',desc:'Quarterly team target',Icon:I.Target,cat:'Team',size:1,type:'goal',d:{current:349,target:500,prefix:'$',suffix:'k',Icon:I.Target}},
+  'monthly-goal':{name:'Monthly Goal',desc:'Revenue vs target',Icon:I.Target,cat:'Goals',size:1,type:'goal',d:{current:134,target:200,prefix:'$',suffix:'k',Icon:I.Target}},
+  'quota-attainment':{name:'Quota Attainment',desc:'Personal quota',Icon:I.Trophy,cat:'Goals',size:1,type:'goal',d:{current:68,target:100,suffix:'%',Icon:I.Trophy}},
+  'pipeline-coverage':{name:'Pipeline Coverage',desc:'Pipeline vs quota',Icon:I.GitBranch,cat:'Goals',size:1,type:'goal',d:{current:32,target:40,suffix:'x ÷10',Icon:I.GitBranch}},
+  'quick-actions':{name:'Quick Actions',desc:'Common shortcuts',Icon:I.Zap,cat:'Quick Actions',size:1,type:'actions',d:[{l:'New contact',Icon:I.UserPlus,p:'add-contact'},{l:'New deal',Icon:I.GitBranch,p:'add-deal'},{l:'Open inbox',Icon:I.Mail,p:'inbox'},{l:'Log a call',Icon:I.Phone,p:'inbox'}]},
+  'quick-add-deal':{name:'Add Deal',desc:'Jump to new deal',Icon:I.GitBranch,cat:'Quick Actions',size:1,type:'actions',d:[{l:'New deal',Icon:I.GitBranch,p:'add-deal'},{l:'View pipeline',Icon:I.BarChart,p:'pipeline'}]},
+  'quick-import':{name:'Import Contacts',desc:'Bulk import',Icon:I.Upload,cat:'Quick Actions',size:1,type:'actions',d:[{l:'Import CSV',Icon:I.Upload,p:'contacts'},{l:'Connect Zapier',Icon:I.Plug,p:'settings-integrations'}]},
+};
+const WIDGET_LIBRARY=[
+  {cat:'Pipeline',ids:['pipeline-value','weighted-forecast','win-rate','avg-cycle','deals-by-stage','deals-donut']},
+  {cat:'Contacts',ids:['top-contacts','new-this-week','needs-followup','contact-growth','uncontacted-count']},
+  {cat:'Activity',ids:['recent-activity','calls-logged','emails-sent','tasks']},
+  {cat:'Team',ids:['team-leaderboard','team-activity','rep-performance','team-goal'],team:true},
+  {cat:'Goals',ids:['monthly-goal','quota-attainment','pipeline-coverage']},
+  {cat:'Quick Actions',ids:['quick-actions','quick-add-deal','quick-import']},
+];
+const DEFAULT_LAYOUT=[{id:'pipeline-value',w:1},{id:'win-rate',w:1},{id:'weighted-forecast',w:1},{id:'deals-by-stage',w:2},{id:'needs-followup',w:1},{id:'recent-activity',w:2},{id:'new-this-week',w:1},{id:'top-contacts',w:2}];
+const DASH_TEMPLATES=[
+  {key:'rep',name:'Sales Rep',desc:'Your personal pipeline, follow-ups, and activity.',Icon:I.Target,layout:[{id:'pipeline-value',w:1},{id:'win-rate',w:1},{id:'quota-attainment',w:1},{id:'needs-followup',w:1},{id:'recent-activity',w:2},{id:'top-contacts',w:2},{id:'quick-actions',w:1}]},
+  {key:'manager',name:'Manager View',desc:'Team leaderboard, rep performance, and pipeline health.',Icon:I.Users,layout:[{id:'team-goal',w:1},{id:'win-rate',w:1},{id:'weighted-forecast',w:1},{id:'team-leaderboard',w:2},{id:'needs-followup',w:1},{id:'rep-performance',w:2},{id:'team-activity',w:2}]},
+  {key:'founder',name:'Founder Overview',desc:'High-level KPIs and revenue trajectory.',Icon:I.TrendUp,layout:[{id:'pipeline-value',w:1},{id:'weighted-forecast',w:1},{id:'monthly-goal',w:1},{id:'deals-by-stage',w:2},{id:'avg-cycle',w:1},{id:'contact-growth',w:2},{id:'team-leaderboard',w:2}]},
+  {key:'agency',name:'Agency Focus',desc:'Client contacts, activity, and quick actions.',Icon:I.Sparkles,layout:[{id:'top-contacts',w:2},{id:'new-this-week',w:1},{id:'recent-activity',w:2},{id:'needs-followup',w:1},{id:'emails-sent',w:1},{id:'calls-logged',w:1},{id:'quick-actions',w:1}]},
+];
+function getDef(id){return WIDGET_DEFS[id]||{name:id,Icon:I.LayoutDash,size:1,type:'empty',d:{dataType:'data',expl:'Nothing here yet.',cta:'Add data'}};}
+function DashHdr({name,sub,action}){return(<div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-white font-semibold text-[14px]">{name}</p>{sub&&<p className="text-[11px] text-white/45 mt-0.5">{sub}</p>}</div>{action}</div>);}
+function renderWidgetBody(def,cfg,goTo){
+  const name=cfg.name||def.name;const range=cfg.range||'Month';const filter=cfg.filter||'All';const t=def.type;
+  if(t==='stat'){const d=def.d;return(<div className="p-4"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><div className="flex items-end justify-between"><p className="text-white text-[28px] font-black leading-none tabular-nums">{d.value}</p><span className={['inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full',d.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{d.up?<I.TrendUp size={9} stroke={2.6}/>:<I.TrendDown size={9} stroke={2.6}/>}{d.delta}</span></div><p className="text-[10px] text-white/30 mt-2">{range} · {filter}{cfg.target?' · target $'+cfg.target+'k':''}</p></div>);}
+  if(t==='count'){const d=def.d;return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><p className="text-white text-[30px] font-black leading-none tabular-nums">{d.value}</p><p className="text-[11px] text-white/45 mt-1">{d.sub}</p><div className="mt-3 flex flex-col gap-1.5">{d.rows.map((r,i)=>(<div key={i} className="text-[11px] text-white/55 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] truncate">{r}</div>))}</div></div>);}
+  if(t==='bars'){const chart=cfg.chart||'Bar';const total=DASH_STAGES.reduce((a,s)=>a+s.val,0);const C=2*Math.PI*34;let acc=0;return(<div className="flex flex-col h-full">
+    <DashHdr name={name} sub={`$382k · ${range}`} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+    <div className="p-5 flex-1">
+      {chart==='Donut'?(<div className="flex items-center gap-5"><svg viewBox="0 0 100 100" className="w-28 h-28 shrink-0" style={{transform:'rotate(-90deg)'}}>{DASH_STAGES.map(s=>{const dash=(s.val/total)*C;const el=<circle key={s.name} cx="50" cy="50" r="34" fill="none" stroke={s.color} strokeWidth="13" strokeDasharray={`${dash} ${C-dash}`} strokeDashoffset={-acc}/>;acc+=dash;return el;})}</svg><div className="flex flex-col gap-1.5">{DASH_STAGES.map(s=>(<div key={s.name} className="flex items-center gap-2 text-[12px]"><span className="w-2 h-2 rounded-sm" style={{background:s.color}}/><span className="text-white/65 flex-1">{s.name}</span><span className="text-white font-semibold tabular-nums">${s.val}k</span></div>))}</div></div>
+      ):chart==='Line'?(<svg viewBox="0 0 320 120" className="w-full" style={{height:120}}><polyline fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinejoin="round" points={DASH_STAGES.map((s,i)=>`${10+i*75},${110-(s.val/134)*95}`).join(' ')}/>{DASH_STAGES.map((s,i)=>(<circle key={s.name} cx={10+i*75} cy={110-(s.val/134)*95} r="3.5" fill={s.color}/>))}</svg>
+      ):(<div className="flex flex-col gap-3">{DASH_STAGES.map(s=>(<div key={s.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:s.color}}/><span className="text-[12px] font-medium text-white/70">{s.name}</span><span className="text-[10px] font-mono text-white/35 px-1 py-0.5 rounded bg-white/[0.05]">{s.count}</span></div><span className="text-[12px] font-bold text-white tabular-nums">${s.val}k</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:`${s.fill}%`,background:s.color}}/></div></div>))}</div>)}
+    </div>
+  </div>);}
+  if(t==='donut'){const total=DASH_STAGES.reduce((a,s)=>a+s.val,0);const C=2*Math.PI*34;let acc=0;return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By stage"/><div className="p-5 flex items-center justify-center"><svg viewBox="0 0 100 100" className="w-32 h-32" style={{transform:'rotate(-90deg)'}}>{DASH_STAGES.map(s=>{const dash=(s.val/total)*C;const el=<circle key={s.name} cx="50" cy="50" r="34" fill="none" stroke={s.color} strokeWidth="13" strokeDasharray={`${dash} ${C-dash}`} strokeDashoffset={-acc}/>;acc+=dash;return el;})}</svg></div></div>);}
+  if(t==='line'){const pts=[42,51,58,72,88,104,118,138];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="+1,284 · last 12 mo" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5"><div className="flex items-end gap-1.5" style={{height:120}}>{pts.map((v,i)=>(<div key={i} className="flex-1 rounded-sm" style={{height:`${(v/138)*100}%`,background:`rgba(99,102,241,${0.35+i*0.07})`,minHeight:4}}/>))}</div></div></div>);}
+  if(t==='activity'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Last 24 hours" action={<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-4 flex flex-col gap-2.5">{def.d.map((a,i)=>(<div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition-colors"><div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 text-white/60">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-0.5"><span className={['inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chip].join(' ')}>{a.label}</span><span className="text-[10px] text-white/30">{a.time}</span></div><p className="text-[13px] font-semibold text-white leading-tight truncate">{a.title}</p><p className="text-[11px] text-white/45 truncate">{a.sub}</p></div></div>))}</div></div>);}
+  if(t==='contacts'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Most active this week" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{DASH_CONTACTS.map((c,i)=>(<button key={i} onClick={()=>goTo('contact-detail')} className={['w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left',i<DASH_CONTACTS.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.co}</p></div><span className={['text-[10px] font-medium px-2 py-0.5 rounded-full ring-1',DASH_STATUS_C[c.status]||''].join(' ')}>{c.status}</span><span className="text-[13px] font-bold text-white tabular-nums">{c.deal}</span></button>))}</div></div>);}
+  if(t==='leaderboard'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Revenue won · this quarter"/><div className="p-4 flex flex-col gap-2.5">{def.d.map((r,i)=>(<div key={i} className="flex items-center gap-3"><span className="text-[11px] font-bold text-white/35 w-4">{i+1}</span><div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:r.color}}>{r.avatar}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between mb-1"><span className="text-[13px] font-semibold text-white truncate">{r.name}</span><span className="text-[12px] font-bold text-white tabular-nums">{r.val}</span></div><div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:r.pct+'%',background:i===0?'#34d399':'#818cf8'}}/></div></div></div>))}</div></div>);}
+  if(t==='goal'){const g=def.d;const target=cfg.target?parseFloat(cfg.target):g.target;const pct=Math.min(100,Math.round((g.current/target)*100));return(<div className="p-5 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-white font-semibold text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><g.Icon size={14}/></div></div><div className="flex items-baseline gap-2 mb-2.5"><span className="text-[26px] font-black text-white tabular-nums">{g.prefix||''}{g.current}{g.suffix||''}</span><span className="text-[12px] text-white/45">/ {g.prefix||''}{target}{g.suffix||''}</span></div><div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)',boxShadow:'0 0 12px rgba(99,102,241,0.5)'}}/></div><p className="text-[11px] text-white/40 mt-2">{pct}% of {range.toLowerCase()} target</p></div>);}
+  if(t==='actions'){return(<div className="p-4 h-full"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-3">{name}</p><div className="grid grid-cols-2 gap-2">{def.d.map(a=>(<button key={a.l} onClick={()=>goTo(a.p)} className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/[0.06] text-white/70 hover:text-white transition-all"><a.Icon size={16}/><span className="text-[11px] font-medium text-center leading-tight">{a.l}</span></button>))}</div></div>);}
+  const e=def.d;return(<div className="h-full min-h-[150px] flex items-center justify-center p-6"><div className="text-center"><div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/30"><def.Icon size={20}/></div><p className="text-[13px] font-bold text-white">No {e.dataType} yet</p><p className="text-[11px] text-white/40 mt-1 max-w-[200px] mx-auto leading-relaxed">{e.expl}</p><button onClick={()=>e.page&&goTo(e.page)} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12}/>{e.cta}</button></div></div>);
+}
+function WidgetConfigPopover({def,cfg,onClose,onApply}){
+  const [name,setName]=React.useState(cfg.name||def.name);
+  const [range,setRange]=React.useState(cfg.range||'Month');
+  const [filter,setFilter]=React.useState(cfg.filter||'All');
+  const [chart,setChart]=React.useState(cfg.chart||'Bar');
+  const [target,setTarget]=React.useState(cfg.target||'');
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))onClose();};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[onClose]);
+  const isChart=['bars','donut','line'].includes(def.type);const isKpi=['stat','count','goal'].includes(def.type);
+  const L='text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';const SEL='w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';
+  return(<div ref={ref} className="absolute top-9 right-2 z-40 w-64 rounded-xl border border-white/[0.10] p-3.5 flex flex-col gap-3" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+    <div className="flex items-center justify-between"><p className="text-[12px] font-bold text-white">Configure</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={13}/></button></div>
+    <div><label className={L}>Name</label><input value={name} onChange={e=>setName(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/></div>
+    <div><label className={L}>Date range</label><select value={range} onChange={e=>setRange(e.target.value)} className={SEL}>{['Today','Week','Month','Quarter','Custom'].map(o=>(<option key={o}>{o}</option>))}</select></div>
+    <div><label className={L}>Filter</label><select value={filter} onChange={e=>setFilter(e.target.value)} className={SEL}>{['All','Mine','By tag'].map(o=>(<option key={o}>{o}</option>))}</select></div>
+    {isChart&&<div><label className={L}>Chart type</label><div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{['Bar','Line','Donut'].map(o=>(<button key={o} onClick={()=>setChart(o)} className={['flex-1 py-1 rounded-md text-[11px] font-semibold transition-all',chart===o?'bg-brand-500 text-white':'text-white/50 hover:text-white'].join(' ')}>{o}</button>))}</div></div>}
+    {isKpi&&<div><label className={L}>Goal target</label><div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10]"><span className="text-white/45 text-[12px]">$</span><input value={target} onChange={e=>setTarget(e.target.value)} placeholder="200" className="flex-1 bg-transparent outline-none text-[12px] text-white font-mono w-full"/><span className="text-white/40 text-[11px]">k</span></div></div>}
+    <button onClick={()=>onApply({name,range,filter,chart,target})} className="w-full py-2 rounded-lg text-[12px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Apply</button>
+  </div>);
+}
+function DashboardWidget({uid,item,def,cfg,editMode,configOpen,onConfig,onCloseConfig,onApplyConfig,onRemove,goTo,onDragStart,onDragOver,onDrop,onDragEnd,dragging,dragOver}){
+  return(
+    <div draggable={editMode} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}
+      className={['relative rounded-2xl bg-white/[0.03] transition-all',editMode?'border border-dashed border-white/[0.20] '+(dragging?'opacity-30':'opacity-95')+(dragOver?' ring-2 ring-brand-500/50':''):'border border-white/[0.06] hover:border-white/[0.10]'].join(' ')}
+      style={{gridColumn:item.w===2?'span 2':'span 1'}}>
+      {editMode&&(<div className="absolute -top-3 left-2 right-2 flex items-center justify-between z-20 pointer-events-none">
+        <span className="pointer-events-auto cursor-grab inline-flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md border border-white/[0.12] text-white/45 text-[10px] font-medium" style={{background:'#15152a'}}><I.Grip size={11}/>Drag</span>
+        <div className="pointer-events-auto flex items-center gap-1">
+          <button onClick={onConfig} title="Configure" className="w-6 h-6 rounded-md border border-white/[0.12] flex items-center justify-center text-white/45 hover:text-white" style={{background:'#15152a'}}><I.Settings size={11}/></button>
+          <button onClick={onRemove} title="Remove" className="w-6 h-6 rounded-md border border-white/[0.12] flex items-center justify-center text-white/45 hover:text-red-300" style={{background:'#15152a'}}><I.X size={11}/></button>
+        </div>
+      </div>)}
+      <div className={editMode?'pointer-events-none select-none':''}>{renderWidgetBody(def,cfg,goTo)}</div>
+      {configOpen&&<WidgetConfigPopover def={def} cfg={cfg} onClose={onCloseConfig} onApply={onApplyConfig}/>}
+    </div>
+  );
+}
+function WidgetLibraryPanel({close,onAdd,role}){
+  const [q,setQ]=React.useState('');
+  return(<>
+    <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
+    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[320px] flex flex-col border-l border-white/[0.08]" style={{background:'rgba(11,11,24,0.98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+      <div className="px-5 py-4 border-b border-white/[0.06] shrink-0"><div className="flex items-center justify-between mb-3"><p className="text-[15px] font-bold text-white">Add widget</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div><div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search widgets..." className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/></div></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-4 py-4 flex flex-col gap-5">
+        {WIDGET_LIBRARY.map(sec=>{const locked=sec.team&&role==='Rep';const ids=sec.ids.filter(id=>{const d=getDef(id);return !q||d.name.toLowerCase().includes(q.toLowerCase())||d.desc.toLowerCase().includes(q.toLowerCase());});if(ids.length===0)return null;return(
+          <div key={sec.cat}><p className="px-1 mb-2 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] flex items-center gap-2">{sec.cat}{locked&&<span className="px-1.5 py-0.5 rounded text-[9px] bg-white/[0.06] text-white/40">Admin only</span>}</p>
+            <div className="flex flex-col gap-2">{ids.map(id=>{const d=getDef(id);return(<button key={id} disabled={locked} onClick={()=>!locked&&onAdd(id)} className={['flex items-start gap-3 p-3 rounded-xl border text-left transition-all',locked?'border-white/[0.05] bg-white/[0.02] opacity-50 cursor-not-allowed':'border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-brand-500/[0.05]'].join(' ')}><div className="w-9 h-9 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><d.Icon size={16}/></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-[13px] font-semibold text-white">{d.name}</p><span className="text-[9px] font-mono text-white/30 px-1 py-0.5 rounded bg-white/[0.05]">{d.size===2?'2×':'1×'}</span></div><p className="text-[11px] text-white/45 mt-0.5 leading-snug">{d.desc}</p></div>{!locked&&<I.Plus size={14} className="text-white/30 shrink-0 mt-1"/>}</button>);})}</div>
+          </div>);})}
+      </div>
+    </div>
+  </>);
+}
+function LayoutTemplatesModal({close,onApply}){
+  const [sel,setSel]=React.useState(null);
+  return(<div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+    <div style={{width:640,maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><div><p className="text-white text-[15px] font-bold">Layout templates</p><p className="text-white/45 text-[12px] mt-0.5">Start from a role-based layout. This replaces your current dashboard.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area p-5 grid grid-cols-1 sm:grid-cols-2 gap-3" style={{background:'#0d0d1a'}}>
+        {DASH_TEMPLATES.map(tp=>{const a=sel===tp.key;return(<button key={tp.key} onClick={()=>setSel(tp.key)} className={['text-left rounded-2xl border p-5 transition-all',a?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}>
+          <div className="flex items-center justify-between mb-3"><div className={['w-10 h-10 rounded-xl flex items-center justify-center',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><tp.Icon size={18}/></div>{a&&<I.Check size={16} className="text-brand-300"/>}</div>
+          <p className="text-[15px] font-bold text-white">{tp.name}</p><p className="text-[12px] text-white/50 mt-1 leading-relaxed">{tp.desc}</p>
+          <div className="mt-3 flex flex-wrap gap-1">{tp.layout.slice(0,6).map((it,i)=>(<span key={i} className="h-1.5 rounded-full bg-white/[0.10]" style={{width:it.w===2?28:13}}/>))}</div>
+          <p className="text-[10px] text-white/35 mt-2">{tp.layout.length} widgets</p>
+        </button>);})}
+      </div>
+      <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}>
+        <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={()=>sel&&onApply(DASH_TEMPLATES.find(t=>t.key===sel))} disabled={!sel} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all border-none',sel?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>Apply layout<I.ArrowRight size={13} stroke={2.4}/></button>
+      </div>
+    </div>
+  </div>);
+}
 function DashboardPage({goTo}){
   const loading=useSkeleton(1100);
+  const [editMode,setEditMode]=React.useState(false);
+  const [layout,setLayout]=React.useState(()=>DEFAULT_LAYOUT.map((it,i)=>({...it,uid:it.id+'-'+i})));
+  const [libraryOpen,setLibraryOpen]=React.useState(false);
+  const [templatesOpen,setTemplatesOpen]=React.useState(false);
+  const [configUid,setConfigUid]=React.useState(null);
+  const [configs,setConfigs]=React.useState({});
+  const [drag,setDrag]=React.useState(null);
+  const [dragOver,setDragOver]=React.useState(null);
+  const [toast,setToast]=React.useState('');
+  const {confirmNode,openConfirm}=useConfirm();
+  const role='Rep';
   if(loading)return <DashboardSkeleton goTo={goTo}/>;
-  const METRICS=[
-    {label:'Revenue Won',value:'$134k',delta:'+31%',up:true,accent:{bg:'bg-emerald-500/10',ring:'ring-emerald-500/20',fg:'text-emerald-300',Icon:I.Dollar}},
-    {label:'Total Deals',value:'107',delta:'+18%',up:true,accent:{bg:'bg-brand-500/10',ring:'ring-brand-500/20',fg:'text-brand-300',Icon:I.GitBranch}},
-    {label:'Win Rate',value:'68%',delta:'-2%',up:false,accent:{bg:'bg-amber-500/10',ring:'ring-amber-500/20',fg:'text-amber-300',Icon:I.Target}},
-    {label:'Avg Cycle',value:'14 days',delta:'-3d',up:true,accent:{bg:'bg-violet-500/10',ring:'ring-violet-500/20',fg:'text-violet-300',Icon:I.Clock}},
-  ];
-  const TOP_CONTACTS=[
-    {name:'Sarah Chen',co:'Meridian Agency',avatar:'SC',color:'#3b82f6',status:'Active',deal:'$24k'},
-    {name:'James Rivera',co:'Summit Digital',avatar:'JR',color:'#8b5cf6',status:'Hot',deal:'$31k'},
-    {name:'Maria Lopez',co:'Bloom Creative',avatar:'ML',color:'#ec4899',status:'Warm',deal:'$18k'},
-    {name:'Ravi Lee',co:'Vertex Labs',avatar:'RL',color:'#10b981',status:'New',deal:'$6.2k'},
-    {name:'Marcus Rios',co:'Kapoor & Assoc',avatar:'MR',color:'#f59e0b',status:'Warm',deal:'$28k'},
-  ];
-  const ACTIVITY=[
-    {kind:'email',label:'EMAIL SENT',title:'Sent proposal to Summit Digital',sub:'James Rivera - $31k deal',time:'12m ago',chipBg:'bg-brand-500/15 ring-brand-500/25 text-brand-300'},
-    {kind:'deal',label:'DEAL MOVED',title:'Forge & Co moved to Won',sub:'Alex Morgan - $44k',time:'2h ago',chipBg:'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300'},
-    {kind:'note',label:'NOTE ADDED',title:'Called Sarah, ready to proceed',sub:'Sarah Chen - Meridian',time:'5h ago',chipBg:'bg-amber-500/15 ring-amber-500/25 text-amber-300'},
-    {kind:'new',label:'NEW CONTACT',title:'Barrett Digital added',sub:'By Jamie Kim',time:'1d ago',chipBg:'bg-violet-500/15 ring-violet-500/25 text-violet-300'},
-  ];
-  const PIPELINE_STAGES=[
-    {name:'Prospecting',count:8,val:'$42k',fill:35,color:'#94a3b8'},
-    {name:'Qualified',count:5,val:'$81k',fill:60,color:'#818cf8'},
-    {name:'Proposal',count:4,val:'$67k',fill:50,color:'#a78bfa'},
-    {name:'Negotiation',count:3,val:'$58k',fill:43,color:'#fbbf24'},
-    {name:'Won',count:11,val:'$134k',fill:100,color:'#34d399'},
-  ];
-  const statusColor={Active:'text-emerald-300 bg-emerald-500/12 ring-emerald-500/25',Hot:'text-red-300 bg-red-500/12 ring-red-500/25',Warm:'text-amber-300 bg-amber-500/12 ring-amber-500/25',New:'text-blue-300 bg-blue-500/12 ring-blue-500/25'};
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2200);};
+  const uidFor=(id)=>id+'-'+Math.random().toString(36).slice(2,7);
+  const addWidget=(id)=>{const d=getDef(id);setLayout(l=>[...l,{id,w:d.size,uid:uidFor(id)}]);setLibraryOpen(false);showToast(d.name+' added');};
+  const removeWidget=(uid)=>{setLayout(l=>l.filter(x=>x.uid!==uid));setConfigUid(null);};
+  const applyConfig=(uid,cfg)=>{setConfigs(c=>({...c,[uid]:cfg}));setConfigUid(null);showToast('Widget updated');};
+  const reorder=(from,to)=>setLayout(l=>{const a=[...l];const[m]=a.splice(from,1);a.splice(to,0,m);return a;});
+  const applyTemplate=(tp)=>{openConfirm({title:'Apply "'+tp.name+'" layout?',body:'This replaces your current dashboard layout. You can switch back any time.',confirmLabel:'Apply layout',danger:false,onConfirm:()=>{setLayout(tp.layout.map((it,i)=>({...it,uid:it.id+'-t'+i})));setConfigs({});setTemplatesOpen(false);showToast('"'+tp.name+'" layout applied');}});};
+  const resetDefault=()=>{setLayout(DEFAULT_LAYOUT.map((it,i)=>({...it,uid:it.id+'-'+i})));setConfigs({});showToast('Reset to default layout');};
   return(
     <div className="h-full flex" style={{background:'#09091a'}}>
       <AppSidebar active="dashboard" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Good morning, Alex" subtitle="May 20, 2026 - Here is where things stand today." rightSlot={<button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Contact</button>}/>
+        <AppTopbar goTo={goTo} title="Good morning, Alex" subtitle={editMode?'Customizing — drag widgets to reorder, configure, or remove.':'May 20, 2026 — Here is where things stand today.'} rightSlot={editMode?(<div className="flex items-center gap-2">
+          <button onClick={resetDefault} className="text-[12px] text-white/45 hover:text-white transition-colors mr-1">Reset to default</button>
+          <button onClick={()=>setTemplatesOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.LayoutDash size={13}/>Layout templates</button>
+          <button onClick={()=>setLibraryOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plus size={13} stroke={2.4}/>Add widget</button>
+          <button onClick={()=>{setEditMode(false);setConfigUid(null);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={14} stroke={2.4}/>Done</button>
+        </div>):(<div className="flex items-center gap-2">
+          <button onClick={()=>setEditMode(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Settings size={13}/>Customize</button>
+          <button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Contact</button>
+        </div>)}/>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1480px] mx-auto">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-              {METRICS.map((m,i)=>(
-                <div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 hover:border-white/[0.10] transition-all">
-                  <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{m.label}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',m.accent.bg,m.accent.ring,m.accent.fg].join(' ')}><m.accent.Icon size={14}/></div></div>
-                  <div className="flex items-end justify-between"><p className="text-white text-[28px] font-black leading-none tabular-nums">{m.value}</p><span className={['inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full',m.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{m.up?<I.TrendUp size={9} stroke={2.6}/>:<I.TrendDown size={9} stroke={2.6}/>}{m.delta}</span></div>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" style={{gridAutoFlow:'row dense'}}>
+              {layout.map((item,idx)=>{const def=getDef(item.id);const cfg=configs[item.uid]||{};return(
+                <DashboardWidget key={item.uid} uid={item.uid} item={item} def={def} cfg={cfg} editMode={editMode}
+                  configOpen={configUid===item.uid} onConfig={()=>setConfigUid(configUid===item.uid?null:item.uid)} onCloseConfig={()=>setConfigUid(null)} onApplyConfig={(c)=>applyConfig(item.uid,c)}
+                  onRemove={()=>removeWidget(item.uid)} goTo={goTo}
+                  dragging={drag===idx} dragOver={dragOver===idx&&drag!==idx}
+                  onDragStart={()=>setDrag(idx)} onDragOver={(e)=>{e.preventDefault();setDragOver(idx);}} onDrop={()=>{if(drag!=null&&drag!==idx)reorder(drag,idx);setDrag(null);setDragOver(null);}} onDragEnd={()=>{setDrag(null);setDragOver(null);}}/>
+              );})}
+              {editMode&&(<button onClick={()=>setLibraryOpen(true)} className="rounded-2xl border-2 border-dashed border-white/[0.12] hover:border-brand-500/40 hover:bg-brand-500/[0.04] transition-all flex flex-col items-center justify-center gap-2 py-10 text-white/40 hover:text-brand-300 min-h-[140px]"><div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center"><I.Plus size={18}/></div><span className="text-[13px] font-medium">Add widget</span></button>)}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5 mb-5">
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-white font-semibold">Recent Activity</p><p className="text-[11px] text-white/45 mt-0.5">Last 24 hours</p></div><button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button></div>
-                <div className="flex-1 p-4 flex flex-col gap-3">
-                  {ACTIVITY.map((a,i)=>(
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/[0.02] transition-colors cursor-pointer">
-                      <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div>
-                      <div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-1"><span className={['inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chipBg].join(' ')}>{a.label}</span><span className="text-[10px] text-white/30">{a.time}</span></div><p className="text-[13px] font-semibold text-white leading-tight">{a.title}</p><p className="text-[11px] text-white/45 mt-0.5">{a.sub}</p></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-white font-semibold">Pipeline</p><p className="text-[11px] text-white/45 mt-0.5">$324k - 28 open deals</p></div><button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button></div>
-                <div className="flex-1 p-5 flex flex-col gap-3">
-                  {PIPELINE_STAGES.map(s=>(
-                    <div key={s.name} className="cursor-pointer group" onClick={()=>goTo('pipeline')}>
-                      <div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:s.color}}/><span className="text-[12px] font-medium text-white/70 group-hover:text-white transition-colors">{s.name}</span><span className="text-[10px] font-mono text-white/35 px-1 py-0.5 rounded bg-white/[0.05]">{s.count}</span></div><span className="text-[12px] font-bold text-white tabular-nums">{s.val}</span></div>
-                      <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full group-hover:brightness-110 transition-all" style={{width:`${s.fill}%`,background:s.color}}/></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-white font-semibold">Top Contacts</p><p className="text-[11px] text-white/45 mt-0.5">Most active this week</p></div><button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button></div>
-              <div>
-                {TOP_CONTACTS.map((c,i)=>(
-                  <button key={i} onClick={()=>goTo('contact-detail')} className={['w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors text-left',i<TOP_CONTACTS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div>
-                    <div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white leading-tight">{c.name}</p><p className="text-[11px] text-white/45">{c.co}</p></div>
-                    <span className={['text-[10px] font-medium px-2 py-0.5 rounded-full ring-1',statusColor[c.status]||'text-white/50 bg-white/[0.05] ring-white/[0.10]'].join(' ')}>{c.status}</span>
-                    <span className="text-[13px] font-bold text-white tabular-nums">{c.deal}</span>
-                    <I.ChevronRight size={12} className="text-white/25 shrink-0"/>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {layout.length===0&&!editMode&&(<div className="flex items-center justify-center py-24"><div className="text-center"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.LayoutDash size={26}/></div><p className="text-[16px] font-bold text-white">Your dashboard is empty</p><p className="text-[13px] text-white/45 mt-1.5 mb-5">Add widgets to build a view that works for you.</p><button onClick={()=>{setEditMode(true);setLibraryOpen(true);}} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add widget</button></div></div>)}
           </div>
         </div>
-        <AppFooter/>
+        {libraryOpen&&<WidgetLibraryPanel close={()=>setLibraryOpen(false)} onAdd={addWidget} role={role}/>}
+        {templatesOpen&&<LayoutTemplatesModal close={()=>setTemplatesOpen(false)} onApply={applyTemplate}/>}
+        {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+        {confirmNode}
+        <AppFooter note={editMode?layout.length+' widgets · editing':'8 widgets'}/>
       </div>
     </div>
   );
@@ -1181,100 +1272,219 @@ function DuplicateDetectionModal({email,close,onKeepBoth,onMerge}){
   );
 }
 // ?? ContactsPage ??????????????????????????????????????????????????????????????
+const dealK=(c)=>{const m=(c.deal||'').match(/([\d.]+)/);return m?parseFloat(m[1]):0;};
+const ownerNameOf=(c)=>{const m=TEAM_MEMBERS.find(t=>t.avatar===c.owner);return m?m.name:'';};
+const DEFAULT_VIEWS=[
+  {key:'all',label:'All Contacts',Icon:I.Users,pred:()=>true,empty:'Add or import contacts to see them here.'},
+  {key:'mine',label:'My Contacts',Icon:I.UserCog,pred:c=>c.owner==='AM',empty:'Contacts assigned to you will appear here.'},
+  {key:'uncontacted',label:'Uncontacted',Icon:I.Clock,pred:c=>c.days>=30,dot:'red',empty:'Contacts with no activity in the last 30 days land here so you can re-engage.'},
+  {key:'followup',label:'Needs Follow-up',Icon:I.Bell,pred:c=>c.days>=7&&c.days<=30,dot:'amber',empty:'Contacts you last spoke to 7-30 days ago show up here before they go cold.'},
+  {key:'hot',label:'Hot Leads',Icon:I.Zap,pred:c=>c.cstatus==='Prospect'&&c.days<7,dot:'green',empty:'Active prospects contacted in the last week appear here.'},
+  {key:'new',label:'New This Week',Icon:I.Sparkles,pred:c=>c.days<2,empty:'Contacts created in the last 7 days appear here.'},
+  {key:'customers',label:'Customers',Icon:I.Star,pred:c=>c.cstatus==='Customer',empty:'Contacts with a Customer status show up here.'},
+  {key:'noowner',label:'No Owner',Icon:I.Ban,pred:c=>!c.owner,dot:'red',empty:'Unassigned contacts appear here so nothing slips through.'},
+];
+const INITIAL_MY_VIEWS=[
+  {key:'my1',label:'Agency accounts',color:'#a78bfa',scope:'me',pred:c=>c.tag==='agency',empty:'Contacts tagged "agency" will appear here.'},
+  {key:'my2',label:'High-value deals',color:'#34d399',scope:'me',pred:c=>dealK(c)>=25,empty:'Contacts with an open deal of $25k+ appear here.'},
+  {key:'my3',label:'Cooling prospects',color:'#fbbf24',scope:'me',pred:c=>c.cstatus==='Prospect'&&c.days>=7,empty:'Prospects you have not contacted in a week appear here.'},
+];
+const TEAM_VIEWS=[
+  {key:'team1',label:'Q3 pipeline',color:'#818cf8',scope:'team',pred:c=>c.cstatus==='Prospect',empty:'Open prospects for the quarter appear here.'},
+  {key:'team2',label:'Enterprise targets',color:'#60a5fa',scope:'team',pred:c=>dealK(c)>=30,empty:'Contacts with $30k+ deals appear here.'},
+];
+const VIEW_FIELDS=['Status','Owner','Tag','Last contacted','Health score','Has open deal','Deal value','Created date'];
+const FIELD_OPS={Status:['is','is not'],Owner:['is','is not'],Tag:['is','is not'],'Last contacted':['more than','less than'],'Health score':['is'],'Has open deal':['is'],'Deal value':['greater than','less than'],'Created date':['after','before']};
+const FIELD_VALUES={Status:CONTACT_STATUSES,Owner:TEAM_MEMBERS.map(m=>m.name),Tag:['agency','top-lead','q2-focus','new-lead','won','qualified','cold'],'Health score':['Healthy','Cooling','At risk'],'Has open deal':['Yes','No']};
+const VIEW_COLORS=['#818cf8','#34d399','#fbbf24','#f472b6','#60a5fa','#a78bfa'];
+function evalRule(c,r){const v=r.value;
+  if(r.field==='Status')return r.op==='is'?c.cstatus===v:c.cstatus!==v;
+  if(r.field==='Owner')return r.op==='is'?ownerNameOf(c)===v:ownerNameOf(c)!==v;
+  if(r.field==='Tag')return r.op==='is'?c.tag===v:c.tag!==v;
+  if(r.field==='Health score'){const b=healthBucket(c.days);const want=v==='Healthy'?'green':v==='Cooling'?'amber':'red';return b===want;}
+  if(r.field==='Has open deal'){const has=dealK(c)>0;return v==='Yes'?has:!has;}
+  if(r.field==='Deal value'){const n=parseFloat(v)||0;return r.op==='greater than'?dealK(c)>n:dealK(c)<n;}
+  if(r.field==='Last contacted'){const n=parseFloat(v)||0;return r.op==='more than'?c.days>n:c.days<n;}
+  return true;
+}
+function evalItem(c,it){return it.type==='group'?evalRules(c,it.rules,it.match):evalRule(c,it);}
+function evalRules(c,items,match){if(!items||!items.length)return true;return match==='ANY'?items.some(it=>evalItem(c,it)):items.every(it=>evalItem(c,it));}
+function matchView(c,v){return v.pred?v.pred(c):evalRules(c,v.rules,v.match);}
+function SmartViewsSidebar({active,onSelect,onNew,onEdit,myViews,countFor}){
+  const item=(v,editable)=>{const cnt=countFor(v);const a=active===v.key;return(
+    <button key={v.key} onClick={()=>onSelect(v.key)} className={['group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg text-[13px] transition-all',a?'bg-brand-500/10 text-white':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>
+      {a&&<span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-brand-400" style={{boxShadow:'0 0 10px rgba(129,140,248,0.8)'}}/>}
+      {v.Icon?<v.Icon size={14} className="shrink-0"/>:<span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:v.color}}/>}
+      <span className="flex-1 text-left truncate font-medium">{v.label}</span>
+      {v.dot&&cnt>0&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:v.dot==='amber'?'#fbbf24':v.dot==='green'?'#34d399':'#f87171'}}/>}
+      {editable&&<span onClick={(e)=>{e.stopPropagation();onEdit(v);}} className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-white transition-all shrink-0" title="Edit view"><I.Settings size={12}/></span>}
+      <span className={['text-[10px] font-mono px-1.5 py-0.5 rounded-full shrink-0 min-w-[22px] text-center',a?'bg-brand-500/25 text-brand-200':'bg-white/[0.06] text-white/45'].join(' ')}>{cnt}</span>
+    </button>);};
+  return(
+    <aside className="w-[220px] shrink-0 border-r border-white/[0.05] flex flex-col" style={{background:'#0a0a18'}}>
+      <div className="flex-1 overflow-y-auto scroll-area py-2">
+        <div className="px-3 pt-2"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Default views</p><div className="flex flex-col gap-0.5">{DEFAULT_VIEWS.map(v=>item(v,false))}</div></div>
+        <div className="px-3 pt-4"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] flex items-center justify-between">My views<I.Grip size={11} className="text-white/20"/></p><div className="flex flex-col gap-0.5">{myViews.map(v=>item(v,true))}</div></div>
+        <div className="px-3 pt-4"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Team views</p><div className="flex flex-col gap-0.5">{TEAM_VIEWS.map(v=>item(v,false))}</div></div>
+        <div className="px-3 pt-4 mt-2 border-t border-white/[0.04]"><div className="flex flex-col gap-0.5 pt-2">{item({key:'archived',label:'Archived',Icon:I.Archive},false)}</div></div>
+      </div>
+      <div className="p-3 border-t border-white/[0.05]"><button onClick={onNew} className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-brand-300 hover:text-brand-200 hover:bg-brand-500/10 transition-all"><I.Plus size={14} stroke={2.4}/>New view</button></div>
+    </aside>
+  );
+}
+function ViewBuilderPanel({initial,close,onSave,rows}){
+  const [name,setName]=React.useState(initial&&initial.label||'');
+  const [color,setColor]=React.useState(initial&&initial.color||VIEW_COLORS[0]);
+  const [scope,setScope]=React.useState(initial&&initial.scope||'me');
+  const [match,setMatch]=React.useState(initial&&initial.match||'ALL');
+  const [items,setItems]=React.useState(initial&&initial.rules?JSON.parse(JSON.stringify(initial.rules)):[{field:'Status',op:'is',value:'Prospect'}]);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const defOp=(f)=>(FIELD_OPS[f]||['is'])[0];
+  const defVal=(f)=>(FIELD_VALUES[f]?FIELD_VALUES[f][0]:'');
+  const setItem=(idx,patch)=>setItems(a=>a.map((it,i)=>i===idx?{...it,...patch}:it));
+  const addRule=()=>setItems(a=>[...a,{field:'Status',op:'is',value:'Prospect'}]);
+  const addGroup=()=>setItems(a=>[...a,{type:'group',match:'ANY',rules:[{field:'Status',op:'is',value:'Lead'}]}]);
+  const removeItem=(idx)=>setItems(a=>a.filter((_,i)=>i!==idx));
+  const setGroupRule=(gi,ri,patch)=>setItems(a=>a.map((it,i)=>i===gi?{...it,rules:it.rules.map((r,j)=>j===ri?{...r,...patch}:r)}:it));
+  const count=rows.filter(c=>!c.archived&&evalRules(c,items,match)).length;
+  const ruleRow=(r,keyId,onField,onOp,onVal,onRemove)=>{const ops=FIELD_OPS[r.field]||['is'];const vals=FIELD_VALUES[r.field];const SEL='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';return(
+    <div key={keyId} className="flex items-center gap-1.5">
+      <select value={r.field} onChange={e=>onField(e.target.value)} className={'flex-1 min-w-0 '+SEL}>{VIEW_FIELDS.map(f=>(<option key={f}>{f}</option>))}</select>
+      <select value={r.op} onChange={e=>onOp(e.target.value)} className={SEL}>{ops.map(o=>(<option key={o}>{o}</option>))}</select>
+      {vals?(<select value={r.value} onChange={e=>onVal(e.target.value)} className={'flex-1 min-w-0 '+SEL}>{vals.map(v=>(<option key={v}>{v}</option>))}</select>):(<input value={r.value} onChange={e=>onVal(e.target.value)} placeholder={r.field==='Deal value'?'25':r.field==='Last contacted'?'30':'value'} className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
+      <button onClick={onRemove} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 transition-all shrink-0"><I.X size={12}/></button>
+    </div>);};
+  return(<>
+    <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
+    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[380px] flex flex-col border-l border-white/[0.08]" style={{background:'rgba(11,11,24,0.98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><p className="text-[15px] font-bold text-white">{initial?'Edit view':'New view'}</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-5">
+        <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">View name</label><input value={name} onChange={e=>setName(e.target.value)} autoFocus placeholder="e.g. At-risk customers" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>
+        <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Color</label><div className="flex items-center gap-2.5">{VIEW_COLORS.map(co=>(<button key={co} onClick={()=>setColor(co)} className="w-7 h-7 rounded-full transition-all hover:scale-110" style={{background:co,boxShadow:color===co?`0 0 0 2px #0b0b18, 0 0 0 4px ${co}`:'none'}}/>))}</div></div>
+        <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Visibility</label><div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit">{[{k:'me',l:'Just me'},{k:'team',l:'Whole team'}].map(o=>(<button key={o.k} onClick={()=>setScope(o.k)} className={['px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',scope===o.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{o.l}</button>))}</div></div>
+        <div>
+          <div className="flex items-center gap-2 mb-3 flex-wrap"><span className="text-[12px] text-white/55">Match</span><div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{['ALL','ANY'].map(o=>(<button key={o} onClick={()=>setMatch(o)} className={['px-2.5 py-1 rounded-md text-[11px] font-bold transition-all',match===o?'bg-brand-500 text-white':'text-white/50 hover:text-white'].join(' ')}>{o}</button>))}</div><span className="text-[12px] text-white/55">of these rules</span></div>
+          <div className="flex flex-col gap-2">
+            {items.map((it,idx)=> it.type==='group'?(
+              <div key={idx} className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-3">
+                <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 flex-wrap"><span className="text-[11px] text-white/50">Match</span><div className="flex items-center gap-1 p-0.5 rounded-md bg-white/[0.04] border border-white/[0.08]">{['ALL','ANY'].map(o=>(<button key={o} onClick={()=>setItem(idx,{match:o})} className={['px-2 py-0.5 rounded text-[10px] font-bold transition-all',it.match===o?'bg-brand-500 text-white':'text-white/50'].join(' ')}>{o}</button>))}</div><span className="text-[11px] text-white/50">in group</span></div><button onClick={()=>removeItem(idx)} className="text-white/30 hover:text-red-300"><I.Trash size={12}/></button></div>
+                <div className="flex flex-col gap-2">{it.rules.map((r,ri)=>ruleRow(r,ri,f=>setGroupRule(idx,ri,{field:f,op:defOp(f),value:defVal(f)}),o=>setGroupRule(idx,ri,{op:o}),v=>setGroupRule(idx,ri,{value:v}),()=>setItems(a=>a.map((x,i)=>i===idx?{...x,rules:x.rules.filter((_,j)=>j!==ri)}:x))))}</div>
+                <button onClick={()=>setItems(a=>a.map((x,i)=>i===idx?{...x,rules:[...x.rules,{field:'Status',op:'is',value:'Lead'}]}:x))} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add rule</button>
+              </div>
+            ):ruleRow(it,idx,f=>setItem(idx,{field:f,op:defOp(f),value:defVal(f)}),o=>setItem(idx,{op:o}),v=>setItem(idx,{value:v}),()=>removeItem(idx)))}
+          </div>
+          <div className="flex items-center gap-3 mt-3"><button onClick={addRule} className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={12} stroke={2.4}/>Add condition</button><button onClick={addGroup} className="text-[12px] text-white/45 hover:text-white inline-flex items-center gap-1"><I.Plus size={12}/>Add condition group</button></div>
+        </div>
+        <div className="rounded-xl bg-brand-500/[0.08] border border-brand-500/20 px-4 py-3 flex items-center gap-2"><I.Users size={14} className="text-brand-300"/><span className="text-[13px] text-white"><span className="font-bold tabular-nums">{count}</span> contact{count!==1?'s':''} match these rules</span></div>
+      </div>
+      <div className="flex gap-3 px-5 py-4 border-t border-white/[0.06] shrink-0"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button disabled={!name.trim()} onClick={()=>onSave({label:name.trim(),color,scope,match,rules:items})} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all border-none',name.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>Save view</button></div>
+    </div>
+  </>);
+}
 function ContactsPage({goTo}){
   const loading=useSkeleton(900);
   const [search,setSearch]=React.useState('');
-  const [filterTab,setFilterTab]=React.useState('All');
   const [importModal,setImportModal]=React.useState(false);
   const [filterOpen,setFilterOpen]=React.useState(false);
   const [selected,setSelected]=React.useState([]);
-  const [exported,setExported]=React.useState(false);
-  const {confirmNode,openConfirm}=useConfirm();
-  if(loading)return(
-    <div className="h-full flex" style={{background:'#09091a'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Contacts" noSearch/><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div><AppFooter/></div></div>
-  );
   const [rows,setRows]=React.useState(CONTACTS_DATA);
-  const [view,setView]=React.useState('All');
-  const [savedViews,setSavedViews]=React.useState([]);
+  const [viewKey,setViewKey]=React.useState('all');
+  const [myViews,setMyViews]=React.useState(INITIAL_MY_VIEWS);
+  const [builderOpen,setBuilderOpen]=React.useState(false);
+  const [editingView,setEditingView]=React.useState(null);
   const [health,setHealth]=React.useState('all');
   const [healthOpen,setHealthOpen]=React.useState(false);
   const [appliedFilters,setAppliedFilters]=React.useState(null);
-  const [saveOpen,setSaveOpen]=React.useState(false);
-  const [viewName,setViewName]=React.useState('');
   const [toast,setToast]=React.useState('');
   const healthRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(healthRef.current&&!healthRef.current.contains(e.target))setHealthOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const {confirmNode,openConfirm}=useConfirm();
+  if(loading)return(
+    <div className="h-full flex" style={{background:'#09091a'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Contacts" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'#0a0a18'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
+  );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
   const setStatus=(id,s)=>{setRows(r=>r.map(c=>c.id===id?{...c,cstatus:s}:c));showToast('Status updated to '+s);};
   const setOwner=(id,m)=>{setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
   const doArchive=(c)=>openConfirm({title:`Archive ${c.name}?`,body:'Archived contacts are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===c.id?{...x,archived:true}:x));showToast(c.name+' archived');}});
   const doRestore=(c)=>{setRows(r=>r.map(x=>x.id===c.id?{...x,archived:false}:x));showToast(c.name+' restored');};
-  const filtersActive=health!=='all'||!!appliedFilters||(view!=='All'&&view!=='My Contacts'&&view!=='Archived');
-  const base=rows.filter(c=>view==='Archived'?c.archived:!c.archived);
-  const list=base.filter(c=>{const q=search.toLowerCase();if(q&&!c.name.toLowerCase().includes(q)&&!c.co.toLowerCase().includes(q)&&!c.email.toLowerCase().includes(q))return false;if(view==='My Contacts'&&c.owner!=='AM')return false;if(health!=='all'&&healthBucket(c.days)!==health)return false;if(appliedFilters&&appliedFilters.owner&&appliedFilters.owner!=='All owners'){const m=TEAM_MEMBERS.find(t=>t.name===appliedFilters.owner);if(m&&c.owner!==m.avatar)return false;}return true;});
+  const onSaveView=(v)=>{if(editingView){setMyViews(p=>p.map(x=>x.key===editingView.key?{key:x.key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules,empty:x.empty}:x));setViewKey(editingView.key);showToast('View updated');}else{const key='my'+Date.now();setMyViews(p=>[...p,{key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules}]);setViewKey(key);showToast('View "'+v.label+'" created');}setBuilderOpen(false);setEditingView(null);};
+  const allViews=[...DEFAULT_VIEWS,...myViews,...TEAM_VIEWS];
+  const activeView=viewKey==='archived'?{key:'archived',label:'Archived',Icon:I.Archive,empty:'Archived contacts will show up here.'}:(allViews.find(v=>v.key===viewKey)||DEFAULT_VIEWS[0]);
+  const editable=myViews.some(v=>v.key===viewKey);
+  const countFor=(v)=>v.key==='archived'?rows.filter(c=>c.archived).length:rows.filter(c=>!c.archived&&matchView(c,v)).length;
+  const base=rows.filter(c=>viewKey==='archived'?c.archived:!c.archived);
+  const list=base.filter(c=>{if(viewKey!=='archived'&&!matchView(c,activeView))return false;const q=search.toLowerCase();if(q&&!c.name.toLowerCase().includes(q)&&!c.co.toLowerCase().includes(q)&&!c.email.toLowerCase().includes(q))return false;if(health!=='all'&&healthBucket(c.days)!==health)return false;if(appliedFilters&&appliedFilters.owner&&appliedFilters.owner!=='All owners'){const m=TEAM_MEMBERS.find(t=>t.name===appliedFilters.owner);if(m&&c.owner!==m.avatar)return false;}return true;});
   const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
   const allChecked=list.length>0&&list.every(c=>selected.includes(c.id));
   const toggleAll=()=>setSelected(allChecked?[]:list.map(c=>c.id));
   const COL='32px 1.7fr 1.3fr 118px 140px 60px 90px 84px';
-  const totalCount=rows.filter(c=>!c.archived).length;
-  const archivedCount=rows.filter(c=>c.archived).length;
-  const viewTabs=['All','My Contacts',...savedViews.map(v=>v.name)];
   const healthLabel=(HEALTH_FILTERS.find(h=>h.k===health)||{}).l;
+  const secondaryActive=health!=='all'||!!search||!!appliedFilters;
+  const anyChips=viewKey!=='all'||secondaryActive;
+  const ActiveIcon=activeView.Icon||I.Users;
+  const chip=(label,onX)=>(<span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25">{label}<button onClick={onX} className="text-brand-200/60 hover:text-white"><I.X size={10}/></button></span>);
   return(
     <div className="h-full flex" style={{background:'#09091a'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Contacts" subtitle={`${totalCount.toLocaleString()} contacts`}
+        <AppTopbar goTo={goTo} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
           rightSlot={<>
             <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
-            <button onClick={()=>showToast('Exported '+totalCount+' contacts to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
             <button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Contact</button>
           </>} noSearch/>
-        <div className="shrink-0 border-b border-white/[0.05] px-7 py-3 flex items-center gap-3 flex-wrap" style={{background:'#09091a'}}>
-          <div className="flex items-center gap-1 flex-wrap">
-            {viewTabs.map(t=>(<button key={t} onClick={()=>{setView(t);const sv=savedViews.find(v=>v.name===t);if(sv){setHealth(sv.health);setSearch(sv.search||'');}else if(t==='All'||t==='My Contacts'){setHealth('all');}}} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',view===t?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>{savedViews.some(v=>v.name===t)&&<I.Star size={10} className="text-brand-300" fill="currentColor"/>}{t}</button>))}
-            <div className="w-px h-4 bg-white/[0.08] mx-1"/>
-            <button onClick={()=>{setView('Archived');setHealth('all');}} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',view==='Archived'?'bg-white/[0.08] text-white ring-1 ring-white/[0.15]':'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}><I.Archive size={11}/>Archived{archivedCount>0&&<span className="text-[10px] font-mono px-1 py-0.5 rounded bg-white/[0.06]">{archivedCount}</span>}</button>
-          </div>
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 ml-1 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contacts..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40"/></div>
-          <div className="ml-auto flex items-center gap-2">
-            {filtersActive&&!savedViews.some(v=>v.name===view)&&<button onClick={()=>{setViewName('');setSaveOpen(true);}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Star size={11}/>Save as view</button>}
-            <div ref={healthRef} className="relative">
-              <button onClick={()=>setHealthOpen(v=>!v)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-all border',health!=='all'?'text-white border-brand-500/40 bg-brand-500/10':'text-white/55 hover:text-white border-white/[0.06] hover:border-brand-500/30'].join(' ')}>{health!=='all'&&<span className="w-2 h-2 rounded-full" style={{background:health==='green'?'#34d399':health==='amber'?'#fbbf24':'#f87171'}}/>}{healthLabel}<I.ChevronDown size={11}/></button>
-              {healthOpen&&(<div className="absolute right-0 top-9 z-30 w-40 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{HEALTH_FILTERS.map(h=>(<button key={h.k} onClick={()=>{setHealth(h.k);setHealthOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{h.k!=='all'?<span className="w-2 h-2 rounded-full shrink-0" style={{background:h.k==='green'?'#34d399':h.k==='amber'?'#fbbf24':'#f87171'}}/>:<span className="w-2 h-2"/>}{h.l}{health===h.k&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
-            </div>
-            <button onClick={()=>setFilterOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] text-white/55 hover:text-white border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/08 transition-all"><I.Filter size={11}/>Filter</button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto scroll-area">
-          {selected.length>0&&(
-            <div className="sticky top-0 z-20 px-7 py-2.5 flex items-center gap-3 border-b border-brand-500/25" style={{background:'rgba(99,102,241,0.10)',backdropFilter:'blur(12px)'}}>
-              <span className="text-[13px] font-semibold text-brand-200">{selected.length} selected</span>
-              <div className="flex items-center gap-2 ml-2">
-                {[{l:'Tag',Icon:I.Flag},{l:'Email',Icon:I.Mail},{l:'SMS',Icon:I.Hash},{l:'Change status',Icon:I.CheckSquare}].map(({l,Icon})=>(<button key={l} onClick={()=>showToast(l+' applied to '+selected.length+' contacts')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.10] transition-all"><Icon size={12}/>{l}</button>))}
-                <button onClick={()=>openConfirm({title:`Archive ${selected.length} contact${selected.length>1?'s':''}?`,body:'Selected contacts will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(selected.length+' contacts archived');}})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Archive size={12}/>Archive</button>
+        <div className="flex-1 flex min-h-0">
+          <SmartViewsSidebar active={viewKey} onSelect={(k)=>{setViewKey(k);setSelected([]);}} onNew={()=>{setEditingView(null);setBuilderOpen(true);}} onEdit={(v)=>{setEditingView(v);setBuilderOpen(true);}} myViews={myViews} countFor={countFor}/>
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'#09091a'}}>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contacts..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
+              <div className="ml-auto flex items-center gap-2">
+                <div ref={healthRef} className="relative">
+                  <button onClick={()=>setHealthOpen(v=>!v)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-all border',health!=='all'?'text-white border-brand-500/40 bg-brand-500/10':'text-white/55 hover:text-white border-white/[0.06] hover:border-brand-500/30'].join(' ')}>{health!=='all'&&<span className="w-2 h-2 rounded-full" style={{background:health==='green'?'#34d399':health==='amber'?'#fbbf24':'#f87171'}}/>}{healthLabel}<I.ChevronDown size={11}/></button>
+                  {healthOpen&&(<div className="absolute right-0 top-9 z-30 w-40 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{HEALTH_FILTERS.map(h=>(<button key={h.k} onClick={()=>{setHealth(h.k);setHealthOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{h.k!=='all'?<span className="w-2 h-2 rounded-full shrink-0" style={{background:h.k==='green'?'#34d399':h.k==='amber'?'#fbbf24':'#f87171'}}/>:<span className="w-2 h-2"/>}{h.l}{health===h.k&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+                </div>
+                <button onClick={()=>setFilterOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] text-white/55 hover:text-white border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/08 transition-all"><I.Filter size={11}/>Filter</button>
               </div>
-              <button onClick={()=>setSelected([])} className="ml-auto text-white/40 hover:text-white transition-colors"><I.X size={14}/></button>
             </div>
-          )}
-          <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL,background:'rgba(9,9,26,0.90)',backdropFilter:'blur(12px)'}}>
-            <button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
-            <span>Name</span><span>Company</span><span>Status</span><span>Health · last seen</span><span>Owner</span><span>Deal</span><span/>
+            {anyChips&&(<div className="shrink-0 flex items-center gap-2 flex-wrap px-7 py-2 border-b border-white/[0.04]" style={{background:'#09091a'}}>
+              <span className="text-[11px] text-white/35">Active:</span>
+              {viewKey!=='all'&&chip(activeView.label,()=>setViewKey('all'))}
+              {health!=='all'&&chip('Health: '+healthLabel,()=>setHealth('all'))}
+              {search&&chip('Search: '+search,()=>setSearch(''))}
+              {appliedFilters&&chip('Advanced filters',()=>setAppliedFilters(null))}
+              <button onClick={()=>{setViewKey('all');setHealth('all');setSearch('');setAppliedFilters(null);}} className="text-[11px] text-white/40 hover:text-white ml-1">Clear all</button>
+            </div>)}
+            <div className="flex-1 overflow-y-auto scroll-area">
+              {selected.length>0&&(
+                <div className="sticky top-0 z-20 px-7 py-2.5 flex items-center gap-3 border-b border-brand-500/25" style={{background:'rgba(99,102,241,0.10)',backdropFilter:'blur(12px)'}}>
+                  <span className="text-[13px] font-semibold text-brand-200">{selected.length} selected</span>
+                  <div className="flex items-center gap-2 ml-2">
+                    {[{l:'Tag',Icon:I.Flag},{l:'Email',Icon:I.Mail},{l:'SMS',Icon:I.Hash},{l:'Change status',Icon:I.CheckSquare}].map(({l,Icon})=>(<button key={l} onClick={()=>showToast(l+' applied to '+selected.length+' contacts')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.10] transition-all"><Icon size={12}/>{l}</button>))}
+                    <button onClick={()=>openConfirm({title:`Archive ${selected.length} contact${selected.length>1?'s':''}?`,body:'Selected contacts will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(selected.length+' contacts archived');}})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Archive size={12}/>Archive</button>
+                  </div>
+                  <button onClick={()=>setSelected([])} className="ml-auto text-white/40 hover:text-white transition-colors"><I.X size={14}/></button>
+                </div>
+              )}
+              <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL,background:'rgba(9,9,26,0.90)',backdropFilter:'blur(12px)'}}>
+                <button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
+                <span>Name</span><span>Company</span><span>Status</span><span>Health · last seen</span><span>Owner</span><span>Deal</span><span/>
+              </div>
+              {list.length===0&&secondaryActive&&(
+                <div className="flex items-center justify-center py-20"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Search size={22}/></div><p className="text-[14px] font-semibold text-white/50">No contacts match</p><p className="text-[12px] text-white/30 mt-1">Try adjusting your search or filters.</p><button onClick={()=>{setHealth('all');setSearch('');setAppliedFilters(null);}} className="mt-3 text-[12px] text-brand-300 hover:text-brand-200">Clear filters</button></div></div>
+              )}
+              {list.length===0&&!secondaryActive&&(
+                <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><ActiveIcon size={26}/></div><p className="text-[16px] font-bold text-white">{viewKey==='all'?'No contacts yet':'No contacts match this view'}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">{activeView.empty||'This view has no matching contacts right now.'}</p>{viewKey==='all'?(<div className="flex items-center justify-center gap-3"><button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Upload size={14}/>Import CSV</button><button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add contact</button></div>):editable?(<button onClick={()=>{setEditingView(activeView);setBuilderOpen(true);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Settings size={13}/>Edit view criteria</button>):(<button onClick={()=>setViewKey('all')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Users size={13}/>View all contacts</button>)}{viewKey==='all'&&<button onClick={()=>goTo('settings-integrations')} className="block mx-auto mt-4 text-[12px] text-brand-300 hover:text-brand-200">Connect Zapier →</button>}</div></div>
+              )}
+              {list.map((c,i)=>(<ContactRow key={c.id} c={c} COL={COL} selected={selected.includes(c.id)} onSelect={toggleSelect} onStatus={setStatus} onOwner={setOwner} onArchive={doArchive} onRestore={doRestore} goTo={goTo} last={i===list.length-1}/>))}
+            </div>
           </div>
-          {list.length===0&&!filtersActive&&!search&&view!=='Archived'&&(
-            <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.Users size={26}/></div><p className="text-[16px] font-bold text-white">No contacts yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5">Import your existing contacts or add your first one to get started.</p><div className="flex items-center justify-center gap-3"><button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Upload size={14}/>Import CSV</button><button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add contact</button></div><button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-1.5 mt-4 text-[12px] text-brand-300 hover:text-brand-200">Connect Zapier<I.ArrowRight size={11} stroke={2.4}/></button></div></div>
-          )}
-          {list.length===0&&(filtersActive||search||view==='Archived')&&(
-            <div className="flex items-center justify-center py-20"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Users size={22}/></div><p className="text-[14px] font-semibold text-white/50">{view==='Archived'?'No archived contacts':'No contacts match'}</p><p className="text-[12px] text-white/30 mt-1">{view==='Archived'?'Archived contacts will show up here.':'Try adjusting your search or filters'}</p>{(filtersActive||search)&&view!=='Archived'&&<button onClick={()=>{setHealth('all');setSearch('');setAppliedFilters(null);}} className="mt-3 text-[12px] text-brand-300 hover:text-brand-200">Clear filters</button>}</div></div>
-          )}
-          {list.map((c,i)=>(<ContactRow key={c.id} c={c} COL={COL} selected={selected.includes(c.id)} onSelect={toggleSelect} onStatus={setStatus} onOwner={setOwner} onArchive={doArchive} onRestore={doRestore} goTo={goTo} last={i===list.length-1}/>))}
         </div>
         {importModal&&<CsvImportModal close={()=>setImportModal(false)} onToast={showToast}/>}
         {filterOpen&&<ContactsFilterPanel close={()=>setFilterOpen(false)} onApply={(f)=>{setAppliedFilters(f);showToast('Filters applied');}}/>}
-        {saveOpen&&(<div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}}><div className="w-full max-w-sm rounded-2xl border border-white/[0.10] p-6" style={{background:'#0d0d1a'}}><div className="flex items-center justify-between mb-4"><p className="text-white text-[15px] font-bold">Save as view</p><button onClick={()=>setSaveOpen(false)} className="text-white/45 hover:text-white"><I.X size={15}/></button></div><p className="text-[12px] text-white/45 mb-3">Save the current filters as a quick-access tab.</p><input value={viewName} onChange={e=>setViewName(e.target.value)} autoFocus placeholder="e.g. At-risk customers" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-4"/><div className="flex gap-3"><button onClick={()=>setSaveOpen(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button disabled={!viewName.trim()} onClick={()=>{const n=viewName.trim();setSavedViews(v=>[...v,{name:n,health,search}]);setView(n);setSaveOpen(false);showToast('View "'+n+'" saved');}} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all border-none',viewName.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>Save view</button></div></div></div>)}
-        {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+        {builderOpen&&<ViewBuilderPanel initial={editingView} close={()=>{setBuilderOpen(false);setEditingView(null);}} onSave={onSaveView} rows={rows}/>}
+        {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
         {confirmNode}
-        <AppFooter note={view==='Archived'?archivedCount+' archived':totalCount.toLocaleString()+' contacts synced'}/>
+        <AppFooter note={`${activeView.label} · ${list.length} shown`}/>
       </div>
     </div>
   );
@@ -1295,9 +1505,11 @@ function ContactDetailPage({goTo}){
   const [composeOpen,setComposeOpen]=React.useState(false);
   const [dnc,setDnc]=React.useState(c.dnc);
   const [enriched,setEnriched]=React.useState(false);
+  const [timeline,setTimeline]=React.useState(TIMELINE);
   const {confirmNode,openConfirm}=useConfirm();
-  const filterTabs=[{k:'all',l:'All',n:5},{k:'emails',l:'Emails',n:2},{k:'notes',l:'Notes',n:1},{k:'deals',l:'Deals',n:1}];
-  const filtered=TIMELINE.filter(e=>{if(tab==='emails')return e.kind.startsWith('email');if(tab==='notes')return e.kind==='note';if(tab==='deals')return e.kind==='deal';return true;});
+  const filterTabs=[{k:'all',l:'All',n:timeline.length},{k:'emails',l:'Emails',n:timeline.filter(e=>e.kind.startsWith('email')).length},{k:'notes',l:'Notes',n:timeline.filter(e=>e.kind==='note').length},{k:'deals',l:'Deals',n:timeline.filter(e=>e.kind==='deal').length}];
+  const filtered=timeline.filter(e=>{if(tab==='emails')return e.kind.startsWith('email');if(tab==='notes')return e.kind==='note';if(tab==='deals')return e.kind==='deal';return true;});
+  const onLogCall=(cd)=>{setTimeline(t=>[{kind:'call',time:'Just now',label:'CALL LOGGED',chipBg:'bg-blue-500/15 ring-blue-500/25 text-blue-300',Icon:I.Phone,iconColor:'#60a5fa',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),meta:'By Alex Morgan'},...t]);};
   return(
     <div className="h-full flex" style={{background:'#07070f'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
@@ -1318,8 +1530,8 @@ function ContactDetailPage({goTo}){
                   <div className="relative"><div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:c.color}}>{c.avatar}</div><span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-[#0c0c1a]"/></div>
                   <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span></div>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Log Call',fn:()=>setCallModal(true),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
+                <div className="grid grid-cols-5 gap-2">
+                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Log Call',fn:()=>setCallModal(true),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox'),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
                     <button key={i} disabled={off} onClick={b.fn} title={off?'Disabled — Do Not Contact':b.l} className={['flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all text-[10px] font-medium',off?'bg-white/[0.02] border-white/[0.05] text-white/25 cursor-not-allowed':b.accent?'bg-brand-500/10 hover:bg-brand-500/15 border-brand-500/20 hover:border-brand-500/40 text-brand-300':b.danger?'bg-red-500/[0.07] hover:bg-red-500/12 border-red-500/15 hover:border-red-500/30 text-red-400/80 hover:text-red-300':'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white'].join(' ')}><b.Icon size={14}/>{b.l}</button>
                   );})}
                 </div>
@@ -1380,7 +1592,7 @@ function ContactDetailPage({goTo}){
         </div>
         <AppFooter/>{confirmNode}
       </div>
-      {callModal&&<LogCallModal close={()=>setCallModal(false)}/>}
+      {callModal&&<LogCallModal close={()=>setCallModal(false)} contactName={c.name} onSave={onLogCall}/>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={c.email}/>}
     </div>
   );
@@ -1713,7 +1925,15 @@ function EmailDetailPane({email,goTo,onArchive,onDelete,onStar,onTag,onToast}){
     </section>
   );
 }
-function EmailInboxPage({goTo}){
+const CALL_ROWS=[
+  {id:1,name:'Sarah Chen',avatar:'SC',color:'#3b82f6',number:'+1 555-234-8901',time:'Today · 2:14 PM',dur:'0:38',vm:true},
+  {id:2,name:'Marcus Rios',avatar:'MR',color:'#f59e0b',number:'+1 555-887-2211',time:'Today · 11:20 AM',dur:'',vm:false},
+  {id:3,name:null,avatar:'?',color:'#64748b',number:'+1 408-555-7781',time:'Yesterday · 9:02 AM',dur:'',vm:false},
+  {id:4,name:'Priya Nair',avatar:'PN',color:'#a855f7',number:'+1 555-334-7788',time:'May 28 · 4:32 PM',dur:'1:12',vm:true},
+  {id:5,name:null,avatar:'?',color:'#64748b',number:'+44 20 7946 0813',time:'May 27 · 1:10 PM',dur:'',vm:false},
+];
+function InboxPage({goTo}){
+  const [tab,setTab]=React.useState('all');
   const [folder,setFolder]=React.useState('inbox');
   const [emails,setEmails]=React.useState(MAIL_EMAILS);
   const [selectedId,setSelectedId]=React.useState(1);
@@ -1725,29 +1945,87 @@ function EmailInboxPage({goTo}){
   const onStar=()=>setEmails(es=>es.map(e=>e.id===selectedId?{...e,starred:!e.starred}:e));
   const onTag=(key,label)=>{setEmails(es=>es.map(e=>e.id===selectedId?{...e,labelKey:key}:e));showToast('Tagged as '+label);};
   const removeSelected=(verb)=>{const idx=emails.findIndex(e=>e.id===selectedId);const ne=emails.filter(e=>e.id!==selectedId);setEmails(ne);const nx=ne[Math.min(idx,ne.length-1)];setSelectedId(nx?nx.id:null);showToast(verb);};
+  const [smsSel,setSmsSel]=React.useState(SMS_CONVOS[0]);
+  const [draft,setDraft]=React.useState('');
+  const [mms,setMms]=React.useState(false);
+  const draftRef=React.useRef(null);
+  const seg=SmsSegments(draft.length);
+  const insertVar=(tok)=>{const ta=draftRef.current;if(!ta){setDraft(d=>d+tok);return;}const s=ta.selectionStart,e=ta.selectionEnd;setDraft(d=>d.slice(0,s)+tok+d.slice(e));setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=s+tok.length;},0);};
+  const [logModal,setLogModal]=React.useState(false);
+  const TABS=[{k:'all',l:'All',Icon:I.Inbox},{k:'email',l:'Email',Icon:I.Mail},{k:'sms',l:'SMS',Icon:I.Hash},{k:'calls',l:'Calls',Icon:I.Phone}];
+  const ALL_ITEMS=[
+    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'Sarah Chen',snip:'Re: Proposal for Q3 engagement',time:'11:42 AM',unread:true,tab:'email'},
+    {ch:'sms',Icon:I.Hash,cc:'#34d399',name:'Sarah Chen',snip:'Can we confirm Thursday 2pm PT?',time:'1:02 PM',unread:true,tab:'sms'},
+    {ch:'call',Icon:I.Phone,cc:'#f87171',name:'Marcus Rios',snip:'Missed call',time:'11:20 AM',unread:false,tab:'calls'},
+    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'James Whitfield',snip:'Summit Digital contract renewal',time:'9:12 AM',unread:true,tab:'email'},
+    {ch:'sms',Icon:I.Hash,cc:'#34d399',name:'James Rivera',snip:'Signed contract attached',time:'2h ago',unread:false,tab:'sms'},
+    {ch:'call',Icon:I.Phone,cc:'#f87171',name:'Sarah Chen',snip:'Missed call · voicemail',time:'2:14 PM',unread:false,tab:'calls'},
+    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'Marcus Rodriguez',snip:'Pivot Studio — proposal v2',time:'8:04 AM',unread:false,tab:'email'},
+  ];
   return(
     <div className="h-full flex" style={{background:'#09091a'}}>
-      <AppSidebar active="email-inbox" goTo={goTo}/>
+      <AppSidebar active="inbox" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-6 py-3.5 flex items-center justify-between gap-6" style={{background:'#09091a'}}>
-          <div className="flex items-center gap-3 min-w-0"><h1 className="text-white text-[18px] font-bold tracking-tight">Inbox</h1><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/>Gmail · live sync</span></div>
+        <header className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-6" style={{background:'#09091a'}}>
+          <div className="flex items-center gap-4 min-w-0">
+            <h1 className="text-white text-[18px] font-bold tracking-tight">Inbox</h1>
+            <div className="flex items-center gap-1 bg-white/[0.04] rounded-xl p-1 border border-white/[0.06]">{TABS.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',tab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}><t.Icon size={12}/>{t.l}</button>))}</div>
+          </div>
           <div className="flex items-center gap-2.5">
-            <button onClick={()=>window.__nrturOpenSearch?.()} className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 hover:border-white/[0.14] hover:bg-white/[0.06] transition-all w-96 text-left"><I.Search size={13} className="text-white/40"/><span className="flex-1 text-[12px] text-white/30">Search emails, contacts, deals…</span><span className="text-[10px] font-mono text-white/30 px-1.5 py-0.5 rounded bg-white/[0.05]">⌘K</span></button>
-            <button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:shadow-brand-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>
+            {(tab==='email'||tab==='all')&&<span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/>Gmail · live sync</span>}
+            {(tab==='email'||tab==='all')&&<button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>}
+            {tab==='sms'&&<button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plug size={13}/>Configure SMS</button>}
+            {tab==='calls'&&<button onClick={()=>setLogModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>Log call</button>}
           </div>
         </header>
-        <div className="flex-1 flex min-h-0">
+        {tab==='email'&&(<div className="flex-1 flex min-h-0">
           <EmailFolderRail active={folder} setActive={setFolder} goTo={goTo} onToast={showToast}/>
           <EmailListPane emails={emails} selectedId={selectedId} setSelectedId={setSelectedId} onToast={showToast}/>
           <EmailDetailPane email={email} goTo={goTo} onArchive={()=>removeSelected('Email archived')} onDelete={()=>removeSelected('Email deleted')} onStar={onStar} onTag={onTag} onToast={showToast}/>
-        </div>
+        </div>)}
+        {tab==='sms'&&(<div className="flex-1 flex min-h-0">
+          <div className="w-[300px] shrink-0 border-r border-white/[0.05] overflow-y-auto scroll-area">
+            {SMS_CONVOS.map(c=>(<button key={c.id} onClick={()=>setSmsSel(c)} className={['w-full text-left px-4 py-4 border-b border-white/[0.03] transition-all relative',smsSel?.id===c.id?'bg-brand-500/[0.08] border-l-2 border-brand-500':'hover:bg-white/[0.02]'].join(' ')}>
+              {c.unread&&<span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand-400"/>}
+              <div className="flex items-start gap-3 pl-2"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between mb-0.5"><p className={['text-[13px] leading-tight',c.unread?'font-bold text-white':'font-medium text-white/80'].join(' ')}>{c.contact}</p><span className="text-[10px] text-white/35 shrink-0 ml-2">{c.time}</span></div><p className={['text-[12px] truncate',c.unread?'text-white/70':'text-white/45'].join(' ')}>{c.preview}</p></div></div>
+            </button>))}
+          </div>
+          {smsSel?(<div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 px-6 py-4 border-b border-white/[0.05] flex items-center justify-between" style={{background:'#09091a'}}><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{background:smsSel.color}}>{smsSel.avatar}</div><div><p className="text-[14px] font-bold text-white">{smsSel.contact}</p><p className="text-[11px] text-white/45">SMS conversation</p></div></div><button onClick={()=>goTo('contact-detail')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View contact<I.ArrowRight size={11} stroke={2.4}/></button></div>
+            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-3">{smsSel.messages.map((msg,i)=>(<div key={i} className={['flex',msg.me?'justify-end':'justify-start'].join(' ')}><div className={['max-w-[70%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed',msg.me?'bg-brand-500 text-white rounded-br-sm':'bg-white/[0.07] border border-white/[0.08] text-white/85 rounded-bl-sm'].join(' ')}><p>{msg.body}</p><p className={['text-[10px] mt-1',msg.me?'text-white/60':'text-white/35'].join(' ')}>{msg.time}</p></div></div>))}</div>
+            <div className="shrink-0 border-t border-white/[0.05] p-4" style={{background:'#09091a'}}>
+              <div className="flex items-center gap-1.5 mb-2 flex-wrap"><span className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.14em] mr-1">Insert</span>{SMS_VARS.slice(0,4).map(v=>(<button key={v.token} onClick={()=>insertVar(v.token)} title={v.desc} className="px-2 py-0.5 rounded-md text-[10.5px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/18 transition-all">{v.token}</button>))}</div>
+              <div className="rounded-xl border border-white/[0.08] focus-within:border-brand-500/40 transition-all" style={{background:'rgba(15,15,28,0.6)'}}>
+                {mms&&(<div className="px-4 pt-3"><div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] text-white/70 bg-white/[0.05] border border-white/[0.08]"><I.Image size={12} className="text-brand-300"/>product-shot.jpg <span className="text-white/35">· MMS</span><button onClick={()=>setMms(false)} className="text-white/35 hover:text-white"><I.X size={10}/></button></div></div>)}
+                <textarea ref={draftRef} value={draft} onChange={e=>setDraft(e.target.value)} rows={3} placeholder="Type an SMS message..." className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30"/>
+                <div className="flex items-center justify-between px-4 pb-3"><div className="flex items-center gap-2"><button onClick={()=>setMms(true)} title="Attach image (MMS)" className={['w-7 h-7 rounded-lg flex items-center justify-center transition-colors',mms?'text-brand-300 bg-brand-500/10':'text-white/35 hover:text-white hover:bg-white/[0.06]'].join(' ')}><I.Image size={13}/></button><span className={['text-[11px] tabular-nums',seg.segs>1?'text-amber-300':'text-white/30'].join(' ')}>{draft.length} chars · {seg.segs} {mms?'MMS':'SMS'}</span></div><button disabled={!draft.trim()&&!mms} onClick={()=>{setDraft('');setMms(false);showToast('Message sent');}} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-semibold transition-all border-none',(draft.trim()||mms)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send {mms?'MMS':'SMS'}</button></div>
+              </div>
+            </div>
+          </div>):(<div className="flex-1 flex items-center justify-center"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Hash size={22}/></div><p className="text-[14px] font-semibold text-white/50">Select a conversation</p></div></div>)}
+        </div>)}
+        {tab==='calls'&&(<div className="flex-1 overflow-y-auto scroll-area">
+          <div className="shrink-0 px-7 py-3 border-b border-white/[0.05] flex items-center gap-6" style={{background:'#09091a'}}>{[{l:'Missed',v:'7',c:'text-amber-300'},{l:'Voicemails',v:'2',c:'text-brand-300'},{l:'Today',v:'2',c:'text-white'}].map(s=>(<div key={s.l} className="flex items-center gap-2"><span className={['text-[15px] font-bold tabular-nums',s.c].join(' ')}>{s.v}</span><span className="text-[11px] text-white/40">{s.l}</span></div>))}</div>
+          {CALL_ROWS.map((c,i)=>(<div key={c.id} className={['flex items-center gap-4 px-7 py-4 hover:bg-white/[0.02] transition-colors group',i<CALL_ROWS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div>
+            <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-[14px] font-semibold text-white truncate">{c.name||c.number}</p>{c.vm&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25"><I.Mail size={8}/>Voicemail</span>}{!c.name&&<span className="text-[9px] font-medium text-white/35 px-1.5 py-0.5 rounded bg-white/[0.05]">Unknown</span>}</div><div className="flex items-center gap-2 mt-0.5"><span className="inline-flex items-center gap-1 text-[12px] text-red-300/90"><I.Phone size={10}/>Missed call</span><span className="text-white/25">·</span><span className="text-[11px] text-white/40">{c.time}</span>{c.dur&&<><span className="text-white/25">·</span><span className="text-[11px] text-white/40 font-mono">vm {c.dur}</span></>}{c.name&&<><span className="text-white/25">·</span><span className="text-[11px] text-white/40">{c.number}</span></>}</div></div>
+            <div className="flex items-center gap-2 shrink-0"><button onClick={()=>showToast('Calling '+(c.name||c.number)+'…')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-brand-500/90 hover:bg-brand-400 transition-all"><I.Phone size={12}/>Call back</button><button onClick={()=>setLogModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={12}/>Add note</button>{c.name?<button onClick={()=>goTo('contact-detail')} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.ArrowRight size={13}/></button>:<button onClick={()=>goTo('add-contact')} title="Add contact" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.UserPlus size={13}/></button>}</div>
+          </div>))}
+        </div>)}
+        {tab==='all'&&(<div className="flex-1 overflow-y-auto scroll-area">
+          {ALL_ITEMS.map((it,i)=>(<button key={i} onClick={()=>setTab(it.tab)} className={['w-full flex items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors text-left',i<ALL_ITEMS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
+            <div className="relative shrink-0"><div className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.08] flex items-center justify-center" style={{color:it.cc}}><it.Icon size={14}/></div>{it.unread&&<span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-400 ring-2 ring-[#09091a]"/>}</div>
+            <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className={['text-[13px] truncate',it.unread?'font-bold text-white':'font-medium text-white/80'].join(' ')}>{it.name}</p><span className="text-[9px] font-semibold uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full" style={{background:it.cc+'22',color:it.cc}}>{it.ch}</span></div><p className="text-[12px] text-white/50 truncate mt-0.5">{it.snip}</p></div>
+            <span className="text-[11px] text-white/35 shrink-0">{it.time}</span>
+          </button>))}
+        </div>)}
         <div className="shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{background:'#07070f'}}>
-          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] text-white/40">Gmail synced 12s ago · 2 accounts</span></div>
-          <div className="flex items-center gap-3"><span className="text-[11px] text-white/30">Press <span className="font-mono px-1 py-0.5 rounded bg-white/[0.06] text-white/55">R</span> to reply · <span className="font-mono px-1 py-0.5 rounded bg-white/[0.06] text-white/55">E</span> to archive</span></div>
+          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] text-white/40">{tab==='sms'?'Twilio · +1 415-555-0100':tab==='calls'?'7 missed · 2 voicemails':'Gmail synced 12s ago · 2 accounts'}</span></div>
+          <div className="flex items-center gap-3"><span className="text-[11px] text-white/30">Unified inbox · Email · SMS · Calls</span></div>
         </div>
       </div>
       {toast&&<div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[120] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={email?email.from.toLowerCase().replace(/\s+/g,'.')+'@example.com':''}/>}
+      {logModal&&<LogCallModal close={()=>setLogModal(false)}/>}
     </div>
   );
 }
@@ -1950,11 +2228,11 @@ function AutomationBuilderPage({goTo}){
   const availableSteps=Object.values(STEP_PRESETS_A);
   return(
     <div className="h-full flex" style={{background:'#07070f'}}>
-      <AppSidebar active="automations" goTo={goTo}/>
+      <AppSidebar active="settings-automations" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'#09091a'}}>
-          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('automations')} className="text-white/45 hover:text-white transition-colors">Automations</button><I.ChevronRight size={12} className="text-white/25"/><input value={name} onChange={e=>setName(e.target.value)} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5"/></div>
-          <div className="flex items-center gap-2"><button onClick={()=>goTo('automations')} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('automations')} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save automation</button></div>
+          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('settings-automations')} className="text-white/45 hover:text-white transition-colors">Automations</button><I.ChevronRight size={12} className="text-white/25"/><input value={name} onChange={e=>setName(e.target.value)} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5"/></div>
+          <div className="flex items-center gap-2"><button onClick={()=>goTo('settings-automations')} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('settings-automations')} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save automation</button></div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-3xl mx-auto">
@@ -2284,6 +2562,12 @@ function ReportsPage({goTo}){
                 <p className="text-[12px] text-white/45 mb-3">Cumulative - last 12 months</p>
                 <div className="flex-1 rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 flex items-end gap-1">{[42,51,58,64,72,79,88,97,104,115,128,138].map((v,i)=>(<div key={i} className="flex-1 rounded-sm" style={{height:`${(v/138)*100}%`,background:`rgba(99,102,241,${0.3+i*0.05})`,minHeight:4}}/>))}</div>
               </div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
+              <div className="flex items-center justify-between mb-4"><div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Calls</p><p className="text-white/45 text-[12px] mt-1">Activity for {range}</p></div><span className="inline-flex items-center gap-1.5 text-[11px] text-white/40"><I.Phone size={12}/>Twilio</span></div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">{[{l:'Calls made',v:'34',c:'text-violet-300'},{l:'Calls received',v:'18',c:'text-blue-300'},{l:'Missed',v:'7',c:'text-amber-300'},{l:'Avg duration',v:'4m 12s',c:'text-white'}].map(s=>(<div key={s.l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4"><p className={['text-[24px] font-black tabular-nums leading-none',s.c].join(' ')}>{s.v}</p><p className="text-[11px] text-white/45 mt-1.5">{s.l}</p></div>))}</div>
+              <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Calls per day · this week</p>
+              <div className="flex items-end gap-3" style={{height:120}}>{[{d:'Mon',v:9},{d:'Tue',v:14},{d:'Wed',v:7},{d:'Thu',v:18},{d:'Fri',v:11},{d:'Sat',v:3},{d:'Sun',v:2}].map(b=>(<div key={b.d} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end"><span className="text-[10px] text-white/50 font-mono">{b.v}</span><div className="w-full rounded-md transition-all" style={{height:`${(b.v/18)*100}%`,background:'linear-gradient(180deg,#818cf8,#4f46e5)',minHeight:4}}/><span className="text-[10px] text-white/40">{b.d}</span></div>))}</div>
             </div>
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Top Deals This Month</p><p className="text-white/45 text-[12px] mt-1">5 of 28 open - ranked by weighted value</p></div><button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button></div>
@@ -2793,12 +3077,13 @@ const CALLS_DATA=[
   {id:7,contact:'Maria Lopez',company:'Bloom Creative',avatar:'ML',color:'#ec4899',direction:'out',duration:'11:40',date:'May 27, 9:00 AM',outcome:'Reached - follow-up',notes:'Send updated pricing deck.'},
   {id:8,contact:'Ravi Lee',company:'Vertex Labs',avatar:'RL',color:'#10b981',direction:'out',duration:'0:00',date:'May 26, 4:05 PM',outcome:'No answer',notes:''},
 ];
-function LogCallModal({close}){
+function LogCallModal({close,onSave,contactName}){
   const [direction,setDirection]=React.useState('out');
-  const [contact,setContact]=React.useState('');
+  const [contact,setContact]=React.useState(contactName||'');
   const [duration,setDuration]=React.useState('');
   const [outcome,setOutcome]=React.useState('');
   const [notes,setNotes]=React.useState('');
+  const save=()=>{onSave&&onSave({direction,contact,duration,outcome,notes});close();};
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   const CONTACT_LIST=['Sarah Chen','James Rivera','Maria Lopez','Ravi Lee','Marcus Rios','Emily Tran','Luca Bianchi','Priya Nair'];
   const OUTCOMES=['Reached - positive','Reached - follow-up needed','Left voicemail','No answer','Wrong number','Demo call','Contract discussion','Renewal discussion'];
@@ -2815,7 +3100,7 @@ function LogCallModal({close}){
           </div>
           <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Notes</label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="What was discussed?" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 resize-none"/></div>
         </div>
-        <div className="flex gap-3 mt-6"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Save call</button></div>
+        <div className="flex gap-3 mt-6"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Save call log</button></div>
       </div>
     </div>
   );
@@ -2847,6 +3132,68 @@ function CallsPage({goTo}){
     </div>
   );
 }
+// ?? Settings Automations ?????????????????????????????????????????????????????
+const AUTO_LOGS=[
+  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Sarah Chen',status:'success',time:'12m ago'},
+  {auto:'Proposal Follow-Up',trigger:'Deal moved to Proposal',contact:'James Rivera',status:'success',time:'1h ago'},
+  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Tom Barrett',status:'success',time:'2h ago'},
+  {auto:'Re-engagement Campaign',trigger:'Deal inactive 7 days',contact:'Marcus Rios',status:'failed',time:'3h ago'},
+  {auto:'Proposal Follow-Up',trigger:'Deal moved to Proposal',contact:'Priya Nair',status:'success',time:'5h ago'},
+  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Luca Bianchi',status:'failed',time:'Yesterday'},
+  {auto:'Post-close Check-in',trigger:'Deal won',contact:'Emily Tran',status:'success',time:'Yesterday'},
+  {auto:'Re-engagement Campaign',trigger:'Deal inactive 7 days',contact:'Riley Voss',status:'success',time:'May 28'},
+];
+function SettingsAutomationsPage({goTo}){
+  const [sub,setSub]=React.useState('workflows');
+  const [autoMap,setAutoMap]=React.useState(()=>Object.fromEntries(AUTOMATIONS_DATA.map((a,i)=>[i,a.active])));
+  const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active])]));
+  const [logAuto,setLogAuto]=React.useState('All');
+  const [logStatus,setLogStatus]=React.useState('All');
+  const [logRange,setLogRange]=React.useState('Last 7 days');
+  const SUBTABS=[{k:'workflows',l:'Workflows'},{k:'sms',l:'SMS Sequences'},{k:'email',l:'Email Sequences'},{k:'logs',l:'Logs'}];
+  const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
+  const seqRow=(seq,channel)=>{const key=channel+seq.id;const on=seqMap[key];return(
+    <div key={key} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-bold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-bold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-bold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+    </div>);};
+  const LCOL='1.7fr 1.4fr 1.2fr 100px 110px';
+  const filteredLogs=AUTO_LOGS.filter(l=>(logAuto==='All'||l.auto===logAuto)&&(logStatus==='All'||l.status===logStatus));
+  return(
+    <SettingsShell active="settings-automations" goTo={goTo}>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-5">
+          <div><p className="text-white text-[18px] font-bold">Automations</p><p className="text-white/45 text-[13px] mt-1">3 active · 422 runs this month · 98.4% success</p></div>
+        </div>
+        <button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New Automation</button>
+      </div>
+      <div className="flex items-center gap-1 border-b border-white/[0.06] -mt-1">{SUBTABS.map(t=>{const a=sub===t.k;return(<button key={t.k} onClick={()=>setSub(t.k)} className={['relative px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)',boxShadow:'0 0 12px rgba(129,140,248,0.7)'}}/>}</button>);})}</div>
+      {sub==='workflows'&&(<div className="flex flex-col gap-4">
+        {AUTOMATIONS_DATA.map((a,i)=>{const on=autoMap[i];return(
+          <div key={a.name} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-90'].join(' ')}>
+            <div className="flex items-start justify-between gap-4 mb-3"><div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0',on?'bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/55 mt-1"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div><div className="flex items-center gap-2 shrink-0"><Toggle on={on} onChange={v=>setAutoMap(m=>({...m,[i]:v}))}/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+            <div className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5 mb-3 flex items-center gap-1.5 flex-wrap">{a.steps.map((s,j)=>{const Ic=s.Icon;return(<React.Fragment key={j}><span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/80 whitespace-nowrap"><span className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Ic size={11} stroke={2.2}/></span>{s.label}{s.meta&&<span className="text-[10px] text-white/35 font-mono">{s.meta}</span>}</span>{j<a.steps.length-1&&<I.ArrowRight size={12} className="text-white/20"/>}</React.Fragment>);})}</div>
+            <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-5 text-[12px] text-white/45"><span className="flex items-center gap-1.5"><I.Play size={9}/>Runs <span className="text-white font-bold tabular-nums">{a.runs}</span></span>{on?<span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Success <span className="text-emerald-300 font-bold tabular-nums">{a.success}%</span></span>:<span className="italic">Paused since {a.pausedSince}</span>}<span className="flex items-center gap-1"><I.Clock size={10}/>Last {a.lastRun}</span></div><MiniSparkA data={a.spark} color={on?'#818cf8':'#64748b'}/></div>
+          </div>);})}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{TEMPLATES_A.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-bold">{t.name}</h4><p className="text-[12px] text-white/50 leading-relaxed mt-1 mb-3">{t.desc}</p><button onClick={()=>goTo('automation-builder')} className="w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
+      </div>)}
+      {sub==='sms'&&(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4 mb-2">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{SEQ_DATA.map(s=>seqRow(s,'sms'))}</div>)}
+      {sub==='email'&&(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4 mb-2">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{EMAIL_SEQ_DATA.map(s=>seqRow(s,'email'))}</div>)}
+      {sub==='logs'&&(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/[0.05] flex-wrap">
+          <div><p className="text-[13px] font-semibold text-white">Run history</p><p className="text-[11px] text-white/45 mt-0.5">{filteredLogs.length} of {AUTO_LOGS.length} runs</p></div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={logAuto} onChange={e=>setLogAuto(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option>All</option>{[...new Set(AUTO_LOGS.map(l=>l.auto))].map(a=>(<option key={a}>{a}</option>))}</select>
+            <select value={logStatus} onChange={e=>setLogStatus(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option>All</option><option value="success">Success</option><option value="failed">Failed</option></select>
+            <select value={logRange} onChange={e=>setLogRange(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none">{['Today','Last 7 days','Last 30 days','All time'].map(o=>(<option key={o}>{o}</option>))}</select>
+          </div>
+        </div>
+        <div className="grid items-center gap-4 px-5 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LCOL}}><span>Automation</span><span>Triggered by</span><span>Contact</span><span>Status</span><span className="text-right">Timestamp</span></div>
+        {filteredLogs.map((l,i)=>(<div key={i} className={['grid items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors',i<filteredLogs.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:LCOL}}><p className="text-[12.5px] font-medium text-white truncate">{l.auto}</p><p className="text-[12px] text-white/55 truncate">{l.trigger}</p><p className="text-[12px] text-white/70 truncate">{l.contact}</p><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',l.status==='success'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-red-500/12 text-red-300 ring-red-500/25'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',l.status==='success'?'bg-emerald-400':'bg-red-400'].join(' ')}/>{l.status}</span><span className="text-[11px] text-white/45 text-right">{l.time}</span></div>))}
+        {filteredLogs.length===0&&<div className="px-5 py-10 text-center text-[12px] text-white/35">No runs match these filters.</div>}
+      </div>)}
+    </SettingsShell>
+  );
+}
 // ?? App Router ????????????????????????????????????????????????????????????????
 function App(){
   const [page,setPage]=React.useState('landing');
@@ -2876,15 +3223,10 @@ function App(){
       {page==='pipeline'          && <PipelinePage {...p}/>}
       {page==='deal-detail'       && <DealDetailPage {...p}/>}
       {page==='add-deal'          && <AddDealPage {...p}/>}
-      {page==='email-inbox'       && <EmailInboxPage {...p}/>}
-      {page==='sms-inbox'         && <SMSInboxPage {...p}/>}
-      {page==='calls'             && <CallsPage {...p}/>}
-      {page==='automations'       && <AutomationsPage {...p}/>}
+      {page==='inbox'             && <InboxPage {...p}/>}
       {page==='automation-builder'&& <AutomationBuilderPage {...p}/>}
-      {page==='sms-sequences'     && <SMSSequencesPage {...p}/>}
-      {page==='email-sequences'   && <EmailSequencesPage {...p}/>}
-      {page==='sms-templates'     && <SMSTemplatesPage {...p}/>}
       {page==='reports'           && <ReportsPage {...p}/>}
+      {page==='settings-automations' && <SettingsAutomationsPage {...p}/>}
       {page==='settings-billing'  && <SettingsBillingPage {...p}/>}
       {page==='settings-team'     && <SettingsTeamPage {...p}/>}
       {page==='settings-general'  && <SettingsGeneralPage {...p}/>}
