@@ -459,6 +459,7 @@ function SettingsSubNav({active,goTo}){
     ]},
     {title:'Communication',items:[
       {label:'Automations',page:'settings-automations',Icon:I.Zap},
+      {label:'Sequences',page:'settings-sequences',Icon:I.Layers},
       {label:'Notifications',page:'settings-notifications',Icon:I.Bell},
       {label:'Unsubscribes',page:'settings-unsubscribes',Icon:I.Ban},
       {label:'Integrations',page:'settings-integrations',Icon:I.Plug},
@@ -493,7 +494,7 @@ const ALL_PAGES=[
   'pipeline','deal-detail','add-deal',
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
   'reports',
-  'settings-billing','settings-team','settings-general','settings-automations','settings-integrations',
+  'settings-billing','settings-team','settings-general','settings-automations','settings-sequences','settings-integrations',
   'settings-pipeline','settings-notifications','settings-unsubscribes','settings-privacy',
   'profile',
 ];
@@ -2147,6 +2148,8 @@ const STEP_PRESETS_A={
   flag:     {label:'Flag for review',    Icon:I.Flag,        bg:'rgba(239,68,68,0.16)',   fg:'#f87171'},
   celebrate:{label:'Notify team',        Icon:I.Sparkles,    bg:'rgba(124,58,237,0.18)',  fg:'#a78bfa'},
   report:   {label:'Generate report',    Icon:I.BarChart,    bg:'rgba(99,102,241,0.18)',  fg:'#818cf8'},
+  enrollSms:{label:'Enroll in SMS sequence',  Icon:I.Layers, bg:'rgba(52,211,153,0.18)',  fg:'#34d399', seq:'sms'},
+  enrollEmail:{label:'Enroll in email sequence',Icon:I.Mail, bg:'rgba(99,102,241,0.18)',  fg:'#818cf8', seq:'email'},
 };
 const AUTOMATIONS_DATA=[
   {name:'New Lead Welcome Sequence',trigger:'Contact created',active:true,runs:284,success:100,lastRun:'12m ago',spark:[4,6,5,8,12,9,11,14,12,16,18,15,22,24],steps:[STEP_PRESETS_A.assign,STEP_PRESETS_A.welcome,STEP_PRESETS_A.task]},
@@ -2290,6 +2293,7 @@ function AutomationBuilderPage({goTo}){
                       <div className="flex items-center justify-between mb-3"><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Step {i+1}</span><button onClick={()=>{setSteps(steps.filter(x=>x.id!==s.id));mark();}} title="Remove step" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={13}/></button></div>
                       <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Icon size={14}/></span><div className="flex-1"><p className="text-[13px] font-semibold text-white">{s.label}</p>{s.meta&&<p className="text-[11px] text-white/45 mt-0.5">Delay: {s.meta}</p>}</div></div>
                       {s.meta&&(<div className="mt-3"><label className="text-[11px] text-white/45 block mb-1.5">Delay duration</label><select defaultValue={s.meta} style={SEL_DARK} className="w-full px-3 py-2 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none"><option>1h</option><option>2d</option><option>5d</option><option>1 week</option><option>2 weeks</option></select></div>)}
+                      {s.seq&&(<div className="mt-3"><div className="flex items-center justify-between mb-1.5"><label className="text-[11px] text-white/45">{s.seq==='sms'?'SMS sequence':'Email sequence'} to enroll in</label><button onClick={()=>goTo(s.seq==='sms'?'sms-sequence-builder':'email-sequence-builder')} className="text-[11px] text-brand-300 hover:text-brand-200">Manage →</button></div><select style={SEL_DARK} className="w-full px-3 py-2 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none">{(s.seq==='sms'?SEQ_DATA:EMAIL_SEQ_DATA).map(q=>(<option key={q.id}>{q.name}</option>))}</select></div>)}
                     </div>
                   </React.Fragment>
                 );})}
@@ -3192,8 +3196,8 @@ function SequenceBuilderPage({goTo,channel}){
   const {confirmNode,openConfirm}=useConfirm();
   const mark=()=>setDirty(true);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
-  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-automations'),650);};
-  const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-automations')});else goTo('settings-automations');};
+  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);};
+  const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-sequences')});else goTo('settings-sequences');};
   const setStep=(id,patch)=>{setSteps(s=>s.map(x=>x.id===id?{...x,...patch}:x));mark();};
   const addStep=()=>{setSteps(s=>[...s,{id:Date.now(),...(isSms?{body:''}:{subject:'',body:''}),delay:{n:2,unit:'days'}}]);mark();};
   const removeStep=(id)=>{setSteps(s=>s.filter(x=>x.id!==id));mark();};
@@ -3204,7 +3208,7 @@ function SequenceBuilderPage({goTo,channel}){
       <AppSidebar active="settings-automations" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'#09091a'}}>
-          <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Automations</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white/45 shrink-0">{isSms?'SMS Sequences':'Email Sequences'}</span><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
+          <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Sequences</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white/45 shrink-0">{isSms?'SMS Sequences':'Email Sequences'}</span><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-2 mr-1 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className={['text-[12px] font-medium',activated?'text-emerald-300':'text-white/50'].join(' ')}>{activated?'Active':'Inactive'}</span><Toggle on={activated} onChange={v=>{setActivated(v);mark();}}/></div>
             <button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>
@@ -3316,7 +3320,7 @@ function SettingsAutomationsPage({goTo}){
   const duplicateAuto=(a)=>{setAutos(list=>[...list,{...a,id:Date.now(),name:'Copy of '+a.name,status:'paused',runs:0,lastRun:'Never run'}]);setMenu(null);showToast('Automation duplicated');};
   const delAuto=(id)=>setAutos(a=>a.filter(x=>x.id!==id));
   const useTemplate=(t)=>{setTplOpen(false);showToast('Template "'+t.name+'" loaded');goTo('automation-builder');};
-  const SUBTABS=[{k:'workflows',l:'Workflows'},{k:'sms',l:'SMS Sequences'},{k:'email',l:'Email Sequences'},{k:'logs',l:'Logs'}];
+  const SUBTABS=[{k:'workflows',l:'Workflows'},{k:'logs',l:'Logs'}];
   const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
   const nActive=autos.filter(a=>a.status==='active').length,nPaused=autos.filter(a=>a.status==='paused').length;
   const seqRow=(seq,channel)=>{const key=channel+seq.id;const on=seqMap[key];return(
@@ -3405,6 +3409,46 @@ function SettingsAutomationsPage({goTo}){
   );
 }
 // ?? App Router ????????????????????????????????????????????????????????????????
+// ?? Settings Sequences ??????????????????????????????????????????????????????
+function SettingsSequencesPage({goTo}){
+  const [chan,setChan]=React.useState('sms');
+  const [subView,setSubView]=React.useState('list');
+  const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active])]));
+  const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
+  const builderFor=()=>chan==='sms'?'sms-sequence-builder':'email-sequence-builder';
+  const seqRow=(seq,channel)=>{const key=channel+seq.id;const on=seqMap[key];return(
+    <div key={key} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-bold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-bold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-bold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo(channel==='email'?'email-sequence-builder':'sms-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+    </div>);};
+  const CHANS=[{k:'sms',l:'SMS Sequences',Icon:I.Hash},{k:'email',l:'Email Sequences',Icon:I.Mail}];
+  return(
+    <div className="h-full flex" style={{background:'#07070f'}}>
+      <AppSidebar active="settings-sequences" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} title="Sequences" subtitle="Automated SMS & email drip campaigns" rightSlot={<button onClick={()=>goTo(builderFor())} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New sequence</button>}/>
+        <div className="flex-1 flex min-h-0">
+          <SettingsSubNav active="settings-sequences" goTo={goTo}/>
+          <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">
+            <div className="flex items-center gap-1 border-b border-white/[0.06]">{CHANS.map(t=>{const a=chan===t.k;return(<button key={t.k} onClick={()=>{setChan(t.k);setSubView('list');}} className={['relative inline-flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}><t.Icon size={13}/>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)',boxShadow:'0 0 12px rgba(129,140,248,0.7)'}}/>}</button>);})}</div>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{[{k:'list',l:'Sequences'},{k:'templates',l:'Templates'}].map(v=>(<button key={v.k} onClick={()=>setSubView(v.k)} className={['px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',subView===v.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{v.l}</button>))}</div>
+              <button onClick={()=>goTo(builderFor())} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>{chan==='sms'?'New SMS sequence':'New email sequence'}</button>
+            </div>
+            <div className="rounded-xl bg-brand-500/[0.06] border border-brand-500/15 px-4 py-2.5 flex items-center gap-2 -mt-1"><I.Zap size={13} className="text-brand-300 shrink-0"/><p className="text-[12px] text-white/60">Tip: trigger a sequence automatically from a workflow using the <span className="text-brand-200 font-medium">Enroll in sequence</span> action. <button onClick={()=>goTo('settings-automations')} className="text-brand-300 hover:text-brand-200 font-medium">Open Automations →</button></p></div>
+            {chan==='sms'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{SEQ_DATA.map(s=>seqRow(s,'sms'))}</div>):(
+              <><p className="text-[12px] text-white/45 -mt-1">Reusable SMS snippets. Use one to start a new sequence.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SMS_TEMPLATES.map(t=>{const cat=SMS_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category,color:'#818cf8'};return(<div key={t.id} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center justify-between mb-2"><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 w-fit" style={{background:cat.color+'18',color:cat.color,boxShadow:`0 0 0 1px ${cat.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>{cat.label}</span>{t.favorite&&<I.Star size={12} className="text-amber-300" fill="currentColor"/>}</div><p className="text-[13px] font-bold text-white">{t.name}</p><p className="text-[12px] text-white/55 leading-relaxed mt-1 flex-1" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.05]"><span className="text-[11px] text-white/35">Used {t.uses}×</span><button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-300 hover:text-brand-200">Use in sequence<I.ArrowRight size={11} stroke={2.4}/></button></div></div>);})}</div></>
+            ))}
+            {chan==='email'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{EMAIL_SEQ_DATA.map(s=>seqRow(s,'email'))}</div>):(
+              <><p className="text-[12px] text-white/45 -mt-1">Reusable email templates. Use one to start a new sequence.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{EMAIL_TEMPLATES.map((t,i)=>(<div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center gap-2 mb-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><I.Mail size={13}/></span><p className="text-[13px] font-bold text-white">{t.name}</p></div><p className="text-[11px] text-white/40 mb-1.5"><span className="text-white/30">Subject:</span> {t.subject}</p><p className="text-[12px] text-white/55 leading-relaxed flex-1 whitespace-pre-line" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-end mt-3 pt-2.5 border-t border-white/[0.05]"><button onClick={()=>goTo('email-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-300 hover:text-brand-200">Use in sequence<I.ArrowRight size={11} stroke={2.4}/></button></div></div>))}</div></>
+            ))}
+          </div></div>
+        </div>
+        <AppFooter note="Sequences run on your connected SMS & email accounts"/>
+      </div>
+    </div>
+  );
+}
+// ?? App Router ????????????????????????????????????????????????????????????????
 function App(){
   const [page,setPage]=React.useState('landing');
   const [searchOpen,setSearchOpen]=React.useState(false);
@@ -3439,6 +3483,7 @@ function App(){
       {page==='email-sequence-builder' && <SequenceBuilderPage channel="email" {...p}/>}
       {page==='reports'           && <ReportsPage {...p}/>}
       {page==='settings-automations' && <SettingsAutomationsPage {...p}/>}
+      {page==='settings-sequences' && <SettingsSequencesPage {...p}/>}
       {page==='settings-billing'  && <SettingsBillingPage {...p}/>}
       {page==='settings-team'     && <SettingsTeamPage {...p}/>}
       {page==='settings-general'  && <SettingsGeneralPage {...p}/>}
