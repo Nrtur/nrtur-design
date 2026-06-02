@@ -491,7 +491,7 @@ const ALL_PAGES=[
   'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5',
   'dashboard','contacts','contact-detail','add-contact','edit-contact',
   'pipeline','deal-detail','add-deal',
-  'inbox','automation-builder',
+  'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
   'reports',
   'settings-billing','settings-team','settings-general','settings-automations','settings-integrations',
   'settings-pipeline','settings-notifications','settings-unsubscribes','settings-privacy',
@@ -2220,19 +2220,60 @@ function AutomationsPage({goTo}){
   );
 }
 // ?? AutomationBuilderPage ?????????????????????????????????????????????????????
+function AutomationTestModal({steps,close}){
+  const [contact,setContact]=React.useState('');
+  const [ran,setRan]=React.useState(false);
+  const QUICK=[{name:'Sarah Chen',avatar:'SC',color:'#3b82f6'},{name:'James Rivera',avatar:'JR',color:'#8b5cf6'},{name:'Priya Nair',avatar:'PN',color:'#a855f7'}];
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const results=steps.map((s,i)=>({label:s.label,status:i===1&&steps.length>2?'warn':i===steps.length-1&&steps.length>3?'fail':'ok'}));
+  const ICON={ok:{Icon:I.Check,c:'#34d399',bg:'bg-emerald-500/15',t:'Completed'},warn:{Icon:I.Flag,c:'#fbbf24',bg:'bg-amber-500/15',t:'Skipped'},fail:{Icon:I.X,c:'#f87171',bg:'bg-red-500/15',t:'Failed'}};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:480,maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Play size={16}/></div><div><p className="text-white text-[15px] font-bold">Test automation</p><p className="text-white/45 text-[12px]">Run a simulation against a test contact.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area p-6" style={{background:'#0d0d1a'}}>
+          <label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Test contact</label>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 mb-3"><I.Search size={13} className="text-white/40"/><input value={contact} onChange={e=>setContact(e.target.value)} placeholder="Select a test contact" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30"/></div>
+          <div className="flex items-center gap-2 mb-5">{QUICK.map(c=>(<button key={c.name} onClick={()=>setContact(c.name)} className={['inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl border transition-all',contact===c.name?'bg-brand-500/15 border-brand-500/40':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16]'].join(' ')}><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:c.color}}>{c.avatar}</span><span className="text-[12px] text-white/80">{c.name}</span></button>))}</div>
+          {!ran?(<button onClick={()=>setRan(true)} disabled={!contact} className={['w-full py-2.5 rounded-xl text-[13px] font-bold transition-all border-none',contact?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Play size={12} className="inline mr-1.5"/>Run simulation</button>):(
+            <div><div className="flex items-center justify-between mb-3"><p className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.14em]">Simulation result</p><span className="text-[11px] text-white/40">for {contact}</span></div>
+              <div className="flex flex-col gap-2">{results.map((r,i)=>{const ic=ICON[r.status];return(<div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><span className={['w-7 h-7 rounded-lg flex items-center justify-center shrink-0',ic.bg].join(' ')} style={{color:ic.c}}><ic.Icon size={14} stroke={2.6}/></span><div className="flex-1 min-w-0"><p className="text-[13px] font-medium text-white">{r.label}</p><p className="text-[11px]" style={{color:ic.c}}>{ic.t}{r.status==='warn'?' — condition not met':r.status==='fail'?' — no email on file':''}</p></div></div>);})}</div>
+              <button onClick={()=>setRan(false)} className="w-full mt-4 py-2 rounded-xl text-[12px] font-medium text-white/60 hover:text-white bg-white/[0.04] border border-white/[0.08] transition-all">Run again</button>
+            </div>)}
+        </div>
+        <div className="px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><button onClick={close} className="w-full py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button></div>
+      </div>
+    </div>
+  );
+}
 function AutomationBuilderPage({goTo}){
   const [steps,setSteps]=React.useState([{id:1,...STEP_PRESETS_A.assign},{id:2,...STEP_PRESETS_A.welcome},{id:3,...STEP_PRESETS_A.task}]);
   const [name,setName]=React.useState('New Automation');
   const [trigger,setTrigger]=React.useState('Contact created');
+  const [activated,setActivated]=React.useState(false);
+  const [dirty,setDirty]=React.useState(false);
+  const [testOpen,setTestOpen]=React.useState(false);
+  const [toast,setToast]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
   const availableSteps=Object.values(STEP_PRESETS_A);
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
+  const mark=()=>setDirty(true);
+  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-automations'),650);};
+  const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this automation will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-automations')});else goTo('settings-automations');};
+  const SEL_DARK={colorScheme:'dark',background:'#0d0d1a'};
   return(
     <div className="h-full flex" style={{background:'#07070f'}}>
       <AppSidebar active="settings-automations" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'#09091a'}}>
-          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('settings-automations')} className="text-white/45 hover:text-white transition-colors">Automations</button><I.ChevronRight size={12} className="text-white/25"/><input value={name} onChange={e=>setName(e.target.value)} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5"/></div>
-          <div className="flex items-center gap-2"><button onClick={()=>goTo('settings-automations')} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('settings-automations')} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save automation</button></div>
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'#09091a'}}>
+          <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Automations</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 mr-1 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className={['text-[12px] font-medium',activated?'text-emerald-300':'text-white/50'].join(' ')}>{activated?'Active':'Inactive'}</span><Toggle on={activated} onChange={v=>{setActivated(v);mark();}}/></div>
+            <button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>
+            <button onClick={cancel} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+            <button onClick={()=>save('Saved as draft')} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>
+            <button onClick={()=>save('Automation saved')} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-3xl mx-auto">
@@ -2240,29 +2281,32 @@ function AutomationBuilderPage({goTo}){
               <div className="flex flex-col gap-4">
                 <div className="rounded-2xl bg-white/[0.03] border border-brand-500/25 p-5">
                   <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-[0.18em] mb-3">Trigger</p>
-                  <select value={trigger} onChange={e=>setTrigger(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none"><option>Contact created</option><option>Deal moved to Proposal</option><option>Deal inactive 7 days</option><option>Email received</option><option>Form submitted</option></select>
+                  <select value={trigger} onChange={e=>{setTrigger(e.target.value);mark();}} style={SEL_DARK} className="w-full px-3 py-2.5 rounded-xl border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none"><option>Contact created</option><option>Deal moved to Proposal</option><option>Deal inactive 7 days</option><option>Email received</option><option>Form submitted</option></select>
                 </div>
                 {steps.map((s,i)=>{const Icon=s.Icon;return(
                   <React.Fragment key={s.id}>
                     <div className="flex items-center justify-center"><div className="w-px h-6 bg-white/[0.10]"/></div>
                     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5">
-                      <div className="flex items-center justify-between mb-3"><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Step {i+1}</span><button onClick={()=>openConfirm({title:`Remove "${s.label}"?`,body:'This step will be deleted. This cannot be undone.',confirmLabel:'Remove step',danger:true,onConfirm:()=>setSteps(steps.filter(x=>x.id!==s.id))})} className="text-white/30 hover:text-red-400 text-[11px] transition-colors">Remove</button></div>
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Icon size={14}/></span><div><p className="text-[13px] font-semibold text-white">{s.label}</p>{s.meta&&<p className="text-[11px] text-white/45 mt-0.5">Delay: {s.meta}</p>}</div></div>
+                      <div className="flex items-center justify-between mb-3"><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Step {i+1}</span><button onClick={()=>{setSteps(steps.filter(x=>x.id!==s.id));mark();}} title="Remove step" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={13}/></button></div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Icon size={14}/></span><div className="flex-1"><p className="text-[13px] font-semibold text-white">{s.label}</p>{s.meta&&<p className="text-[11px] text-white/45 mt-0.5">Delay: {s.meta}</p>}</div></div>
+                      {s.meta&&(<div className="mt-3"><label className="text-[11px] text-white/45 block mb-1.5">Delay duration</label><select defaultValue={s.meta} style={SEL_DARK} className="w-full px-3 py-2 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none"><option>1h</option><option>2d</option><option>5d</option><option>1 week</option><option>2 weeks</option></select></div>)}
                     </div>
                   </React.Fragment>
                 );})}
                 <div className="flex items-center justify-center"><div className="w-px h-6 bg-white/[0.10]"/></div>
-                <div className="rounded-2xl border border-dashed border-white/[0.12] hover:border-brand-500/30 p-4 text-center transition-all"><p className="text-[12px] text-white/45">Add step from the panel</p></div>
+                <div className="rounded-2xl border border-dashed border-white/[0.12] hover:border-brand-500/30 p-4 text-center transition-all"><p className="text-[12px] text-white/45">Add an action from the panel →</p></div>
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 sticky top-4">
-                <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-4">Actions</p>
-                <div className="flex flex-col gap-2">{availableSteps.map((s,i)=>{const Icon=s.Icon;return(<button key={i} onClick={()=>setSteps([...steps,{...s,id:Date.now()+i}])} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] transition-all text-left group"><span className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Icon size={13}/></span><span className="text-[12px] text-white/65 group-hover:text-white transition-colors">{s.label}</span><I.Plus size={11} stroke={2.4} className="ml-auto text-white/20 group-hover:text-brand-300 transition-colors"/></button>);})}</div>
+                <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-4">Add action</p>
+                <div className="flex flex-col gap-2">{availableSteps.map((s,i)=>{const Icon=s.Icon;return(<button key={i} onClick={()=>{setSteps([...steps,{...s,id:Date.now()+i}]);mark();}} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] transition-all text-left group"><span className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Icon size={13}/></span><span className="text-[12px] text-white/65 group-hover:text-white transition-colors">{s.label}</span><I.Plus size={11} stroke={2.4} className="ml-auto text-white/20 group-hover:text-brand-300 transition-colors"/></button>);})}</div>
               </div>
             </div>
           </div>
         </div>
         <AppFooter/>{confirmNode}
       </div>
+      {testOpen&&<AutomationTestModal steps={steps} close={()=>setTestOpen(false)}/>}
+      {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
     </div>
   );
 }
@@ -3132,66 +3176,232 @@ function CallsPage({goTo}){
     </div>
   );
 }
+// ?? Sequence Builder ?????????????????????????????????????????????????????????
+function SequenceBuilderPage({goTo,channel}){
+  const isSms=channel==='sms';
+  const [name,setName]=React.useState(isSms?'New SMS Sequence':'New Email Sequence');
+  const [trigger,setTrigger]=React.useState('Contact tagged');
+  const [steps,setSteps]=React.useState(isSms
+    ?[{id:1,body:'Hi {{first_name}}, thanks for connecting! Quick question — are you still looking at {{company}} options this quarter?',delay:null},{id:2,body:'Just floating this back up {{first_name}} — happy to share a 2-min overview whenever you have a sec.',delay:{n:2,unit:'days'}}]
+    :[{id:1,subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nThanks for signing up! Here is how to get started in 3 quick steps.\n\nBest,\nAlex',delay:null},{id:2,subject:'A few tips to get the most out of nrtur',body:'Hi {{first_name}},\n\nNoticed you are exploring — here are the features teams love most.\n\nAlex',delay:{n:3,unit:'days'}}]);
+  const [activated,setActivated]=React.useState(false);
+  const [dirty,setDirty]=React.useState(false);
+  const [testOpen,setTestOpen]=React.useState(false);
+  const [exitOnReply,setExitOnReply]=React.useState(true);
+  const [toast,setToast]=React.useState('');
+  const {confirmNode,openConfirm}=useConfirm();
+  const mark=()=>setDirty(true);
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
+  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-automations'),650);};
+  const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-automations')});else goTo('settings-automations');};
+  const setStep=(id,patch)=>{setSteps(s=>s.map(x=>x.id===id?{...x,...patch}:x));mark();};
+  const addStep=()=>{setSteps(s=>[...s,{id:Date.now(),...(isSms?{body:''}:{subject:'',body:''}),delay:{n:2,unit:'days'}}]);mark();};
+  const removeStep=(id)=>{setSteps(s=>s.filter(x=>x.id!==id));mark();};
+  const SEL='colorScheme:dark';const SEL_DARK={colorScheme:'dark',background:'#0d0d1a'};
+  const accent=isSms?'#34d399':'#818cf8';
+  return(
+    <div className="h-full flex" style={{background:'#07070f'}}>
+      <AppSidebar active="settings-automations" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'#09091a'}}>
+          <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Automations</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white/45 shrink-0">{isSms?'SMS Sequences':'Email Sequences'}</span><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-semibold outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 mr-1 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className={['text-[12px] font-medium',activated?'text-emerald-300':'text-white/50'].join(' ')}>{activated?'Active':'Inactive'}</span><Toggle on={activated} onChange={v=>{setActivated(v);mark();}}/></div>
+            <button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>
+            <button onClick={cancel} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+            <button onClick={()=>save('Saved as draft')} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>
+            <button onClick={()=>save('Sequence saved')} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-2xl mx-auto">
+            <div className="flex items-center gap-2 mb-4"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ring-1" style={{background:accent+'18',color:accent,boxShadow:`0 0 0 1px ${accent}40`}}>{isSms?<I.Hash size={11}/>:<I.Mail size={11}/>}{isSms?'SMS drip sequence':'Email drip sequence'}</span><span className="text-[12px] text-white/40">{steps.length} message{steps.length!==1?'s':''}</span></div>
+            <div className="rounded-2xl bg-white/[0.03] border border-brand-500/25 p-5 mb-1">
+              <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-[0.18em] mb-3">Enroll contacts when</p>
+              <select value={trigger} onChange={e=>{setTrigger(e.target.value);mark();}} style={SEL_DARK} className="w-full px-3 py-2.5 rounded-xl border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none"><option>Contact tagged</option><option>Deal moved to a stage</option><option>Form submitted</option><option>Manually enrolled</option><option>Trial started</option></select>
+            </div>
+            {steps.map((s,i)=>(
+              <React.Fragment key={s.id}>
+                {i>0&&(<div className="flex items-center justify-center gap-2 py-3"><div className="w-px h-4 bg-white/[0.10]"/><div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/60"><I.Clock size={12} className="text-white/40"/>Wait<input value={s.delay?.n??2} onChange={e=>setStep(s.id,{delay:{...(s.delay||{unit:'days'}),n:e.target.value.replace(/\D/g,'')||'0'}})} className="w-8 bg-transparent text-center text-white font-mono outline-none border-b border-white/[0.15] focus:border-brand-500/40"/><select value={s.delay?.unit||'days'} onChange={e=>setStep(s.id,{delay:{...(s.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="bg-transparent text-white outline-none appearance-none cursor-pointer">{['hours','days','weeks'].map(u=>(<option key={u}>{u}</option>))}</select>then</div><div className="w-px h-4 bg-white/[0.10]"/></div>)}
+                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-5">
+                  <div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold" style={{background:accent+'1f',color:accent}}>{i+1}</span><span className="text-[13px] font-semibold text-white">Message {i+1}</span></div>{steps.length>1&&<button onClick={()=>removeStep(s.id)} title="Remove message" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={13}/></button>}</div>
+                  {!isSms&&(<input value={s.subject} onChange={e=>setStep(s.id,{subject:e.target.value})} placeholder="Subject line" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-2"/>)}
+                  <div className="rounded-xl border border-white/[0.08] focus-within:border-brand-500/40 transition-all" style={{background:'rgba(15,15,28,0.5)'}}>
+                    <textarea value={s.body} onChange={e=>setStep(s.id,{body:e.target.value})} rows={isSms?3:5} placeholder={isSms?'Type your SMS message...':'Write your email...'} className="w-full bg-transparent outline-none resize-none px-3.5 py-3 text-[13px] text-white placeholder:text-white/30 leading-relaxed"/>
+                    <div className="flex items-center justify-between px-3.5 pb-2.5 gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 flex-wrap">{SMS_VARS.slice(0,isSms?3:4).map(v=>(<button key={v.token} onClick={()=>setStep(s.id,{body:s.body+v.token})} title={v.desc} className="px-1.5 py-0.5 rounded text-[10px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/18 transition-all">{v.token}</button>))}</div>
+                      {isSms&&<span className={['text-[11px] tabular-nums',SmsSegments(s.body.length).segs>1?'text-amber-300':'text-white/30'].join(' ')}>{s.body.length} chars · {SmsSegments(s.body.length).segs} SMS</span>}
+                    </div>
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
+            <div className="flex items-center justify-center py-3"><div className="w-px h-4 bg-white/[0.10]"/></div>
+            <button onClick={addStep} className="w-full rounded-2xl border-2 border-dashed border-white/[0.12] hover:border-brand-500/40 hover:bg-brand-500/[0.04] transition-all flex items-center justify-center gap-2 py-4 text-white/45 hover:text-brand-300"><I.Plus size={16} stroke={2.4}/><span className="text-[13px] font-medium">Add another message</span></button>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 mt-5">
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Exit conditions</p>
+              <div className="flex items-center justify-between gap-4"><div><p className="text-[13px] font-medium text-white">Stop sequence when contact replies</p><p className="text-[11px] text-white/45 mt-0.5">Remaining messages won't send once they respond.</p></div><Toggle on={exitOnReply} onChange={v=>{setExitOnReply(v);mark();}}/></div>
+            </div>
+          </div>
+        </div>
+        <AppFooter/>{confirmNode}
+      </div>
+      {testOpen&&<AutomationTestModal steps={steps.map((s,i)=>({label:(isSms?'Send SMS':'Send email')+' #'+(i+1),Icon:isSms?I.Hash:I.Mail}))} close={()=>setTestOpen(false)}/>}
+      {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+    </div>
+  );
+}
 // ?? Settings Automations ?????????????????????????????????????????????????????
 const AUTO_LOGS=[
-  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Sarah Chen',status:'success',time:'12m ago'},
-  {auto:'Proposal Follow-Up',trigger:'Deal moved to Proposal',contact:'James Rivera',status:'success',time:'1h ago'},
-  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Tom Barrett',status:'success',time:'2h ago'},
-  {auto:'Re-engagement Campaign',trigger:'Deal inactive 7 days',contact:'Marcus Rios',status:'failed',time:'3h ago'},
-  {auto:'Proposal Follow-Up',trigger:'Deal moved to Proposal',contact:'Priya Nair',status:'success',time:'5h ago'},
-  {auto:'New Lead Welcome Sequence',trigger:'Contact created',contact:'Luca Bianchi',status:'failed',time:'Yesterday'},
-  {auto:'Post-close Check-in',trigger:'Deal won',contact:'Emily Tran',status:'success',time:'Yesterday'},
-  {auto:'Re-engagement Campaign',trigger:'Deal inactive 7 days',contact:'Riley Voss',status:'success',time:'May 28'},
+  {auto:'New Lead Welcome Sequence',contact:'Sarah Chen',avatar:'SC',color:'#3b82f6',status:'success',steps:'3/3',time:'12m ago'},
+  {auto:'Proposal Follow-Up',contact:'James Rivera',avatar:'JR',color:'#8b5cf6',status:'success',steps:'3/3',time:'1h ago'},
+  {auto:'Invoice Reminder',contact:'Tom Barrett',avatar:'TB',color:'#0ea5e9',status:'failed',steps:'2/3',time:'2h ago'},
+  {auto:'New Lead Welcome Sequence',contact:'Luca Bianchi',avatar:'LB',color:'#6366f1',status:'warning',steps:'3/3',time:'3h ago'},
+  {auto:'Proposal Follow-Up',contact:'Priya Nair',avatar:'PN',color:'#a855f7',status:'success',steps:'3/3',time:'5h ago'},
+  {auto:'Re-engagement Campaign',contact:'Marcus Rios',avatar:'MR',color:'#f59e0b',status:'failed',steps:'1/2',time:'Yesterday'},
+  {auto:'Deal Won Celebration',contact:'Emily Tran',avatar:'ET',color:'#14b8a6',status:'success',steps:'3/3',time:'Yesterday'},
+  {auto:'New Lead Welcome Sequence',contact:'Riley Voss',avatar:'RV',color:'#64748b',status:'warning',steps:'3/3',time:'May 28'},
 ];
+const AUTO_INIT=[
+  {id:1,name:'New Lead Welcome Sequence',trigger:'Contact created',status:'active',runs:284,success:100,lastRun:'12m ago',spark:[4,6,5,8,12,9,11,14,12,16,18,15,22,24],steps:[STEP_PRESETS_A.assign,STEP_PRESETS_A.welcome,STEP_PRESETS_A.task]},
+  {id:2,name:'Proposal Follow-Up',trigger:'Deal moved to Proposal',status:'active',runs:91,success:97,lastRun:'1h ago',spark:[2,3,1,4,5,3,6,4,7,5,8,6,9,7],steps:[STEP_PRESETS_A.proposal,STEP_PRESETS_A.slack,STEP_PRESETS_A.reminder]},
+  {id:3,name:'Deal Won Celebration',trigger:'Deal moved to Won',status:'active',runs:62,success:100,lastRun:'3h ago',spark:[1,2,2,3,4,3,5,4,6,5,7,6,8,7],steps:[STEP_PRESETS_A.celebrate,STEP_PRESETS_A.welcome,STEP_PRESETS_A.task]},
+  {id:4,name:'Weekly Pipeline Digest',trigger:'Every Monday 8am',status:'active',runs:18,success:100,lastRun:'2d ago',spark:[1,1,1,1,1,1,1,1,1,1,1,1,1,1],steps:[STEP_PRESETS_A.report,STEP_PRESETS_A.slack]},
+  {id:5,name:'Re-engagement Campaign',trigger:'Deal inactive 7 days',status:'paused',runs:47,pausedSince:'Apr 12',lastRun:'3 weeks ago',spark:[3,5,4,6,7,5,4,3,2,1,1,0,0,0],steps:[STEP_PRESETS_A.reengage,STEP_PRESETS_A.flag]},
+  {id:6,name:'Cold Lead Nurture',trigger:'Tag added: cold-lead',status:'paused',runs:33,pausedSince:'May 2',lastRun:'1 month ago',spark:[2,2,1,1,1,0,0,0,0,0,0,0,0,0],steps:[STEP_PRESETS_A.welcome,STEP_PRESETS_A.reminder]},
+  {id:7,name:'Invoice Reminder',trigger:'Invoice overdue',status:'error',runs:53,success:88,lastRun:'2h ago',errStep:'Step 3: Email invalid address',spark:[4,5,6,5,7,6,8,5,3,2,4,3,1,1],steps:[STEP_PRESETS_A.reminder,STEP_PRESETS_A.welcome,STEP_PRESETS_A.flag]},
+  {id:8,name:'Quarterly Check-in',trigger:'Deal won + 90 days',status:'draft',runs:0,steps:[STEP_PRESETS_A.task,STEP_PRESETS_A.welcome]},
+];
+const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',label:'Active'},paused:{dot:'#fbbf24',badge:'bg-amber-500/12 text-amber-300 ring-amber-500/25',label:'Paused'},error:{dot:'#f87171',badge:'bg-red-500/12 text-red-300 ring-red-500/25',label:'Error'},draft:{dot:'#94a3b8',badge:'bg-white/[0.06] text-white/55 ring-white/[0.10]',label:'Draft'}};
+const LOG_ST={success:{c:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',dot:'#34d399',l:'Success'},failed:{c:'bg-red-500/12 text-red-300 ring-red-500/25',dot:'#f87171',l:'Failed'},warning:{c:'bg-amber-500/12 text-amber-300 ring-amber-500/25',dot:'#fbbf24',l:'Warning'}};
+const AUTO_TEMPLATES=[
+  {name:'New Lead Welcome',cat:'Lead Management',trigger:'Contact created',steps:['Assign to a sales rep','Send welcome email','Create a follow-up task']},
+  {name:'Deal Won Celebration',cat:'Pipeline',trigger:'Deal moved to Won',steps:['Notify the team in Slack','Send a thank-you email','Create onboarding task']},
+  {name:'Follow-up Sequence',cat:'Communication',trigger:'No reply in 3 days',steps:['Wait 3 days','Send a follow-up email','Notify the deal owner']},
+  {name:'Proposal Follow-Up',cat:'Pipeline',trigger:'Deal moved to Proposal',steps:['Send the proposal','Notify Slack channel','Set a 5-day reminder']},
+  {name:'Re-engagement (30d)',cat:'Re-engagement',trigger:'Deal inactive 30 days',steps:['Send re-engagement email','Flag deal for review','Notify owner']},
+  {name:'Trial Nurture',cat:'Lead Management',trigger:'Trial started',steps:['Send getting-started guide','Wait 2 days','Send tips & tricks email']},
+  {name:'Birthday Touchpoint',cat:'Communication',trigger:'Contact birthday',steps:['Send an SMS greeting','Log the activity']},
+  {name:'Stale Deal Alert',cat:'Re-engagement',trigger:'Deal inactive 14 days',steps:['Notify deal owner','Create a review task','Flag the deal']},
+];
+function AutomationTemplatePanel({close,onUse}){
+  const [q,setQ]=React.useState('');const [cat,setCat]=React.useState('All');
+  const cats=['All',...Array.from(new Set(AUTO_TEMPLATES.map(t=>t.cat)))];
+  const list=AUTO_TEMPLATES.filter(t=>(cat==='All'||t.cat===cat)&&(!q||t.name.toLowerCase().includes(q.toLowerCase())||t.trigger.toLowerCase().includes(q.toLowerCase())));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  return(<>
+    <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
+    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[360px] flex flex-col border-l border-white/[0.08]" style={{background:'rgba(11,11,24,0.98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+      <div className="px-5 py-4 border-b border-white/[0.06] shrink-0"><div className="flex items-center justify-between mb-3"><p className="text-[15px] font-bold text-white">Automation templates</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div><div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates..." className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/></div></div>
+      <div className="px-5 py-2.5 border-b border-white/[0.06] flex items-center gap-1.5 overflow-x-auto scroll-area shrink-0">{cats.map(c=>(<button key={c} onClick={()=>setCat(c)} className={['shrink-0 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all',cat===c?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>{c}</button>))}</div>
+      <div className="flex-1 overflow-y-auto scroll-area p-4 flex flex-col gap-3">{list.map(t=>(<div key={t.name} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4"><p className="text-[14px] font-bold text-white">{t.name}</p><p className="text-[11px] text-white/45 mt-1"><span className="text-white/35">When:</span> {t.trigger}</p><div className="mt-3 flex flex-col gap-1.5">{t.steps.map((s,i)=>(<div key={i} className="flex items-center gap-2 text-[11px] text-white/60"><span className="w-1 h-1 rounded-full bg-brand-400 shrink-0"/>{s}</div>))}</div><button onClick={()=>onUse(t)} className="mt-3.5 w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}{list.length===0&&<div className="text-center text-[12px] text-white/35 py-10">No templates found.</div>}</div>
+    </div>
+  </>);
+}
 function SettingsAutomationsPage({goTo}){
   const [sub,setSub]=React.useState('workflows');
-  const [autoMap,setAutoMap]=React.useState(()=>Object.fromEntries(AUTOMATIONS_DATA.map((a,i)=>[i,a.active])));
+  const [subView,setSubView]=React.useState('list');
+  const [autos,setAutos]=React.useState(AUTO_INIT);
   const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active])]));
+  const [menu,setMenu]=React.useState(null);
+  const [tplOpen,setTplOpen]=React.useState(false);
+  const [toast,setToast]=React.useState('');
   const [logAuto,setLogAuto]=React.useState('All');
   const [logStatus,setLogStatus]=React.useState('All');
   const [logRange,setLogRange]=React.useState('Last 7 days');
+  const {confirmNode,openConfirm}=useConfirm();
+  React.useEffect(()=>{if(menu===null)return;const fn=(e)=>{if(!e.target.closest('[data-automenu]'))setMenu(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[menu]);
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2400);};
+  const toggleAuto=(id)=>setAutos(a=>a.map(x=>x.id===id?{...x,status:x.status==='active'?'paused':'active'}:x));
+  const duplicateAuto=(a)=>{setAutos(list=>[...list,{...a,id:Date.now(),name:'Copy of '+a.name,status:'paused',runs:0,lastRun:'Never run'}]);setMenu(null);showToast('Automation duplicated');};
+  const delAuto=(id)=>setAutos(a=>a.filter(x=>x.id!==id));
+  const useTemplate=(t)=>{setTplOpen(false);showToast('Template "'+t.name+'" loaded');goTo('automation-builder');};
   const SUBTABS=[{k:'workflows',l:'Workflows'},{k:'sms',l:'SMS Sequences'},{k:'email',l:'Email Sequences'},{k:'logs',l:'Logs'}];
   const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
+  const nActive=autos.filter(a=>a.status==='active').length,nPaused=autos.filter(a=>a.status==='paused').length;
   const seqRow=(seq,channel)=>{const key=channel+seq.id;const on=seqMap[key];return(
     <div key={key} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
-      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-bold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-bold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-bold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-bold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-bold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-bold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo(channel==='email'?'email-sequence-builder':'sms-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
     </div>);};
-  const LCOL='1.7fr 1.4fr 1.2fr 100px 110px';
+  const LCOL='1.7fr 1.5fr 120px 110px 110px';
   const filteredLogs=AUTO_LOGS.filter(l=>(logAuto==='All'||l.auto===logAuto)&&(logStatus==='All'||l.status===logStatus));
   return(
-    <SettingsShell active="settings-automations" goTo={goTo}>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-5">
-          <div><p className="text-white text-[18px] font-bold">Automations</p><p className="text-white/45 text-[13px] mt-1">3 active · 422 runs this month · 98.4% success</p></div>
+    <div className="h-full flex" style={{background:'#07070f'}}>
+      <AppSidebar active="settings-automations" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} title="Automations" subtitle={`${nActive} active · ${nPaused} paused · 389 runs this month`} rightSlot={<button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Automation</button>}/>
+        <div className="flex-1 flex min-h-0">
+          <SettingsSubNav active="settings-automations" goTo={goTo}/>
+          <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">
+            <div className="flex items-center gap-1 border-b border-white/[0.06]">{SUBTABS.map(t=>{const a=sub===t.k;return(<button key={t.k} onClick={()=>{setSub(t.k);setSubView('list');}} className={['relative px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)',boxShadow:'0 0 12px rgba(129,140,248,0.7)'}}/>}</button>);})}</div>
+            {sub==='workflows'&&(autos.length===0?(
+              <div className="flex flex-col items-center text-center py-12">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:'linear-gradient(135deg,#6366f1,#7c3aed)',boxShadow:'0 8px 30px rgba(99,102,241,0.35)'}}><I.Zap size={28} className="text-white"/></div>
+                <p className="text-white text-[18px] font-bold">No automations yet</p>
+                <p className="text-[13px] text-white/45 mt-1.5 max-w-sm leading-relaxed">Put your follow-ups on autopilot. Trigger actions when contacts are created, deals move stages, or replies come in — no code required.</p>
+                <div className="flex items-center gap-3 mt-5"><button onClick={()=>setTplOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Layers size={14}/>Browse templates</button><button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Build from scratch</button></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 w-full text-left">{AUTO_TEMPLATES.slice(0,3).map(t=>(<div key={t.name} className="rounded-2xl bg-white/[0.025] border border-white/[0.06] p-4"><p className="text-[13px] font-bold text-white">{t.name}</p><p className="text-[11px] text-white/45 mt-1">When: {t.trigger}</p><p className="text-[11px] text-white/35 mt-2">{t.steps.length} steps</p><button onClick={()=>useTemplate(t)} className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-brand-300 hover:text-brand-200">Use<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
+              </div>
+            ):(<div className="flex flex-col gap-4">
+              <div className="flex items-center justify-end -mb-1"><button onClick={()=>setTplOpen(true)} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200"><I.Layers size={12}/>Browse templates</button></div>
+              {autos.map(a=>{const st=AUTO_ST[a.status];const isErr=a.status==='error',isDraft=a.status==='draft',muted=a.status==='paused'||isDraft;return(
+                <div key={a.id} className={['rounded-2xl border p-5 transition-all',muted?'bg-white/[0.02] opacity-90':'bg-white/[0.035]',isErr?'':muted?'border-white/[0.05]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')} style={isErr?{borderColor:'rgba(239,68,68,0.3)',boxShadow:'0 0 0 1px rgba(239,68,68,0.12),0 0 30px rgba(239,68,68,0.08)'}:{}}>
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',a.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':isErr?'bg-red-500/10 text-red-300 ring-red-500/20':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><p className="text-[12px] text-white/55 mt-1"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div>
+                    <div className="flex items-center gap-2 shrink-0">{!isDraft&&<Toggle on={a.status==='active'} onChange={()=>toggleAuto(a.id)}/>}<button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button>
+                      <div data-automenu className="relative"><button onClick={()=>setMenu(menu===a.id?null:a.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
+                        {menu===a.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'#0d0d1a',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
+                          <button onClick={()=>duplicateAuto(a)} style={{color:'rgba(255,255,255,0.80)',padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button>
+                          <button onClick={()=>{setMenu(null);openConfirm({title:'Delete this automation?',body:`This automation has run ${a.runs} times. In-progress runs will be cancelled.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{delAuto(a.id);showToast('Automation deleted');}});}} style={{color:'#fca5a5',padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete</button>
+                        </div>)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5 mb-3 flex items-center gap-1.5 flex-wrap">{a.steps.map((s,j)=>{const Ic=s.Icon;return(<React.Fragment key={j}><span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/80 whitespace-nowrap"><span className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Ic size={11} stroke={2.2}/></span>{s.label}{s.meta&&<span className="text-[10px] text-white/35 font-mono">{s.meta}</span>}</span>{j<a.steps.length-1&&<I.ArrowRight size={12} className="text-white/20"/>}</React.Fragment>);})}</div>
+                  {!isDraft&&<div className="flex items-center justify-between gap-4"><div className="flex items-center gap-5 text-[12px] text-white/45"><span className="flex items-center gap-1.5"><I.Play size={9}/>Runs <span className="text-white font-bold tabular-nums">{a.runs}</span></span>{a.status==='active'?<span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Success <span className="text-emerald-300 font-bold tabular-nums">{a.success}%</span></span>:a.status==='paused'?<span className="italic">Paused since {a.pausedSince}</span>:<span className="flex items-center gap-1.5 text-red-300/80"><span className="w-1.5 h-1.5 rounded-full bg-red-400"/>{a.success}% success</span>}<span className="flex items-center gap-1"><I.Clock size={10}/>Last {a.lastRun}</span></div><MiniSparkA data={a.spark} color={a.status==='error'?'#f87171':a.status==='active'?'#818cf8':'#64748b'}/></div>}
+                  {isDraft&&<p className="text-[12px] text-white/35 italic">Draft — not yet activated.</p>}
+                  {isErr&&<div className="mt-3 pt-3 border-t border-red-500/15 flex items-center justify-between gap-3"><p className="text-[12px] text-red-300/90 flex items-center gap-1.5 min-w-0"><I.Ban size={11} className="shrink-0"/><span className="truncate">Last run failed — {a.errStep}</span></p><button onClick={()=>setSub('logs')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1 shrink-0">View log<I.ArrowRight size={11} stroke={2.4}/></button></div>}
+                </div>);})}
+            </div>))}
+            {sub==='sms'&&(<div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{[{k:'list',l:'Sequences'},{k:'templates',l:'Templates'}].map(v=>(<button key={v.k} onClick={()=>setSubView(v.k)} className={['px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',subView===v.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{v.l}</button>))}</div>
+                <button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New SMS sequence</button>
+              </div>
+              {subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{SEQ_DATA.map(s=>seqRow(s,'sms'))}</div>):(
+                <><p className="text-[12px] text-white/45 -mt-1">Reusable SMS snippets. Use one to start a new sequence.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SMS_TEMPLATES.map(t=>{const cat=SMS_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category,color:'#818cf8'};return(<div key={t.id} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center justify-between mb-2"><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 w-fit" style={{background:cat.color+'18',color:cat.color,boxShadow:`0 0 0 1px ${cat.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>{cat.label}</span>{t.favorite&&<I.Star size={12} className="text-amber-300" fill="currentColor"/>}</div><p className="text-[13px] font-bold text-white">{t.name}</p><p className="text-[12px] text-white/55 leading-relaxed mt-1 flex-1" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.05]"><span className="text-[11px] text-white/35">Used {t.uses}×</span><button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-300 hover:text-brand-200">Use in sequence<I.ArrowRight size={11} stroke={2.4}/></button></div></div>);})}</div></>
+              )}
+            </div>)}
+            {sub==='email'&&(<div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{[{k:'list',l:'Sequences'},{k:'templates',l:'Templates'}].map(v=>(<button key={v.k} onClick={()=>setSubView(v.k)} className={['px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',subView===v.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{v.l}</button>))}</div>
+                <button onClick={()=>goTo('email-sequence-builder')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New email sequence</button>
+              </div>
+              {subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{EMAIL_SEQ_DATA.map(s=>seqRow(s,'email'))}</div>):(
+                <><p className="text-[12px] text-white/45 -mt-1">Reusable email templates. Use one to start a new sequence.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{EMAIL_TEMPLATES.map((t,i)=>(<div key={i} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center gap-2 mb-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><I.Mail size={13}/></span><p className="text-[13px] font-bold text-white">{t.name}</p></div><p className="text-[11px] text-white/40 mb-1.5"><span className="text-white/30">Subject:</span> {t.subject}</p><p className="text-[12px] text-white/55 leading-relaxed flex-1 whitespace-pre-line" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-end mt-3 pt-2.5 border-t border-white/[0.05]"><button onClick={()=>goTo('email-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-300 hover:text-brand-200">Use in sequence<I.ArrowRight size={11} stroke={2.4}/></button></div></div>))}</div></>
+              )}
+            </div>)}
+            {sub==='logs'&&(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/[0.05] flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select value={logAuto} onChange={e=>setLogAuto(e.target.value)} style={{colorScheme:'dark',background:'#0d0d1a'}} className="px-2.5 py-1.5 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none"><option value="All">All automations</option>{Array.from(new Set(AUTO_LOGS.map(l=>l.auto))).map(a=>(<option key={a}>{a}</option>))}</select>
+                  <select value={logStatus} onChange={e=>setLogStatus(e.target.value)} style={{colorScheme:'dark',background:'#0d0d1a'}} className="px-2.5 py-1.5 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none"><option value="All">All statuses</option><option value="success">Success</option><option value="failed">Failed</option><option value="warning">Warning</option></select>
+                  <select value={logRange} onChange={e=>setLogRange(e.target.value)} style={{colorScheme:'dark',background:'#0d0d1a'}} className="px-2.5 py-1.5 rounded-lg border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none">{['Today','Last 7 days','Last 30 days','All time'].map(o=>(<option key={o}>{o}</option>))}</select>
+                </div>
+                <button onClick={()=>showToast('Logs exported to CSV')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Download size={12}/>Export logs</button>
+              </div>
+              <div className="grid items-center gap-4 px-5 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LCOL}}><span>Automation</span><span>Contact</span><span>Status</span><span>Steps</span><span className="text-right">Timestamp</span></div>
+              {filteredLogs.map((l,i)=>{const s=LOG_ST[l.status];return(<div key={i} className={['grid items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors',i<filteredLogs.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:LCOL}}><p className="text-[12.5px] font-medium text-white truncate">{l.auto}</p><div className="flex items-center gap-2.5 min-w-0"><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{background:l.color}}>{l.avatar}</div><p className="text-[12px] text-white/70 truncate">{l.contact}</p></div><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',s.c].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:s.dot}}/>{s.l}</span><span className="text-[12px] text-white/55 font-mono tabular-nums">{l.steps}</span><span className="text-[11px] text-white/45 text-right">{l.time}</span></div>);})}
+              {filteredLogs.length===0&&<div className="px-5 py-10 text-center text-[12px] text-white/35">No runs match these filters.</div>}
+            </div>)}
+          </div></div>
         </div>
-        <button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New Automation</button>
+        <AppFooter note="Plan changes take effect at the next billing cycle"/>
       </div>
-      <div className="flex items-center gap-1 border-b border-white/[0.06] -mt-1">{SUBTABS.map(t=>{const a=sub===t.k;return(<button key={t.k} onClick={()=>setSub(t.k)} className={['relative px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)',boxShadow:'0 0 12px rgba(129,140,248,0.7)'}}/>}</button>);})}</div>
-      {sub==='workflows'&&(<div className="flex flex-col gap-4">
-        {AUTOMATIONS_DATA.map((a,i)=>{const on=autoMap[i];return(
-          <div key={a.name} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-90'].join(' ')}>
-            <div className="flex items-start justify-between gap-4 mb-3"><div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0',on?'bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/55 mt-1"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div><div className="flex items-center gap-2 shrink-0"><Toggle on={on} onChange={v=>setAutoMap(m=>({...m,[i]:v}))}/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
-            <div className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5 mb-3 flex items-center gap-1.5 flex-wrap">{a.steps.map((s,j)=>{const Ic=s.Icon;return(<React.Fragment key={j}><span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/80 whitespace-nowrap"><span className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><Ic size={11} stroke={2.2}/></span>{s.label}{s.meta&&<span className="text-[10px] text-white/35 font-mono">{s.meta}</span>}</span>{j<a.steps.length-1&&<I.ArrowRight size={12} className="text-white/20"/>}</React.Fragment>);})}</div>
-            <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-5 text-[12px] text-white/45"><span className="flex items-center gap-1.5"><I.Play size={9}/>Runs <span className="text-white font-bold tabular-nums">{a.runs}</span></span>{on?<span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Success <span className="text-emerald-300 font-bold tabular-nums">{a.success}%</span></span>:<span className="italic">Paused since {a.pausedSince}</span>}<span className="flex items-center gap-1"><I.Clock size={10}/>Last {a.lastRun}</span></div><MiniSparkA data={a.spark} color={on?'#818cf8':'#64748b'}/></div>
-          </div>);})}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{TEMPLATES_A.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-bold">{t.name}</h4><p className="text-[12px] text-white/50 leading-relaxed mt-1 mb-3">{t.desc}</p><button onClick={()=>goTo('automation-builder')} className="w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
-      </div>)}
-      {sub==='sms'&&(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4 mb-2">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{SEQ_DATA.map(s=>seqRow(s,'sms'))}</div>)}
-      {sub==='email'&&(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4 mb-2">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-black leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{EMAIL_SEQ_DATA.map(s=>seqRow(s,'email'))}</div>)}
-      {sub==='logs'&&(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/[0.05] flex-wrap">
-          <div><p className="text-[13px] font-semibold text-white">Run history</p><p className="text-[11px] text-white/45 mt-0.5">{filteredLogs.length} of {AUTO_LOGS.length} runs</p></div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <select value={logAuto} onChange={e=>setLogAuto(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option>All</option>{[...new Set(AUTO_LOGS.map(l=>l.auto))].map(a=>(<option key={a}>{a}</option>))}</select>
-            <select value={logStatus} onChange={e=>setLogStatus(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option>All</option><option value="success">Success</option><option value="failed">Failed</option></select>
-            <select value={logRange} onChange={e=>setLogRange(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/80 outline-none focus:border-brand-500/40 appearance-none">{['Today','Last 7 days','Last 30 days','All time'].map(o=>(<option key={o}>{o}</option>))}</select>
-          </div>
-        </div>
-        <div className="grid items-center gap-4 px-5 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LCOL}}><span>Automation</span><span>Triggered by</span><span>Contact</span><span>Status</span><span className="text-right">Timestamp</span></div>
-        {filteredLogs.map((l,i)=>(<div key={i} className={['grid items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors',i<filteredLogs.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:LCOL}}><p className="text-[12.5px] font-medium text-white truncate">{l.auto}</p><p className="text-[12px] text-white/55 truncate">{l.trigger}</p><p className="text-[12px] text-white/70 truncate">{l.contact}</p><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',l.status==='success'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-red-500/12 text-red-300 ring-red-500/25'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',l.status==='success'?'bg-emerald-400':'bg-red-400'].join(' ')}/>{l.status}</span><span className="text-[11px] text-white/45 text-right">{l.time}</span></div>))}
-        {filteredLogs.length===0&&<div className="px-5 py-10 text-center text-[12px] text-white/35">No runs match these filters.</div>}
-      </div>)}
-    </SettingsShell>
+      {confirmNode}
+      {tplOpen&&<AutomationTemplatePanel close={()=>setTplOpen(false)} onUse={useTemplate}/>}
+      {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+    </div>
   );
 }
 // ?? App Router ????????????????????????????????????????????????????????????????
@@ -3225,6 +3435,8 @@ function App(){
       {page==='add-deal'          && <AddDealPage {...p}/>}
       {page==='inbox'             && <InboxPage {...p}/>}
       {page==='automation-builder'&& <AutomationBuilderPage {...p}/>}
+      {page==='sms-sequence-builder' && <SequenceBuilderPage channel="sms" {...p}/>}
+      {page==='email-sequence-builder' && <SequenceBuilderPage channel="email" {...p}/>}
       {page==='reports'           && <ReportsPage {...p}/>}
       {page==='settings-automations' && <SettingsAutomationsPage {...p}/>}
       {page==='settings-billing'  && <SettingsBillingPage {...p}/>}
