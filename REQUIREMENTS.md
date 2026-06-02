@@ -88,8 +88,8 @@ These are global rules every screen inherits; implement once as shared component
 ### 3.3 Shared layout components (reuse on every app page)
 | Component | Responsibility |
 |-----------|----------------|
-| `AppSidebar` | 5 nav items + Quick-add "+" dropdown + Settings/Profile footer; highlights active page |
-| `AppTopbar` | Page title/subtitle, global search trigger, notifications, **app-wide billing banner** when payment failed |
+| `AppSidebar` | 5 nav items + Quick-add "+" dropdown + Settings/Profile footer; highlights active page. Hosts the quick-add modal forms (see §3.6) |
+| `AppTopbar` | Page title/subtitle, notifications, **app-wide billing banner** when payment failed. Search is a **compact icon button** (not a wide input) that opens `GlobalSearchOverlay`; tooltip shows the ⌘K shortcut |
 | `AppFooter` | Sync/status bar |
 | `SettingsShell` + `SettingsSubNav` | 230px vertical settings rail (grouped Workspace/Communication/Account) beside scrollable content |
 | `GlobalSearchOverlay` / `CommandPalette` | Cross-entity search (contacts, deals, pages) |
@@ -98,10 +98,23 @@ These are global rules every screen inherits; implement once as shared component
 | `ConfirmModal` | Destructive-action confirmation |
 | `GlowBg` | Decorative blurred orbs background |
 
-### 3.4 Branding
+### 3.4 Quick-add ("+") — global create actions (modals, not navigation)
+The sidebar "+" opens a dropdown; **every item opens a modal form over the current page — it does NOT navigate to a separate page.** This lets a user create from anywhere without losing context. Items and the modal each reuses:
+
+| Quick-add item | Modal | Reuses |
+|----------------|-------|--------|
+| New contact | `QuickContactModal` — first/last, company, title, email, phone, status | → `POST /contacts` (§6) |
+| New deal | `QuickDealModal` — name, company, value, close date, stage | → `POST /deals` (§7) |
+| Compose email | `EmailComposeModal` (shared with Inbox) | → `POST /emails` (§8) |
+| Log a call | `LogCallModal` (shared with Contact Detail) | → `POST /calls` (§8) |
+| Import contacts | `CsvImportModal` (4-step wizard) | → `POST /contacts/import` (§6.2) |
+
+Each modal closes on **Esc**/Cancel, validates required fields (create button disabled until valid), and shows a success toast on save. **Frontend:** these modals submit to the same endpoints the full-page create flows use; on success, invalidate the relevant list query so the new record appears. The standalone `add-contact` / `add-deal` full pages still exist as routes for deep links, but the "+" uses the modals.
+
+### 3.5 Branding
 `NrturMark` renders the violet butterfly logo (embedded). Production: serve as SVG/PNG asset; use in sidebar, auth pages, onboarding, browser tab favicon/title.
 
-### 3.5 Cross-cutting non-functional requirements
+### 3.6 Cross-cutting non-functional requirements
 - **Loading:** every page shows a skeleton until data resolves (prototype `useSkeleton`); replace with real query loading states.
 - **Empty states:** every list/widget has a designed empty state — implement them, don't show blank panels.
 - **Permissions:** server enforces role; client hides/greys what the role can't use (e.g. Team widgets greyed for Rep).
@@ -393,21 +406,24 @@ These are global rules every screen inherits; implement once as shared component
 
 ### 11/12.1 Billing — 5 states (`settings-billing`)
 **UI:** state-driven via app-wide `BillingContext`. States: **trial, trial-expired, cancelled, payment-failed, active** (dev switcher pill in prototype; remove in prod).
-- **Active** view adds: billing-cycle toggle (monthly/annual), plan cards, **seats** management, **cost breakdown**, **spending controls/caps**, usage **alerts**, card form/visual, **invoice history**, **danger zone** (cancel).
+- **Active** view adds: billing-cycle toggle (monthly/annual), plan cards, **seats** management, **cost breakdown**, **spending controls/caps**, usage **alerts**, **invoice history**, **danger zone** (cancel).
 - **payment-failed** shows a **red banner app-wide in `AppTopbar`** (not just billing page) with "Fix now."
+
+> **Payments are delegated entirely to Stripe — Nrtur never collects or stores card data.** There is **no card-entry form anywhere in the app** (no card number / CVC / expiry inputs). Where a card is needed (trial, trial-expired, payment-failed), the UI shows a `StripePayNotice` hand-off block and the action button ("Start Pro", "Restore access", "Update card and pay") opens **Stripe Checkout** (hosted) / Stripe Customer Portal. Stored-card display (`BillingCardVisual`: brand + last-4 + expiry) is **read-only data returned by Stripe**, not a form. This keeps Nrtur out of PCI scope.
 
 **Backend / API**
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/billing` | Current state, plan, seats, usage, caps |
-| POST | `/billing/subscribe`, `/billing/cancel` | |
-| PUT | `/billing/payment-method` | Stripe card |
+| GET | `/billing` | Current state, plan, seats, usage, caps, card-on-file (brand/last4/exp from Stripe) |
+| POST | `/billing/checkout-session` | Create Stripe Checkout session → return redirect URL (start/upgrade/restore) |
+| POST | `/billing/portal-session` | Create Stripe Customer Portal session → return URL (update card / manage) |
+| POST | `/billing/cancel` | |
 | PUT | `/billing/cycle` `{monthly\|annual}` | |
 | PUT | `/billing/seats`, `/billing/caps`, `/billing/alerts` | |
-| GET | `/billing/invoices` | History |
-| Webhook | Stripe events | Drive state: trial→active, payment_failed, canceled |
+| GET | `/billing/invoices` | History (from Stripe) |
+| Webhook | Stripe events | Source of truth: `checkout.session.completed`, `invoice.payment_failed`, `customer.subscription.updated/deleted` → drive billing state |
 
-**Business logic:** state machine driven by Stripe webhooks + trial clock. `payment-failed` → grace period then suspend. Seat count gates how many active users; usage caps limit SMS/email spend.
+**Business logic:** state machine driven by **Stripe webhooks** + trial clock — the app reflects Stripe state, it does not set it directly. Card collection/updates happen on Stripe-hosted pages (Checkout / Portal); we only ever receive a `customer`/`subscription`/`payment_method` id and display metadata. `payment-failed` → grace period then suspend. Seat count gates active users; usage caps limit SMS/email spend.
 
 ### 12.2 Team (`settings-team`)
 Members list, roles, invites, **activity/audit log**. API: `GET/POST/PATCH/DELETE /team/members`, `/invites`, `GET /audit-log`.
