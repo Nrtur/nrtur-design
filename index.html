@@ -310,7 +310,7 @@ function CommandPalette({close,goTo}){
   );
 }
 // ?? Notification Dropdown ?????????????????????????????????????????????????????
-function NotifDropdown({close,goTo}){
+function NotifDropdown({close,goTo,posClass}){
   const [tab,setTab]=React.useState('all');
   const notifs=[
     {id:1,title:'Sarah Chen accepted proposal',sub:'Q3 Engagement - $24k',time:'5m ago',unread:true,avatar:'SC',color:'#3b82f6'},
@@ -321,7 +321,7 @@ function NotifDropdown({close,goTo}){
   const visible=tab==='unread'?notifs.filter(n=>n.unread):notifs;
   const unreadCount=notifs.filter(n=>n.unread).length;
   return(
-    <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden" style={{background:'rgba(13,13,26,0.97)',backdropFilter:'blur(24px)'}}>
+    <div className={(posClass||'absolute right-0 top-full mt-2')+' w-80 z-50 rounded-xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden'} style={{background:'rgba(13,13,26,0.97)',backdropFilter:'blur(24px)'}}>
       <div className="px-4 py-3 border-b border-white/[0.05] flex items-center justify-between">
         <p className="text-[13px] font-semibold text-white">Notifications</p>
         <div className="flex items-center gap-2">
@@ -424,9 +424,11 @@ function AppSidebar({active,goTo}){
   const [addOpen,setAddOpen]=React.useState(false);
   const [quickModal,setQuickModal]=React.useState(null);
   const [sideToast,setSideToast]=React.useState('');
+  const [notifOpen,setNotifOpen]=React.useState(false);
   const addRef=React.useRef(null);
+  const notifRef=React.useRef(null);
   const sideToastFn=(m)=>{setSideToast(m);setTimeout(()=>setSideToast(''),2200);};
-  React.useEffect(()=>{const fn=(e)=>{if(addRef.current&&!addRef.current.contains(e.target))setAddOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  React.useEffect(()=>{const fn=(e)=>{if(addRef.current&&!addRef.current.contains(e.target))setAddOpen(false);if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
     <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
       <button onClick={()=>goTo('dashboard')} className="mb-4 w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></button>
@@ -452,12 +454,17 @@ function AppSidebar({active,goTo}){
           </button>
         </div>)}
       </div>
+      <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150"><I.Search size={16}/></button>
       <div className="w-6 h-px bg-white/[0.06] my-1.5"/>
       {items.map(({key,Icon,label})=>{
         const a=active===key;
         return(<button key={key} onClick={()=>goTo(key)} title={label} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></button>);
       })}
       <div className="mt-auto flex flex-col items-center gap-3">
+        <div ref={notifRef} className="relative">
+          <button onClick={()=>setNotifOpen(v=>!v)} title="Notifications" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 relative',notifOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Bell size={16}/><span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/></button>
+          {notifOpen&&<NotifDropdown close={()=>setNotifOpen(false)} goTo={goTo} posClass="absolute left-full bottom-0 ml-2"/>}
+        </div>
         <button onClick={()=>goTo('settings-general')} title="Settings" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',settActive?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Settings size={16}/></button>
         <button onClick={()=>goTo('profile')} title="Profile" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
       </div>
@@ -473,10 +480,7 @@ function AppSidebar({active,goTo}){
 // ?? AppTopbar ?????????????????????????????????????????????????????????????????
 const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
 function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
-  const [notifOpen,setNotifOpen]=React.useState(false);
-  const notifRef=React.useRef(null);
   const __bc=React.useContext(BillingContext);
-  React.useEffect(()=>{const fn=(e)=>{if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
     <React.Fragment>
       {__bc.billingState==='payment-failed'&&(<div className="shrink-0 bg-red-500/15 border-b border-red-500/30 px-7 py-2 flex items-center gap-2"><I.Ban size={13} className="text-red-300 shrink-0"/><span className="text-[12px] text-red-200 font-medium">Payment failed — your card was declined. Update it to avoid suspension on June 8.</span><button onClick={()=>goTo('settings-billing')} className="ml-auto shrink-0 text-[12px] font-semibold text-red-100 hover:text-white underline">Fix now</button></div>)}
@@ -485,22 +489,7 @@ function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
         {title&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
         {subtitle&&<p className="text-white/50 text-[13px] mt-1">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-2.5 shrink-0">
-        {rightSlot}
-        {!noSearch&&(
-          <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all">
-            <I.Search size={15}/>
-          </button>
-        )}
-        <div ref={notifRef} className="relative">
-          <button onClick={()=>setNotifOpen(!notifOpen)} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all relative',notifOpen?'bg-white/[0.08] text-brand-300':'text-white/45 hover:text-white hover:bg-white/[0.06]'].join(' ')}>
-            <I.Bell size={14}/>
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/>
-          </button>
-          {notifOpen&&<NotifDropdown close={()=>setNotifOpen(false)} goTo={goTo}/>}
-        </div>
-        <button onClick={()=>goTo('profile')} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
-      </div>
+      {rightSlot&&(<div className="flex items-center gap-2.5 shrink-0">{rightSlot}</div>)}
     </header>
     </React.Fragment>
   );
