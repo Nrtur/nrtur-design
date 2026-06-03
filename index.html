@@ -310,7 +310,7 @@ function CommandPalette({close,goTo}){
   );
 }
 // ?? Notification Dropdown ?????????????????????????????????????????????????????
-function NotifDropdown({close,goTo}){
+function NotifDropdown({close,goTo,posClass}){
   const [tab,setTab]=React.useState('all');
   const notifs=[
     {id:1,title:'Sarah Chen accepted proposal',sub:'Q3 Engagement - $24k',time:'5m ago',unread:true,avatar:'SC',color:'#3b82f6'},
@@ -321,7 +321,7 @@ function NotifDropdown({close,goTo}){
   const visible=tab==='unread'?notifs.filter(n=>n.unread):notifs;
   const unreadCount=notifs.filter(n=>n.unread).length;
   return(
-    <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden" style={{background:'rgba(13,13,26,0.97)',backdropFilter:'blur(24px)'}}>
+    <div className={(posClass||'absolute right-0 top-full mt-2')+' w-80 z-50 rounded-xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden'} style={{background:'rgba(13,13,26,0.97)',backdropFilter:'blur(24px)'}}>
       <div className="px-4 py-3 border-b border-white/[0.05] flex items-center justify-between">
         <p className="text-[13px] font-semibold text-white">Notifications</p>
         <div className="flex items-center gap-2">
@@ -355,6 +355,63 @@ function NotifDropdown({close,goTo}){
   );
 }
 // ?? AppSidebar ????????????????????????????????????????????????????????????????
+// Quick-add modal forms (opened from the sidebar "+" button — open in place, no navigation)
+function QuickContactModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({first:'',last:'',email:'',phone:'',company:'',title:'',status:'Lead'});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.first.trim()&&f.email.trim();
+  const create=()=>{onToast&&onToast((f.first+' '+f.last).trim()+' added to contacts');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.UserPlus size={16}/></div><div><p className="text-white text-[15px] font-bold">New contact</p><p className="text-white/45 text-[12px]">Add a person or company to your CRM.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'#0d0d1a'}}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>First name</label><input value={f.first} onChange={e=>set('first',e.target.value)} placeholder="Sarah" className={I_F}/></div>
+            <div><label className={L}>Last name</label><input value={f.last} onChange={e=>set('last',e.target.value)} placeholder="Chen" className={I_F}/></div>
+            <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Meridian Agency" className={I_F}/></div>
+            <div><label className={L}>Job title</label><input value={f.title} onChange={e=>set('title',e.target.value)} placeholder="CEO" className={I_F}/></div>
+          </div>
+          <div className="mb-4"><label className={L}>Work email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="email@company.com" className={I_F}/></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+            <div><label className={L}>Status</label><select value={f.status} onChange={e=>set('status',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'#0d0d1a'}}>{CONTACT_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create contact</button></div>
+      </div>
+    </div>
+  );
+}
+function QuickDealModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',company:'',value:'',date:'',stage:DEAL_STAGE_ORDER[0]});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Deal')+' created');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:480,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.GitBranch size={16}/></div><div><p className="text-white text-[15px] font-bold">New deal</p><p className="text-white/45 text-[12px]">Start tracking a new opportunity.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'#0d0d1a'}}>
+          <div><label className={L}>Deal name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Q3 Retainer" className={I_F}/></div>
+          <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Search or add..." className={I_F}/></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Deal value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input value={f.value} onChange={e=>set('value',e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
+            <div><label className={L}>Close date</label><input type="date" value={f.date} onChange={e=>set('date',e.target.value)} className={I_F} style={{colorScheme:'dark'}}/></div>
+          </div>
+          <div><label className={L}>Stage</label><select value={f.stage} onChange={e=>set('stage',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'#0d0d1a'}}>{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'#0d0d1a'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create deal</button></div>
+      </div>
+    </div>
+  );
+}
 function AppSidebar({active,goTo}){
   const items=[
     {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
@@ -365,39 +422,65 @@ function AppSidebar({active,goTo}){
   ];
   const settActive=active&&active.startsWith('settings');
   const [addOpen,setAddOpen]=React.useState(false);
+  const [quickModal,setQuickModal]=React.useState(null);
+  const [sideToast,setSideToast]=React.useState('');
+  const [notifOpen,setNotifOpen]=React.useState(false);
   const addRef=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(addRef.current&&!addRef.current.contains(e.target))setAddOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const notifRef=React.useRef(null);
+  const sideToastFn=(m)=>{setSideToast(m);setTimeout(()=>setSideToast(''),2200);};
+  React.useEffect(()=>{const fn=(e)=>{if(addRef.current&&!addRef.current.contains(e.target))setAddOpen(false);if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
     <aside className="w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'#07070f'}}>
       <button onClick={()=>goTo('dashboard')} className="mb-4 w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></button>
       <div ref={addRef} className="relative w-9 mb-2">
         <button onClick={()=>setAddOpen(v=>!v)} title="Quick add" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',addOpen?'bg-brand-500 text-white shadow-brand':'text-brand-300 hover:text-brand-200 hover:bg-brand-500/15'].join(' ')}><I.Plus size={18} stroke={2.4}/></button>
-        {addOpen&&(<div className="absolute left-[44px] top-0 z-50 w-52 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-          <p className="px-3 py-2 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] border-b border-white/[0.06]">Quick add</p>
-          {[{l:'New contact',Icon:I.UserPlus,p:'add-contact'},{l:'New deal',Icon:I.GitBranch,p:'add-deal'},{l:'Compose',Icon:I.Mail,p:'inbox'},{l:'New automation',Icon:I.Zap,p:'settings-automations'}].map(it=>(
-            <button key={it.l} onClick={()=>{setAddOpen(false);goTo(it.p);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-6 h-6 rounded-md bg-white/[0.05] flex items-center justify-center text-brand-300"><it.Icon size={13}/></span>{it.l}</button>
+        {addOpen&&(<div className="absolute left-[44px] top-0 z-50 w-64 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'rgba(13,13,26,0.98)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+          <p className="px-3.5 pt-2 pb-1.5 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Create new</p>
+          {[
+            {l:'New contact',d:'Add a person or company',Icon:I.UserPlus,m:'contact',c:'#3b82f6'},
+            {l:'New deal',d:'Track an opportunity',Icon:I.GitBranch,m:'deal',c:'#8b5cf6'},
+            {l:'Compose email',d:'Send a new message',Icon:I.Mail,m:'email',c:'#6366f1'},
+            {l:'Log a call',d:'Record a call outcome',Icon:I.Phone,m:'call',c:'#10b981'},
+          ].map(it=>(
+            <button key={it.l} onClick={()=>{setAddOpen(false);setQuickModal(it.m);}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={14}/></span>
+              <span className="min-w-0"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
+            </button>
           ))}
+          <div className="h-px bg-white/[0.06] mx-2 my-1"/>
+          <button onClick={()=>{setAddOpen(false);setQuickModal('import');}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white/55" style={{background:'rgba(255,255,255,0.05)'}}><I.Upload size={14}/></span>
+            <span className="min-w-0"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">Import contacts</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">Upload a CSV file</span></span>
+          </button>
         </div>)}
       </div>
+      <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150"><I.Search size={16}/></button>
       <div className="w-6 h-px bg-white/[0.06] my-1.5"/>
       {items.map(({key,Icon,label})=>{
         const a=active===key;
         return(<button key={key} onClick={()=>goTo(key)} title={label} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></button>);
       })}
       <div className="mt-auto flex flex-col items-center gap-3">
+        <div ref={notifRef} className="relative">
+          <button onClick={()=>setNotifOpen(v=>!v)} title="Notifications" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 relative',notifOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Bell size={16}/><span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/></button>
+          {notifOpen&&<NotifDropdown close={()=>setNotifOpen(false)} goTo={goTo} posClass="absolute left-full bottom-0 ml-2"/>}
+        </div>
         <button onClick={()=>goTo('settings-general')} title="Settings" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',settActive?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Settings size={16}/></button>
         <button onClick={()=>goTo('profile')} title="Profile" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
       </div>
+      {quickModal==='contact'&&<QuickContactModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {quickModal==='deal'&&<QuickDealModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
+      {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
+      {quickModal==='import'&&<CsvImportModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {sideToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{sideToast}</div>)}
     </aside>
   );
 }
 // ?? AppTopbar ?????????????????????????????????????????????????????????????????
 const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
 function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
-  const [notifOpen,setNotifOpen]=React.useState(false);
-  const notifRef=React.useRef(null);
   const __bc=React.useContext(BillingContext);
-  React.useEffect(()=>{const fn=(e)=>{if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
     <React.Fragment>
       {__bc.billingState==='payment-failed'&&(<div className="shrink-0 bg-red-500/15 border-b border-red-500/30 px-7 py-2 flex items-center gap-2"><I.Ban size={13} className="text-red-300 shrink-0"/><span className="text-[12px] text-red-200 font-medium">Payment failed — your card was declined. Update it to avoid suspension on June 8.</span><button onClick={()=>goTo('settings-billing')} className="ml-auto shrink-0 text-[12px] font-semibold text-red-100 hover:text-white underline">Fix now</button></div>)}
@@ -406,24 +489,7 @@ function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
         {title&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
         {subtitle&&<p className="text-white/50 text-[13px] mt-1">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-2.5 shrink-0">
-        {rightSlot}
-        {!noSearch&&(
-          <button onClick={()=>window.__nrturOpenSearch?.()} className="flex items-center gap-2 rounded-xl px-3 py-1.5 border border-white/[0.08] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.06] transition-all cursor-pointer" style={{width:152}}>
-            <I.Search size={12} className="text-white/40 shrink-0"/>
-            <span className="flex-1 text-[12px] text-white/30 text-left">Search...</span>
-            <span onClick={e=>{e.stopPropagation();window.__nrturOpenCmd?.();}} className="text-[10px] font-mono text-white/25 bg-white/[0.04] border border-white/[0.06] rounded px-1.5 py-0.5 shrink-0 hover:text-brand-300 hover:bg-brand-500/10 hover:border-brand-500/20 transition-all">Cmd+K</span>
-          </button>
-        )}
-        <div ref={notifRef} className="relative">
-          <button onClick={()=>setNotifOpen(!notifOpen)} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all relative',notifOpen?'bg-white/[0.08] text-brand-300':'text-white/45 hover:text-white hover:bg-white/[0.06]'].join(' ')}>
-            <I.Bell size={14}/>
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/>
-          </button>
-          {notifOpen&&<NotifDropdown close={()=>setNotifOpen(false)} goTo={goTo}/>}
-        </div>
-        <button onClick={()=>goTo('profile')} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
-      </div>
+      {rightSlot&&(<div className="flex items-center gap-2.5 shrink-0">{rightSlot}</div>)}
     </header>
     </React.Fragment>
   );
@@ -1076,7 +1142,7 @@ function DashboardPage({goTo}){
           <button onClick={()=>setLibraryOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plus size={13} stroke={2.4}/>Add widget</button>
           <button onClick={()=>{setEditMode(false);setConfigUid(null);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={14} stroke={2.4}/>Done</button>
         </div>):(<div className="flex items-center gap-2">
-          <button onClick={()=>setEditMode(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Settings size={13}/>Customize</button>
+          <button onClick={()=>setEditMode(true)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 hover:border-brand-500/40 transition-all" style={{boxShadow:'0 0 18px rgba(99,102,241,0.15)'}}><I.SliderH size={14}/>Customize</button>
           <button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Contact</button>
         </div>)}/>
         <div className="flex-1 overflow-y-auto scroll-area">
@@ -2668,14 +2734,19 @@ function BillingPlanCards({selected,onSelect,cycle}){
       <span className={['block w-full text-center py-2 rounded-lg text-[12px] font-semibold transition-all',s?'bg-brand-500 text-white':'bg-white/[0.05] text-white/60'].join(' ')}>{s?'Selected':'Select'}</span>
     </button>);})}</div>);
 }
-function BillingCardForm(){
-  const F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40';
-  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
-  return(<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <div className="sm:col-span-2"><label className={L}>Card number</label><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><I.CreditCard size={14} className="text-white/40 shrink-0"/><input placeholder="1234 1234 1234 1234" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
-    <div><label className={L}>Expiry</label><input placeholder="MM / YY" className={F+' font-mono'}/></div>
-    <div><label className={L}>CVC</label><input placeholder="123" className={F+' font-mono'}/></div>
-    <div className="sm:col-span-2"><label className={L}>Name on card</label><input placeholder="Alex Morgan" className={F}/></div>
+// Payment collection is delegated entirely to Stripe Checkout (integrated later).
+// No card data is ever entered into or stored by Nrtur — this is only the hand-off notice.
+function StripePayNotice(){
+  const BRANDS=[{l:'VISA',c:'#1434cb',bg:'#fff'},{l:'MC',c:'#fff',bg:'linear-gradient(90deg,#eb001b 0%,#eb001b 45%,#f79e1b 55%,#f79e1b 100%)'},{l:'AMEX',c:'#fff',bg:'#2671b9'},{l:'DISC',c:'#fff',bg:'#f48120'}];
+  return(<div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.Lock size={16}/></div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 flex-wrap"><p className="text-[14px] font-semibold text-white">Secure checkout via</p><span className="text-[15px] font-bold tracking-tight" style={{color:'#a5b4fc'}}>stripe</span></div>
+        <p className="text-[12px] text-white/50 mt-1 leading-relaxed">Continue below to open Stripe's secure checkout and enter your card there. Nrtur never sees or stores your card details.</p>
+        <div className="flex items-center gap-1.5 mt-3 flex-wrap">{BRANDS.map(b=>(<span key={b.l} className="text-[8px] font-black px-1 py-0.5 rounded leading-none tracking-tight" style={{background:b.bg,color:b.c}}>{b.l}</span>))}<span className="text-[11px] text-white/35 ml-1">· Apple Pay · Google Pay</span></div>
+      </div>
+    </div>
   </div>);
 }
 function BillingCardVisual({last4='4242',exp='09 / 27',name='Alex Morgan',failed=false}){
@@ -2788,7 +2859,7 @@ function SettingsBillingPage({goTo}){
         </div>
         <div className={BILLING_CARD}>
           <p className={BILLING_EYE+' mb-1'}>Add a payment method</p><p className="text-white/45 text-[12px] mb-5">You won't be charged until your trial ends.</p>
-          <BillingCardForm/>
+          <StripePayNotice/>
           <div className="mt-5 flex items-center justify-between gap-4 flex-wrap"><div><p className="text-[12px] text-white/45">No charge until <span className="text-white/80 font-medium">June 11, 2026</span></p></div><button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">Start Pro — ${seatPrice}/mo<I.ArrowRight size={13} stroke={2.4}/></button></div>
         </div>
       </>)}
@@ -2803,7 +2874,7 @@ function SettingsBillingPage({goTo}){
         </div>
         <div><p className={BILLING_EYE+' mb-1'}>Pick a plan to continue</p><p className="text-white/45 text-[12px] mb-4">Pro recommended for your team size.</p><BillingPlanCards selected={plan} onSelect={setPlan} cycle={cycle}/></div>
         <div className={BILLING_CARD}>
-          <p className={BILLING_EYE+' mb-5'}>Payment details</p><BillingCardForm/>
+          <p className={BILLING_EYE+' mb-5'}>Payment details</p><StripePayNotice/>
           <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">Restore access — ${seatPrice}/mo<I.ArrowRight size={14} stroke={2.4}/></button>
         </div>
       </>)}
@@ -2842,7 +2913,7 @@ function SettingsBillingPage({goTo}){
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-500/[0.06] border border-red-500/15 px-3 py-2"><I.Ban size={13} className="text-red-300 mt-0.5 shrink-0"/><p className="text-[11px] text-red-200/80 leading-relaxed">Your bank declined the charge (insufficient funds). Try another card or contact your bank.</p></div>
           </div>
           <div className={BILLING_CARD}>
-            <p className={BILLING_EYE+' mb-5'}>New payment method</p><BillingCardForm/>
+            <p className={BILLING_EYE+' mb-5'}>New payment method</p><StripePayNotice/>
             <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>setBillingState('active')}>Update card and pay $177.00<I.ArrowRight size={14} stroke={2.4}/></button>
             <p className="text-[12px] text-white/45 text-center mt-3">Having trouble? <button className="text-brand-300 hover:text-brand-200">Contact support</button></p>
           </div>
