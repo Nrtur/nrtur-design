@@ -471,6 +471,7 @@ const I = {
   Phone:     (p)=><Ico {...p} d={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>}/>,
   MapPin:    (p)=><Ico {...p} d={<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></>}/>,
   Building:  (p)=><Ico {...p} d={<><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></>}/>,
+  Briefcase: (p)=><Ico {...p} d={<><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>}/>,
   Clock:     (p)=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}/>,
   UserCog:   (p)=><Ico {...p} d={<><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/><circle cx="18" cy="15" r="3"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/></>}/>,
   UserPlus:  (p)=><Ico {...p} d={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></>}/>,
@@ -594,7 +595,7 @@ function GlobalSearchOverlay({close,goTo}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   const CONTACTS=[{name:'Marcus Chen',role:'CTO - Forge & Co',color:'#3b82f6'},{name:'Maya Rodriguez',role:'Head of Sales - Pivot Studio',color:'#10b981'},{name:'Martin Liu',role:'Founder - Loop Labs',color:'#f59e0b'}];
   const DEALS=[{name:'Managed CRM rollout',val:'$24,000',page:'deal-detail'},{name:'Marketing automation',val:'$11,500',page:'deal-detail'}];
-  const PAGES=[{label:'Dashboard',page:'dashboard'},{label:'Pipeline',page:'pipeline'},{label:'Reports',page:'reports'},{label:'Settings',page:'settings-general'}];
+  const PAGES=[{label:'Dashboard',page:'dashboard'},{label:'Leads',page:'leads'},{label:'Contacts',page:'contacts'},{label:'Companies',page:'companies'},{label:'Pipeline',page:'pipeline'},{label:'Reports',page:'reports'},{label:'Settings',page:'settings-general'}];
   const row={display:'flex',alignItems:'center',gap:12,padding:'9px 10px',borderRadius:8,cursor:'pointer',border:'none',textAlign:'left',fontFamily:'inherit',background:'transparent',transition:'background .1s',width:'100%'};
   return(
     <div className="fixed inset-0 z-[150] flex flex-col items-center" style={{background:'rgba(7,7,15,0.92)',backdropFilter:'blur(10px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
@@ -650,11 +651,15 @@ function GlobalSearchOverlay({close,goTo}){
 // ?? Command Palette ???????????????????????????????????????????????????????????
 const CMD_ITEMS=[
   {group:'Navigate',label:'Dashboard',page:'dashboard',kbd:'Ctrl+1'},
+  {group:'Navigate',label:'Leads',page:'leads'},
   {group:'Navigate',label:'Contacts',page:'contacts',kbd:'Ctrl+2'},
+  {group:'Navigate',label:'Companies',page:'companies'},
   {group:'Navigate',label:'Pipeline',page:'pipeline',kbd:'Ctrl+3'},
   {group:'Navigate',label:'Reports',page:'reports',kbd:'Ctrl+4'},
   {group:'Navigate',label:'Settings',page:'settings-general',kbd:'Ctrl+,'},
+  {group:'Create',label:'New Lead',page:'add-lead',kbd:'N L',accent:true},
   {group:'Create',label:'New Contact',page:'add-contact',kbd:'N C',accent:true},
+  {group:'Create',label:'New Company',page:'add-company',accent:true},
   {group:'Create',label:'New Deal',page:'add-deal',kbd:'N D',accent:true},
   {group:'Create',label:'New Automation',page:'automation-builder',kbd:'N A',accent:true},
   {group:'Recent',label:'Forge & Co',page:'contact-detail',sub:'Contact'},
@@ -763,7 +768,7 @@ function NotifDropdown({close,goTo,posClass}){
 function QuickContactModal({close,onToast}){
   const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
   const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
-  const [f,setF]=React.useState({first:'',last:'',email:'',phone:'',company:'',title:'',status:'Lead'});
+  const [f,setF]=React.useState({first:'',last:'',email:'',phone:'',company:'',title:'',status:'Prospect'});
   const set=(k,v)=>setF(s=>({...s,[k]:v}));
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   const valid=f.first.trim()&&f.email.trim();
@@ -816,6 +821,69 @@ function QuickDealModal({close,onToast}){
     </div>
   );
 }
+function QuickLeadModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',company:'',email:'',phone:'',source:LEAD_SOURCES[0],status:LEAD_STATUSES[0],value:''});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim()&&f.email.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Lead')+' added to leads');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Target size={16}/></div><div><p className="text-white text-[15px] font-bold">New lead</p><p className="text-white/45 text-[12px]">Capture an inbound or outbound lead.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Full name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Olivia Bennett" className={I_F}/></div>
+            <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Brightwave Studio" className={I_F}/></div>
+          </div>
+          <div className="mb-4"><label className={L}>Email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="name@company.com" className={I_F}/></div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+            <div><label className={L}>Est. value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input value={f.value} onChange={e=>set('value',e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Source</label><select value={f.source} onChange={e=>set('source',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{LEAD_SOURCES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+            <div><label className={L}>Status</label><select value={f.status} onChange={e=>set('status',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{LEAD_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create lead</button></div>
+      </div>
+    </div>
+  );
+}
+function QuickCompanyModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',domain:'',industry:INDUSTRIES[0],type:COMPANY_TYPES[0],size:'',phone:''});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Company')+' added to companies');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Building size={16}/></div><div><p className="text-white text-[15px] font-bold">New company</p><p className="text-white/45 text-[12px]">Add an organization or account.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Company name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Meridian Agency" className={I_F}/></div>
+            <div><label className={L}>Website</label><input value={f.domain} onChange={e=>set('domain',e.target.value)} placeholder="company.com" className={I_F}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Industry</label><select value={f.industry} onChange={e=>set('industry',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{INDUSTRIES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+            <div><label className={L}>Type</label><select value={f.type} onChange={e=>set('type',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{COMPANY_TYPES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Employees</label><input type="number" value={f.size} onChange={e=>set('size',e.target.value)} placeholder="50" className={I_F}/></div>
+            <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create company</button></div>
+      </div>
+    </div>
+  );
+}
 function AppSidebar({active,goTo}){
   const items=[
     {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
@@ -845,7 +913,9 @@ function AppSidebar({active,goTo}){
         {addOpen&&(<div className="absolute left-[44px] top-0 z-50 w-64 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
           <p className="px-3.5 pt-2 pb-1.5 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Create new</p>
           {[
-            {l:'New contact',d:'Add a person or company',Icon:I.UserPlus,m:'contact',c:'#3b82f6'},
+            {l:'New lead',d:'Capture an inbound inquiry',Icon:I.Target,m:'lead',c:'#10b981'},
+            {l:'New contact',d:'Add a person',Icon:I.UserPlus,m:'contact',c:'#3b82f6'},
+            {l:'New company',d:'Add an organization',Icon:I.Building,m:'company',c:'#0ea5e9'},
             {l:'New deal',d:'Track an opportunity',Icon:I.GitBranch,m:'deal',c:'#8b5cf6'},
             {l:'Compose email',d:'Send a new message',Icon:I.Mail,m:'email',c:'#6366f1'},
             {l:'Log a call',d:'Record a call outcome',Icon:I.Phone,m:'call',c:'#10b981'},
@@ -877,7 +947,9 @@ function AppSidebar({active,goTo}){
         <button onClick={()=>goTo('settings-general')} title="Settings" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',settActive?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Settings size={16}/></button>
         <button onClick={()=>goTo('profile')} title="Profile" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
       </div>
+      {quickModal==='lead'&&<QuickLeadModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {quickModal==='contact'&&<QuickContactModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {quickModal==='company'&&<QuickCompanyModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {quickModal==='deal'&&<QuickDealModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
       {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
@@ -890,15 +962,18 @@ function AppSidebar({active,goTo}){
 const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
 // Shared connected-mailbox state so the inbox rail and Integrations page stay in sync (email spec Part B).
 const MailAccountsContext=React.createContext({accounts:[],connect:()=>{},disconnect:()=>{}});
-function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
+function AppTopbar({goTo,title,subtitle,rightSlot,noSearch,tabs}){
   const __bc=React.useContext(BillingContext);
   return(
     <React.Fragment>
       {__bc.billingState==='payment-failed'&&(<div className="shrink-0 bg-red-500/15 border-b border-red-500/30 px-7 py-2 flex items-center gap-2"><I.Ban size={13} className="text-red-300 shrink-0"/><span className="text-[12px] text-red-200 font-medium">Payment failed — your card was declined. Update it to avoid suspension on June 8.</span><button onClick={()=>goTo('settings-billing')} className="ml-auto shrink-0 text-[12px] font-semibold text-red-100 hover:text-white underline">Fix now</button></div>)}
     <header className="app-topbar shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{background:'var(--s925)'}}>
-      <div className="min-w-0">
-        {title&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
-        {subtitle&&<p className="text-white/50 text-[13px] mt-1">{subtitle}</p>}
+      <div className="min-w-0 flex items-center gap-4">
+        {tabs}
+        {(title||subtitle)&&(<div className="min-w-0">
+          {title&&!tabs&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
+          {subtitle&&<p className={['text-white/50 text-[13px]',title&&!tabs?'mt-1':''].join(' ')}>{subtitle}</p>}
+        </div>)}
       </div>
       {rightSlot&&(<div className="flex items-center gap-2.5 shrink-0">{rightSlot}</div>)}
     </header>
@@ -968,7 +1043,10 @@ function SettingsSubNav({active,goTo}){
 const ALL_PAGES=[
   'landing','signup','signin','forgot-password',
   'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5',
-  'dashboard','contacts','contact-detail','add-contact','edit-contact',
+  'dashboard',
+  'leads','lead-detail','add-lead','edit-lead',
+  'contacts','contact-detail','add-contact','edit-contact',
+  'companies','company-detail','add-company','edit-company',
   'pipeline','deal-detail','add-deal',
   'calendar',
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
@@ -1615,16 +1693,16 @@ const CONTACTS_DATA=[
   {id:1,name:'Sarah Chen',co:'Meridian Agency',email:'sarah@meridian.co',phone:'+1 555-234-8901',avatar:'SC',color:'#3b82f6',status:'Active',owner:'AM',ownerColor:'#3b82f6',last:'2h ago',deal:'$24k',tag:'top-lead',loc:'San Francisco, CA',cstatus:'Customer',days:0,dnc:false,archived:false},
   {id:2,name:'James Rivera',co:'Summit Digital',email:'james@summit.co',phone:'+1 555-312-4400',avatar:'JR',color:'#8b5cf6',status:'Hot',owner:'JK',ownerColor:'#8b5cf6',last:'5h ago',deal:'$31k',tag:'agency',loc:'New York, NY',cstatus:'Prospect',days:0,dnc:false,archived:false},
   {id:3,name:'Maria Lopez',co:'Bloom Creative',email:'maria@bloom.co',phone:'+1 555-198-7730',avatar:'ML',color:'#ec4899',status:'Warm',owner:'SC',ownerColor:'#ec4899',last:'1d ago',deal:'$18k',tag:'q2-focus',loc:'Austin, TX',cstatus:'Prospect',days:1,dnc:false,archived:false},
-  {id:4,name:'Ravi Lee',co:'Vertex Labs',email:'ravi@vertex.co',phone:'+1 555-441-6623',avatar:'RL',color:'#10b981',status:'New',owner:'RL',ownerColor:'#10b981',last:'2d ago',deal:'$6.2k',tag:'new-lead',loc:'Los Angeles, CA',cstatus:'Lead',days:2,dnc:true,archived:false},
+  {id:4,name:'Ravi Lee',co:'Vertex Labs',email:'ravi@vertex.co',phone:'+1 555-441-6623',avatar:'RL',color:'#10b981',status:'New',owner:'RL',ownerColor:'#10b981',last:'2d ago',deal:'$6.2k',tag:'new-lead',loc:'Los Angeles, CA',cstatus:'Prospect',days:2,dnc:true,archived:false},
   {id:5,name:'Marcus Rios',co:'Kapoor & Assoc',email:'marcus@kapoor.co',phone:'+1 555-887-2211',avatar:'MR',color:'#f59e0b',status:'Warm',owner:'MR',ownerColor:'#f59e0b',last:'5 weeks ago',deal:'$28k',tag:'agency',loc:'Chicago, IL',cstatus:'Prospect',days:35,dnc:false,archived:false},
   {id:6,name:'Emily Tran',co:'Forge & Co',email:'emily@forge.co',phone:'+1 555-223-9004',avatar:'ET',color:'#14b8a6',status:'Active',owner:'AM',ownerColor:'#3b82f6',last:'4d ago',deal:'$44k',tag:'won',loc:'Seattle, WA',cstatus:'Customer',days:4,dnc:false,archived:false},
-  {id:7,name:'Luca Bianchi',co:'Nova Growth',email:'luca@nova.co',phone:'+1 555-567-4312',avatar:'LB',color:'#6366f1',status:'Lead',owner:'JK',ownerColor:'#8b5cf6',last:'3 weeks ago',deal:'$15.5k',tag:'new-lead',loc:'Miami, FL',cstatus:'Lead',days:21,dnc:false,archived:false},
+  {id:7,name:'Luca Bianchi',co:'Nova Growth',email:'luca@nova.co',phone:'+1 555-567-4312',avatar:'LB',color:'#6366f1',status:'Lead',owner:'JK',ownerColor:'#8b5cf6',last:'3 weeks ago',deal:'$15.5k',tag:'new-lead',loc:'Miami, FL',cstatus:'Prospect',days:21,dnc:false,archived:false},
   {id:8,name:'Priya Nair',co:'Atlas Consult',email:'priya@atlas.co',phone:'+1 555-334-7788',avatar:'PN',color:'#a855f7',status:'Qualified',owner:'SC',ownerColor:'#ec4899',last:'10 days ago',deal:'$18k',tag:'qualified',loc:'Boston, MA',cstatus:'Prospect',days:10,dnc:false,archived:false},
   {id:9,name:'Tom Barrett',co:'Clearview Media',email:'tom@clearview.tv',phone:'+1 555-770-1180',avatar:'TB',color:'#0ea5e9',status:'Lead',owner:'JK',ownerColor:'#8b5cf6',last:'6 weeks ago',deal:'-',tag:'cold',loc:'Denver, CO',cstatus:'Lost',days:44,dnc:false,archived:true},
   {id:10,name:'Riley Voss',co:'Helix Partners',email:'riley@helix.co',phone:'+1 555-662-9900',avatar:'RV',color:'#64748b',status:'Lead',owner:'AM',ownerColor:'#3b82f6',last:'2 months ago',deal:'-',tag:'cold',loc:'Portland, OR',cstatus:'Lost',days:60,dnc:false,archived:true},
 ];
 const STATUS_CHIP={Active:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Hot:'bg-red-500/12 text-red-300 ring-red-500/25',Warm:'bg-amber-500/12 text-amber-300 ring-amber-500/25',New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Lead:'bg-white/[0.06] text-white/55 ring-white/[0.08]',Qualified:'bg-brand-500/12 text-brand-300 ring-brand-500/25'};
-const CONTACT_STATUSES=['Lead','Prospect','Customer','Lost'];
+const CONTACT_STATUSES=['Prospect','Customer','Lost'];
 const CSTATUS_CHIP={Lead:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Prospect:'bg-brand-500/12 text-brand-300 ring-brand-500/25',Customer:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Lost:'bg-white/[0.06] text-white/50 ring-white/[0.10]'};
 const CSTATUS_DOT={Lead:'#60a5fa',Prospect:'#818cf8',Customer:'#34d399',Lost:'#94a3b8'};
 const TEAM_MEMBERS=[{name:'Alex Morgan',avatar:'AM',color:'#3b82f6'},{name:'Sarah Chen',avatar:'SC',color:'#ec4899'},{name:'Jamie Kim',avatar:'JK',color:'#8b5cf6'},{name:'Ravi Lee',avatar:'RL',color:'#10b981'},{name:'Marcus Rios',avatar:'MR',color:'#f59e0b'}];
@@ -1787,7 +1865,7 @@ const DEFAULT_VIEWS=[
   {key:'mine',label:'My Contacts',Icon:I.UserCog,pred:c=>c.owner==='AM',empty:'Contacts assigned to you will appear here.'},
   {key:'uncontacted',label:'Uncontacted',Icon:I.Clock,pred:c=>c.days>=30,dot:'red',empty:'Contacts with no activity in the last 30 days land here so you can re-engage.'},
   {key:'followup',label:'Needs Follow-up',Icon:I.Bell,pred:c=>c.days>=7&&c.days<=30,dot:'amber',empty:'Contacts you last spoke to 7-30 days ago show up here before they go cold.'},
-  {key:'hot',label:'Hot Leads',Icon:I.Zap,pred:c=>c.cstatus==='Prospect'&&c.days<7,dot:'green',empty:'Active prospects contacted in the last week appear here.'},
+  {key:'hot',label:'Hot Prospects',Icon:I.Zap,pred:c=>c.cstatus==='Prospect'&&c.days<7,dot:'green',empty:'Active prospects contacted in the last week appear here.'},
   {key:'new',label:'New This Week',Icon:I.Sparkles,pred:c=>c.days<2,empty:'Contacts created in the last 7 days appear here.'},
   {key:'customers',label:'Customers',Icon:I.Star,pred:c=>c.cstatus==='Customer',empty:'Contacts with a Customer status show up here.'},
   {key:'noowner',label:'No Owner',Icon:I.Ban,pred:c=>!c.owner,dot:'red',empty:'Unassigned contacts appear here so nothing slips through.'},
@@ -1818,7 +1896,7 @@ function evalRule(c,r){const v=r.value;
 function evalItem(c,it){return it.type==='group'?evalRules(c,it.rules,it.match):evalRule(c,it);}
 function evalRules(c,items,match){if(!items||!items.length)return true;return match==='ANY'?items.some(it=>evalItem(c,it)):items.every(it=>evalItem(c,it));}
 function matchView(c,v){return v.pred?v.pred(c):evalRules(c,v.rules,v.match);}
-function SmartViewsSidebar({active,onSelect,onNew,onEdit,myViews,countFor}){
+function SmartViewsSidebar({active,onSelect,onNew,onEdit,myViews,countFor,defaultViews=DEFAULT_VIEWS,teamViews=TEAM_VIEWS}){
   const item=(v,editable)=>{const cnt=countFor(v);const a=active===v.key;return(
     <button key={v.key} onClick={()=>onSelect(v.key)} className={['group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-lg text-[13px] transition-all',a?'bg-brand-500/10 text-white':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>
       {a&&<span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-brand-400" style={{boxShadow:'0 0 10px rgba(129,140,248,0.8)'}}/>}
@@ -1831,33 +1909,34 @@ function SmartViewsSidebar({active,onSelect,onNew,onEdit,myViews,countFor}){
   return(
     <aside className="w-[220px] shrink-0 border-r border-white/[0.05] flex flex-col" style={{background:'var(--s880)'}}>
       <div className="flex-1 overflow-y-auto scroll-area py-2">
-        <div className="px-3 pt-2"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Default views</p><div className="flex flex-col gap-0.5">{DEFAULT_VIEWS.map(v=>item(v,false))}</div></div>
+        <div className="px-3 pt-2"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Default views</p><div className="flex flex-col gap-0.5">{defaultViews.map(v=>item(v,false))}</div></div>
         <div className="px-3 pt-4"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] flex items-center justify-between">My views<I.Grip size={11} className="text-white/20"/></p><div className="flex flex-col gap-0.5">{myViews.map(v=>item(v,true))}</div></div>
-        <div className="px-3 pt-4"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Team views</p><div className="flex flex-col gap-0.5">{TEAM_VIEWS.map(v=>item(v,false))}</div></div>
+        <div className="px-3 pt-4"><p className="px-2 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Team views</p><div className="flex flex-col gap-0.5">{teamViews.map(v=>item(v,false))}</div></div>
         <div className="px-3 pt-4 mt-2 border-t border-white/[0.04]"><div className="flex flex-col gap-0.5 pt-2">{item({key:'archived',label:'Archived',Icon:I.Archive},false)}</div></div>
       </div>
       <div className="p-3 border-t border-white/[0.05]"><button onClick={onNew} className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-brand-300 hover:text-brand-200 hover:bg-brand-500/10 transition-all"><I.Plus size={14} stroke={2.4}/>New view</button></div>
     </aside>
   );
 }
-function ViewBuilderPanel({initial,close,onSave,rows}){
+function ViewBuilderPanel({initial,close,onSave,rows,fields=VIEW_FIELDS,fieldOps=FIELD_OPS,fieldValues=FIELD_VALUES,evalRulesFn=evalRules,noun='contact',NounIcon=I.Users}){
+  const defOp=(f)=>(fieldOps[f]||['is'])[0];
+  const defVal=(f)=>(fieldValues[f]?fieldValues[f][0]:'');
+  const newRule=()=>({field:fields[0],op:defOp(fields[0]),value:defVal(fields[0])});
   const [name,setName]=React.useState(initial&&initial.label||'');
   const [color,setColor]=React.useState(initial&&initial.color||VIEW_COLORS[0]);
   const [scope,setScope]=React.useState(initial&&initial.scope||'me');
   const [match,setMatch]=React.useState(initial&&initial.match||'ALL');
-  const [items,setItems]=React.useState(initial&&initial.rules?JSON.parse(JSON.stringify(initial.rules)):[{field:'Status',op:'is',value:'Prospect'}]);
+  const [items,setItems]=React.useState(initial&&initial.rules?JSON.parse(JSON.stringify(initial.rules)):[newRule()]);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
-  const defOp=(f)=>(FIELD_OPS[f]||['is'])[0];
-  const defVal=(f)=>(FIELD_VALUES[f]?FIELD_VALUES[f][0]:'');
   const setItem=(idx,patch)=>setItems(a=>a.map((it,i)=>i===idx?{...it,...patch}:it));
-  const addRule=()=>setItems(a=>[...a,{field:'Status',op:'is',value:'Prospect'}]);
-  const addGroup=()=>setItems(a=>[...a,{type:'group',match:'ANY',rules:[{field:'Status',op:'is',value:'Lead'}]}]);
+  const addRule=()=>setItems(a=>[...a,newRule()]);
+  const addGroup=()=>setItems(a=>[...a,{type:'group',match:'ANY',rules:[newRule()]}]);
   const removeItem=(idx)=>setItems(a=>a.filter((_,i)=>i!==idx));
   const setGroupRule=(gi,ri,patch)=>setItems(a=>a.map((it,i)=>i===gi?{...it,rules:it.rules.map((r,j)=>j===ri?{...r,...patch}:r)}:it));
-  const count=rows.filter(c=>!c.archived&&evalRules(c,items,match)).length;
-  const ruleRow=(r,keyId,onField,onOp,onVal,onRemove)=>{const ops=FIELD_OPS[r.field]||['is'];const vals=FIELD_VALUES[r.field];const SEL='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';return(
+  const count=rows.filter(c=>!c.archived&&evalRulesFn(c,items,match)).length;
+  const ruleRow=(r,keyId,onField,onOp,onVal,onRemove)=>{const ops=fieldOps[r.field]||['is'];const vals=fieldValues[r.field];const SEL='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';return(
     <div key={keyId} className="flex items-center gap-1.5">
-      <select value={r.field} onChange={e=>onField(e.target.value)} className={'flex-1 min-w-0 '+SEL}>{VIEW_FIELDS.map(f=>(<option key={f}>{f}</option>))}</select>
+      <select value={r.field} onChange={e=>onField(e.target.value)} className={'flex-1 min-w-0 '+SEL}>{fields.map(f=>(<option key={f}>{f}</option>))}</select>
       <select value={r.op} onChange={e=>onOp(e.target.value)} className={SEL}>{ops.map(o=>(<option key={o}>{o}</option>))}</select>
       {vals?(<select value={r.value} onChange={e=>onVal(e.target.value)} className={'flex-1 min-w-0 '+SEL}>{vals.map(v=>(<option key={v}>{v}</option>))}</select>):(<input value={r.value} onChange={e=>onVal(e.target.value)} placeholder={r.field==='Deal value'?'25':r.field==='Last contacted'?'30':'value'} className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
       <button onClick={onRemove} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 transition-all shrink-0"><I.X size={12}/></button>
@@ -1877,17 +1956,32 @@ function ViewBuilderPanel({initial,close,onSave,rows}){
               <div key={idx} className="rounded-xl border border-white/[0.10] bg-white/[0.02] p-3">
                 <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 flex-wrap"><span className="text-[11px] text-white/50">Match</span><div className="flex items-center gap-1 p-0.5 rounded-md bg-white/[0.04] border border-white/[0.08]">{['ALL','ANY'].map(o=>(<button key={o} onClick={()=>setItem(idx,{match:o})} className={['px-2 py-0.5 rounded text-[10px] font-bold transition-all',it.match===o?'bg-brand-500 text-white':'text-white/50'].join(' ')}>{o}</button>))}</div><span className="text-[11px] text-white/50">in group</span></div><button onClick={()=>removeItem(idx)} className="text-white/30 hover:text-red-300"><I.Trash size={12}/></button></div>
                 <div className="flex flex-col gap-2">{it.rules.map((r,ri)=>ruleRow(r,ri,f=>setGroupRule(idx,ri,{field:f,op:defOp(f),value:defVal(f)}),o=>setGroupRule(idx,ri,{op:o}),v=>setGroupRule(idx,ri,{value:v}),()=>setItems(a=>a.map((x,i)=>i===idx?{...x,rules:x.rules.filter((_,j)=>j!==ri)}:x))))}</div>
-                <button onClick={()=>setItems(a=>a.map((x,i)=>i===idx?{...x,rules:[...x.rules,{field:'Status',op:'is',value:'Lead'}]}:x))} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add rule</button>
+                <button onClick={()=>setItems(a=>a.map((x,i)=>i===idx?{...x,rules:[...x.rules,newRule()]}:x))} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add rule</button>
               </div>
             ):ruleRow(it,idx,f=>setItem(idx,{field:f,op:defOp(f),value:defVal(f)}),o=>setItem(idx,{op:o}),v=>setItem(idx,{value:v}),()=>removeItem(idx)))}
           </div>
           <div className="flex items-center gap-3 mt-3"><button onClick={addRule} className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={12} stroke={2.4}/>Add condition</button><button onClick={addGroup} className="text-[12px] text-white/45 hover:text-white inline-flex items-center gap-1"><I.Plus size={12}/>Add condition group</button></div>
         </div>
-        <div className="rounded-xl bg-brand-500/[0.08] border border-brand-500/20 px-4 py-3 flex items-center gap-2"><I.Users size={14} className="text-brand-300"/><span className="text-[13px] text-white"><span className="font-bold tabular-nums">{count}</span> contact{count!==1?'s':''} match these rules</span></div>
+        <div className="rounded-xl bg-brand-500/[0.08] border border-brand-500/20 px-4 py-3 flex items-center gap-2"><NounIcon size={14} className="text-brand-300"/><span className="text-[13px] text-white"><span className="font-bold tabular-nums">{count}</span> {noun}{count!==1?'s':''} match these rules</span></div>
       </div>
       <div className="flex gap-3 px-5 py-4 border-t border-white/[0.06] shrink-0"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button disabled={!name.trim()} onClick={()=>onSave({label:name.trim(),color,scope,match,rules:items})} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all border-none',name.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>Save view</button></div>
     </div>
   </>);
+}
+// Object switcher (Contacts / Companies / Leads) — replaces the separate sidebar items
+const OBJECT_TABS=[
+  {page:'contacts',label:'Contacts',Icon:I.Users},
+  {page:'companies',label:'Companies',Icon:I.Building},
+  {page:'leads',label:'Leads',Icon:I.Target},
+];
+function ObjectTabs({active,goTo}){
+  return(
+    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] shrink-0">
+      {OBJECT_TABS.map(t=>{const a=active===t.page;return(
+        <button key={t.page} onClick={()=>{if(!a)goTo(t.page);}} className={['inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}><t.Icon size={14}/>{t.label}</button>
+      );})}
+    </div>
+  );
 }
 function ContactsPage({goTo}){
   const loading=useSkeleton(900);
@@ -1935,7 +2029,7 @@ function ContactsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="contacts" goTo={goTo}/>} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
           rightSlot={<>
             <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
             <button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
@@ -2044,8 +2138,8 @@ function ContactDetailPage({goTo}){
                   );})}
                 </div>
               </div>
-              {[{Icon:I.Mail,label:'Email',val:c.email,accent:true},{Icon:I.Phone,label:'Phone',val:c.phone,accent:true},{Icon:I.Building,label:'Company',val:c.co,accent:true},{Icon:I.MapPin,label:'Location',val:c.loc},{Icon:I.Clock,label:'Last seen',val:c.last},{Icon:I.UserCog,label:'Owner',val:'Alex Morgan'}].map(r=>(
-                <div key={r.label} className="flex items-start gap-3 px-5 py-2.5 border-b border-white/[0.025]"><div className="w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/45 shrink-0 mt-0.5"><r.Icon size={11}/></div><div><p className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.14em]">{r.label}</p><p className={['text-[12px] mt-0.5',r.accent?'text-brand-300 cursor-pointer':'text-white/80'].join(' ')}>{r.val}</p></div></div>
+              {[{Icon:I.Mail,label:'Email',val:c.email,accent:true},{Icon:I.Phone,label:'Phone',val:c.phone,accent:true},{Icon:I.Building,label:'Company',val:c.co,accent:true,go:()=>goTo('company-detail')},{Icon:I.MapPin,label:'Location',val:c.loc},{Icon:I.Clock,label:'Last seen',val:c.last},{Icon:I.UserCog,label:'Owner',val:'Alex Morgan'}].map(r=>(
+                <div key={r.label} className="flex items-start gap-3 px-5 py-2.5 border-b border-white/[0.025]"><div className="w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/45 shrink-0 mt-0.5"><r.Icon size={11}/></div><div><p className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.14em]">{r.label}</p><p onClick={r.go} className={['text-[12px] mt-0.5',r.go?'text-brand-300 cursor-pointer hover:underline':r.accent?'text-brand-300 cursor-pointer':'text-white/80'].join(' ')}>{r.val}</p></div></div>
               ))}
               <div className="px-5 py-4 border-b border-white/[0.05]">
                 <div className="flex items-center justify-between mb-2"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Firmographics</p>{!enriched&&<button onClick={()=>setEnriched(true)} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-300 hover:text-brand-200"><I.Sparkles size={11}/>Enrich</button>}</div>
@@ -2256,6 +2350,635 @@ function AddDealPage({goTo}){
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors">Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">New deal</span></div><button onClick={()=>goTo('pipeline')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-lg mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-bold mb-6">New deal</h2><div className="flex flex-col gap-4 mb-6">{[['Deal name','text','e.g. Q3 Retainer'],['Company','text','Search or add...'],['Deal value','number','$0'],['Close date','date','']].map(([l,t,pl])=>(<div key={l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type={t} placeholder={pl} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>))}<div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Stage</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div></div><div className="flex gap-3"><button onClick={()=>goTo('pipeline')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('deal-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create deal</button></div></div></div></div>
+        <AppFooter/>
+      </div>
+    </div>
+  );
+}
+// ?? Companies + Leads shared helpers ?????????????????????????????????????????
+const parseMoney=(s)=>{const m=(s||'').replace(/[,\s]/g,'').match(/([\d.]+)\s*([kKmM])?/);if(!m)return 0;let n=parseFloat(m[1])||0;const u=(m[2]||'').toLowerCase();if(u==='k')n*=1000;if(u==='m')n*=1000000;return n;};
+const fmtK=(n)=>n>=1000?'$'+(n/1000).toFixed(n%1000?1:0).replace(/\.0$/,'')+'k':'$'+n;
+const companyHealth=(d)=>contactHealth(d);
+function allDeals(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key,stageName:s.name,stageColor:s.color})));}
+function contactsForCompany(name){return CONTACTS_DATA.filter(c=>c.co===name);}
+function dealsForCompany(name){const list=allDeals().filter(d=>d.company===name);const open=list.filter(d=>d.stageKey!=='won');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
+function makeViewEngine(evalRuleFn){
+  const ei=(c,it)=>it.type==='group'?er(c,it.rules,it.match):evalRuleFn(c,it);
+  const er=(c,items,match)=>(!items||!items.length)?true:(match==='ANY'?items.some(it=>ei(c,it)):items.every(it=>ei(c,it)));
+  return {evalRules:er,matchView:(c,v)=>v.pred?v.pred(c):er(c,v.rules,v.match)};
+}
+// Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
+function ChipSelect({value,options,chipMap,dotMap,onChange,width=148}){
+  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  return(<div ref={ref} className="relative w-fit">
+    <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} className={['inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125',chipMap[value]].join(' ')}><span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>{value}<I.ChevronDown size={9} className="opacity-60"/></button>
+    {open&&(<div className="absolute left-0 top-7 z-30 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)',width}}>{options.map(s=>(<button key={s} onClick={(e)=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[s]}}/>{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  </div>);
+}
+// Toolbar filter dropdown (All <noun> / value …) — mirrors the Contacts health dropdown
+function ToolbarFilter({value,options,allLabel,onChange,dotMap}){
+  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const label=value==='all'?allLabel:value;
+  return(<div ref={ref} className="relative">
+    <button onClick={()=>setOpen(v=>!v)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-all border',value!=='all'?'text-white border-brand-500/40 bg-brand-500/10':'text-white/55 hover:text-white border-white/[0.06] hover:border-brand-500/30'].join(' ')}>{value!=='all'&&dotMap&&<span className="w-2 h-2 rounded-full" style={{background:dotMap[value]}}/>}{label}<I.ChevronDown size={11}/></button>
+    {open&&(<div className="absolute right-0 top-9 z-30 w-44 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{[{k:'all',l:allLabel}].concat(options.map(o=>({k:o,l:o}))).map(o=>(<button key={o.k} onClick={()=>{onChange(o.k);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{o.k!=='all'&&dotMap?<span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[o.k]}}/>:<span className="w-2 h-2"/>}{o.l}{value===o.k&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  </div>);
+}
+// ?? Companies data ????????????????????????????????????????????????????????????
+const INDUSTRIES=['Marketing & Advertising','Software / SaaS','Design / Creative','Consulting','Media','E-commerce','Finance','Healthcare'];
+const COMPANY_TYPES=['Customer','Prospect','Partner','Vendor'];
+const COMPANY_TYPE_CHIP={Customer:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Prospect:'bg-brand-500/12 text-brand-300 ring-brand-500/25',Partner:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Vendor:'bg-white/[0.06] text-white/55 ring-white/[0.10]'};
+const COMPANY_TYPE_DOT={Customer:'#34d399',Prospect:'#818cf8',Partner:'#60a5fa',Vendor:'#94a3b8'};
+const COMPANIES_DATA=[
+  {id:1,name:'Meridian Agency',domain:'meridian.co',industry:'Marketing & Advertising',size:48,revenue:'$6M–$10M',loc:'San Francisco, CA',type:'Customer',phone:'+1 555-234-8900',owner:'AM',ownerColor:'#3b82f6',avatar:'ME',color:'#3b82f6',days:0,tags:['agency','top-account'],desc:'Full-service marketing agency and long-term managed-CRM client.',archived:false},
+  {id:2,name:'Summit Digital',domain:'summit.co',industry:'Software / SaaS',size:120,revenue:'$10M–$25M',loc:'New York, NY',type:'Prospect',phone:'+1 555-312-4400',owner:'JK',ownerColor:'#8b5cf6',avatar:'SU',color:'#8b5cf6',days:0,tags:['agency'],desc:'Digital product studio evaluating a renewal.',archived:false},
+  {id:3,name:'Bloom Creative',domain:'bloom.co',industry:'Design / Creative',size:18,revenue:'$1M–$5M',loc:'Austin, TX',type:'Prospect',phone:'+1 555-198-7700',owner:'SC',ownerColor:'#ec4899',avatar:'BL',color:'#ec4899',days:1,tags:['q2-focus'],desc:'Boutique creative shop, inbound from referral.',archived:false},
+  {id:4,name:'Vertex Labs',domain:'vertex.co',industry:'Software / SaaS',size:65,revenue:'$5M–$10M',loc:'Los Angeles, CA',type:'Prospect',phone:'+1 555-441-6600',owner:'RL',ownerColor:'#10b981',avatar:'VE',color:'#10b981',days:2,tags:['new'],desc:'R&D-heavy software lab.',archived:false},
+  {id:5,name:'Kapoor & Assoc',domain:'kapoor.co',industry:'Consulting',size:32,revenue:'$5M–$10M',loc:'Chicago, IL',type:'Prospect',phone:'+1 555-887-2200',owner:'MR',ownerColor:'#f59e0b',avatar:'KA',color:'#f59e0b',days:35,tags:['agency'],desc:'Management consulting firm in late-stage negotiation.',archived:false},
+  {id:6,name:'Forge & Co',domain:'forge.co',industry:'Design / Creative',size:24,revenue:'$1M–$5M',loc:'Seattle, WA',type:'Customer',phone:'+1 555-223-9000',owner:'AM',ownerColor:'#3b82f6',avatar:'FO',color:'#14b8a6',days:4,tags:['won'],desc:'Design studio, closed-won this quarter.',archived:false},
+  {id:7,name:'Nova Growth',domain:'nova.co',industry:'Marketing & Advertising',size:40,revenue:'$5M–$10M',loc:'Miami, FL',type:'Prospect',phone:'+1 555-567-4300',owner:'JK',ownerColor:'#8b5cf6',avatar:'NO',color:'#6366f1',days:21,tags:['new'],desc:'Growth-marketing agency in proposal review.',archived:false},
+  {id:8,name:'Atlas Consult',domain:'atlas.co',industry:'Consulting',size:88,revenue:'$10M–$25M',loc:'Boston, MA',type:'Prospect',phone:'+1 555-334-7700',owner:'SC',ownerColor:'#ec4899',avatar:'AT',color:'#a855f7',days:10,tags:['qualified'],desc:'Enterprise consultancy, demo completed.',archived:false},
+  {id:9,name:'Brightwave Studio',domain:'brightwave.io',industry:'Media',size:14,revenue:'$1M–$5M',loc:'Denver, CO',type:'Partner',phone:'+1 555-902-1100',owner:'AM',ownerColor:'#3b82f6',avatar:'BR',color:'#0ea5e9',days:6,tags:['partner'],desc:'Referral partner for media accounts.',archived:false},
+  {id:10,name:'Northwind Co',domain:'northwind.com',industry:'Finance',size:210,revenue:'$25M–$50M',loc:'Portland, OR',type:'Vendor',phone:'+1 555-770-3300',owner:'RL',ownerColor:'#10b981',avatar:'NW',color:'#64748b',days:18,tags:['vendor'],desc:'Data-enrichment vendor.',archived:false},
+  {id:11,name:'Clearview Media',domain:'clearview.tv',industry:'Media',size:9,revenue:'<$1M',loc:'Denver, CO',type:'Prospect',phone:'+1 555-770-1100',owner:'JK',ownerColor:'#8b5cf6',avatar:'CL',color:'#0ea5e9',days:44,tags:['cold'],desc:'Went cold after initial outreach.',archived:true},
+];
+const COMPANY_VIEW_FIELDS=['Type','Industry','Owner','Employees','Open deals','Last activity'];
+const COMPANY_FIELD_OPS={Type:['is','is not'],Industry:['is','is not'],Owner:['is','is not'],Employees:['greater than','less than'],'Open deals':['greater than','less than'],'Last activity':['more than','less than']};
+const COMPANY_FIELD_VALUES={Type:COMPANY_TYPES,Industry:INDUSTRIES,Owner:TEAM_MEMBERS.map(m=>m.name)};
+function evalRuleCompany(co,r){const v=r.value;
+  if(r.field==='Type')return r.op==='is'?co.type===v:co.type!==v;
+  if(r.field==='Industry')return r.op==='is'?co.industry===v:co.industry!==v;
+  if(r.field==='Owner')return r.op==='is'?ownerNameOf(co)===v:ownerNameOf(co)!==v;
+  if(r.field==='Employees'){const n=parseFloat(v)||0;return r.op==='greater than'?co.size>n:co.size<n;}
+  if(r.field==='Open deals'){const n=parseFloat(v)||0;const od=dealsForCompany(co.name).open;return r.op==='greater than'?od>n:od<n;}
+  if(r.field==='Last activity'){const n=parseFloat(v)||0;return r.op==='more than'?co.days>n:co.days<n;}
+  return true;
+}
+const COMPANY_ENGINE=makeViewEngine(evalRuleCompany);
+const COMPANY_DEFAULT_VIEWS=[
+  {key:'all',label:'All Companies',Icon:I.Building,pred:()=>true,empty:'Add companies to see them here.'},
+  {key:'mine',label:'My Companies',Icon:I.UserCog,pred:co=>co.owner==='AM',empty:'Companies you own will appear here.'},
+  {key:'customers',label:'Customers',Icon:I.Star,pred:co=>co.type==='Customer',empty:'Accounts marked Customer show up here.'},
+  {key:'prospects',label:'Prospects',Icon:I.Target,pred:co=>co.type==='Prospect',empty:'Open prospect accounts appear here.'},
+  {key:'withdeals',label:'With Open Deals',Icon:I.GitBranch,pred:co=>dealsForCompany(co.name).open>0,dot:'green',empty:'Companies with at least one open deal appear here.'},
+  {key:'active',label:'Recently Active',Icon:I.Sparkles,pred:co=>co.days<7,empty:'Accounts active in the last week appear here.'},
+  {key:'atrisk',label:'Going Cold',Icon:I.Clock,pred:co=>co.days>30,dot:'red',empty:'Accounts with no activity in 30+ days appear here.'},
+  {key:'noowner',label:'No Owner',Icon:I.Ban,pred:co=>!co.owner,dot:'red',empty:'Unassigned accounts appear here.'},
+];
+const COMPANY_MY_VIEWS=[
+  {key:'cmy1',label:'Enterprise (100+)',color:'#60a5fa',scope:'me',pred:co=>co.size>=100,empty:'Companies with 100+ employees appear here.'},
+  {key:'cmy2',label:'Agency accounts',color:'#a78bfa',scope:'me',pred:co=>co.tags.includes('agency'),empty:'Accounts tagged "agency" appear here.'},
+];
+const COMPANY_TEAM_VIEWS=[
+  {key:'cteam1',label:'Consulting book',color:'#818cf8',scope:'team',pred:co=>co.industry==='Consulting',empty:'Consulting accounts appear here.'},
+];
+function CompanyTypeDropdown({value,onChange}){return <ChipSelect value={value} options={COMPANY_TYPES} chipMap={COMPANY_TYPE_CHIP} dotMap={COMPANY_TYPE_DOT} onChange={onChange}/>;}
+function CompanyRow({co,COL,selected,onSelect,onType,onOwner,onArchive,onRestore,goTo,last}){
+  const h=companyHealth(co.days);const dl=dealsForCompany(co.name);const cc=contactsForCompany(co.name).length;
+  return(
+    <div className={['w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+      <button onClick={()=>onSelect(co.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
+      <button onClick={()=>goTo('company-detail')} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:co.color}}>{co.avatar}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white leading-tight truncate">{co.name}</p><p className="text-[11px] text-white/45 truncate mt-0.5">{co.domain}</p></div></button>
+      <CompanyTypeDropdown value={co.type} onChange={t=>onType(co.id,t)}/>
+      <p className="text-[13px] text-white/75 truncate">{co.industry}</p>
+      <div className="flex items-center gap-1.5 text-white/70" title={cc+' linked contact'+(cc!==1?'s':'')}><I.Users size={12} className="text-white/40"/><span className="text-[13px] tabular-nums">{cc}</span></div>
+      <div title={dl.open+' open deal'+(dl.open!==1?'s':'')}><p className="text-[13px] font-bold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</p>{dl.open>0&&<p className="text-[10px] text-white/40 -mt-0.5">{dl.open} open</p>}</div>
+      <ContactOwnerDropdown owner={{avatar:co.owner,color:co.ownerColor}} onChange={m=>onOwner(co.id,m)}/>
+      {co.archived?(<button onClick={()=>onRestore(co)} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.History size={11}/>Restore</button>):(<button onClick={()=>onArchive(co)} title="Archive" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all ml-auto"><I.Archive size={13}/></button>)}
+    </div>
+  );
+}
+function CompaniesPage({goTo}){
+  const loading=useSkeleton(900);
+  const [search,setSearch]=React.useState('');
+  const [importModal,setImportModal]=React.useState(false);
+  const [typeFilter,setTypeFilter]=React.useState('all');
+  const [selected,setSelected]=React.useState([]);
+  const [rows,setRows]=React.useState(COMPANIES_DATA);
+  const [viewKey,setViewKey]=React.useState('all');
+  const [myViews,setMyViews]=React.useState(COMPANY_MY_VIEWS);
+  const [builderOpen,setBuilderOpen]=React.useState(false);
+  const [editingView,setEditingView]=React.useState(null);
+  const [toast,setToast]=React.useState('');
+  const {confirmNode,openConfirm}=useConfirm();
+  if(loading)return(
+    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Companies" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="10px"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
+  );
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
+  const setType=(id,t)=>{setRows(r=>r.map(c=>c.id===id?{...c,type:t}:c));showToast('Type updated to '+t);};
+  const setOwner=(id,m)=>{setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
+  const doArchive=(co)=>openConfirm({title:`Archive ${co.name}?`,body:'Archived companies are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===co.id?{...x,archived:true}:x));showToast(co.name+' archived');}});
+  const doRestore=(co)=>{setRows(r=>r.map(x=>x.id===co.id?{...x,archived:false}:x));showToast(co.name+' restored');};
+  const onSaveView=(v)=>{if(editingView){setMyViews(p=>p.map(x=>x.key===editingView.key?{key:x.key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules,empty:x.empty}:x));setViewKey(editingView.key);showToast('View updated');}else{const key='cmy'+Date.now();setMyViews(p=>[...p,{key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules}]);setViewKey(key);showToast('View "'+v.label+'" created');}setBuilderOpen(false);setEditingView(null);};
+  const allViews=[...COMPANY_DEFAULT_VIEWS,...myViews,...COMPANY_TEAM_VIEWS];
+  const activeView=viewKey==='archived'?{key:'archived',label:'Archived',Icon:I.Archive,empty:'Archived companies will show up here.'}:(allViews.find(v=>v.key===viewKey)||COMPANY_DEFAULT_VIEWS[0]);
+  const editable=myViews.some(v=>v.key===viewKey);
+  const countFor=(v)=>v.key==='archived'?rows.filter(c=>c.archived).length:rows.filter(c=>!c.archived&&COMPANY_ENGINE.matchView(c,v)).length;
+  const base=rows.filter(c=>viewKey==='archived'?c.archived:!c.archived);
+  const list=base.filter(co=>{if(viewKey!=='archived'&&!COMPANY_ENGINE.matchView(co,activeView))return false;const q=search.toLowerCase();if(q&&!co.name.toLowerCase().includes(q)&&!co.domain.toLowerCase().includes(q)&&!co.industry.toLowerCase().includes(q))return false;if(typeFilter!=='all'&&co.type!==typeFilter)return false;return true;});
+  const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const allChecked=list.length>0&&list.every(c=>selected.includes(c.id));
+  const toggleAll=()=>setSelected(allChecked?[]:list.map(c=>c.id));
+  const COL='32px 2fr 110px 1.4fr 80px 120px 60px 64px';
+  const secondaryActive=typeFilter!=='all'||!!search;
+  const anyChips=viewKey!=='all'||secondaryActive;
+  const ActiveIcon=activeView.Icon||I.Building;
+  const chip=(label,onX)=>(<span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25">{label}<button onClick={onX} className="text-brand-200/60 hover:text-white"><I.X size={10}/></button></span>);
+  return(
+    <div className="h-full flex" style={{background:'var(--s925)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="companies" goTo={goTo}/>} title="Companies" subtitle={`${activeView.label} · ${list.length} compan${list.length!==1?'ies':'y'}`}
+          rightSlot={<>
+            <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
+            <button onClick={()=>showToast('Exported '+list.length+' companies to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <button onClick={()=>goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Company</button>
+          </>} noSearch/>
+        <div className="flex-1 flex min-h-0">
+          <SmartViewsSidebar active={viewKey} onSelect={(k)=>{setViewKey(k);setSelected([]);}} onNew={()=>{setEditingView(null);setBuilderOpen(true);}} onEdit={(v)=>{setEditingView(v);setBuilderOpen(true);}} myViews={myViews} countFor={countFor} defaultViews={COMPANY_DEFAULT_VIEWS} teamViews={COMPANY_TEAM_VIEWS}/>
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search companies..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
+              <div className="ml-auto flex items-center gap-2"><ToolbarFilter value={typeFilter} options={COMPANY_TYPES} allLabel="All types" onChange={setTypeFilter} dotMap={COMPANY_TYPE_DOT}/></div>
+            </div>
+            {anyChips&&(<div className="shrink-0 flex items-center gap-2 flex-wrap px-7 py-2 border-b border-white/[0.04]" style={{background:'var(--s925)'}}>
+              <span className="text-[11px] text-white/35">Active:</span>
+              {viewKey!=='all'&&chip(activeView.label,()=>setViewKey('all'))}
+              {typeFilter!=='all'&&chip('Type: '+typeFilter,()=>setTypeFilter('all'))}
+              {search&&chip('Search: '+search,()=>setSearch(''))}
+              <button onClick={()=>{setViewKey('all');setTypeFilter('all');setSearch('');}} className="text-[11px] text-white/40 hover:text-white ml-1">Clear all</button>
+            </div>)}
+            <div className="flex-1 overflow-y-auto scroll-area">
+              {selected.length>0&&(
+                <div className="sticky top-0 z-20 px-7 py-2.5 flex items-center gap-3 border-b border-brand-500/25" style={{background:'rgba(99,102,241,0.10)',backdropFilter:'blur(12px)'}}>
+                  <span className="text-[13px] font-semibold text-brand-200">{selected.length} selected</span>
+                  <div className="flex items-center gap-2 ml-2">
+                    {[{l:'Assign owner',Icon:I.UserCog},{l:'Change type',Icon:I.CheckSquare},{l:'Tag',Icon:I.Flag}].map(({l,Icon})=>(<button key={l} onClick={()=>showToast(l+' applied to '+selected.length+' companies')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.10] transition-all"><Icon size={12}/>{l}</button>))}
+                    <button onClick={()=>openConfirm({title:`Archive ${selected.length} compan${selected.length>1?'ies':'y'}?`,body:'Selected companies will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(selected.length+' companies archived');}})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Archive size={12}/>Archive</button>
+                  </div>
+                  <button onClick={()=>setSelected([])} className="ml-auto text-white/40 hover:text-white transition-colors"><I.X size={14}/></button>
+                </div>
+              )}
+              <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}>
+                <button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
+                <span>Company</span><span>Type</span><span>Industry</span><span>Contacts</span><span>Open deals</span><span>Owner</span><span/>
+              </div>
+              {list.length===0&&secondaryActive&&(
+                <div className="flex items-center justify-center py-20"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Search size={22}/></div><p className="text-[14px] font-semibold text-white/50">No companies match</p><p className="text-[12px] text-white/30 mt-1">Try adjusting your search or filters.</p><button onClick={()=>{setTypeFilter('all');setSearch('');}} className="mt-3 text-[12px] text-brand-300 hover:text-brand-200">Clear filters</button></div></div>
+              )}
+              {list.length===0&&!secondaryActive&&(
+                <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><ActiveIcon size={26}/></div><p className="text-[16px] font-bold text-white">{viewKey==='all'?'No companies yet':'No companies match this view'}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">{activeView.empty||'This view has no matching companies right now.'}</p>{viewKey==='all'?(<button onClick={()=>goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add company</button>):editable?(<button onClick={()=>{setEditingView(activeView);setBuilderOpen(true);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Settings size={13}/>Edit view criteria</button>):(<button onClick={()=>setViewKey('all')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Building size={13}/>View all companies</button>)}</div></div>
+              )}
+              {list.map((co,i)=>(<CompanyRow key={co.id} co={co} COL={COL} selected={selected.includes(co.id)} onSelect={toggleSelect} onType={setType} onOwner={setOwner} onArchive={doArchive} onRestore={doRestore} goTo={goTo} last={i===list.length-1}/>))}
+            </div>
+          </div>
+        </div>
+        {importModal&&<CsvImportModal close={()=>setImportModal(false)} onToast={showToast}/>}
+        {builderOpen&&<ViewBuilderPanel initial={editingView} close={()=>{setBuilderOpen(false);setEditingView(null);}} onSave={onSaveView} rows={rows} fields={COMPANY_VIEW_FIELDS} fieldOps={COMPANY_FIELD_OPS} fieldValues={COMPANY_FIELD_VALUES} evalRulesFn={COMPANY_ENGINE.evalRules} noun="company" NounIcon={I.Building}/>}
+        {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+        {confirmNode}
+        <AppFooter note={`${activeView.label} · ${list.length} shown`}/>
+      </div>
+    </div>
+  );
+}
+function CompanyDetailPage({goTo}){
+  const co=COMPANIES_DATA[0];
+  const people=contactsForCompany(co.name);
+  const dl=dealsForCompany(co.name);
+  const [noteText,setNoteText]=React.useState('');
+  const [timeline,setTimeline]=React.useState(TIMELINE);
+  const {confirmNode,openConfirm}=useConfirm();
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
+          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{co.name}</span></div>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>goTo('add-deal')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.GitBranch size={13}/> New deal</button>
+            <button onClick={()=>goTo('edit-company')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden">
+              <div className="relative p-6 pb-5 border-b border-white/[0.05]" style={{background:'radial-gradient(circle at top,rgba(99,102,241,0.10),transparent 70%)'}}>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:co.color}}>{co.avatar}</div>
+                  <div><h2 className="text-white text-[20px] font-bold">{co.name}</h2><a href="#" onClick={e=>e.preventDefault()} className="text-[13px] text-brand-300 mt-1 inline-block">{co.domain}</a><div className="mt-2"><CompanyTypeDropdown value={co.type} onChange={()=>{}}/></div></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{Icon:I.Users,l:'Contacts',v:people.length,fn:()=>goTo('contacts')},{Icon:I.GitBranch,l:'Open deals',v:dl.open,fn:()=>goTo('pipeline')},{Icon:I.Dollar,l:'Pipeline',v:fmtK(dl.openValue),fn:()=>goTo('pipeline')}].map((b,i)=>(
+                    <button key={i} onClick={b.fn} className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/75 transition-all"><span className="text-[16px] font-black text-white tabular-nums">{b.v}</span><span className="text-[10px] font-medium text-white/45">{b.l}</span></button>
+                  ))}
+                </div>
+              </div>
+              {[{Icon:I.Globe,label:'Website',val:co.domain,accent:true},{Icon:I.Phone,label:'Phone',val:co.phone,accent:true},{Icon:I.Layers,label:'Industry',val:co.industry},{Icon:I.Users,label:'Employees',val:co.size},{Icon:I.TrendUp,label:'Annual revenue',val:co.revenue},{Icon:I.MapPin,label:'Headquarters',val:co.loc},{Icon:I.UserCog,label:'Owner',val:ownerNameOf(co)||'Unassigned'}].map(r=>(
+                <div key={r.label} className="flex items-start gap-3 px-5 py-2.5 border-b border-white/[0.025]"><div className="w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/45 shrink-0 mt-0.5"><r.Icon size={11}/></div><div><p className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.14em]">{r.label}</p><p className={['text-[12px] mt-0.5',r.accent?'text-brand-300 cursor-pointer':'text-white/80'].join(' ')}>{r.val}</p></div></div>
+              ))}
+              <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2">About</p><p className="text-[12px] text-white/65 leading-relaxed">{co.desc}</p></div>
+              <div className="px-5 py-4"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Tags</p><div className="flex flex-wrap gap-1.5">{co.tags.map(t=>(<span key={t} className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 hover:bg-brand-500/20 cursor-pointer transition-colors">{t}</span>))}</div></div>
+            </div>
+            <div className="flex flex-col gap-5">
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
+                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-semibold">People at {co.name}</p><p className="text-[11px] text-white/45 mt-0.5">{people.length} contact{people.length!==1?'s':''}</p></div><button onClick={()=>goTo('add-contact')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>Add contact</button></div>
+                <div className="p-3">
+                  {people.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No contacts linked to this company yet.</p>):people.map(p=>(
+                    <button key={p.id} onClick={()=>goTo('contact-detail')} className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-white/[0.04] transition-colors text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white truncate">{p.name}</p><p className="text-[11px] text-white/45 truncate">{p.email}</p></div><span className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 shrink-0',CSTATUS_CHIP[p.cstatus]].join(' ')}>{p.cstatus}</span><I.ArrowRight size={12} className="text-white/20 shrink-0"/></button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
+                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-semibold">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div><button onClick={()=>goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button></div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):dl.list.map(d=>(
+                    <button key={d.id} onClick={()=>goTo('deal-detail')} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-semibold text-white truncate">{d.company}</p><span className="text-[14px] font-bold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md flex flex-col">
+                <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-white font-semibold">Activity</p><p className="text-[11px] text-white/45 mt-0.5">{timeline.length} events</p></div>
+                <div className="p-5">
+                  {timeline.map((e,i)=>(
+                    <div key={i} className="relative pl-11 pb-5">
+                      {i<timeline.length-1&&<div className="absolute left-[18px] top-9 bottom-0 w-px bg-white/[0.06]"/>}
+                      <div className="absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center" style={{background:'var(--chip85)',boxShadow:'0 0 0 1px rgba(255,255,255,0.06)'}}><span style={{color:e.iconColor}}><e.Icon size={14}/></span></div>
+                      <div className="flex items-center gap-2 mb-2"><span className={['inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full ring-1',e.chipBg].join(' ')}>{e.label}</span><span className="text-[11px] text-white/35">{e.time}</span></div>
+                      <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4"><p className="text-[14px] font-semibold text-white">{e.title}</p><p className="text-[13px] text-white/55 mt-1.5 leading-relaxed">{e.body}</p><p className="text-[11px] text-white/35 mt-2 pt-2 border-t border-white/[0.04]">{e.meta}</p></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-white/[0.05] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5" style={{background:'#3b82f6'}}>AM</div>
+                    <div className="flex-1 rounded-xl bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 transition-all">
+                      <textarea rows={2} value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder={`Add a note about ${co.name}...`} className="w-full bg-transparent outline-none resize-none px-4 py-3 text-[13px] text-white placeholder:text-white/30"/>
+                      <div className="flex justify-end px-3 pb-2.5"><button disabled={!noteText.trim()} onClick={()=>setNoteText('')} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all',noteText.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Add note</button></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <AppFooter/>{confirmNode}
+      </div>
+    </div>
+  );
+}
+function AddCompanyPage({goTo}){
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">New company</span></div><button onClick={()=>goTo('companies')} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></header>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-2xl mx-auto">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7">
+              <h2 className="text-white text-[22px] font-bold mb-6">Add new company</h2>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Company name</label><input placeholder="e.g. Meridian Agency" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Website</label><input placeholder="company.com" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Industry</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{INDUSTRIES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Type</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{COMPANY_TYPES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Employees</label><input type="number" placeholder="50" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Phone</label><input type="tel" placeholder="+1 555 000 0000" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+              </div>
+              <div className="mb-6"><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Headquarters</label><input placeholder="City, State" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+              <div className="flex gap-3"><button onClick={()=>goTo('companies')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create company</button></div>
+            </div>
+          </div>
+        </div>
+        <AppFooter/>
+      </div>
+    </div>
+  );
+}
+function EditCompanyPage({goTo}){
+  const co=COMPANIES_DATA[0];
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('company-detail')} className="text-white/45 hover:text-white transition-colors">{co.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">Edit</span></div><button onClick={()=>goTo('company-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
+        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-bold mb-6">Edit company</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Company name',co.name],['Website',co.domain],['Industry',co.industry],['Type',co.type],['Employees',String(co.size)],['Phone',co.phone],['Annual revenue',co.revenue],['Headquarters',co.loc]].map(([l,v])=>(<div key={l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
+        <AppFooter/>
+      </div>
+    </div>
+  );
+}
+// ?? Leads data ????????????????????????????????????????????????????????????????
+const LEAD_STATUSES=['New','Working','Nurturing','Qualified','Unqualified'];
+const LEAD_STATUS_CHIP={New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Working:'bg-amber-500/12 text-amber-300 ring-amber-500/25',Nurturing:'bg-violet-500/12 text-violet-300 ring-violet-500/25',Qualified:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Unqualified:'bg-white/[0.06] text-white/50 ring-white/[0.10]'};
+const LEAD_STATUS_DOT={New:'#60a5fa',Working:'#fbbf24',Nurturing:'#a78bfa',Qualified:'#34d399',Unqualified:'#94a3b8'};
+const LEAD_SOURCES=['Web form','Referral','Cold outreach','Event','Ad','LinkedIn','Import'];
+function leadScoreBucket(score){if(score>=70)return{k:'hot',c:'#f87171',l:'Hot'};if(score>=40)return{k:'warm',c:'#fbbf24',l:'Warm'};return{k:'cold',c:'#60a5fa',l:'Cold'};}
+const LEADS_DATA=[
+  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'New',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound'],archived:false,converted:false},
+  {id:2,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'daniel@lumen.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Head of Growth',source:'Referral',status:'Working',score:74,estValue:'$32k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Austin, TX',tags:['referral'],archived:false,converted:false},
+  {id:3,name:'Sofia Marchetti',avatar:'SM',color:'#ec4899',email:'sofia@craftly.co',phone:'+1 555-228-6610',company:'Craftly',title:'Founder',source:'Event',status:'Working',score:58,estValue:'$9k',owner:'SC',ownerColor:'#ec4899',created:'2d ago',days:2,loc:'New York, NY',tags:['saastr'],archived:false,converted:false},
+  {id:4,name:'Marcus Webb',avatar:'MW',color:'#10b981',email:'marcus@northpeak.com',phone:'+1 555-770-4521',company:'Northpeak',title:'VP Sales',source:'Cold outreach',status:'New',score:41,estValue:'$15k',owner:'RL',ownerColor:'#10b981',created:'3d ago',days:3,loc:'Seattle, WA',tags:['outbound'],archived:false,converted:false},
+  {id:5,name:'Aisha Rahman',avatar:'AR',color:'#f59e0b',email:'aisha@vellum.io',phone:'+1 555-883-2290',company:'Vellum',title:'COO',source:'LinkedIn',status:'Qualified',score:88,estValue:'$45k',owner:'AM',ownerColor:'#3b82f6',created:'4d ago',days:4,loc:'Boston, MA',tags:['enterprise'],archived:false,converted:false},
+  {id:6,name:'Leo Fontaine',avatar:'LF',color:'#6366f1',email:'leo@pixelforge.co',phone:'+1 555-512-7740',company:'Pixelforge',title:'Creative Lead',source:'Ad',status:'Nurturing',score:36,estValue:'$6k',owner:'JK',ownerColor:'#8b5cf6',created:'1w ago',days:7,loc:'Miami, FL',tags:[],archived:false,converted:false},
+  {id:7,name:'Hannah Cole',avatar:'HC',color:'#a855f7',email:'hannah@switchgrid.com',phone:'+1 555-664-1180',company:'Switchgrid',title:'Operations Manager',source:'Web form',status:'Qualified',score:79,estValue:'$28k',owner:'SC',ownerColor:'#ec4899',created:'1w ago',days:9,loc:'Chicago, IL',tags:['inbound'],archived:false,converted:false},
+  {id:8,name:'Raj Patel',avatar:'RP',color:'#0ea5e9',email:'raj@cobaltworks.io',phone:'+1 555-901-3345',company:'Cobalt Works',title:'CTO',source:'Referral',status:'Working',score:63,estValue:'$22k',owner:'RL',ownerColor:'#10b981',created:'2w ago',days:14,loc:'Los Angeles, CA',tags:['referral'],archived:false,converted:false},
+  {id:9,name:'Emma Lindqvist',avatar:'EL',color:'#14b8a6',email:'emma@fika.design',phone:'+1 555-330-7798',company:'Fika Design',title:'Principal',source:'Event',status:'Nurturing',score:48,estValue:'$11k',owner:'AM',ownerColor:'#3b82f6',created:'3w ago',days:21,loc:'Portland, OR',tags:['saastr'],archived:false,converted:false},
+  {id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Unqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
+];
+const LEAD_VIEW_FIELDS=['Status','Source','Owner','Score','Est. value','Created'];
+const LEAD_FIELD_OPS={Status:['is','is not'],Source:['is','is not'],Owner:['is','is not'],Score:['is'],'Est. value':['greater than','less than'],Created:['more than','less than']};
+const LEAD_FIELD_VALUES={Status:LEAD_STATUSES,Source:LEAD_SOURCES,Owner:TEAM_MEMBERS.map(m=>m.name),Score:['Hot','Warm','Cold']};
+function evalRuleLead(l,r){const v=r.value;
+  if(r.field==='Status')return r.op==='is'?l.status===v:l.status!==v;
+  if(r.field==='Source')return r.op==='is'?l.source===v:l.source!==v;
+  if(r.field==='Owner')return r.op==='is'?ownerNameOf(l)===v:ownerNameOf(l)!==v;
+  if(r.field==='Score'){const want=v.toLowerCase();return leadScoreBucket(l.score).k===want;}
+  if(r.field==='Est. value'){const n=(parseFloat(v)||0)*1000;const ev=parseMoney(l.estValue);return r.op==='greater than'?ev>n:ev<n;}
+  if(r.field==='Created'){const n=parseFloat(v)||0;return r.op==='more than'?l.days>n:l.days<n;}
+  return true;
+}
+const LEAD_ENGINE=makeViewEngine(evalRuleLead);
+const LEAD_DEFAULT_VIEWS=[
+  {key:'all',label:'All Leads',Icon:I.Target,pred:()=>true,empty:'Capture or import leads to see them here.'},
+  {key:'mine',label:'My Leads',Icon:I.UserCog,pred:l=>l.owner==='AM',empty:'Leads assigned to you appear here.'},
+  {key:'new',label:'New',Icon:I.Sparkles,pred:l=>l.status==='New',dot:'green',empty:'Brand-new, unworked leads appear here.'},
+  {key:'working',label:'Working',Icon:I.Zap,pred:l=>l.status==='Working',empty:'Leads you are actively working appear here.'},
+  {key:'qualified',label:'Qualified · Ready',Icon:I.CheckSquare,pred:l=>l.status==='Qualified',dot:'green',empty:'Qualified leads ready to convert appear here.'},
+  {key:'hot',label:'Hot Score',Icon:I.TrendUp,pred:l=>l.score>=70,dot:'red',empty:'Leads scoring 70+ appear here.'},
+  {key:'week',label:'This Week',Icon:I.Clock,pred:l=>l.days<7,empty:'Leads created in the last 7 days appear here.'},
+  {key:'unworked',label:'No Owner',Icon:I.Ban,pred:l=>!l.owner,dot:'red',empty:'Unassigned leads appear here so nothing slips.'},
+];
+const LEAD_MY_VIEWS=[
+  {key:'lmy1',label:'Inbound this month',color:'#34d399',scope:'me',pred:l=>l.source==='Web form'||l.source==='Referral',empty:'Inbound leads appear here.'},
+  {key:'lmy2',label:'High-value (>$20k)',color:'#60a5fa',scope:'me',pred:l=>parseMoney(l.estValue)>=20000,empty:'Leads worth $20k+ appear here.'},
+];
+const LEAD_TEAM_VIEWS=[
+  {key:'lteam1',label:'Needs qualifying',color:'#fbbf24',scope:'team',pred:l=>l.status==='New'||l.status==='Working',empty:'Leads still being qualified appear here.'},
+];
+function LeadStatusDropdown({value,onChange}){return <ChipSelect value={value} options={LEAD_STATUSES} chipMap={LEAD_STATUS_CHIP} dotMap={LEAD_STATUS_DOT} onChange={onChange} width={156}/>;}
+function ScoreBadge({score}){const b=leadScoreBucket(score);return(<div className="flex items-center gap-2" title={b.l+' · score '+score}><div className="w-12 h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:score+'%',background:b.c}}/></div><span className="text-[12px] font-semibold tabular-nums" style={{color:b.c}}>{score}</span></div>);}
+function LeadRow({l,COL,selected,onSelect,onStatus,onOwner,onConvert,onArchive,onRestore,goTo,last}){
+  return(
+    <div className={['w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+      <button onClick={()=>onSelect(l.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
+      <button onClick={()=>goTo('lead-detail')} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:l.color}}>{l.avatar}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white leading-tight truncate">{l.name}</p><p className="text-[11px] text-white/45 truncate mt-0.5">{l.email}</p></div></button>
+      <div className="min-w-0"><p className="text-[13px] text-white/75 truncate">{l.company}</p><p className="text-[11px] text-white/40 truncate">{l.title}</p></div>
+      <p className="text-[12px] text-white/55 truncate">{l.source}</p>
+      <LeadStatusDropdown value={l.status} onChange={s=>onStatus(l.id,s)}/>
+      <ScoreBadge score={l.score}/>
+      <ContactOwnerDropdown owner={{avatar:l.owner,color:l.ownerColor}} onChange={m=>onOwner(l.id,m)}/>
+      <p className="text-[13px] font-bold text-white tabular-nums">{l.estValue}</p>
+      {l.archived?(<button onClick={()=>onRestore(l)} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.History size={11}/>Restore</button>):(<div className="flex items-center gap-1 ml-auto"><button onClick={()=>onConvert(l)} title="Convert lead" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15 opacity-0 group-hover:opacity-100 transition-all"><I.ArrowRight size={11}/>Convert</button><button onClick={()=>onArchive(l)} title="Archive" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.Archive size={13}/></button></div>)}
+    </div>
+  );
+}
+function ConvertLeadModal({lead,close,onConfirm}){
+  const [makeDeal,setMakeDeal]=React.useState(true);
+  const [dealValue,setDealValue]=React.useState((lead.estValue||'').replace(/[^\d.]/g,'')||'');
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
+        <div className="flex items-start gap-4 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.ArrowRight size={17} style={{color:'#34d399'}}/></div>
+          <div><p className="text-white text-[15px] font-bold">Convert {lead.name}</p><p className="text-white/55 text-[13px] mt-1">This qualified lead becomes a Contact and a Company. Pick what to create.</p></div>
+        </div>
+        <div className="flex flex-col gap-2.5 mb-5">
+          {[{Icon:I.UserPlus,c:'#3b82f6',l:'Contact',v:lead.name+' · '+lead.email},{Icon:I.Building,c:'#818cf8',l:'Company',v:lead.company}].map(it=>(
+            <div key={it.l} className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3"><span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={15}/></span><div className="min-w-0"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">New {it.l}</p><p className="text-[13px] text-white/85 truncate">{it.v}</p></div><I.Check size={15} className="ml-auto text-emerald-400 shrink-0"/></div>
+          ))}
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3">
+            <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{background:'#a78bfa1f',color:'#a78bfa',boxShadow:'inset 0 0 0 1px #a78bfa33'}}><I.GitBranch size={15}/></span><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">New Deal</p><p className="text-[13px] text-white/85">Open an opportunity in the pipeline</p></div><Toggle on={makeDeal} onChange={setMakeDeal}/></div>
+            {makeDeal&&<div className="mt-3 pl-12"><label className="text-[11px] text-white/45">Deal value</label><div className="mt-1 flex items-center gap-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 w-40"><span className="text-white/40 text-[13px]">$</span><input value={dealValue} onChange={e=>setDealValue(e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>}
+          </div>
+        </div>
+        <div className="flex gap-3"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>onConfirm({makeDeal,dealValue})} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 border-none transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)]">Convert lead</button></div>
+      </div>
+    </div>
+  );
+}
+function LeadsPage({goTo}){
+  const loading=useSkeleton(900);
+  const [search,setSearch]=React.useState('');
+  const [importModal,setImportModal]=React.useState(false);
+  const [statusFilter,setStatusFilter]=React.useState('all');
+  const [selected,setSelected]=React.useState([]);
+  const [rows,setRows]=React.useState(LEADS_DATA);
+  const [viewKey,setViewKey]=React.useState('all');
+  const [myViews,setMyViews]=React.useState(LEAD_MY_VIEWS);
+  const [builderOpen,setBuilderOpen]=React.useState(false);
+  const [editingView,setEditingView]=React.useState(null);
+  const [convertLead,setConvertLead]=React.useState(null);
+  const [toast,setToast]=React.useState('');
+  const {confirmNode,openConfirm}=useConfirm();
+  if(loading)return(
+    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Leads" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
+  );
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
+  const setStatus=(id,s)=>{setRows(r=>r.map(l=>l.id===id?{...l,status:s}:l));showToast('Status updated to '+s);};
+  const setOwner=(id,m)=>{setRows(r=>r.map(l=>l.id===id?{...l,owner:m.avatar,ownerColor:m.color}:l));showToast('Reassigned to '+m.name);};
+  const doArchive=(l)=>openConfirm({title:`Archive ${l.name}?`,body:'Archived leads are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:true}:x));showToast(l.name+' archived');}});
+  const doRestore=(l)=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:false}:x));showToast(l.name+' restored');};
+  const doConvert=(opts)=>{const l=convertLead;setRows(r=>r.map(x=>x.id===l.id?{...x,converted:true,archived:true}:x));setConvertLead(null);setSelected([]);showToast(l.name+' converted to a contact'+(opts&&opts.makeDeal?' + deal':''));setTimeout(()=>goTo('contact-detail'),400);};
+  const onSaveView=(v)=>{if(editingView){setMyViews(p=>p.map(x=>x.key===editingView.key?{key:x.key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules,empty:x.empty}:x));setViewKey(editingView.key);showToast('View updated');}else{const key='lmy'+Date.now();setMyViews(p=>[...p,{key,label:v.label,color:v.color,scope:v.scope,match:v.match,rules:v.rules}]);setViewKey(key);showToast('View "'+v.label+'" created');}setBuilderOpen(false);setEditingView(null);};
+  const allViews=[...LEAD_DEFAULT_VIEWS,...myViews,...LEAD_TEAM_VIEWS];
+  const activeView=viewKey==='archived'?{key:'archived',label:'Archived',Icon:I.Archive,empty:'Archived & converted leads show up here.'}:(allViews.find(v=>v.key===viewKey)||LEAD_DEFAULT_VIEWS[0]);
+  const editable=myViews.some(v=>v.key===viewKey);
+  const countFor=(v)=>v.key==='archived'?rows.filter(l=>l.archived).length:rows.filter(l=>!l.archived&&LEAD_ENGINE.matchView(l,v)).length;
+  const base=rows.filter(l=>viewKey==='archived'?l.archived:!l.archived);
+  const list=base.filter(l=>{if(viewKey!=='archived'&&!LEAD_ENGINE.matchView(l,activeView))return false;const q=search.toLowerCase();if(q&&!l.name.toLowerCase().includes(q)&&!l.company.toLowerCase().includes(q)&&!l.email.toLowerCase().includes(q))return false;if(statusFilter!=='all'&&l.status!==statusFilter)return false;return true;});
+  const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const allChecked=list.length>0&&list.every(l=>selected.includes(l.id));
+  const toggleAll=()=>setSelected(allChecked?[]:list.map(l=>l.id));
+  const COL='32px 1.7fr 1.3fr 100px 130px 110px 56px 70px 92px';
+  const secondaryActive=statusFilter!=='all'||!!search;
+  const anyChips=viewKey!=='all'||secondaryActive;
+  const ActiveIcon=activeView.Icon||I.Target;
+  const chip=(label,onX)=>(<span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25">{label}<button onClick={onX} className="text-brand-200/60 hover:text-white"><I.X size={10}/></button></span>);
+  return(
+    <div className="h-full flex" style={{background:'var(--s925)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="leads" goTo={goTo}/>} title="Leads" subtitle={`${activeView.label} · ${list.length} lead${list.length!==1?'s':''}`}
+          rightSlot={<>
+            <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
+            <button onClick={()=>showToast('Exported '+list.length+' leads to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <button onClick={()=>goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Lead</button>
+          </>} noSearch/>
+        <div className="flex-1 flex min-h-0">
+          <SmartViewsSidebar active={viewKey} onSelect={(k)=>{setViewKey(k);setSelected([]);}} onNew={()=>{setEditingView(null);setBuilderOpen(true);}} onEdit={(v)=>{setEditingView(v);setBuilderOpen(true);}} myViews={myViews} countFor={countFor} defaultViews={LEAD_DEFAULT_VIEWS} teamViews={LEAD_TEAM_VIEWS}/>
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
+              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search leads..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
+              <div className="ml-auto flex items-center gap-2"><ToolbarFilter value={statusFilter} options={LEAD_STATUSES} allLabel="All statuses" onChange={setStatusFilter} dotMap={LEAD_STATUS_DOT}/></div>
+            </div>
+            {anyChips&&(<div className="shrink-0 flex items-center gap-2 flex-wrap px-7 py-2 border-b border-white/[0.04]" style={{background:'var(--s925)'}}>
+              <span className="text-[11px] text-white/35">Active:</span>
+              {viewKey!=='all'&&chip(activeView.label,()=>setViewKey('all'))}
+              {statusFilter!=='all'&&chip('Status: '+statusFilter,()=>setStatusFilter('all'))}
+              {search&&chip('Search: '+search,()=>setSearch(''))}
+              <button onClick={()=>{setViewKey('all');setStatusFilter('all');setSearch('');}} className="text-[11px] text-white/40 hover:text-white ml-1">Clear all</button>
+            </div>)}
+            <div className="flex-1 overflow-y-auto scroll-area">
+              {selected.length>0&&(
+                <div className="sticky top-0 z-20 px-7 py-2.5 flex items-center gap-3 border-b border-brand-500/25" style={{background:'rgba(99,102,241,0.10)',backdropFilter:'blur(12px)'}}>
+                  <span className="text-[13px] font-semibold text-brand-200">{selected.length} selected</span>
+                  <div className="flex items-center gap-2 ml-2">
+                    {[{l:'Assign owner',Icon:I.UserCog},{l:'Email',Icon:I.Mail},{l:'Change status',Icon:I.CheckSquare}].map(({l,Icon})=>(<button key={l} onClick={()=>showToast(l+' applied to '+selected.length+' leads')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/75 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.10] transition-all"><Icon size={12}/>{l}</button>))}
+                    <button onClick={()=>showToast(selected.length+' leads queued for conversion')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 transition-all"><I.ArrowRight size={12}/>Convert</button>
+                    <button onClick={()=>openConfirm({title:`Archive ${selected.length} lead${selected.length>1?'s':''}?`,body:'Selected leads will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(selected.length+' leads archived');}})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Archive size={12}/>Archive</button>
+                  </div>
+                  <button onClick={()=>setSelected([])} className="ml-auto text-white/40 hover:text-white transition-colors"><I.X size={14}/></button>
+                </div>
+              )}
+              <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}>
+                <button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
+                <span>Lead</span><span>Company</span><span>Source</span><span>Status</span><span>Score</span><span>Owner</span><span>Est. value</span><span/>
+              </div>
+              {list.length===0&&secondaryActive&&(
+                <div className="flex items-center justify-center py-20"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Search size={22}/></div><p className="text-[14px] font-semibold text-white/50">No leads match</p><p className="text-[12px] text-white/30 mt-1">Try adjusting your search or filters.</p><button onClick={()=>{setStatusFilter('all');setSearch('');}} className="mt-3 text-[12px] text-brand-300 hover:text-brand-200">Clear filters</button></div></div>
+              )}
+              {list.length===0&&!secondaryActive&&(
+                <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><ActiveIcon size={26}/></div><p className="text-[16px] font-bold text-white">{viewKey==='all'?'No leads yet':'No leads match this view'}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">{activeView.empty||'This view has no matching leads right now.'}</p>{viewKey==='all'?(<div className="flex items-center justify-center gap-3"><button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Upload size={14}/>Import CSV</button><button onClick={()=>goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add lead</button></div>):editable?(<button onClick={()=>{setEditingView(activeView);setBuilderOpen(true);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Settings size={13}/>Edit view criteria</button>):(<button onClick={()=>setViewKey('all')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Target size={13}/>View all leads</button>)}</div></div>
+              )}
+              {list.map((l,i)=>(<LeadRow key={l.id} l={l} COL={COL} selected={selected.includes(l.id)} onSelect={toggleSelect} onStatus={setStatus} onOwner={setOwner} onConvert={(ld)=>setConvertLead(ld)} onArchive={doArchive} onRestore={doRestore} goTo={goTo} last={i===list.length-1}/>))}
+            </div>
+          </div>
+        </div>
+        {importModal&&<CsvImportModal close={()=>setImportModal(false)} onToast={showToast}/>}
+        {builderOpen&&<ViewBuilderPanel initial={editingView} close={()=>{setBuilderOpen(false);setEditingView(null);}} onSave={onSaveView} rows={rows} fields={LEAD_VIEW_FIELDS} fieldOps={LEAD_FIELD_OPS} fieldValues={LEAD_FIELD_VALUES} evalRulesFn={LEAD_ENGINE.evalRules} noun="lead" NounIcon={I.Target}/>}
+        {convertLead&&<ConvertLeadModal lead={convertLead} close={()=>setConvertLead(null)} onConfirm={doConvert}/>}
+        {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+        {confirmNode}
+        <AppFooter note={`${activeView.label} · ${list.length} shown`}/>
+      </div>
+    </div>
+  );
+}
+function LeadDetailPage({goTo}){
+  const l=LEADS_DATA[0];
+  const [status,setStatusState]=React.useState(l.status);
+  const [noteText,setNoteText]=React.useState('');
+  const [convertOpen,setConvertOpen]=React.useState(false);
+  const [timeline,setTimeline]=React.useState(LEAD_TIMELINE);
+  const {confirmNode,openConfirm}=useConfirm();
+  const b=leadScoreBucket(l.score);
+  const doConvert=(opts)=>{setConvertOpen(false);setTimeout(()=>goTo('contact-detail'),300);};
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
+          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('leads')} className="text-white/45 hover:text-white transition-colors">Leads</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{l.name}</span></div>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>goTo('edit-lead')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
+            <button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 border-none shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={14} stroke={2.4}/>Convert lead</button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden">
+              <div className="relative p-6 pb-5 border-b border-white/[0.05]" style={{background:`radial-gradient(circle at top,${b.c}1a,transparent 70%)`}}>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:l.color}}>{l.avatar}</div>
+                  <div><h2 className="text-white text-[20px] font-bold">{l.name}</h2><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={setStatusState}/></div></div>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-black tabular-nums" style={{color:b.c}}>{l.score}</span></div></div>
+              </div>
+              {[{Icon:I.Mail,label:'Email',val:l.email,accent:true},{Icon:I.Phone,label:'Phone',val:l.phone,accent:true},{Icon:I.Building,label:'Company',val:l.company},{Icon:I.Briefcase,label:'Title',val:l.title},{Icon:I.Filter,label:'Source',val:l.source},{Icon:I.Dollar,label:'Est. value',val:l.estValue},{Icon:I.MapPin,label:'Location',val:l.loc},{Icon:I.UserCog,label:'Owner',val:ownerNameOf(l)||'Unassigned'},{Icon:I.Clock,label:'Created',val:l.created}].map(r=>(
+                <div key={r.label} className="flex items-start gap-3 px-5 py-2.5 border-b border-white/[0.025]"><div className="w-6 h-6 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/45 shrink-0 mt-0.5"><r.Icon size={11}/></div><div><p className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.14em]">{r.label}</p><p className={['text-[12px] mt-0.5',r.accent?'text-brand-300 cursor-pointer':'text-white/80'].join(' ')}>{r.val}</p></div></div>
+              ))}
+              <div className="px-5 py-4"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Tags</p><div className="flex flex-wrap gap-1.5">{l.tags.length?l.tags.map(t=>(<span key={t} className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 hover:bg-brand-500/20 cursor-pointer transition-colors">{t}</span>)):<span className="text-[12px] text-white/35">No tags yet</span>}</div></div>
+            </div>
+            <div className="flex flex-col gap-5">
+              <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.Sparkles size={16}/></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-emerald-300 uppercase tracking-[0.14em]">Recommended next action</p>
+                    <p className="text-[14px] font-semibold text-white mt-1">This lead is ready to convert</p>
+                    <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.name} scores {l.score}/100 and engaged twice this week. Convert to a contact and open the {l.estValue} opportunity before it cools.</p>
+                    <div className="flex items-center gap-2 mt-3"><button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-emerald-500/90 hover:bg-emerald-400 text-[#04140d] shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={12}/>Convert now</button><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Email lead</button><button className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md flex flex-col">
+                <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-white font-semibold">Activity</p><p className="text-[11px] text-white/45 mt-0.5">{timeline.length} events</p></div>
+                <div className="p-5">
+                  {timeline.map((e,i)=>(
+                    <div key={i} className="relative pl-11 pb-5">
+                      {i<timeline.length-1&&<div className="absolute left-[18px] top-9 bottom-0 w-px bg-white/[0.06]"/>}
+                      <div className="absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center" style={{background:'var(--chip85)',boxShadow:'0 0 0 1px rgba(255,255,255,0.06)'}}><span style={{color:e.iconColor}}><e.Icon size={14}/></span></div>
+                      <div className="flex items-center gap-2 mb-2"><span className={['inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full ring-1',e.chipBg].join(' ')}>{e.label}</span><span className="text-[11px] text-white/35">{e.time}</span></div>
+                      <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4"><p className="text-[14px] font-semibold text-white">{e.title}</p><p className="text-[13px] text-white/55 mt-1.5 leading-relaxed">{e.body}</p><p className="text-[11px] text-white/35 mt-2 pt-2 border-t border-white/[0.04]">{e.meta}</p></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-white/[0.05] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5" style={{background:'#3b82f6'}}>AM</div>
+                    <div className="flex-1 rounded-xl bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 transition-all">
+                      <textarea rows={2} value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder={`Add a note about ${l.name}...`} className="w-full bg-transparent outline-none resize-none px-4 py-3 text-[13px] text-white placeholder:text-white/30"/>
+                      <div className="flex justify-end px-3 pb-2.5"><button disabled={!noteText.trim()} onClick={()=>setNoteText('')} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all',noteText.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Add note</button></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <AppFooter/>{confirmNode}
+      </div>
+      {convertOpen&&<ConvertLeadModal lead={l} close={()=>setConvertOpen(false)} onConfirm={doConvert}/>}
+    </div>
+  );
+}
+const LEAD_TIMELINE=[
+  {kind:'email-in',time:'1h ago',label:'EMAIL RECEIVED',chipBg:'bg-blue-500/15 ring-blue-500/25 text-blue-300',Icon:I.Mail,iconColor:'#60a5fa',title:'Re: Pricing for your team',body:"Thanks for the quick reply — what does onboarding look like for a 40-person team?",meta:'From olivia@brightwave.io'},
+  {kind:'form',time:'2h ago',label:'FORM SUBMITTED',chipBg:'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300',Icon:I.Note,iconColor:'#34d399',title:'Submitted "Request a demo" form',body:'Team size: 40 · Interested in: Pipeline + Automations · Budget: $15k–$20k.',meta:'Via website'},
+  {kind:'score',time:'2h ago',label:'SCORE',chipBg:'bg-amber-500/15 ring-amber-500/25 text-amber-300',Icon:I.TrendUp,iconColor:'#fbbf24',title:'Lead score reached 82',body:'Visited pricing twice, opened 2 emails, submitted demo form.',meta:'Auto-scored by nrtur'},
+  {kind:'created',time:'2h ago',label:'LEAD CREATED',chipBg:'bg-violet-500/15 ring-violet-500/25 text-violet-300',Icon:I.UserPlus,iconColor:'#a78bfa',title:'Lead captured from web form',body:'Source: Web form · Landing page: /demo.',meta:'By nrtur'},
+];
+function AddLeadPage({goTo}){
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('leads')} className="text-white/45 hover:text-white transition-colors">Leads</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">New lead</span></div><button onClick={()=>goTo('leads')} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></header>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-2xl mx-auto">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7">
+              <h2 className="text-white text-[22px] font-bold mb-6">Add new lead</h2>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Full name</label><input placeholder="e.g. Olivia Bennett" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Company</label><input placeholder="e.g. Brightwave Studio" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Email</label><input type="email" placeholder="name@company.com" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Phone</label><input type="tel" placeholder="+1 555 000 0000" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Source</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{LEAD_SOURCES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Status</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{LEAD_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Estimated value</label><input placeholder="$0" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Owner</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{TEAM_MEMBERS.map(m=>(<option key={m.avatar}>{m.name}</option>))}</select></div>
+              </div>
+              <div className="flex gap-3"><button onClick={()=>goTo('leads')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create lead</button></div>
+            </div>
+          </div>
+        </div>
+        <AppFooter/>
+      </div>
+    </div>
+  );
+}
+function EditLeadPage({goTo}){
+  const l=LEADS_DATA[0];
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="contacts" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('lead-detail')} className="text-white/45 hover:text-white transition-colors">{l.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">Edit</span></div><button onClick={()=>goTo('lead-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
+        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-bold mb-6">Edit lead</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Full name',l.name],['Company',l.company],['Email',l.email],['Phone',l.phone],['Title',l.title],['Source',l.source],['Status',l.status],['Estimated value',l.estValue]].map(([la,v])=>(<div key={la}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{la}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
         <AppFooter/>
       </div>
     </div>
@@ -4828,11 +5551,36 @@ const FORMS_DATA=[
    onSubmit:{owner:'Round-robin',tags:['event-2026'],sequence:'None',automation:'None',after:'thankyou',thankyou:'You are registered — see you there!',redirect:'',notify:'None'}},
 ];
 const FORM_ST={active:AUTO_ST.active,paused:AUTO_ST.paused,draft:AUTO_ST.draft};
+const _ff=(type,label,map,required,width,extra)=>({id:newBlockId(),kind:'field',type,label,map:map||'Do not map',required:!!required,width:width||'full',...(extra||{})});
+const _fb=(kind,extra)=>({id:newBlockId(),kind,...(extra||{})});
+// Full form templates — seed the builder with blocks (incl. multi-column rows), theme and on-submit
 const FORM_TEMPLATES=[
-  {name:'Demo request',desc:'Qualified demo leads with company size.',Icon:I.Sparkles,iconBg:'rgba(99,102,241,0.12)',iconFg:'#818cf8'},
-  {name:'Newsletter signup',desc:'Single-field email capture, double opt-in.',Icon:I.Mail,iconBg:'rgba(59,130,246,0.12)',iconFg:'#60a5fa'},
-  {name:'Contact us',desc:'Simple inbound contact form + task.',Icon:I.Note,iconBg:'rgba(16,185,129,0.12)',iconFg:'#34d399'},
+  {name:'Request a Demo',desc:'Qualified demo leads with company size.',Icon:I.Sparkles,iconBg:'rgba(99,102,241,0.12)',iconFg:'#818cf8',
+   accent:'#6366f1',titleColor:'#ffffff',bgColor:'#141422',title:'Book a demo',formDesc:'See Nrtur in action — 20 minutes, tailored to your team.',
+   blocks:[_ff('text','First name','First name',true,'half'),_ff('text','Last name','Last name',true,'half'),_ff('email','Work email','Email',true,'full'),_ff('company','Company','Company',true,'half'),_ff('dropdown','Company size','Do not map',false,'half',{options:['1-10','11-50','51-200','200+']}),_ff('textarea','What would you like to see?','Do not map',false,'full')],
+   onSubmit:{owner:'Round-robin',tags:['demo-requested'],sequence:'New Lead Nurture',automation:'New Lead Welcome Sequence',after:'thankyou',thankyou:'Thanks! Our team will reach out within one business day.',redirect:'',notify:'#sales'}},
+  {name:'Contact Us',desc:'Simple inbound contact form + task.',Icon:I.Note,iconBg:'rgba(16,185,129,0.12)',iconFg:'#34d399',
+   accent:'#10b981',titleColor:'#ffffff',bgColor:'#141422',title:'Get in touch',formDesc:'Send us a message and we will reply shortly.',
+   blocks:[_ff('text','Name','First name',true,'half'),_ff('email','Email','Email',true,'half'),_ff('textarea','How can we help?','Do not map',true,'full')],
+   onSubmit:{owner:'Deal owner',tags:['inbound'],sequence:'None',automation:'None',after:'thankyou',thankyou:'Got it — we will be in touch shortly.',redirect:'',notify:'Deal owner'}},
+  {name:'Newsletter Signup',desc:'Single-field email capture, double opt-in.',Icon:I.Mail,iconBg:'rgba(59,130,246,0.12)',iconFg:'#60a5fa',
+   accent:'#0ea5e9',titleColor:'#ffffff',bgColor:'#0b1220',title:'Join the newsletter',formDesc:'Monthly CRM tips. No spam, unsubscribe anytime.',
+   blocks:[_ff('email','Email address','Email',true,'full')],
+   onSubmit:{owner:'Round-robin',tags:['newsletter'],sequence:'New Lead Nurture',automation:'None',after:'thankyou',thankyou:'You are subscribed. Watch your inbox!',redirect:'',notify:'None'}},
+  {name:'Event Registration',desc:'Collect attendees + send reminders.',Icon:I.Calendar,iconBg:'rgba(245,158,11,0.12)',iconFg:'#fbbf24',
+   accent:'#f59e0b',titleColor:'#ffffff',bgColor:'#1e1b2e',title:'Register for the event',formDesc:'Save your spot — we will email the details.',
+   blocks:[_fb('heading',{text:'Your details',size:'md'}),_ff('text','First name','First name',true,'half'),_ff('text','Last name','Last name',true,'half'),_ff('email','Email','Email',true,'half'),_ff('phone','Phone','Phone',false,'half'),_fb('section',{text:'Preferences'}),_ff('dropdown','Session','Do not map',false,'half',{options:['Morning','Afternoon','Both']}),_ff('checkbox','Attending in person?','Do not map',false,'half')],
+   onSubmit:{owner:'Round-robin',tags:['event-2026'],sequence:'None',automation:'None',after:'thankyou',thankyou:'You are registered — see you there!',redirect:'',notify:'#sales'}},
+  {name:'Job Application',desc:'Roles + resume link + screening.',Icon:I.Users,iconBg:'rgba(168,85,247,0.12)',iconFg:'#c084fc',
+   accent:'#a855f7',titleColor:'#ffffff',bgColor:'#141422',title:'Apply to join us',formDesc:'Tell us about yourself.',
+   blocks:[_ff('text','Full name','First name',true,'half'),_ff('email','Email','Email',true,'half'),_ff('phone','Phone','Phone',false,'half'),_ff('dropdown','Role','Do not map',true,'half',{options:['Engineering','Sales','Design','Support']}),_ff('text','LinkedIn / portfolio URL','Do not map',false,'full'),_ff('textarea','Why this role?','Do not map',true,'full')],
+   onSubmit:{owner:'None',tags:['applicant'],sequence:'None',automation:'None',after:'thankyou',thankyou:'Thanks for applying — we review every application.',redirect:'',notify:'Deal owner'}},
+  {name:'Feedback Survey',desc:'Rating + comments from customers.',Icon:I.Star,iconBg:'rgba(236,72,153,0.12)',iconFg:'#f472b6',
+   accent:'#ec4899',titleColor:'#ffffff',bgColor:'#141422',title:'How are we doing?',formDesc:'Your feedback helps us improve.',
+   blocks:[_ff('email','Email','Email',false,'full'),_ff('dropdown','Overall rating','Do not map',true,'half',{options:['⭐⭐⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐','⭐⭐','⭐']}),_ff('dropdown','Would you recommend us?','Do not map',false,'half',{options:['Definitely','Maybe','No']}),_ff('textarea','What can we do better?','Do not map',false,'full')],
+   onSubmit:{owner:'Deal owner',tags:['feedback'],sequence:'None',automation:'None',after:'thankyou',thankyou:'Thank you for the feedback!',redirect:'',notify:'Deal owner'}},
 ];
+let _formSeed=null;const setFormSeed=(s)=>{_formSeed=s;};
 const FORM_SUBMISSIONS=[
   {form:'Request a Demo',contact:'Olivia Park',avatar:'OP',color:'#3b82f6',time:'12m ago',summary:'Acme Inc · 51-200',fired:'Enrolled in New Lead Nurture · assigned to Alex'},
   {form:'Request a Demo',contact:'Daniel Cho',avatar:'DC',color:'#8b5cf6',time:'1h ago',summary:'Cho Studio · 11-50',fired:'Started New Lead Welcome automation'},
@@ -4926,24 +5674,24 @@ function FormPreview({title,titleColor,titleBg,bgColor,desc,descColor,textColor,
   );
 }
 function FormBuilderPage({goTo,initial}){
-  const seed=initial||FORMS_DATA[0];
-  const [name,setName]=React.useState(initial?initial.name:'New Form');
-  const [title,setTitle]=React.useState(initial?initial.name:'Get in touch');
-  const [desc,setDesc]=React.useState('Fill out the form and we will get back to you.');
-  const [accent,setAccent]=React.useState('#6366f1');
-  const [titleColor,setTitleColor]=React.useState('#ffffff');
-  const [titleBg,setTitleBg]=React.useState('transparent');
-  const [bgColor,setBgColor]=React.useState('#141422');
-  const [descColor,setDescColor]=React.useState('#94a3b8');
-  const [textColor,setTextColor]=React.useState('#cbd5e1');
-  const [fieldSize,setFieldSize]=React.useState('md');
-  const [radius,setRadius]=React.useState('lg');
-  const [headerImg,setHeaderImg]=React.useState(null);
-  const [headerLayout,setHeaderLayout]=React.useState('none');
-  const [btn,setBtn]=React.useState('Submit');
-  const [blocks,setBlocks]=React.useState(()=>initial?toBlocks(initial):[{id:newBlockId(),kind:'field',type:'text',label:'Full name',map:'First name',required:true,width:'full'},{id:newBlockId(),kind:'field',type:'email',label:'Work email',map:'Email',required:true,width:'full'}]);
-  const [onSub,setOnSub]=React.useState(()=>initial?{...initial.onSubmit}:{owner:'Round-robin',tags:[],sequence:'None',automation:'None',after:'thankyou',thankyou:'Thanks! We will be in touch soon.',redirect:'',notify:'None'});
-  const [activated,setActivated]=React.useState(initial?initial.status==='active':false);
+  const seed=initial||_formSeed;
+  const [name,setName]=React.useState(seed?seed.name:'New Form');
+  const [title,setTitle]=React.useState(seed?(seed.title||seed.name):'Get in touch');
+  const [desc,setDesc]=React.useState(seed?(seed.formDesc||'Fill out the form and we will get back to you.'):'Fill out the form and we will get back to you.');
+  const [accent,setAccent]=React.useState(seed&&seed.accent||'#6366f1');
+  const [titleColor,setTitleColor]=React.useState(seed&&seed.titleColor||'#ffffff');
+  const [titleBg,setTitleBg]=React.useState(seed&&seed.titleBg||'transparent');
+  const [bgColor,setBgColor]=React.useState(seed&&seed.bgColor||'#141422');
+  const [descColor,setDescColor]=React.useState(seed&&seed.descColor||'#94a3b8');
+  const [textColor,setTextColor]=React.useState(seed&&seed.textColor||'#cbd5e1');
+  const [fieldSize,setFieldSize]=React.useState(seed&&seed.fieldSize||'md');
+  const [radius,setRadius]=React.useState(seed&&seed.radius||'lg');
+  const [headerImg,setHeaderImg]=React.useState(seed&&seed.headerImg||null);
+  const [headerLayout,setHeaderLayout]=React.useState(seed&&seed.headerLayout||'none');
+  const [btn,setBtn]=React.useState(seed&&seed.btn||'Submit');
+  const [blocks,setBlocks]=React.useState(()=>seed?toBlocks(seed):[{id:newBlockId(),kind:'field',type:'text',label:'Full name',map:'First name',required:true,width:'full'},{id:newBlockId(),kind:'field',type:'email',label:'Work email',map:'Email',required:true,width:'full'}]);
+  const [onSub,setOnSub]=React.useState(()=>seed&&seed.onSubmit?{...seed.onSubmit}:{owner:'Round-robin',tags:[],sequence:'None',automation:'None',after:'thankyou',thankyou:'Thanks! We will be in touch soon.',redirect:'',notify:'None'});
+  const [activated,setActivated]=React.useState(seed?seed.status==='active':false);
   const [preview,setPreview]=React.useState('form');
   const [dirty,setDirty]=React.useState(false);
   const [toast,setToast]=React.useState('');
@@ -4960,7 +5708,8 @@ function FormBuilderPage({goTo,initial}){
   const dropEnd=()=>{const d=dragRef.current;dragRef.current=null;if(!d)return;setBlocks(bs=>{const a=[...bs];if(d.type==='new')a.push(d.block);else{const[m]=a.splice(d.idx,1);a.push(m);}return a;});mark();};
   const setOS=(patch)=>{setOnSub(o=>({...o,...patch}));mark();};
   const addTag=(t)=>{if(t&&!onSub.tags.includes(t))setOS({tags:[...onSub.tags,t]});};
-  const embed=`<script src="https://forms.nrtur.com/f/${seed.id||'new'}.js" async><\/script>\n<div data-nrtur-form="${seed.id||'new'}"></div>`;
+  const _fid=(seed&&seed.id)||'new';
+  const embed=`<script src="https://forms.nrtur.com/f/${_fid}.js" async><\/script>\n<div data-nrtur-form="${_fid}"></div>`;
   const palItem=(t,isLayout)=>(<button key={t.key} draggable onDragStart={()=>{dragRef.current={type:'new',block:makeBlock(t.key,isLayout)};}} onClick={()=>addBlock(makeBlock(t.key,isLayout))} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] hover:border-brand-500/40 hover:bg-white/[0.06] transition-all text-left cursor-grab active:cursor-grabbing"><span className="w-6 h-6 rounded-md bg-white/[0.05] flex items-center justify-center text-white/60 shrink-0"><t.Icon size={12}/></span><span className="text-[12px] text-white/75">{t.label}</span></button>);
   const setAllWidths=(w)=>{setBlocks(bs=>bs.map(b=>b.kind==='field'?{...b,width:w}:b));mark();};
   const swatchRow=(cur,onPick,colors)=>(<div className="flex items-center gap-1.5 flex-wrap mb-3">{colors.map(co=>(<button key={co} onClick={()=>{onPick(co);mark();}} title={co} className="w-6 h-6 rounded-full transition-all hover:scale-110 border border-white/10 shrink-0" style={co==='transparent'?{background:'repeating-conic-gradient(#777 0% 25%, #333 0% 50%) 50% / 7px 7px',boxShadow:cur===co?'0 0 0 2px var(--s850), 0 0 0 4px #888':'none'}:{background:co,boxShadow:cur===co?('0 0 0 2px var(--s850), 0 0 0 4px '+co):'none'}}/>))}</div>);
@@ -4993,20 +5742,21 @@ function FormBuilderPage({goTo,initial}){
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.07] p-4" onDragOver={e=>e.preventDefault()} onDrop={dropEnd}>
                 <input value={title} onChange={e=>{setTitle(e.target.value);mark();}} className="w-full bg-transparent text-[16px] font-bold text-white outline-none border-b border-transparent focus:border-brand-500/30 mb-1" placeholder="Form title"/>
                 <input value={desc} onChange={e=>{setDesc(e.target.value);mark();}} className="w-full bg-transparent text-[12px] text-white/55 outline-none border-b border-transparent focus:border-brand-500/30 mb-3" placeholder="Short description"/>
-                <div className="flex flex-col gap-2.5">
-                  {blocks.map((b,i)=>(
-                    <div key={b.id} draggable onDragStart={()=>{dragRef.current={type:'move',idx:i};}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();dropAt(i);}} className="rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.16] p-3 transition-all">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="cursor-grab active:cursor-grabbing text-white/25 hover:text-white/60 shrink-0"><I.Grip size={14}/></span>
-                        <span className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.12em] flex-1">{b.kind==='field'?(FORM_TYPE_LABEL[b.type]||'Field'):b.kind}</span>
-                        {b.kind==='field'&&<button onClick={()=>setBlock(b.id,{width:WIDTH_CYCLE[b.width||'full']})} title="Field width (grid)" className="text-[10px] px-2 py-0.5 rounded-md bg-white/[0.05] text-white/55 hover:text-white border border-white/[0.08]">{WIDTH_LABEL[b.width||'full']} width</button>}
-                        <button onClick={()=>removeBlock(b.id)} title="Remove" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"><I.X size={13}/></button>
+                <p className="text-[11px] text-white/35 mb-2 flex items-center gap-1.5"><I.Grip size={11}/>Drag to reorder · set a field’s width (Full / ½ / ⅓) to build multi-column rows.</p>
+                <div className="flex flex-wrap gap-2.5 items-start">
+                  {blocks.map((b,i)=>{const wcls=b.kind==='field'?(WIDTH_CLASS[b.width]||'w-full'):'w-full';const tint=b.kind==='field'?'border-white/[0.08]':'border-brand-500/15 bg-brand-500/[0.04]';return(
+                    <div key={b.id} draggable onDragStart={()=>{dragRef.current={type:'move',idx:i};}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();dropAt(i);}} className={[wcls,'group rounded-xl bg-white/[0.03] border hover:border-brand-500/40 p-3 transition-all',tint].join(' ')}>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="cursor-grab active:cursor-grabbing text-white/25 hover:text-white/70 shrink-0" title="Drag to reorder"><I.Grip size={14}/></span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] flex-1 truncate" style={{color:b.kind==='field'?'rgba(255,255,255,0.4)':'#a5b4fc'}}>{b.kind==='field'?(FORM_TYPE_LABEL[b.type]||'Field'):b.kind}</span>
+                        {b.kind==='field'&&<div className="flex items-center gap-0.5 p-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] shrink-0">{[['full','▭'],['half','◫'],['third','⊞']].map(o=>(<button key={o[0]} onClick={()=>setBlock(b.id,{width:o[0]})} title={WIDTH_LABEL[o[0]]+' width'} className={['w-5 h-5 rounded text-[10px] flex items-center justify-center transition-all',(b.width||'full')===o[0]?'bg-brand-500 text-white':'text-white/45 hover:text-white'].join(' ')}>{WIDTH_LABEL[o[0]]}</button>))}</div>}
+                        <button onClick={()=>removeBlock(b.id)} title="Remove" className="w-6 h-6 rounded-md flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 opacity-0 group-hover:opacity-100"><I.X size={13}/></button>
                       </div>
                       {b.kind==='field'&&(<React.Fragment>
                         <input value={b.label} onChange={e=>setBlock(b.id,{label:e.target.value})} className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40" placeholder="Field label"/>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          <select value={b.type} onChange={e=>setBlock(b.id,{type:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{FORM_FIELD_TYPES.map(t=>(<option key={t.key} value={t.key}>{t.label}</option>))}</select>
-                          <select value={b.map} onChange={e=>setBlock(b.id,{map:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{CONTACT_MAP_FIELDS.map(m=>(<option key={m}>{m}</option>))}</select>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <select value={b.type} onChange={e=>setBlock(b.id,{type:e.target.value})} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[90px]'}>{FORM_FIELD_TYPES.map(t=>(<option key={t.key} value={t.key}>{t.label}</option>))}</select>
+                          <select value={b.map} onChange={e=>setBlock(b.id,{map:e.target.value})} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[90px]'}>{CONTACT_MAP_FIELDS.map(m=>(<option key={m}>{m}</option>))}</select>
                         </div>
                         {b.type==='dropdown'&&(<input value={(b.options||[]).join(', ')} onChange={e=>setBlock(b.id,{options:e.target.value.split(',').map(x=>x.trim()).filter(Boolean)})} placeholder="Option 1, Option 2" className="mt-2 w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
                         <label className="mt-2 flex items-center gap-2 text-[12px] text-white/60"><Toggle on={b.required} onChange={v=>setBlock(b.id,{required:v})}/>Required</label>
@@ -5026,8 +5776,8 @@ function FormBuilderPage({goTo,initial}){
                       </React.Fragment>)}
                       {b.kind==='divider'&&<div className="h-px bg-white/[0.10] my-1"/>}
                     </div>
-                  ))}
-                  {blocks.length===0&&<div className="rounded-xl border border-dashed border-white/[0.12] p-6 text-center text-[12px] text-white/40">Drag fields here, or click one in the palette.</div>}
+                  );})}
+                  {blocks.length===0&&<div className="w-full rounded-xl border border-dashed border-white/[0.12] p-6 text-center text-[12px] text-white/40">Drag fields here, or click one in the palette.</div>}
                 </div>
               </div>
               {/* Right: design + on-submit + preview + embed */}
@@ -5115,7 +5865,7 @@ function SettingsFormsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="settings-forms" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Forms" subtitle={`${nActive} live · ${totalSubs} submissions this month`} rightSlot={<button onClick={()=>goTo('form-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Form</button>}/>
+        <AppTopbar goTo={goTo} title="Forms" subtitle={`${nActive} live · ${totalSubs} submissions this month`} rightSlot={<button onClick={()=>{setFormSeed(null);goTo('form-builder');}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Form</button>}/>
         <div className="flex-1 flex min-h-0">
           <SettingsSubNav active="settings-forms" goTo={goTo}/>
           <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">
@@ -5129,7 +5879,7 @@ function SettingsFormsPage({goTo}){
               <div key={f.id} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',f.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Note size={17} stroke={2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-bold leading-tight">{f.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><p className="text-[12px] text-white/55 mt-1">{f.fields.length} fields · {f.submissions} submissions · {f.conversion}% conversion</p></div></div>
-                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/>Submissions</button><button onClick={()=>goTo('form-builder')} className={EDIT}><I.Edit size={12}/>Edit</button>
+                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/>Submissions</button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/>Edit</button>
                     <div data-formmenu className="relative"><button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                       {menu===f.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}><button onClick={()=>dupForm(f)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button><button onClick={()=>{setMenu(null);openConfirm({title:'Delete this form?',body:`"${f.name}" and its embed will stop collecting submissions.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{delForm(f.id);showToast('Form deleted');}});}} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete</button></div>)}
                     </div>
@@ -5139,7 +5889,7 @@ function SettingsFormsPage({goTo}){
               </div>
             );})}
             <div className="flex items-center justify-between mb-1 mt-2"><p className="text-white text-[15px] font-semibold">Templates</p></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{FORM_TEMPLATES.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-bold">{t.name}</h4><p className="text-[12px] text-white/50 mt-1 mb-4">{t.desc}</p><button onClick={()=>goTo('form-builder')} className="w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{FORM_TEMPLATES.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-bold">{t.name}</h4><p className="text-[12px] text-white/50 mt-1 mb-4">{t.desc}</p><button onClick={()=>{setFormSeed(t);goTo('form-builder');}} className="w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
           </div></div>
         </div>
         <AppFooter/>{confirmNode}
@@ -5476,10 +6226,18 @@ function App(){
       {page==='onboarding-5'      && <OnboardingPage step={5} {...p}/>}
       {isApp&&<div className="app-shell" style={{height:'100%'}}>
       {page==='dashboard'         && <DashboardPage {...p}/>}
+      {page==='leads'             && <LeadsPage {...p}/>}
+      {page==='lead-detail'       && <LeadDetailPage {...p}/>}
+      {page==='add-lead'          && <AddLeadPage {...p}/>}
+      {page==='edit-lead'         && <EditLeadPage {...p}/>}
       {page==='contacts'          && <ContactsPage {...p}/>}
       {page==='contact-detail'    && <ContactDetailPage {...p}/>}
       {page==='add-contact'       && <AddContactPage {...p}/>}
       {page==='edit-contact'      && <EditContactPage {...p}/>}
+      {page==='companies'         && <CompaniesPage {...p}/>}
+      {page==='company-detail'    && <CompanyDetailPage {...p}/>}
+      {page==='add-company'       && <AddCompanyPage {...p}/>}
+      {page==='edit-company'      && <EditCompanyPage {...p}/>}
       {page==='pipeline'          && <PipelinePage {...p}/>}
       {page==='deal-detail'       && <DealDetailPage {...p}/>}
       {page==='add-deal'          && <AddDealPage {...p}/>}
