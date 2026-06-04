@@ -887,9 +887,7 @@ function QuickCompanyModal({close,onToast}){
 function AppSidebar({active,goTo}){
   const items=[
     {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
-    {key:'leads',    Icon:I.Target,    label:'Leads'},
     {key:'contacts', Icon:I.Users,     label:'Contacts'},
-    {key:'companies',Icon:I.Building,  label:'Companies'},
     {key:'pipeline', Icon:I.GitBranch, label:'Pipeline'},
     {key:'calendar', Icon:I.Calendar,  label:'Calendar'},
     {key:'inbox',    Icon:I.Inbox,     label:'Inbox'},
@@ -964,15 +962,18 @@ function AppSidebar({active,goTo}){
 const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
 // Shared connected-mailbox state so the inbox rail and Integrations page stay in sync (email spec Part B).
 const MailAccountsContext=React.createContext({accounts:[],connect:()=>{},disconnect:()=>{}});
-function AppTopbar({goTo,title,subtitle,rightSlot,noSearch}){
+function AppTopbar({goTo,title,subtitle,rightSlot,noSearch,tabs}){
   const __bc=React.useContext(BillingContext);
   return(
     <React.Fragment>
       {__bc.billingState==='payment-failed'&&(<div className="shrink-0 bg-red-500/15 border-b border-red-500/30 px-7 py-2 flex items-center gap-2"><I.Ban size={13} className="text-red-300 shrink-0"/><span className="text-[12px] text-red-200 font-medium">Payment failed — your card was declined. Update it to avoid suspension on June 8.</span><button onClick={()=>goTo('settings-billing')} className="ml-auto shrink-0 text-[12px] font-semibold text-red-100 hover:text-white underline">Fix now</button></div>)}
     <header className="app-topbar shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{background:'var(--s925)'}}>
-      <div className="min-w-0">
-        {title&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
-        {subtitle&&<p className="text-white/50 text-[13px] mt-1">{subtitle}</p>}
+      <div className="min-w-0 flex items-center gap-4">
+        {tabs}
+        {(title||subtitle)&&(<div className="min-w-0">
+          {title&&!tabs&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
+          {subtitle&&<p className={['text-white/50 text-[13px]',title&&!tabs?'mt-1':''].join(' ')}>{subtitle}</p>}
+        </div>)}
       </div>
       {rightSlot&&(<div className="flex items-center gap-2.5 shrink-0">{rightSlot}</div>)}
     </header>
@@ -1864,7 +1865,7 @@ const DEFAULT_VIEWS=[
   {key:'mine',label:'My Contacts',Icon:I.UserCog,pred:c=>c.owner==='AM',empty:'Contacts assigned to you will appear here.'},
   {key:'uncontacted',label:'Uncontacted',Icon:I.Clock,pred:c=>c.days>=30,dot:'red',empty:'Contacts with no activity in the last 30 days land here so you can re-engage.'},
   {key:'followup',label:'Needs Follow-up',Icon:I.Bell,pred:c=>c.days>=7&&c.days<=30,dot:'amber',empty:'Contacts you last spoke to 7-30 days ago show up here before they go cold.'},
-  {key:'hot',label:'Hot Leads',Icon:I.Zap,pred:c=>c.cstatus==='Prospect'&&c.days<7,dot:'green',empty:'Active prospects contacted in the last week appear here.'},
+  {key:'hot',label:'Hot Prospects',Icon:I.Zap,pred:c=>c.cstatus==='Prospect'&&c.days<7,dot:'green',empty:'Active prospects contacted in the last week appear here.'},
   {key:'new',label:'New This Week',Icon:I.Sparkles,pred:c=>c.days<2,empty:'Contacts created in the last 7 days appear here.'},
   {key:'customers',label:'Customers',Icon:I.Star,pred:c=>c.cstatus==='Customer',empty:'Contacts with a Customer status show up here.'},
   {key:'noowner',label:'No Owner',Icon:I.Ban,pred:c=>!c.owner,dot:'red',empty:'Unassigned contacts appear here so nothing slips through.'},
@@ -1967,6 +1968,21 @@ function ViewBuilderPanel({initial,close,onSave,rows,fields=VIEW_FIELDS,fieldOps
     </div>
   </>);
 }
+// Object switcher (Contacts / Companies / Leads) — replaces the separate sidebar items
+const OBJECT_TABS=[
+  {page:'contacts',label:'Contacts',Icon:I.Users},
+  {page:'companies',label:'Companies',Icon:I.Building},
+  {page:'leads',label:'Leads',Icon:I.Target},
+];
+function ObjectTabs({active,goTo}){
+  return(
+    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] shrink-0">
+      {OBJECT_TABS.map(t=>{const a=active===t.page;return(
+        <button key={t.page} onClick={()=>{if(!a)goTo(t.page);}} className={['inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}><t.Icon size={14}/>{t.label}</button>
+      );})}
+    </div>
+  );
+}
 function ContactsPage({goTo}){
   const loading=useSkeleton(900);
   const [search,setSearch]=React.useState('');
@@ -2013,7 +2029,7 @@ function ContactsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="contacts" goTo={goTo}/>} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
           rightSlot={<>
             <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
             <button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
@@ -2448,7 +2464,7 @@ function CompaniesPage({goTo}){
   const [toast,setToast]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
   if(loading)return(
-    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="companies" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Companies" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="10px"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
+    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Companies" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="10px"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
   const setType=(id,t)=>{setRows(r=>r.map(c=>c.id===id?{...c,type:t}:c));showToast('Type updated to '+t);};
@@ -2472,9 +2488,9 @@ function CompaniesPage({goTo}){
   const chip=(label,onX)=>(<span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25">{label}<button onClick={onX} className="text-brand-200/60 hover:text-white"><I.X size={10}/></button></span>);
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
-      <AppSidebar active="companies" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Companies" subtitle={`${activeView.label} · ${list.length} compan${list.length!==1?'ies':'y'}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="companies" goTo={goTo}/>} title="Companies" subtitle={`${activeView.label} · ${list.length} compan${list.length!==1?'ies':'y'}`}
           rightSlot={<>
             <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
             <button onClick={()=>showToast('Exported '+list.length+' companies to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
@@ -2537,7 +2553,7 @@ function CompanyDetailPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="companies" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{co.name}</span></div>
@@ -2616,7 +2632,7 @@ function CompanyDetailPage({goTo}){
 function AddCompanyPage({goTo}){
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="companies" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">New company</span></div><button onClick={()=>goTo('companies')} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area">
@@ -2645,7 +2661,7 @@ function EditCompanyPage({goTo}){
   const co=COMPANIES_DATA[0];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="companies" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('company-detail')} className="text-white/45 hover:text-white transition-colors">{co.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">Edit</span></div><button onClick={()=>goTo('company-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-bold mb-6">Edit company</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Company name',co.name],['Website',co.domain],['Industry',co.industry],['Type',co.type],['Employees',String(co.size)],['Phone',co.phone],['Annual revenue',co.revenue],['Headquarters',co.loc]].map(([l,v])=>(<div key={l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
@@ -2759,7 +2775,7 @@ function LeadsPage({goTo}){
   const [toast,setToast]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
   if(loading)return(
-    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="leads" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Leads" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
+    <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Leads" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={`${120+(i%3)*20}px`} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={`${110+i*7}px`} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
   const setStatus=(id,s)=>{setRows(r=>r.map(l=>l.id===id?{...l,status:s}:l));showToast('Status updated to '+s);};
@@ -2784,9 +2800,9 @@ function LeadsPage({goTo}){
   const chip=(label,onX)=>(<span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25">{label}<button onClick={onX} className="text-brand-200/60 hover:text-white"><I.X size={10}/></button></span>);
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
-      <AppSidebar active="leads" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Leads" subtitle={`${activeView.label} · ${list.length} lead${list.length!==1?'s':''}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="leads" goTo={goTo}/>} title="Leads" subtitle={`${activeView.label} · ${list.length} lead${list.length!==1?'s':''}`}
           rightSlot={<>
             <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
             <button onClick={()=>showToast('Exported '+list.length+' leads to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
@@ -2853,7 +2869,7 @@ function LeadDetailPage({goTo}){
   const doConvert=(opts)=>{setConvertOpen(false);setTimeout(()=>goTo('contact-detail'),300);};
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="leads" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('leads')} className="text-white/45 hover:text-white transition-colors">Leads</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{l.name}</span></div>
@@ -2929,7 +2945,7 @@ const LEAD_TIMELINE=[
 function AddLeadPage({goTo}){
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="leads" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('leads')} className="text-white/45 hover:text-white transition-colors">Leads</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">New lead</span></div><button onClick={()=>goTo('leads')} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area">
@@ -2959,7 +2975,7 @@ function EditLeadPage({goTo}){
   const l=LEADS_DATA[0];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="leads" goTo={goTo}/>
+      <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('lead-detail')} className="text-white/45 hover:text-white transition-colors">{l.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">Edit</span></div><button onClick={()=>goTo('lead-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-bold mb-6">Edit lead</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Full name',l.name],['Company',l.company],['Email',l.email],['Phone',l.phone],['Title',l.title],['Source',l.source],['Status',l.status],['Estimated value',l.estValue]].map(([la,v])=>(<div key={la}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{la}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
