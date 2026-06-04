@@ -593,9 +593,16 @@ function GlobalSearchOverlay({close,goTo}){
   const inputRef=React.useRef(null);
   React.useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),60);},[]);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
-  const CONTACTS=[{name:'Marcus Chen',role:'CTO - Forge & Co',color:'#3b82f6'},{name:'Maya Rodriguez',role:'Head of Sales - Pivot Studio',color:'#10b981'},{name:'Martin Liu',role:'Founder - Loop Labs',color:'#f59e0b'}];
-  const DEALS=[{name:'Managed CRM rollout',val:'$24,000',page:'deal-detail'},{name:'Marketing automation',val:'$11,500',page:'deal-detail'}];
-  const PAGES=[{label:'Dashboard',page:'dashboard'},{label:'Leads',page:'leads'},{label:'Contacts',page:'contacts'},{label:'Companies',page:'companies'},{label:'Pipeline',page:'pipeline'},{label:'Reports',page:'reports'},{label:'Settings',page:'settings-general'}];
+  const q=query.trim().toLowerCase();
+  const match=(...fs)=>!q||fs.some(f=>(f||'').toString().toLowerCase().includes(q));
+  const PAGE_LIST=[{label:'Dashboard',page:'dashboard'},{label:'Leads',page:'leads'},{label:'Contacts',page:'contacts'},{label:'Companies',page:'companies'},{label:'Pipeline',page:'pipeline'},{label:'Calendar',page:'calendar'},{label:'Tasks',page:'tasks'},{label:'Inbox',page:'inbox'},{label:'Reports',page:'reports'},{label:'Settings',page:'settings-general'}];
+  const people=CONTACTS_DATA.filter(c=>!c.archived&&match(c.name,c.co,c.email)).slice(0,5).map(c=>({key:'c'+c.id,name:c.name,sub:c.co,color:c.color,avatar:c.avatar,page:'contact-detail'}));
+  const leads=LEADS_DATA.filter(l=>!l.archived&&!l.converted&&match(l.name,l.company,l.email)).slice(0,4).map(l=>({key:'l'+l.id,name:l.name,sub:l.company+' · lead',color:l.color,avatar:l.avatar,page:'lead-detail'}));
+  const companies=COMPANIES_DATA.filter(c=>!c.archived&&match(c.name,c.domain,c.industry)).slice(0,4).map(c=>({key:'co'+c.id,name:c.name,sub:c.industry,color:c.color,avatar:c.avatar,square:true,page:'company-detail'}));
+  const deals=allDeals().filter(d=>match(d.company,d.value)).slice(0,4).map((d,i)=>({key:'d'+i,name:d.company,sub:d.value+' · '+d.stageName,deal:true,page:'deal-detail'}));
+  const pages=PAGE_LIST.filter(p=>match(p.label)).map(p=>({key:'p'+p.page,name:p.label,page:p.page,pageIcon:true}));
+  const sections=[{t:'Contacts',items:people},{t:'Leads',items:leads},{t:'Companies',items:companies},{t:'Deals',items:deals},{t:'Pages',items:pages}].filter(s=>s.items.length);
+  const total=sections.reduce((a,s)=>a+s.items.length,0);
   const row={display:'flex',alignItems:'center',gap:12,padding:'9px 10px',borderRadius:8,cursor:'pointer',border:'none',textAlign:'left',fontFamily:'inherit',background:'transparent',transition:'background .1s',width:'100%'};
   return(
     <div className="fixed inset-0 z-[150] flex flex-col items-center" style={{background:'rgba(7,7,15,0.92)',backdropFilter:'blur(10px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
@@ -607,35 +614,21 @@ function GlobalSearchOverlay({close,goTo}){
             style={{width:'100%',background:'var(--ob07)',border:'1px solid rgba(99,102,241,0.40)',borderRadius:12,padding:'15px 52px 15px 46px',fontSize:15,color:'var(--o1)',fontFamily:'inherit',outline:'none',boxShadow:'0 0 0 3px rgba(99,102,241,0.12)',boxSizing:'border-box'}}/>
           <button onClick={e=>{e.stopPropagation();close();window.__nrturOpenCmd?.();}} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',fontFamily:'monospace',fontSize:11,color:'var(--o35)',background:'var(--ob06)',border:'1px solid var(--obd08)',borderRadius:5,padding:'2px 7px',cursor:'pointer'}}>Cmd+K</button>
         </div>
-        <div style={{background:'var(--panel97)',border:'1px solid var(--obd08)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}>
-          <div style={{padding:'7px 12px 3px',fontSize:11,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--o32)',borderBottom:'1px solid var(--obd04)'}}>Contacts</div>
-          <div style={{padding:'5px 8px'}}>
-            {CONTACTS.map((c,i)=>(
-              <button key={c.name} onClick={()=>{goTo('contact-detail');close();}} style={{...row,background:i===0?'rgba(99,102,241,0.10)':'transparent'}} onMouseOver={e=>{if(i!==0)e.currentTarget.style.background='var(--ob04)';}} onMouseOut={e=>{if(i!==0)e.currentTarget.style.background='transparent';}}>
-                <div style={{width:32,height:32,borderRadius:'50%',background:c.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'white',flexShrink:0}}>{c.name[0]}</div>
-                <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:500,color:'var(--o95)'}}>{c.name}</div><div style={{fontSize:11,color:'var(--o40)'}}>{c.role}</div></div>
-              </button>
-            ))}
-          </div>
-          <div style={{padding:'7px 12px 3px',fontSize:11,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--o32)',borderTop:'1px solid var(--obd04)',borderBottom:'1px solid var(--obd04)'}}>Deals</div>
-          <div style={{padding:'5px 8px'}}>
-            {DEALS.map(d=>(
-              <button key={d.name} onClick={()=>{goTo(d.page);close();}} style={row} onMouseOver={e=>e.currentTarget.style.background='var(--ob04)'} onMouseOut={e=>e.currentTarget.style.background='transparent'}>
-                <div style={{width:32,height:32,borderRadius:8,background:'rgba(99,102,241,0.10)',border:'1px solid rgba(99,102,241,0.20)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.GitBranch size={13} style={{color:'#818cf8'}}/></div>
-                <div style={{flex:1,fontSize:13,fontWeight:500,color:'var(--o90)'}}>{d.name}</div>
-                <div style={{fontSize:12,color:'var(--o50)',fontWeight:500}}>{d.val}</div>
-              </button>
-            ))}
-          </div>
-          <div style={{padding:'7px 12px 3px',fontSize:11,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--o32)',borderTop:'1px solid var(--obd04)',borderBottom:'1px solid var(--obd04)'}}>Pages</div>
-          <div style={{padding:'5px 8px'}}>
-            {PAGES.map(p=>(
-              <button key={p.label} onClick={()=>{goTo(p.page);close();}} style={row} onMouseOver={e=>e.currentTarget.style.background='var(--ob04)'} onMouseOut={e=>e.currentTarget.style.background='transparent'}>
-                <div style={{width:32,height:32,borderRadius:8,background:'var(--ob04)',border:'1px solid var(--obd06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.LayoutDash size={12} style={{color:'var(--o40)'}}/></div>
-                <div style={{flex:1,fontSize:13,fontWeight:500,color:'var(--o72)'}}>{p.label}</div>
-              </button>
-            ))}
-          </div>
+        <div style={{background:'var(--panel97)',border:'1px solid var(--obd08)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.5)',maxHeight:'56vh',overflowY:'auto'}}>
+          {total===0?(
+            <div style={{padding:'28px 16px',textAlign:'center'}}><div style={{fontSize:13,color:'var(--o50)',fontWeight:500}}>No results for “{query}”</div><div style={{fontSize:12,color:'var(--o32)',marginTop:4}}>Try a name, company, or deal.</div></div>
+          ):sections.map((s,si)=>(
+            <div key={s.t}>
+              <div style={{padding:'7px 12px 3px',fontSize:11,fontWeight:600,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--o32)',borderTop:si>0?'1px solid var(--obd04)':'none',borderBottom:'1px solid var(--obd04)'}}>{s.t}</div>
+              <div style={{padding:'5px 8px'}}>{s.items.map((it,i)=>{const first=si===0&&i===0;return(
+                <button key={it.key} onClick={()=>{goTo(it.page);close();}} style={{...row,background:first?'rgba(99,102,241,0.10)':'transparent'}} onMouseOver={e=>{e.currentTarget.style.background='var(--ob04)';}} onMouseOut={e=>{e.currentTarget.style.background=first?'rgba(99,102,241,0.10)':'transparent';}}>
+                  {it.pageIcon?(<div style={{width:32,height:32,borderRadius:8,background:'var(--ob04)',border:'1px solid var(--obd06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.LayoutDash size={12} style={{color:'var(--o40)'}}/></div>
+                  ):it.deal?(<div style={{width:32,height:32,borderRadius:8,background:'rgba(99,102,241,0.10)',border:'1px solid rgba(99,102,241,0.20)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.GitBranch size={13} style={{color:'#818cf8'}}/></div>
+                  ):(<div style={{width:32,height:32,borderRadius:it.square?8:'50%',background:it.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'white',flexShrink:0}}>{it.avatar||(it.name&&it.name[0])}</div>)}
+                  <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:500,color:'var(--o95)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.name}</div>{it.sub&&<div style={{fontSize:11,color:'var(--o40)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.sub}</div>}</div>
+                </button>);})}</div>
+            </div>
+          ))}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
           <I.Clock size={12} style={{color:'var(--o32)',flexShrink:0}}/>
@@ -654,6 +647,7 @@ const CMD_ITEMS=[
   {group:'Navigate',label:'Leads',page:'leads'},
   {group:'Navigate',label:'Contacts',page:'contacts',kbd:'Ctrl+2'},
   {group:'Navigate',label:'Companies',page:'companies'},
+  {group:'Navigate',label:'Tasks',page:'tasks'},
   {group:'Navigate',label:'Pipeline',page:'pipeline',kbd:'Ctrl+3'},
   {group:'Navigate',label:'Reports',page:'reports',kbd:'Ctrl+4'},
   {group:'Navigate',label:'Settings',page:'settings-general',kbd:'Ctrl+,'},
@@ -721,7 +715,10 @@ function CommandPalette({close,goTo}){
 // ?? Notification Dropdown ?????????????????????????????????????????????????????
 function NotifDropdown({close,goTo,posClass}){
   const [tab,setTab]=React.useState('all');
-  const notifs=[
+  const {items:calItems}=React.useContext(CalendarContext);
+  const _now=new Date();const _end=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate(),23,59,59);
+  const calNotifs=(calItems||[]).filter(e=>e.type!=='task'&&!e.done&&e.date>=_now&&e.date<=_end).sort((a,b)=>a.date-b.date).slice(0,3).map((e,i)=>({id:'cal'+i,title:e.title,sub:((typeof EVENT_TYPES!=='undefined'&&EVENT_TYPES[e.type]&&EVENT_TYPES[e.type].label)||'Event')+' at '+calFmtTime(e.date)+(e.reminder?' · reminder '+e.reminder+'m before':''),time:'Today',unread:true,icon:I.Calendar,color:'#818cf8',page:'calendar'}));
+  const notifs=[...calNotifs,
     {id:1,title:'Sarah Chen accepted proposal',sub:'Q3 Engagement - $24k',time:'5m ago',unread:true,avatar:'SC',color:'#3b82f6'},
     {id:2,title:'Pipeline updated: Q2 forecast +18%',sub:'12 deals moved',time:'2h ago',unread:true,avatar:'JK',color:'#8b5cf6'},
     {id:3,title:'New contact: Summit Digital added',sub:'By Jamie Kim',time:'1d ago',unread:false,avatar:'JK',color:'#10b981'},
@@ -747,10 +744,10 @@ function NotifDropdown({close,goTo,posClass}){
       </div>
       <div className="max-h-72 overflow-y-auto">
         {visible.length===0?(<div className="py-12 flex flex-col items-center gap-2 text-center"><div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/30 mx-auto"><I.Bell size={16}/></div><p className="text-[13px] font-medium text-white/50">All caught up</p></div>):visible.map(n=>(
-          <button key={n.id} className="w-full text-left px-4 py-3 hover:bg-white/[0.04] border-b border-white/[0.03] last:border-b-0 transition-colors">
+          <button key={n.id} onClick={()=>{if(n.page){goTo&&goTo(n.page);close();}}} className="w-full text-left px-4 py-3 hover:bg-white/[0.04] border-b border-white/[0.03] last:border-b-0 transition-colors">
             <div className="flex items-start gap-2.5">
               {n.unread?<span className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-2 shrink-0"/>:<span className="w-1.5 h-1.5 shrink-0"/>}
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:n.color}}>{n.avatar}</div>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:n.color}}>{n.icon?<n.icon size={14}/>:n.avatar}</div>
               <div className="min-w-0 flex-1">
                 <p className={['text-[12px] leading-snug',n.unread?'text-white font-medium':'text-white/60'].join(' ')}>{n.title}</p>
                 <p className="text-[11px] text-white/40 mt-0.5">{n.sub}</p>
@@ -890,10 +887,12 @@ function AppSidebar({active,goTo}){
     {key:'contacts', Icon:I.Users,     label:'Contacts'},
     {key:'pipeline', Icon:I.GitBranch, label:'Pipeline'},
     {key:'calendar', Icon:I.Calendar,  label:'Calendar'},
+    {key:'tasks',    Icon:I.CheckSquare,label:'Tasks'},
     {key:'inbox',    Icon:I.Inbox,     label:'Inbox'},
     {key:'reports',  Icon:I.BarChart,  label:'Reports'},
   ];
   const settActive=active&&active.startsWith('settings');
+  const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [addOpen,setAddOpen]=React.useState(false);
   const [quickModal,setQuickModal]=React.useState(null);
   const [sideToast,setSideToast]=React.useState('');
@@ -917,6 +916,7 @@ function AppSidebar({active,goTo}){
             {l:'New contact',d:'Add a person',Icon:I.UserPlus,m:'contact',c:'#3b82f6'},
             {l:'New company',d:'Add an organization',Icon:I.Building,m:'company',c:'#0ea5e9'},
             {l:'New deal',d:'Track an opportunity',Icon:I.GitBranch,m:'deal',c:'#8b5cf6'},
+            {l:'New task',d:'Add a to-do',Icon:I.CheckSquare,m:'task',c:'#fbbf24'},
             {l:'Compose email',d:'Send a new message',Icon:I.Mail,m:'email',c:'#6366f1'},
             {l:'Log a call',d:'Record a call outcome',Icon:I.Phone,m:'call',c:'#10b981'},
           ].map(it=>(
@@ -951,6 +951,7 @@ function AppSidebar({active,goTo}){
       {quickModal==='contact'&&<QuickContactModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {quickModal==='company'&&<QuickCompanyModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {quickModal==='deal'&&<QuickDealModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {quickModal==='task'&&<CalEventFormModal initial={{type:'task',allDay:true,priority:'Medium'}} onClose={()=>setQuickModal(null)} onSave={(ev)=>{calAddItem(ev);setQuickModal(null);sideToastFn('Task created');}}/>}
       {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
       {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
       {quickModal==='import'&&<CsvImportModal close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
@@ -962,6 +963,22 @@ function AppSidebar({active,goTo}){
 const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
 // Shared connected-mailbox state so the inbox rail and Integrations page stay in sync (email spec Part B).
 const MailAccountsContext=React.createContext({accounts:[],connect:()=>{},disconnect:()=>{}});
+// Shared calendar + tasks store so events/tasks created anywhere (detail pages, automations, booking links) show on the Calendar and dashboard.
+const CalendarContext=React.createContext({items:[],addItem:()=>{},updateItem:()=>{},deleteItem:()=>{},toggleDone:()=>{}});
+// Shared CRM record store so list-page edits (status/owner/archive) propagate to detail pages and back. Seeded in App from the *_DATA consts.
+const CrmDataContext=React.createContext({contacts:[],leads:[],companies:[],setContacts:()=>{},setLeads:()=>{},setCompanies:()=>{},updateContact:()=>{},updateLead:()=>{},updateCompany:()=>{}});
+// Real-record option builders for calendar/event pickers (people = contacts + active leads).
+function calPeopleOptions(){return [...CONTACTS_DATA.filter(c=>!c.archived).map(c=>({name:c.name,kind:'contact'})),...LEADS_DATA.filter(l=>!l.archived&&!l.converted).map(l=>({name:l.name,kind:'lead'}))];}
+function calCompanyOptions(){return COMPANIES_DATA.filter(c=>!c.archived).map(c=>c.name);}
+function calDealOptions(){return allDeals().map(d=>d.company+' · '+d.value);}
+const calLinkPage=(t)=>t==='lead'?'lead-detail':t==='company'?'company-detail':t==='deal'?'deal-detail':'contact-detail';
+// Build a contact/company "activity timeline" entry from a scheduled calendar event (matches the TIMELINE item shape).
+function calTimelineEntry(ev){
+  const ty=(typeof EVENT_TYPES!=='undefined'&&EVENT_TYPES[ev.type])||{label:'Meeting'};
+  const when=ev.allDay?'All day':(calFmtTime(ev.date)+(ev.end?' – '+calFmtTime(ev.end):''));
+  const dl=CAL_DAYS[ev.date.getDay()]+' '+ev.date.getDate()+' '+CAL_MONTHS[ev.date.getMonth()].slice(0,3);
+  return {kind:'meeting',time:'Just now',label:(ev.type==='task'?'TASK':ty.label.toUpperCase())+' SCHEDULED',chipBg:'bg-violet-500/15 ring-violet-500/25 text-violet-300',Icon:I.Calendar,iconColor:'#a78bfa',title:ev.title,body:dl+' · '+when+(ev.notes?' — '+ev.notes:''),meta:'By Alex Morgan'};
+}
 function AppTopbar({goTo,title,subtitle,rightSlot,noSearch,tabs}){
   const __bc=React.useContext(BillingContext);
   return(
@@ -1014,6 +1031,7 @@ function SettingsSubNav({active,goTo}){
       {label:'Automations',page:'settings-automations',Icon:I.Zap},
       {label:'Sequences',page:'settings-sequences',Icon:I.Layers},
       {label:'Forms',page:'settings-forms',Icon:I.Note},
+      {label:'Booking links',page:'settings-booking',Icon:I.Calendar},
       {label:'Notifications',page:'settings-notifications',Icon:I.Bell},
       {label:'Unsubscribes',page:'settings-unsubscribes',Icon:I.Ban},
       {label:'Integrations',page:'settings-integrations',Icon:I.Plug},
@@ -1049,11 +1067,11 @@ const ALL_PAGES=[
   'contacts','contact-detail','add-contact','edit-contact',
   'companies','company-detail','add-company','edit-company',
   'pipeline','deal-detail','add-deal',
-  'calendar',
+  'calendar','tasks',
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
   'reports',
   'settings-billing','settings-team','settings-general','settings-automations','settings-sequences','settings-forms','form-builder','settings-integrations',
-  'settings-pipeline','settings-notifications','settings-unsubscribes','settings-privacy',
+  'settings-pipeline','settings-booking','settings-notifications','settings-unsubscribes','settings-privacy',
   'profile',
 ];
 function DevNav({goTo}){
@@ -1508,7 +1526,13 @@ const WIDGET_DEFS={
   'recent-activity':{name:'Recent Activity',desc:'Latest team actions',Icon:I.Zap,cat:'Activity',size:2,type:'activity',d:DASH_ACT},
   'calls-logged':{name:'Calls Logged',desc:'Calls this period',Icon:I.Phone,cat:'Activity',size:1,type:'stat',d:{value:'34',delta:'+6',up:true,accent:'blue',Icon:I.Phone}},
   'emails-sent':{name:'Emails Sent',desc:'Outbound emails',Icon:I.Mail,cat:'Activity',size:1,type:'stat',d:{value:'184',delta:'+22',up:true,accent:'brand',Icon:I.Mail}},
-  'tasks':{name:'My Tasks',desc:'Open to-dos',Icon:I.CheckSquare,cat:'Activity',size:1,type:'empty',d:{dataType:'tasks',expl:'Create a task to keep follow-ups on track.',cta:'Create task',page:null}},
+  'tasks':{name:'My Tasks',desc:'Open to-dos',Icon:I.CheckSquare,cat:'Activity',size:1,type:'tasks',d:{}},
+  'new-leads':{name:'New Leads',desc:'Captured this week',Icon:I.Target,cat:'Leads',size:1,type:'lead-count',d:{}},
+  'lead-funnel':{name:'Lead Funnel',desc:'Leads by status',Icon:I.Target,cat:'Leads',size:2,type:'lead-funnel',d:{}},
+  'leads-by-source':{name:'Leads by Source',desc:'Where leads come from',Icon:I.Filter,cat:'Leads',size:2,type:'lead-source',d:{}},
+  'lead-conversion':{name:'Lead Conversion',desc:'Qualified share of leads',Icon:I.TrendUp,cat:'Leads',size:1,type:'lead-conversion',d:{}},
+  'top-accounts':{name:'Top Accounts',desc:'Companies by open pipeline',Icon:I.Building,cat:'Companies',size:2,type:'top-accounts',d:{}},
+  'accounts-by-type':{name:'Accounts by Type',desc:'Customer / Prospect / …',Icon:I.Building,cat:'Companies',size:1,type:'accounts-type',d:{}},
   'team-leaderboard':{name:'Team Leaderboard',desc:'Revenue by rep',Icon:I.Trophy,cat:'Team',size:2,type:'leaderboard',d:DASH_REPS},
   'team-activity':{name:'Team Activity',desc:'What the team is doing',Icon:I.Zap,cat:'Team',size:2,type:'activity',d:DASH_ACT},
   'rep-performance':{name:'Rep Performance',desc:'Quota by rep',Icon:I.BarChart,cat:'Team',size:2,type:'bars'},
@@ -1523,12 +1547,14 @@ const WIDGET_DEFS={
 const WIDGET_LIBRARY=[
   {cat:'Pipeline',ids:['pipeline-value','weighted-forecast','win-rate','avg-cycle','deals-by-stage','deals-donut']},
   {cat:'Contacts',ids:['top-contacts','new-this-week','needs-followup','contact-growth','uncontacted-count']},
+  {cat:'Leads',ids:['new-leads','lead-funnel','leads-by-source','lead-conversion']},
+  {cat:'Companies',ids:['top-accounts','accounts-by-type']},
   {cat:'Activity',ids:['recent-activity','calls-logged','emails-sent','tasks']},
   {cat:'Team',ids:['team-leaderboard','team-activity','rep-performance','team-goal'],team:true},
   {cat:'Goals',ids:['monthly-goal','quota-attainment','pipeline-coverage']},
   {cat:'Quick Actions',ids:['quick-actions','quick-add-deal','quick-import']},
 ];
-const DEFAULT_LAYOUT=[{id:'pipeline-value',w:1},{id:'win-rate',w:1},{id:'weighted-forecast',w:1},{id:'deals-by-stage',w:2},{id:'needs-followup',w:1},{id:'recent-activity',w:2},{id:'new-this-week',w:1},{id:'top-contacts',w:2}];
+const DEFAULT_LAYOUT=[{id:'pipeline-value',w:1},{id:'win-rate',w:1},{id:'weighted-forecast',w:1},{id:'deals-by-stage',w:2},{id:'needs-followup',w:1},{id:'lead-funnel',w:2},{id:'new-leads',w:1},{id:'top-accounts',w:2},{id:'recent-activity',w:2},{id:'top-contacts',w:2}];
 const DASH_TEMPLATES=[
   {key:'rep',name:'Sales Rep',desc:'Your personal pipeline, follow-ups, and activity.',Icon:I.Target,layout:[{id:'pipeline-value',w:1},{id:'win-rate',w:1},{id:'quota-attainment',w:1},{id:'needs-followup',w:1},{id:'recent-activity',w:2},{id:'top-contacts',w:2},{id:'quick-actions',w:1}]},
   {key:'manager',name:'Manager View',desc:'Team leaderboard, rep performance, and pipeline health.',Icon:I.Users,layout:[{id:'team-goal',w:1},{id:'win-rate',w:1},{id:'weighted-forecast',w:1},{id:'team-leaderboard',w:2},{id:'needs-followup',w:1},{id:'rep-performance',w:2},{id:'team-activity',w:2}]},
@@ -1537,8 +1563,34 @@ const DASH_TEMPLATES=[
 ];
 function getDef(id){return WIDGET_DEFS[id]||{name:id,Icon:I.LayoutDash,size:1,type:'empty',d:{dataType:'data',expl:'Nothing here yet.',cta:'Add data'}};}
 function DashHdr({name,sub,action}){return(<div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]"><div><p className="text-white font-semibold text-[14px]">{name}</p>{sub&&<p className="text-[11px] text-white/45 mt-0.5">{sub}</p>}</div>{action}</div>);}
+function DashTasksWidget({goTo}){
+  const {items,toggleDone}=React.useContext(CalendarContext);
+  const tasks=items.filter(e=>e.type==='task').sort((a,b)=>(a.done-b.done)||(a.date-b.date));
+  const open=tasks.filter(t=>!t.done);
+  return(<div className="p-4 h-full flex flex-col">
+    <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">My Tasks</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-amber-500/10 ring-amber-500/20 text-amber-300"><I.CheckSquare size={14}/></div></div>
+    <p className="text-white text-[30px] font-black leading-none tabular-nums">{open.length}</p>
+    <p className="text-[11px] text-white/45 mt-1">open task{open.length!==1?'s':''}</p>
+    <div className="mt-3 flex flex-col gap-1.5 flex-1">
+      {tasks.length===0&&<p className="text-[11px] text-white/35 px-1">No tasks yet.</p>}
+      {tasks.slice(0,4).map(t=>(
+        <div key={t.id} className="flex items-center gap-2 text-[11px] px-2 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.05]">
+          <button onClick={()=>toggleDone(t.id)} className={['w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0 transition-all',t.done?'bg-emerald-500 border-emerald-500':'border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={8} stroke={3} style={{color:'#fff'}}/>}</button>
+          <span className={['truncate flex-1',t.done?'text-white/35 line-through':'text-white/65'].join(' ')}>{t.title}</span>
+        </div>))}
+    </div>
+    <button onClick={()=>goTo('calendar')} className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-300 hover:text-brand-200"><I.ArrowRight size={11}/>Open calendar</button>
+  </div>);
+}
 function renderWidgetBody(def,cfg,goTo){
   const name=cfg.name||def.name;const range=cfg.range||'Month';const filter=cfg.filter||'All';const t=def.type;
+  if(t==='tasks')return(<DashTasksWidget goTo={goTo}/>);
+  if(t==='lead-count'){const wk=LEADS_DATA.filter(l=>!l.archived&&!l.converted&&l.days<7);return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-emerald-500/10 ring-emerald-500/20 text-emerald-300"><I.Target size={14}/></div></div><p className="text-white text-[30px] font-black leading-none tabular-nums">{wk.length}</p><p className="text-[11px] text-white/45 mt-1">new leads this week</p><div className="mt-3 flex flex-col gap-1.5">{wk.length===0&&<p className="text-[11px] text-white/35">No new leads.</p>}{wk.slice(0,3).map((l,i)=>(<div key={i} className="text-[11px] text-white/55 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] truncate">{l.name} · {l.source}</div>))}</div></div>);}
+  if(t==='lead-conversion'){const active=LEADS_DATA.filter(l=>!l.archived);const qn=active.filter(l=>l.status==='Qualified').length;const pct=active.length?Math.round(qn/active.length*100):0;return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-black leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{qn} qualified of {active.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)'}}/></div></div>);}
+  if(t==='lead-source'){const src=LEAD_SOURCES.map(s=>({name:s,count:LEADS_DATA.filter(l=>!l.archived&&l.source===s).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const max=Math.max(1,...src.map(s=>s.count));const COLORS=['#818cf8','#34d399','#fbbf24','#f472b6','#60a5fa','#a78bfa','#f87171'];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Active leads" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5 flex flex-col gap-2.5">{src.map((s,i)=>(<div key={s.name}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/70">{s.name}</span><span className="text-[12px] font-bold text-white tabular-nums">{s.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(s.count/max*100)+'%',background:COLORS[i%COLORS.length]}}/></div></div>))}</div></div>);}
+  if(t==='lead-funnel'){const order=['New','Working','Nurturing','Qualified','Unqualified'];const rows=order.map(s=>({name:s,count:LEADS_DATA.filter(l=>!l.archived&&l.status===s).length,color:LEAD_STATUS_DOT[s]}));const max=Math.max(1,...rows.map(r=>r.count));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Leads by status" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-5 flex flex-col gap-3">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.color}}/><span className="text-[12px] font-medium text-white/70">{r.name}</span></div><span className="text-[12px] font-bold text-white tabular-nums">{r.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/max*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
+  if(t==='top-accounts'){const accts=COMPANIES_DATA.filter(c=>!c.archived).map(c=>({c,dl:dealsForCompany(c.name)})).sort((a,b)=>b.dl.openValue-a.dl.openValue).slice(0,5);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By open pipeline" action={<button onClick={()=>goTo('companies')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{accts.map(({c,dl},i)=>(<button key={c.id} onClick={()=>goTo('company-detail')} className={['w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-left',i<accts.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{dl.open} open · {contactsForCompany(c.name).length} contacts</p></div><span className="text-[13px] font-bold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</span></button>))}</div></div>);}
+  if(t==='accounts-type'){const rows=COMPANY_TYPES.map(tp=>({name:tp,count:COMPANIES_DATA.filter(c=>!c.archived&&c.type===tp).length,color:COMPANY_TYPE_DOT[tp]}));const tot=Math.max(1,rows.reduce((a,r)=>a+r.count,0));return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-blue-500/10 ring-blue-500/20 text-blue-300"><I.Building size={14}/></div></div><div className="flex flex-col gap-2 mt-1">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:r.color}}/><span className="text-[12px] text-white/70">{r.name}</span></div><span className="text-[12px] font-bold text-white tabular-nums">{r.count}</span></div><div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/tot*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
   if(t==='stat'){const d=def.d;return(<div className="p-4"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><div className="flex items-end justify-between"><p className="text-white text-[28px] font-black leading-none tabular-nums">{d.value}</p><span className={['inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full',d.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{d.up?<I.TrendUp size={9} stroke={2.6}/>:<I.TrendDown size={9} stroke={2.6}/>}{d.delta}</span></div><p className="text-[10px] text-white/30 mt-2">{range} · {filter}{cfg.target?' · target $'+cfg.target+'k':''}</p></div>);}
   if(t==='count'){const d=def.d;return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><p className="text-white text-[30px] font-black leading-none tabular-nums">{d.value}</p><p className="text-[11px] text-white/45 mt-1">{d.sub}</p><div className="mt-3 flex flex-col gap-1.5">{d.rows.map((r,i)=>(<div key={i} className="text-[11px] text-white/55 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.05] truncate">{r}</div>))}</div></div>);}
   if(t==='bars'){const chart=cfg.chart||'Bar';const total=DASH_STAGES.reduce((a,s)=>a+s.val,0);const C=2*Math.PI*34;let acc=0;return(<div className="flex flex-col h-full">
@@ -1552,8 +1604,8 @@ function renderWidgetBody(def,cfg,goTo){
   if(t==='donut'){const total=DASH_STAGES.reduce((a,s)=>a+s.val,0);const C=2*Math.PI*34;let acc=0;return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By stage"/><div className="p-5 flex items-center justify-center"><svg viewBox="0 0 100 100" className="w-32 h-32" style={{transform:'rotate(-90deg)'}}>{DASH_STAGES.map(s=>{const dash=(s.val/total)*C;const el=<circle key={s.name} cx="50" cy="50" r="34" fill="none" stroke={s.color} strokeWidth="13" strokeDasharray={`${dash} ${C-dash}`} strokeDashoffset={-acc}/>;acc+=dash;return el;})}</svg></div></div>);}
   if(t==='line'){const pts=[42,51,58,72,88,104,118,138];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="+1,284 · last 12 mo" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5"><div className="flex items-end gap-1.5" style={{height:120}}>{pts.map((v,i)=>(<div key={i} className="flex-1 rounded-sm" style={{height:`${(v/138)*100}%`,background:`rgba(99,102,241,${0.35+i*0.07})`,minHeight:4}}/>))}</div></div></div>);}
   if(t==='activity'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Last 24 hours" action={<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-4 flex flex-col gap-2.5">{def.d.map((a,i)=>(<div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition-colors"><div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 text-white/60">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-0.5"><span className={['inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chip].join(' ')}>{a.label}</span><span className="text-[10px] text-white/30">{a.time}</span></div><p className="text-[13px] font-semibold text-white leading-tight truncate">{a.title}</p><p className="text-[11px] text-white/45 truncate">{a.sub}</p></div></div>))}</div></div>);}
-  if(t==='contacts'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Most active this week" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{DASH_CONTACTS.map((c,i)=>(<button key={i} onClick={()=>goTo('contact-detail')} className={['w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left',i<DASH_CONTACTS.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.co}</p></div><span className={['text-[10px] font-medium px-2 py-0.5 rounded-full ring-1',DASH_STATUS_C[c.status]||''].join(' ')}>{c.status}</span><span className="text-[13px] font-bold text-white tabular-nums">{c.deal}</span></button>))}</div></div>);}
-  if(t==='leaderboard'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Revenue won · this quarter"/><div className="p-4 flex flex-col gap-2.5">{def.d.map((r,i)=>(<div key={i} className="flex items-center gap-3"><span className="text-[11px] font-bold text-white/35 w-4">{i+1}</span><div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:r.color}}>{r.avatar}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between mb-1"><span className="text-[13px] font-semibold text-white truncate">{r.name}</span><span className="text-[12px] font-bold text-white tabular-nums">{r.val}</span></div><div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:r.pct+'%',background:i===0?'#34d399':'#818cf8'}}/></div></div></div>))}</div></div>);}
+  if(t==='contacts'){const dc=CONTACTS_DATA.filter(c=>!c.archived).sort((a,b)=>dealK(b)-dealK(a)).slice(0,4);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Most active this week" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{dc.map((c,i)=>(<button key={i} onClick={()=>goTo('contact-detail')} className={['w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left',i<dc.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.co}</p></div><span className={['text-[10px] font-medium px-2 py-0.5 rounded-full ring-1',DASH_STATUS_C[c.status]||''].join(' ')}>{c.status}</span><span className="text-[13px] font-bold text-white tabular-nums">{c.deal}</span></button>))}</div></div>);}
+  if(t==='leaderboard'){const reps=TEAM_MEMBERS.slice(0,4).map((m,i)=>({name:m.name,avatar:m.avatar,color:m.color,val:['$134k','$98k','$76k','$41k'][i],pct:[82,71,58,32][i]}));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Revenue won · this quarter"/><div className="p-4 flex flex-col gap-2.5">{reps.map((r,i)=>(<div key={i} className="flex items-center gap-3"><span className="text-[11px] font-bold text-white/35 w-4">{i+1}</span><div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:r.color}}>{r.avatar}</div><div className="min-w-0 flex-1"><div className="flex items-center justify-between mb-1"><span className="text-[13px] font-semibold text-white truncate">{r.name}</span><span className="text-[12px] font-bold text-white tabular-nums">{r.val}</span></div><div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:r.pct+'%',background:i===0?'#34d399':'#818cf8'}}/></div></div></div>))}</div></div>);}
   if(t==='goal'){const g=def.d;const target=cfg.target?parseFloat(cfg.target):g.target;const pct=Math.min(100,Math.round((g.current/target)*100));return(<div className="p-5 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-white font-semibold text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><g.Icon size={14}/></div></div><div className="flex items-baseline gap-2 mb-2.5"><span className="text-[26px] font-black text-white tabular-nums">{g.prefix||''}{g.current}{g.suffix||''}</span><span className="text-[12px] text-white/45">/ {g.prefix||''}{target}{g.suffix||''}</span></div><div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)',boxShadow:'0 0 12px rgba(99,102,241,0.5)'}}/></div><p className="text-[11px] text-white/40 mt-2">{pct}% of {range.toLowerCase()} target</p></div>);}
   if(t==='actions'){return(<div className="p-4 h-full"><p className="text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-3">{name}</p><div className="grid grid-cols-2 gap-2">{def.d.map(a=>(<button key={a.l} onClick={()=>goTo(a.p)} className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/[0.06] text-white/70 hover:text-white transition-all"><a.Icon size={16}/><span className="text-[11px] font-medium text-center leading-tight">{a.l}</span></button>))}</div></div>);}
   const e=def.d;return(<div className="h-full min-h-[150px] flex items-center justify-center p-6"><div className="text-center"><div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/30"><def.Icon size={20}/></div><p className="text-[13px] font-bold text-white">No {e.dataType} yet</p><p className="text-[11px] text-white/40 mt-1 max-w-[200px] mx-auto leading-relaxed">{e.expl}</p><button onClick={()=>e.page&&goTo(e.page)} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12}/>{e.cta}</button></div></div>);
@@ -2109,6 +2161,8 @@ const TIMELINE=[
 ];
 function ContactDetailPage({goTo}){
   const c=CONTACTS_DATA[0];
+  const {addItem:calAddItem}=React.useContext(CalendarContext);
+  const [schedOpen,setSchedOpen]=React.useState(false);
   const [tab,setTab]=React.useState('all');
   const [noteText,setNoteText]=React.useState('');
   const [callModal,setCallModal]=React.useState(false);
@@ -2128,6 +2182,7 @@ function ContactDetailPage({goTo}){
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('contacts')} className="text-white/45 hover:text-white transition-colors">Contacts</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{c.name}</span></div>
           <div className="flex items-center gap-2">
             <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Star size={13}/> Star</button>
+            <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
             <button onClick={()=>goTo('edit-contact')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
           </div>
         </header>
@@ -2204,6 +2259,7 @@ function ContactDetailPage({goTo}){
       </div>
       {callModal&&<LogCallModal close={()=>setCallModal(false)} contactName={c.name} onSave={onLogCall}/>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={c.email}/>}
+      {schedOpen&&<CalEventFormModal initial={{type:'meeting',contact:c.name,linkType:'contact',company:c.co}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setTimeline(t=>[calTimelineEntry(ev),...t]);setSchedOpen(false);}}/>}
     </div>
   );
 }
@@ -2318,6 +2374,8 @@ const DEAL_STAGE_ORDER=['Prospecting','Qualified','Proposal','Negotiation','Won'
 const DEAL_STAGE_COLOR={Prospecting:'#94a3b8',Qualified:'#818cf8',Proposal:'#a78bfa',Negotiation:'#fbbf24',Won:'#34d399'};
 function DealDetailPage({goTo}){
   const [stage,setStage]=React.useState('Proposal');
+  const {addItem:calAddItem}=React.useContext(CalendarContext);
+  const [schedOpen,setSchedOpen]=React.useState(false);
   const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
@@ -2325,7 +2383,7 @@ function DealDetailPage({goTo}){
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors flex items-center gap-1.5"><I.ChevronLeft size={12}/>Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">Summit Digital</span></div>
-          <div className="flex items-center gap-2">{nextStage&&<button onClick={()=>setStage(nextStage)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}<button className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={14}/></button></div>
+          <div className="flex items-center gap-2">{nextStage&&<button onClick={()=>setStage(nextStage)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button><button className="w-9 h-9 rounded-xl border border-white/[0.06] bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={14}/></button></div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-5 items-start">
@@ -2336,6 +2394,7 @@ function DealDetailPage({goTo}){
                 {[{l:'Close date',v:'Jun 28, 2026'},{l:'Probability',v:'80%'},{l:'Owner',v:'Jamie Kim'},{l:'Source',v:'Inbound'}].map(r=>(<div key={r.l} className="flex items-center justify-between py-2.5 border-b border-white/[0.04]"><span className="text-[12px] text-white/50">{r.l}</span><span className="text-[13px] font-semibold text-white">{r.v}</span></div>))}
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Linked Contact</p><button onClick={()=>goTo('contact-detail')} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:'#8b5cf6'}}>JR</div><div><p className="text-[13px] font-semibold text-white">James Rivera</p><p className="text-[11px] text-white/50">CEO - Summit Digital</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button></div>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Linked Company</p><button onClick={()=>goTo('company-detail')} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:'#8b5cf6'}}>SU</div><div><p className="text-[13px] font-semibold text-white">Summit Digital</p><p className="text-[11px] text-white/50">Software / SaaS · 120 employees</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button></div>
             </div>
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
               <p className="text-white font-semibold mb-5">Deal Activity</p>
@@ -2346,6 +2405,7 @@ function DealDetailPage({goTo}){
             </div>
           </div>
         </div>
+        {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:'Summit Digital · $31,000',company:'Summit Digital',contact:'James Rivera',linkType:'contact'}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
         <AppFooter/>
       </div>
     </div>
@@ -2565,6 +2625,8 @@ function CompanyDetailPage({goTo}){
   const dl=dealsForCompany(co.name);
   const [noteText,setNoteText]=React.useState('');
   const [timeline,setTimeline]=React.useState(TIMELINE);
+  const {addItem:calAddItem}=React.useContext(CalendarContext);
+  const [schedOpen,setSchedOpen]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
@@ -2574,6 +2636,7 @@ function CompanyDetailPage({goTo}){
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{co.name}</span></div>
           <div className="flex items-center gap-2">
             <button onClick={()=>goTo('add-deal')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.GitBranch size={13}/> New deal</button>
+            <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
             <button onClick={()=>goTo('edit-company')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
           </div>
         </header>
@@ -2639,6 +2702,7 @@ function CompanyDetailPage({goTo}){
             </div>
           </div>
         </div>
+        {schedOpen&&<CalEventFormModal initial={{type:'meeting',company:co.name}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setTimeline(t=>[calTimelineEntry(ev),...t]);setSchedOpen(false);}}/>}
         <AppFooter/>{confirmNode}
       </div>
     </div>
@@ -2885,6 +2949,8 @@ function LeadDetailPage({goTo}){
   const [status,setStatusState]=React.useState(l.status);
   const [noteText,setNoteText]=React.useState('');
   const [convertOpen,setConvertOpen]=React.useState(false);
+  const {addItem:calAddItem}=React.useContext(CalendarContext);
+  const [schedOpen,setSchedOpen]=React.useState(false);
   const [timeline,setTimeline]=React.useState(LEAD_TIMELINE);
   const {confirmNode,openConfirm}=useConfirm();
   const b=leadScoreBucket(l.score);
@@ -2896,6 +2962,7 @@ function LeadDetailPage({goTo}){
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('leads')} className="text-white/45 hover:text-white transition-colors">Leads</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-semibold">{l.name}</span></div>
           <div className="flex items-center gap-2">
+            <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
             <button onClick={()=>goTo('edit-lead')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
             <button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 border-none shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={14} stroke={2.4}/>Convert lead</button>
           </div>
@@ -2955,6 +3022,7 @@ function LeadDetailPage({goTo}){
         <AppFooter/>{confirmNode}
       </div>
       {convertOpen&&<ConvertLeadModal lead={l} close={()=>setConvertOpen(false)} onConfirm={doConvert}/>}
+      {schedOpen&&<CalEventFormModal initial={{type:'call',contact:l.name,linkType:'lead',company:l.company}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setTimeline(t=>[calTimelineEntry(ev),...t]);setSchedOpen(false);}}/>}
     </div>
   );
 }
@@ -3563,6 +3631,7 @@ const STEP_PRESETS_A={
   proposal: {key:'proposal', label:'Send proposal',      Icon:I.Send,        bg:'rgba(99,102,241,0.18)',  fg:'#818cf8', kind:'action'},
   slack:    {key:'slack',    label:'Notify Slack',       Icon:I.Hash,        bg:'rgba(16,185,129,0.18)',  fg:'#34d399', kind:'action'},
   reminder: {key:'reminder', label:'Set reminder',       Icon:I.Bell,        bg:'rgba(245,158,11,0.18)',  fg:'#fbbf24', kind:'action', meta:'5d'},
+  scheduleMeeting:{key:'scheduleMeeting',label:'Schedule meeting',Icon:I.Calendar,bg:'rgba(99,102,241,0.18)',fg:'#818cf8', kind:'action'},
   reengage: {key:'reengage', label:'Re-engagement email',Icon:I.Mail,        bg:'rgba(236,72,153,0.18)',  fg:'#f472b6', kind:'action'},
   flag:     {key:'flag',     label:'Flag for review',    Icon:I.Flag,        bg:'rgba(239,68,68,0.16)',   fg:'#f87171', kind:'action'},
   celebrate:{key:'celebrate',label:'Notify team',        Icon:I.Sparkles,    bg:'rgba(124,58,237,0.18)',  fg:'#a78bfa', kind:'action'},
@@ -3572,6 +3641,9 @@ const STEP_PRESETS_A={
   removeTag:{key:'removeTag',label:'Remove tag',         Icon:I.Tag,         bg:'rgba(239,68,68,0.16)',   fg:'#f87171', kind:'action'},
   webhook:  {key:'webhook',  label:'Call webhook',       Icon:I.Plug,        bg:'rgba(148,163,184,0.18)', fg:'#94a3b8', kind:'action'},
   createLead:{key:'createLead',label:'Create / update lead',Icon:I.UserPlus, bg:'rgba(16,185,129,0.18)',  fg:'#34d399', kind:'action'},
+  convertLead:{key:'convertLead',label:'Convert lead',         Icon:I.ArrowRight,bg:'rgba(16,185,129,0.18)',fg:'#34d399', kind:'action'},
+  createCompany:{key:'createCompany',label:'Create company',   Icon:I.Building,  bg:'rgba(59,130,246,0.18)', fg:'#60a5fa', kind:'action'},
+  createDeal:{key:'createDeal',label:'Create deal',            Icon:I.GitBranch, bg:'rgba(124,58,237,0.18)', fg:'#a78bfa', kind:'action'},
   enrollSms:{key:'enrollSms',label:'Enroll in SMS sequence',  Icon:I.Layers, bg:'rgba(52,211,153,0.18)',  fg:'#34d399', kind:'action', seq:'sms'},
   enrollEmail:{key:'enrollEmail',label:'Enroll in email sequence',Icon:I.Mail, bg:'rgba(99,102,241,0.18)', fg:'#818cf8', kind:'action', seq:'email'},
 };
@@ -3585,7 +3657,12 @@ const LOGIC_PRESETS_A={
   goal:     {key:'goal',     label:'Goal / exit',       Icon:I.Target,    bg:'rgba(52,211,153,0.18)',  fg:'#34d399', kind:'goal'},
 };
 // Condition fields the rule engine (evalRule) can evaluate — reused from Smart Views
-const AUTO_COND_FIELDS=['Status','Owner','Tag','Health score','Has open deal','Deal value','Last contacted'];
+const AUTO_COND_FIELDS=['Status','Owner','Tag','Health score','Has open deal','Deal value','Last contacted','Lead status','Lead source','Lead score','Company type','Company industry'];
+// Lead/Company condition config (kept separate so the contact Smart-Views builder is untouched). evalRule returns true for these in the mock test trace.
+const AUTO_FIELD_OPS={'Lead status':['is','is not'],'Lead source':['is','is not'],'Lead score':['greater than','less than'],'Company type':['is','is not'],'Company industry':['is','is not']};
+const AUTO_FIELD_VALUES={'Lead status':LEAD_STATUSES,'Lead source':LEAD_SOURCES,'Company type':COMPANY_TYPES,'Company industry':INDUSTRIES};
+const autoOps=(f)=>AUTO_FIELD_OPS[f]||FIELD_OPS[f]||['is'];
+const autoVals=(f)=>AUTO_FIELD_VALUES[f]!==undefined?AUTO_FIELD_VALUES[f]:FIELD_VALUES[f];
 const DUR_OPTS=['1 hour','4 hours','1 day','2 days','5 days','1 week','2 weeks','30 days'];
 // Option lists for action-node configuration dropdowns
 const REP_OPTS=['Round-robin','Deal owner','Least busy rep',...TEAM_MEMBERS.map(m=>m.name)];
@@ -3594,6 +3671,9 @@ const FLAG_REASONS=['Needs review','At risk','Manual check required','Data looks
 const REPORT_OPTS=['Pipeline digest','Activity summary','Win / loss report','Lead-source breakdown'];
 const REPORT_DEST=['My team','Just me','#sales channel','Managers only'];
 const WEBHOOK_METHODS=['POST','GET','PUT','PATCH'];
+const MEETING_TYPES=['Meeting','Call','Demo','Follow-up','Proposal Review'];
+const MEETING_WHEN=['Same day','In 1 day','In 2 days','In 3 days','Next week'];
+const MEETING_DUR=['15 min','30 min','45 min','1 hour'];
 const SET_FIELDS=['Status','Owner','Lifecycle stage','Lead score','Priority'];
 const SET_VALUES={Status:CONTACT_STATUSES,Owner:TEAM_MEMBERS.map(m=>m.name),'Lifecycle stage':['Subscriber','Lead','MQL','SQL','Customer','Evangelist'],'Lead score':['+10','+25','+50','Reset to 0'],Priority:['Low','Medium','High','Urgent']};
 // Per-action default config so every node ships ready-to-edit (used by makeNode for action nodes)
@@ -3604,6 +3684,7 @@ const ACTION_DEFAULTS={
   proposal:   {template:'Proposal'},
   slack:      {channel:'#sales',message:'New activity on {{contact}}'},
   reminder:   {assignTo:'Deal owner',due:'5 days',note:'Check in with this contact'},
+  scheduleMeeting:{meetingType:'Meeting',withWhom:'Deal owner',when:'In 2 days',duration:'30 min'},
   reengage:   {template:'Follow-up'},
   flag:       {reason:'Needs review',assignTo:'Deal owner'},
   celebrate:  {channel:'#wins',message:'🎉 {{contact}} just closed — nice work team!'},
@@ -3612,18 +3693,34 @@ const ACTION_DEFAULTS={
   addTag:     {tag:'qualified'},
   removeTag:  {tag:'cold'},
   webhook:    {method:'POST',url:'https://hooks.example.com/nrtur'},
-  createLead: {leadStatus:'Lead',leadOwner:'Round-robin'},
+  createLead: {leadStatus:'New',leadOwner:'Round-robin'},
+  convertLead: {makeDeal:true,dealValue:'10',owner:'Round-robin'},
+  createCompany: {companyType:'Prospect',owner:'Round-robin'},
+  createDeal: {stage:DEAL_STAGE_ORDER[0],dealValue:'10',owner:'Deal owner'},
 };
 // Categorized trigger library (5 → 24), each with a plain-language "fires when…" hint
 const TRIGGER_CATS=[
   {cat:'Contact',Icon:I.Users,color:'#60a5fa',triggers:[
-    {name:'Contact created',hint:'a new person or company is added'},
+    {name:'Contact created',hint:'a new person is added'},
     {name:'Contact updated',hint:'any field on a contact changes'},
     {name:'Tag added',hint:'a specific tag is applied'},
     {name:'Tag removed',hint:'a tag is taken off a contact'},
     {name:'Status changed',hint:'lead → prospect → customer, etc.'},
     {name:'Health score dropped',hint:'a contact starts cooling or goes at-risk'},
     {name:'Birthday / anniversary',hint:'a saved date comes around'}]},
+  {cat:'Lead',Icon:I.Target,color:'#34d399',triggers:[
+    {name:'Lead created',hint:'a new lead is captured or imported'},
+    {name:'Lead status changed',hint:'New → Working → Qualified, etc.'},
+    {name:'Lead qualified',hint:'a lead is marked Qualified'},
+    {name:'Lead score reached',hint:'a lead crosses a score threshold'},
+    {name:'Lead source is',hint:'a lead comes in from a chosen source'},
+    {name:'Lead converted',hint:'a lead becomes a contact + company'},
+    {name:'Lead assigned',hint:'a lead is routed to an owner'}]},
+  {cat:'Company',Icon:I.Building,color:'#60a5fa',triggers:[
+    {name:'Company created',hint:'a new account is added'},
+    {name:'Company type changed',hint:'Prospect → Customer → Partner, etc.'},
+    {name:'Account became Customer',hint:'a company is marked Customer'},
+    {name:'Company owner changed',hint:'an account is reassigned'}]},
   {cat:'Deal',Icon:I.GitBranch,color:'#a78bfa',triggers:[
     {name:'Deal created',hint:'a new opportunity opens'},
     {name:'Deal stage changed',hint:'a deal moves between stages'},
@@ -3653,6 +3750,8 @@ const TRIGGER_BY_CAT=(cat)=>{const g=TRIGGER_CATS.find(x=>x.cat===cat);return g?
 const TRIGGER_META=(name)=>{for(const g of TRIGGER_CATS){const t=g.triggers.find(x=>x.name===name);if(t)return{cat:g.cat,Icon:g.Icon,color:g.color,hint:t.hint};}
   // Infer a category for triggers not in the catalog (keyword match)
   const s=(name||'').toLowerCase();
+  if(/lead|qualif|score|convert/.test(s))return TRIGGER_BY_CAT('Lead');
+  if(/company|account/.test(s))return TRIGGER_BY_CAT('Company');
   if(/deal|invoice|proposal|won|lost/.test(s))return TRIGGER_BY_CAT('Deal');
   if(/email|sms|reply|message|open|click/.test(s))return TRIGGER_BY_CAT('Messaging');
   if(/task|meeting|call|form|booked/.test(s))return TRIGGER_BY_CAT('Activity');
@@ -3757,11 +3856,11 @@ const FSEL_STYLE={colorScheme:'dark',background:'var(--s850)'};
 const FSEL='px-2.5 py-1.5 rounded-lg border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';
 // A reusable field / operator / value condition row — reuses FIELD_OPS, FIELD_VALUES, evalRule
 function CondRow({node,onChange}){
-  const ops=FIELD_OPS[node.field]||['is'];
-  const vals=FIELD_VALUES[node.field];
+  const ops=autoOps(node.field);
+  const vals=autoVals(node.field);
   return(
     <div className="flex items-center gap-1.5 flex-wrap">
-      <select value={node.field} onChange={e=>{const f=e.target.value;onChange({field:f,op:(FIELD_OPS[f]||['is'])[0],value:(FIELD_VALUES[f]?FIELD_VALUES[f][0]:'')});}} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[110px]'}>{AUTO_COND_FIELDS.map(f=>(<option key={f}>{f}</option>))}</select>
+      <select value={node.field} onChange={e=>{const f=e.target.value;onChange({field:f,op:autoOps(f)[0],value:(autoVals(f)?autoVals(f)[0]:'')});}} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[110px]'}>{AUTO_COND_FIELDS.map(f=>(<option key={f}>{f}</option>))}</select>
       <select value={node.op} onChange={e=>onChange({op:e.target.value})} style={FSEL_STYLE} className={FSEL}>{ops.map(o=>(<option key={o}>{o}</option>))}</select>
       {vals?(<select value={node.value} onChange={e=>onChange({value:e.target.value})} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[90px]'}>{vals.map(v=>(<option key={v}>{v}</option>))}</select>):(<input value={node.value} onChange={e=>onChange({value:e.target.value})} placeholder={node.field==='Deal value'?'e.g. 5 (×$1k)':'days'} className="flex-1 min-w-[80px] px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
     </div>
@@ -3815,6 +3914,10 @@ function ActionConfig({node,onChange,goTo}){
     <ActionField label="Task title"><ATxt value={node.taskTitle} onChange={v=>onChange({taskTitle:v})} ph="e.g. Call the new lead"/></ActionField>
     <div className="grid grid-cols-2 gap-2"><ActionField label="Assign to"><ASel value={node.assignTo} opts={REP_OPTS} onChange={v=>onChange({assignTo:v})}/></ActionField><ActionField label="Due in"><ASel value={node.due} opts={DUR_OPTS} onChange={v=>onChange({due:v})}/></ActionField></div>
   </React.Fragment>);
+  if(k==='scheduleMeeting')return(<React.Fragment>
+    <div className="grid grid-cols-2 gap-2"><ActionField label="Meeting type"><ASel value={node.meetingType} opts={MEETING_TYPES} onChange={v=>onChange({meetingType:v})}/></ActionField><ActionField label="With"><ASel value={node.withWhom} opts={REP_OPTS} onChange={v=>onChange({withWhom:v})}/></ActionField></div>
+    <div className="grid grid-cols-2 gap-2"><ActionField label="When"><ASel value={node.when} opts={MEETING_WHEN} onChange={v=>onChange({when:v})}/></ActionField><ActionField label="Duration"><ASel value={node.duration} opts={MEETING_DUR} onChange={v=>onChange({duration:v})}/></ActionField></div>
+  </React.Fragment>);
   if(k==='slack'||k==='celebrate')return(<React.Fragment>
     <ActionField label="Post to channel"><ASel value={node.channel} opts={SLACK_CHANNELS} onChange={v=>onChange({channel:v})}/></ActionField>
     <ActionField label="Message" hint="Placeholders: {{contact}}, {{deal}}, {{owner}}."><ATxt value={node.message} onChange={v=>onChange({message:v})} ph="Message text"/></ActionField>
@@ -3837,7 +3940,16 @@ function ActionConfig({node,onChange,goTo}){
   </div>);}
   if(k==='addTag'||k==='removeTag')return(<ActionField label={k==='addTag'?'Tag to add':'Tag to remove'}><ASel value={node.tag} opts={FIELD_VALUES.Tag} onChange={v=>onChange({tag:v})}/></ActionField>);
   if(k==='webhook')return(<div className="grid grid-cols-[84px_1fr] gap-2"><ActionField label="Method"><ASel value={node.method} opts={WEBHOOK_METHODS} onChange={v=>onChange({method:v})}/></ActionField><ActionField label="Endpoint URL"><ATxt value={node.url} onChange={v=>onChange({url:v})} ph="https://…"/></ActionField></div>);
-  if(k==='createLead')return(<div className="grid grid-cols-2 gap-2"><ActionField label="New lead status"><ASel value={node.leadStatus} opts={CONTACT_STATUSES} onChange={v=>onChange({leadStatus:v})}/></ActionField><ActionField label="Assign owner"><ASel value={node.leadOwner} opts={REP_OPTS} onChange={v=>onChange({leadOwner:v})}/></ActionField></div>);
+  if(k==='createLead')return(<div className="grid grid-cols-2 gap-2"><ActionField label="New lead status"><ASel value={node.leadStatus} opts={LEAD_STATUSES} onChange={v=>onChange({leadStatus:v})}/></ActionField><ActionField label="Assign owner"><ASel value={node.leadOwner} opts={REP_OPTS} onChange={v=>onChange({leadOwner:v})}/></ActionField></div>);
+  if(k==='convertLead')return(<React.Fragment>
+    <div className="flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white/80">Also create a deal</p><p className="text-[11px] text-white/40">Opens an opportunity for the new contact.</p></div><Toggle on={!!node.makeDeal} onChange={v=>onChange({makeDeal:v})}/></div>
+    {node.makeDeal&&<div className="grid grid-cols-2 gap-2"><ActionField label="Deal value (×$1k)"><ATxt value={node.dealValue} onChange={v=>onChange({dealValue:v})} ph="10"/></ActionField><ActionField label="Assign owner"><ASel value={node.owner} opts={REP_OPTS} onChange={v=>onChange({owner:v})}/></ActionField></div>}
+  </React.Fragment>);
+  if(k==='createCompany')return(<div className="grid grid-cols-2 gap-2"><ActionField label="Type"><ASel value={node.companyType} opts={COMPANY_TYPES} onChange={v=>onChange({companyType:v})}/></ActionField><ActionField label="Assign owner"><ASel value={node.owner} opts={REP_OPTS} onChange={v=>onChange({owner:v})}/></ActionField></div>);
+  if(k==='createDeal')return(<React.Fragment>
+    <div className="grid grid-cols-2 gap-2"><ActionField label="Stage"><ASel value={node.stage} opts={DEAL_STAGE_ORDER} onChange={v=>onChange({stage:v})}/></ActionField><ActionField label="Value (×$1k)"><ATxt value={node.dealValue} onChange={v=>onChange({dealValue:v})} ph="10"/></ActionField></div>
+    <ActionField label="Assign owner"><ASel value={node.owner} opts={REP_OPTS} onChange={v=>onChange({owner:v})}/></ActionField>
+  </React.Fragment>);
   return null;
 }
 // One-line plain-English summary of an action's current config (shown under the node title + in the test trace)
@@ -3849,13 +3961,17 @@ function actionSummary(node){
     case 'task': return '“'+(node.taskTitle||'Task')+'” → '+(node.assignTo||'')+', due '+(node.due||'');
     case 'slack': case 'celebrate': return 'Post to '+(node.channel||'#channel');
     case 'reminder': return (node.assignTo||'')+' in '+(node.due||'');
+    case 'scheduleMeeting': return 'Book '+(node.meetingType||'meeting')+' with '+(node.withWhom||'owner')+' · '+(node.when||'');
     case 'flag': return (node.reason||'')+' · notify '+(node.assignTo||'');
     case 'report': return (node.report||'')+' → '+(node.sendTo||'');
     case 'updateField': return 'Set '+(node.setField||'')+' = '+(node.setValue||'');
     case 'addTag': return 'Add tag “'+(node.tag||'')+'”';
     case 'removeTag': return 'Remove tag “'+(node.tag||'')+'”';
     case 'webhook': return (node.method||'POST')+' '+(node.url||'');
-    case 'createLead': return 'New '+(node.leadStatus||'Lead')+' → '+(node.leadOwner||'owner');
+    case 'createLead': return 'New '+(node.leadStatus||'New')+' lead → '+(node.leadOwner||'owner');
+    case 'convertLead': return 'Convert → contact + company'+(node.makeDeal?' + $'+(node.dealValue||'0')+'k deal':'');
+    case 'createCompany': return 'New '+(node.companyType||'Prospect')+' company → '+(node.owner||'owner');
+    case 'createDeal': return 'New deal · '+(node.stage||'')+' · $'+(node.dealValue||'0')+'k';
     case 'enrollSms': return 'Enroll in “'+(node.seqName||SEQ_DATA[0].name)+'”';
     case 'enrollEmail': return 'Enroll in “'+(node.seqName||EMAIL_SEQ_DATA[0].name)+'”';
     default: return null;
@@ -4368,21 +4484,10 @@ function ReportsPage({goTo}){
   const REV=[{m:'Jan',won:62,fc:18},{m:'Feb',won:48,fc:22},{m:'Mar',won:76,fc:28},{m:'Apr',won:92,fc:32},{m:'May',won:84,fc:26},{m:'Jun',won:100,fc:38}];
   const [hovBar,setHovBar]=React.useState(null);
   const RW=520,RH=200,RPL=38,RPR=8,RPT=10,RPB=26,RIW=RW-RPL-RPR,RIH=RH-RPT-RPB,RMAX=140,barGap=10,barW=(RIW-barGap*5)/6;
-  const P_STAGES=[{name:'Prospecting',fill:35,color:'#94a3b8',count:8,val:'$42k'},{name:'Qualified',fill:60,color:'#818cf8',count:5,val:'$81k'},{name:'Proposal',fill:50,color:'#a78bfa',count:4,val:'$67k'},{name:'Negotiation',fill:43,color:'#fbbf24',count:3,val:'$58k'},{name:'Won',fill:100,color:'#34d399',count:11,val:'$134k'}];
-  const TEAM=[
-    {name:'Alex Morgan',role:'Manager',avatar:'AM',color:'#3b82f6',created:42,closed:12,emails:184,win:82},
-    {name:'Sarah Chen',role:'Sales',avatar:'SC',color:'#8b5cf6',created:38,closed:9,emails:162,win:71},
-    {name:'Jamie Kim',role:'Sales',avatar:'JK',color:'#10b981',created:31,closed:8,emails:148,win:68},
-    {name:'Ravi Lee',role:'Sales',avatar:'RL',color:'#f59e0b',created:24,closed:5,emails:96,win:56},
-    {name:'Marcus Rios',role:'BDR',avatar:'MR',color:'#ec4899',created:58,closed:3,emails:312,win:40},
-  ];
-  const TOP_DEALS=[
-    {co:'Forge & Co',val:'$44,000',stage:'Won',sColor:'#34d399',owner:'SC',ownerColor:'#3b82f6',close:'Closed 2h ago',prob:100,weighted:'$44,000'},
-    {co:'Summit Digital',val:'$31,000',stage:'Negotiation',sColor:'#fbbf24',owner:'JK',ownerColor:'#8b5cf6',close:'Jun 28',prob:80,weighted:'$24,800'},
-    {co:'Kapoor & Assoc',val:'$28,000',stage:'Negotiation',sColor:'#fbbf24',owner:'MR',ownerColor:'#ec4899',close:'Jul 2',prob:75,weighted:'$21,000'},
-    {co:'Pivot Studio',val:'$22,500',stage:'Proposal',sColor:'#a78bfa',owner:'SC',ownerColor:'#3b82f6',close:'Jul 8',prob:55,weighted:'$12,375'},
-    {co:'Atlas Consult',val:'$18,000',stage:'Qualified',sColor:'#818cf8',owner:'MR',ownerColor:'#ec4899',close:'Jul 15',prob:40,weighted:'$7,200'},
-  ];
+  const P_STAGES=(()=>{const a=STAGES_DATA.map(s=>({name:s.name,color:s.color,count:s.count,val:s.value,_v:parseMoney(s.value)}));const mx=Math.max(1,...a.map(x=>x._v));return a.map(x=>({...x,fill:Math.round(x._v/mx*100)}));})();
+  const TEAM=[{role:'Manager',created:42,closed:12,emails:184,win:82},{role:'Sales',created:38,closed:9,emails:162,win:71},{role:'Sales',created:31,closed:8,emails:148,win:68},{role:'Sales',created:24,closed:5,emails:96,win:56},{role:'BDR',created:58,closed:3,emails:312,win:40}].map((r,i)=>({...(TEAM_MEMBERS[i]||{}),...r}));
+  const STAGE_PROB={Prospecting:20,Qualified:40,Proposal:60,Negotiation:80,Won:100};
+  const TOP_DEALS=allDeals().map(d=>{const rep=TEAM_MEMBERS.find(m=>m.avatar===d.owner);const v=parseMoney(d.value);const prob=STAGE_PROB[d.stageName]||50;return{co:d.company,val:'$'+v.toLocaleString(),stage:d.stageName,sColor:d.stageColor,owner:d.owner,ownerColor:(rep&&rep.color)||d.ownerColor,close:d.stageKey==='won'?'Closed':'In progress',prob,weighted:'$'+Math.round(v*prob/100).toLocaleString(),_v:v};}).sort((a,b)=>b._v-a._v).slice(0,5);
   const TCOL='1.5fr 110px 130px 1fr 130px 110px 28px';
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
@@ -4402,6 +4507,16 @@ function ReportsPage({goTo}){
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1480px] mx-auto flex flex-col gap-5">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{KPIS.map((k,i)=>(<div key={i} className="rounded-2xl p-5 backdrop-blur-md bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.10] transition-all"><div className="flex items-center justify-between mb-3"><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">{k.label}</p><div className={['w-9 h-9 rounded-xl flex items-center justify-center border',k.accent].join(' ')}><k.Icon size={14}/></div></div><div className="flex items-end justify-between"><p className="text-[34px] font-black text-white leading-none tabular-nums">{k.value}</p><span className={['inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full',k.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{k.up?<I.TrendUp size={10} stroke={2.6}/>:<I.TrendDown size={10} stroke={2.6}/>}{k.delta}</span></div><p className="text-[12px] text-white/45 mt-2">{k.sub}</p></div>))}</div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
+                <div className="flex items-start justify-between mb-4"><div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Lead Funnel</p><p className="text-white text-[18px] font-bold mt-1 tabular-nums">{LEADS_DATA.filter(l=>!l.archived).length} active leads</p></div><button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View leads<I.ArrowRight size={11} stroke={2.4}/></button></div>
+                <div className="flex flex-col gap-3">{(()=>{const order=['New','Working','Nurturing','Qualified','Unqualified'];const max=Math.max(1,...order.map(x=>LEADS_DATA.filter(l=>!l.archived&&l.status===x).length));return order.map(s=>{const c=LEADS_DATA.filter(l=>!l.archived&&l.status===s).length;return(<div key={s}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:LEAD_STATUS_DOT[s]}}/><span className="text-[12px] font-medium text-white/70">{s}</span></div><span className="text-[13px] font-bold text-white tabular-nums">{c}</span></div><div className="h-2.5 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(c/max*100)+'%',background:`linear-gradient(to right,${LEAD_STATUS_DOT[s]},${LEAD_STATUS_DOT[s]}cc)`}}/></div></div>);});})()}</div>
+              </div>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
+                <div className="flex items-start justify-between mb-4"><div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Leads by Source</p><p className="text-white text-[18px] font-bold mt-1 tabular-nums">Top channels</p></div></div>
+                <div className="flex flex-col gap-3">{(()=>{const src=LEAD_SOURCES.map(s=>({name:s,count:LEADS_DATA.filter(l=>!l.archived&&l.source===s).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const max=Math.max(1,...src.map(s=>s.count));const COLORS=['#818cf8','#34d399','#fbbf24','#f472b6','#60a5fa','#a78bfa','#f87171'];return src.map((s,i)=>(<div key={s.name}><div className="flex items-center justify-between mb-1.5"><span className="text-[12px] font-medium text-white/70">{s.name}</span><span className="text-[13px] font-bold text-white tabular-nums">{s.count}</span></div><div className="h-2.5 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(s.count/max*100)+'%',background:COLORS[i%COLORS.length]}}/></div></div>));})()}</div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_1fr] gap-5">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
                 <div className="flex items-start justify-between mb-4"><div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Revenue Over Time</p><p className="text-white text-[20px] font-bold mt-1 tabular-nums">$605k <span className="text-emerald-400 text-[13px] font-semibold ml-1.5">+38%</span></p></div><div className="flex items-center gap-3 text-[11px]"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{background:'linear-gradient(180deg,#818cf8,#4f46e5)'}}/><span className="text-white/65">Won</span></span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{background:'rgba(99,102,241,0.22)',boxShadow:'inset 0 0 0 1px rgba(99,102,241,0.4)'}}/><span className="text-white/65">Forecast</span></span></div></div>
@@ -4463,6 +4578,78 @@ function SettingsShell({active,goTo,children}){
       </div>
     </div>
   );
+}
+// ?? Booking links (Calendly-style) ???????????????????????????????????????????
+const BOOKING_DURATIONS=['15 min','30 min','45 min','60 min'];
+const BOOKING_LINKS_SEED=[
+  {id:'bl1',name:'Intro Call',slug:'intro-15',duration:'15 min',hours:'Mon–Fri · 9am–5pm',desc:'A quick intro to see if we are a fit.',active:true,bookings:34},
+  {id:'bl2',name:'Product Demo',slug:'demo-30',duration:'30 min',hours:'Mon–Fri · 10am–4pm',desc:'Live walkthrough of nrtur for your team.',active:true,bookings:18},
+  {id:'bl3',name:'Strategy Session',slug:'strategy-60',duration:'60 min',hours:'Tue & Thu · 1pm–5pm',desc:'Deep-dive planning session for customers.',active:false,bookings:6},
+];
+function BookingLinkModal({initial,close,onSave}){
+  const ed=initial||{};
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [name,setName]=React.useState(ed.name||'');
+  const [duration,setDuration]=React.useState(ed.duration||BOOKING_DURATIONS[1]);
+  const [hours,setHours]=React.useState(ed.hours||'Mon–Fri · 9am–5pm');
+  const [slug,setSlug]=React.useState(ed.slug||'');
+  const [desc,setDesc]=React.useState(ed.desc||'');
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=name.trim();
+  const autoSlug=(slug||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''))||'link';
+  return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div style={{width:480}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><p className="text-white text-[15px] font-bold">{ed.id?'Edit booking link':'New booking link'}</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className={L}>Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Intro Call" className={I_F}/></div>
+        <div className="grid grid-cols-2 gap-4"><div><label className={L}>Duration</label><select value={duration} onChange={e=>setDuration(e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{BOOKING_DURATIONS.map(d=>(<option key={d}>{d}</option>))}</select></div><div><label className={L}>Availability</label><input value={hours} onChange={e=>setHours(e.target.value)} placeholder="Mon–Fri · 9am–5pm" className={I_F}/></div></div>
+        <div><label className={L}>Link slug</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10]"><span className="text-white/35 text-[12px]">nrtur.com/book/</span><input value={slug} onChange={e=>setSlug(e.target.value)} placeholder={autoSlug} className="flex-1 bg-transparent outline-none text-[12px] text-white font-mono placeholder:text-white/25"/></div></div>
+        <div><label className={L}>Description</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={2} placeholder="What is this meeting for?" className={I_F+' resize-none'}/></div>
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>valid&&onSave({id:ed.id,name:name.trim(),duration,hours,slug:autoSlug,desc:desc.trim()})} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Save link</button></div>
+    </div>
+  </div>);
+}
+function SettingsBookingPage({goTo}){
+  const {addItem}=React.useContext(CalendarContext);
+  const [links,setLinks]=React.useState(BOOKING_LINKS_SEED);
+  const [modal,setModal]=React.useState(null);
+  const [toast,setToast]=React.useState('');
+  const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2400);};
+  const durMins=(d)=>parseInt(d)||30;
+  const simulate=(link)=>{const t=new Date();const d=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,11,0);const end=new Date(d.getTime()+durMins(link.duration)*60000);addItem({title:'Booking — '+link.name,type:'meeting',date:d,end,allDay:false,contact:null,linkType:null,company:null,deal:null,reminder:'30',repeat:'Never',notes:'Booked via your “'+link.name+'” link.',done:false});setLinks(ls=>ls.map(x=>x.id===link.id?{...x,bookings:x.bookings+1}:x));showToast('Booking added to your calendar');};
+  const save=(l)=>{if(l.id)setLinks(ls=>ls.map(x=>x.id===l.id?{...x,...l}:x));else setLinks(ls=>[...ls,{...l,id:'bl'+Date.now(),bookings:0,active:true}]);setModal(null);showToast('Booking link saved');};
+  const toggle=(id)=>setLinks(ls=>ls.map(x=>x.id===id?{...x,active:!x.active}:x));
+  const del=(id)=>{setLinks(ls=>ls.filter(x=>x.id!==id));showToast('Link deleted');};
+  return(<SettingsShell active="settings-booking" goTo={goTo}>
+    <div className="flex items-center justify-between gap-4">
+      <div><h2 className="text-white text-[18px] font-bold">Booking links</h2><p className="text-[13px] text-white/50 mt-1">Share a link and let people self-schedule. Bookings land on your Calendar automatically.</p></div>
+      <button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0"><I.Plus size={14} stroke={2.4}/>New link</button>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {links.map(l=>(
+        <div key={l.id} className={['rounded-2xl bg-white/[0.03] border p-5 flex flex-col gap-3 transition-all',l.active?'border-white/[0.06]':'border-white/[0.04] opacity-70'].join(' ')}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.Calendar size={17}/></div><div className="min-w-0"><p className="text-[14px] font-bold text-white truncate">{l.name}</p><p className="text-[12px] text-white/45">{l.duration} · {l.hours}</p></div></div>
+            <Toggle on={l.active} onChange={()=>toggle(l.id)}/>
+          </div>
+          <p className="text-[12px] text-white/55 leading-relaxed">{l.desc}</p>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"><I.Globe size={12} className="text-white/40 shrink-0"/><span className="text-[12px] text-brand-300 font-mono truncate flex-1">nrtur.com/book/{l.slug}</span><button onClick={()=>showToast('Link copied: nrtur.com/book/'+l.slug)} title="Copy link" className="text-white/45 hover:text-white shrink-0"><I.Copy size={13}/></button></div>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] text-white/40 tabular-nums">{l.bookings} bookings</span>
+            <div className="flex items-center gap-2">
+              <button onClick={()=>simulate(l)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15 transition-all"><I.Plus size={11}/>Simulate booking</button>
+              <button onClick={()=>setModal({link:l})} title="Edit" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.Edit size={13}/></button>
+              <button onClick={()=>del(l.id)} title="Delete" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/></button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    {modal&&<BookingLinkModal initial={modal==='new'?null:modal.link} close={()=>setModal(null)} onSave={save}/>}
+    {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
+  </SettingsShell>);
 }
 // ?? Settings Billing ??????????????????????????????????????????????????????????
 const BILLING_PLANS=[
@@ -5983,8 +6170,8 @@ const EVENT_TYPES={
 };
 const CAL_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const CAL_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const CAL_CONTACTS=['Marcus Chen','Sarah Chen','Maya Rodriguez','Martin Liu'];
-const CAL_DEALS=['Managed CRM rollout','Q3 Campaign','Analytics Suite'];
+const CAL_TASK_PRIORITY=['Low','Medium','High'];
+const CAL_PRIORITY_C={Low:'#64748b',Medium:'#60a5fa',High:'#f87171'};
 const CAL_REMIND=[{v:'',l:'None'},{v:'15',l:'15 min before'},{v:'30',l:'30 min before'},{v:'60',l:'1 hour before'},{v:'1440',l:'1 day before'}];
 const CAL_REPEAT=['Never','Daily','Weekly','Monthly','Custom'];
 const calFmtTime=(d)=>{const h=d.getHours(),m=d.getMinutes();return h+':'+String(m).padStart(2,'0');};
@@ -5997,15 +6184,17 @@ const calToDateInput=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(
 const calToTimeInput=(d)=>`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 function calSeedEvents(){
   const t=new Date(),y=t.getFullYear(),m=t.getMonth(),d=t.getDate();const at=(dd,hh,mm)=>new Date(y,m,dd,hh,mm||0);
+  const E=(o)=>({contact:null,linkType:null,company:null,deal:null,reminder:'',repeat:'Never',allDay:false,notes:'',done:false,...o});
   return [
-    {id:1,title:'Intro call — Marcus Chen',type:'call',date:at(d,10,0),end:at(d,10,30),contact:'Marcus Chen',deal:null,reminder:'30',allDay:false,notes:''},
-    {id:2,title:'Product demo — Forge & Co',type:'demo',date:at(d,14,0),end:at(d,15,0),contact:'Sarah Chen',deal:'Managed CRM rollout',reminder:'60',allDay:false,notes:'Walk through the rollout plan and pricing.'},
-    {id:3,title:'Follow up on proposal',type:'followup',date:at(d+1,9,0),end:at(d+1,9,30),contact:'Maya Rodriguez',deal:'Q3 Campaign',reminder:'15',allDay:false,notes:''},
-    {id:4,title:'Team pipeline review',type:'meeting',date:at(d+1,11,0),end:at(d+1,12,0),contact:null,deal:null,reminder:'30',allDay:false,notes:''},
-    {id:5,title:'Proposal review — Loop Labs',type:'proposal',date:at(d+2,15,0),end:at(d+2,16,0),contact:'Martin Liu',deal:'Analytics Suite',reminder:'60',allDay:false,notes:''},
-    {id:6,title:'Send contract',type:'task',date:at(d+3,0,0),end:null,contact:'Sarah Chen',deal:null,reminder:'',allDay:true,notes:''},
-    {id:7,title:'Quarterly check-in',type:'meeting',date:at(d+5,10,0),end:at(d+5,11,0),contact:'Marcus Chen',deal:null,reminder:'30',allDay:false,notes:''},
-    {id:8,title:'Close deal deadline',type:'task',date:at(d+6,0,0),end:null,contact:null,deal:'Managed CRM rollout',reminder:'',allDay:true,notes:''},
+    E({id:'cs1',title:'Intro call — Sarah Chen',type:'call',date:at(d,10,0),end:at(d,10,30),contact:'Sarah Chen',linkType:'contact',company:'Meridian Agency',deal:'Meridian Agency · $24k',reminder:'30'}),
+    E({id:'cs2',title:'Product demo — Summit Digital',type:'demo',date:at(d,14,0),end:at(d,15,0),contact:'James Rivera',linkType:'contact',company:'Summit Digital',deal:'Summit Digital · $31,000',reminder:'60',notes:'Walk through the rollout plan and pricing.'}),
+    E({id:'cs3',title:'Qualify lead — Olivia Bennett',type:'call',date:at(d+1,9,0),end:at(d+1,9,30),contact:'Olivia Bennett',linkType:'lead',company:'Brightwave Studio',reminder:'15'}),
+    E({id:'cs4',title:'Team pipeline review',type:'meeting',date:at(d+1,11,0),end:at(d+1,12,0),repeat:'Weekly',reminder:'30'}),
+    E({id:'cs5',title:'Proposal review — Atlas Consult',type:'proposal',date:at(d+2,15,0),end:at(d+2,16,0),contact:'Priya Nair',linkType:'contact',company:'Atlas Consult',deal:'Atlas Consult · $18,000',reminder:'60'}),
+    E({id:'ct1',title:'Send contract to Forge & Co',type:'task',date:at(d,0,0),end:null,contact:'Emily Tran',linkType:'contact',company:'Forge & Co',deal:'Forge & Co · $44,000',allDay:true,priority:'High'}),
+    E({id:'ct2',title:'Follow up with Marcus Rios',type:'task',date:at(d+1,0,0),end:null,contact:'Marcus Rios',linkType:'contact',company:'Kapoor & Assoc',allDay:true,priority:'Medium'}),
+    E({id:'ct3',title:'Prep Q3 proposal deck',type:'task',date:at(d+3,0,0),end:null,allDay:true,priority:'Low'}),
+    E({id:'cs6',title:'Quarterly check-in — Meridian',type:'meeting',date:at(d+5,10,0),end:at(d+5,11,0),contact:'Sarah Chen',linkType:'contact',company:'Meridian Agency',reminder:'30'}),
   ];
 }
 function CalMiniCalendar({current,setCurrent,events}){
@@ -6058,15 +6247,31 @@ function CalTimeGrid({days,hourPx,events,onSlotClick,onEventClick}){
     </div></div>
   </div>);
 }
-function CalUpcoming({events,onEventClick}){
+function CalUpcoming({events,onEventClick,onToggleTask}){
   const now=new Date();const start=new Date(now.getFullYear(),now.getMonth(),now.getDate());const in7=calAddDays(start,8);
-  const up=events.filter(e=>e.date>=start&&e.date<in7).sort((a,b)=>a.date-b.date);
+  const tasks=events.filter(e=>e.type==='task').sort((a,b)=>(a.done-b.done)||(a.date-b.date));
+  const openTasks=tasks.filter(t=>!t.done).length;
+  const up=events.filter(e=>e.type!=='task'&&e.date>=start&&e.date<in7).sort((a,b)=>a.date-b.date);
   const groups=[];up.forEach(e=>{const k=e.date.toDateString();let g=groups.find(x=>x.k===k);if(!g){g={k,date:e.date,items:[]};groups.push(g);}g.items.push(e);});
   const label=(d)=>{if(calIsToday(d))return'TODAY';if(calSameDay(d,calAddDays(now,1)))return'TOMORROW';return CAL_DAYS[d.getDay()].toUpperCase()+' '+d.getDate()+' '+CAL_MONTHS[d.getMonth()].slice(0,3).toUpperCase();};
+  const taskOverdue=(t)=>!t.done&&t.date<start;
   return(<aside className="w-[280px] shrink-0 border-l border-white/[0.05] flex flex-col" style={{background:'var(--s925)'}}>
-    <div className="px-4 py-3.5 border-b border-white/[0.05] shrink-0"><p className="text-[13px] font-bold text-white">Upcoming</p><p className="text-[11px] text-white/45 mt-0.5">Next 7 days</p></div>
+    <div className="px-4 py-3.5 border-b border-white/[0.05] shrink-0"><p className="text-[13px] font-bold text-white">Agenda</p><p className="text-[11px] text-white/45 mt-0.5">{openTasks} open task{openTasks!==1?'s':''} · next 7 days</p></div>
     <div className="flex-1 overflow-y-auto scroll-area p-3">
-      {groups.length===0&&<div className="py-16 flex flex-col items-center gap-2 text-center"><div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/30"><I.Calendar size={18}/></div><p className="text-[13px] font-medium text-white/55">No upcoming events</p><p className="text-[11px] text-white/35">Click any date to schedule one.</p></div>}
+      <div className="mb-4">
+        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-1 mb-1.5 flex items-center gap-1.5"><I.CheckSquare size={11}/>Tasks</p>
+        {tasks.length===0?(<p className="text-[11px] text-white/35 px-2 py-3">No tasks yet.</p>):(
+        <div className="flex flex-col gap-0.5">{tasks.map(t=>(
+          <div key={t.id} className="w-full flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors group">
+            <button onClick={()=>onToggleTask&&onToggleTask(t.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={9} stroke={3} style={{color:'#fff'}}/>}</button>
+            <button onClick={()=>onEventClick(t)} className="min-w-0 flex-1 text-left">
+              <span className={['block text-[12px] truncate',t.done?'text-white/35 line-through':'text-white/80 font-medium'].join(' ')}>{t.title}</span>
+              <span className="flex items-center gap-1.5">{t.priority&&!t.done&&<span className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{background:CAL_PRIORITY_C[t.priority]||'#64748b'}}/>}{taskOverdue(t)&&<span className="text-[10px] text-red-300 font-semibold">Overdue</span>}{t.company&&<span className="text-[10px] text-white/40 truncate">{t.company}</span>}</span>
+            </button>
+          </div>))}</div>)}
+      </div>
+      <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-1 mb-1.5 flex items-center gap-1.5"><I.Calendar size={11}/>Upcoming</p>
+      {groups.length===0&&<div className="py-10 flex flex-col items-center gap-2 text-center"><div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/30"><I.Calendar size={18}/></div><p className="text-[12px] font-medium text-white/50">No upcoming events</p><p className="text-[11px] text-white/35">Click any date to schedule one.</p></div>}
       {groups.map(g=>(<div key={g.k} className="mb-4">
         <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-1 mb-1.5">{label(g.date)}</p>
         <div className="flex flex-col gap-0.5">{g.items.map(e=>{const ty=EVENT_TYPES[e.type];return(
@@ -6092,7 +6297,8 @@ function CalEventDetailModal({event,onClose,onEdit,onDelete,onComplete,goTo}){
         <h2 className="text-white text-[18px] font-bold mb-4">{event.title}</h2>
         <div className="flex flex-col gap-3">
           <Row Icon={I.Clock}>{dateLabel}</Row>
-          {event.contact&&<Row Icon={I.Users}><button onClick={()=>{onClose();goTo('contact-detail');}} className="text-brand-300 hover:text-brand-200">{event.contact}</button></Row>}
+          {event.contact&&<Row Icon={I.Users}><button onClick={()=>{onClose();goTo(calLinkPage(event.linkType));}} className="text-brand-300 hover:text-brand-200">{event.contact}{event.linkType==='lead'?<span className="text-white/35 text-[11px] ml-1">(lead)</span>:''}</button></Row>}
+          {event.company&&<Row Icon={I.Building}><button onClick={()=>{onClose();goTo('company-detail');}} className="text-brand-300 hover:text-brand-200">{event.company}</button></Row>}
           {event.deal&&<Row Icon={I.GitBranch}><button onClick={()=>{onClose();goTo('deal-detail');}} className="text-brand-300 hover:text-brand-200">{event.deal}</button></Row>}
           <Row Icon={I.Bell}>{rem}</Row>
           {event.notes&&<div className="flex items-start gap-3 text-[13px] text-white/70"><I.Note size={15} className="text-white/40 shrink-0 mt-0.5"/><p className="leading-relaxed">{event.notes}</p></div>}
@@ -6111,12 +6317,17 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const baseDate=ed.date||defaultDate||new Date();
   const [title,setTitle]=React.useState(ed.title||'');
   const [type,setType]=React.useState(ed.type||'meeting');
+  const [priority,setPriority]=React.useState(ed.priority||'Medium');
   const [date,setDate]=React.useState(calToDateInput(baseDate));
   const [allDay,setAllDay]=React.useState(!!ed.allDay);
   const [startT,setStartT]=React.useState(ed.date?calToTimeInput(ed.date):(defaultDate?calToTimeInput(defaultDate):'09:00'));
   const [endT,setEndT]=React.useState(ed.end?calToTimeInput(ed.end):'10:00');
   const [contact,setContact]=React.useState(ed.contact||'');
+  const [linkType,setLinkType]=React.useState(ed.linkType||'contact');
+  const [company,setCompany]=React.useState(ed.company||'');
   const [deal,setDeal]=React.useState(ed.deal||'');
+  const calPeople=calPeopleOptions();
+  const onPickContact=(name)=>{setContact(name);const p=calPeople.find(x=>x.name===name);setLinkType(p?p.kind:'contact');};
   const [reminder,setReminder]=React.useState(ed.reminder||'');
   const [repeat,setRepeat]=React.useState(ed.repeat||'Never');
   const [notes,setNotes]=React.useState(ed.notes||'');
@@ -6126,7 +6337,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const save=()=>{
     const [Y,M,D]=date.split('-').map(Number);
     const mk=(ts)=>{const [h,mi]=ts.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
-    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:contact||null,deal:deal||null,reminder,repeat,notes};
+    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:contact||null,linkType:contact?linkType:null,company:company||null,deal:deal||null,reminder,repeat,notes,done:!!ed.done,priority};
     onSave(ev);
   };
   return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -6135,15 +6346,17 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
       <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Add title…" className="w-full bg-transparent outline-none text-[16px] font-semibold text-white placeholder:text-white/30 border-b border-white/[0.10] focus:border-brand-500/40 pb-2 transition-all"/>
         <div><label className={L}>Type</label><div className="flex flex-wrap gap-1.5">{Object.keys(EVENT_TYPES).map(k=>{const ty=EVENT_TYPES[k];const on=type===k;return(<button key={k} onClick={()=>setType(k)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all" style={on?{background:ty.bg,color:ty.color,border:'1px solid '+ty.border}:{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.55)',border:'1px solid rgba(255,255,255,0.08)'}}><span className="w-2 h-2 rounded-full" style={{background:ty.color}}/>{ty.label}</button>);})}</div></div>
+        {type==='task'&&<div><label className={L}>Priority</label><div className="flex gap-1.5">{CAL_TASK_PRIORITY.map(p=>{const on=priority===p;const c=CAL_PRIORITY_C[p];return(<button key={p} onClick={()=>setPriority(p)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all" style={on?{background:c+'22',color:c,border:'1px solid '+c+'55'}:{background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.55)',border:'1px solid rgba(255,255,255,0.08)'}}><span className="w-2 h-2 rounded-full" style={{background:c}}/>{p}</button>);})}</div></div>}
         <div className="grid grid-cols-2 gap-4">
           <div><label className={L}>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} className={INP} style={{colorScheme:'dark'}}/></div>
           <div className="flex items-end justify-between pb-1"><span className="text-[13px] text-white/70">All day</span><Toggle on={allDay} onChange={setAllDay}/></div>
         </div>
         {!allDay&&<div className="grid grid-cols-2 gap-4"><div><label className={L}>Start</label><input type="time" value={startT} onChange={e=>setStartT(e.target.value)} className={INP} style={{colorScheme:'dark'}}/></div><div><label className={L}>End</label><input type="time" value={endT} onChange={e=>setEndT(e.target.value)} className={INP} style={{colorScheme:'dark'}}/></div></div>}
         <div className="grid grid-cols-2 gap-4">
-          <div><label className={L}>Contact</label><select value={contact} onChange={e=>setContact(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{CAL_CONTACTS.map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
-          <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{CAL_DEALS.map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
+          <div><label className={L}>Contact / Lead</label><select value={contact} onChange={e=>onPickContact(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calPeople.map(c=>(<option key={c.name+c.kind} value={c.name}>{c.name}{c.kind==='lead'?' (lead)':''}</option>))}</select></div>
+          <div><label className={L}>Company</label><select value={company} onChange={e=>setCompany(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calCompanyOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
         </div>
+        <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
         <div className="grid grid-cols-2 gap-4">
           <div><label className={L}>Reminder</label><select value={reminder} onChange={e=>setReminder(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REMIND.map(r=>(<option key={r.l} value={r.v}>{r.l}</option>))}</select></div>
           <div><label className={L}>Repeat</label><select value={repeat} onChange={e=>setRepeat(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REPEAT.map(r=>(<option key={r} value={r}>{r}</option>))}</select></div>
@@ -6158,7 +6371,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
 function CalendarPage({goTo}){
   const [view,setView]=React.useState('month');
   const [current,setCurrent]=React.useState(new Date());
-  const [events,setEvents]=React.useState(calSeedEvents);
+  const {items:events,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
   const [typeFilter,setTypeFilter]=React.useState(Object.fromEntries(Object.keys(EVENT_TYPES).map(k=>[k,true])));
   const [team,setTeam]=React.useState({AM:true,SC:true,JK:true});
   const [eventModal,setEventModal]=React.useState(null);   // {event,date} | null
@@ -6171,8 +6384,8 @@ function CalendarPage({goTo}){
   const weekDays=()=>{const s=calStartOfWeek(current);return [0,1,2,3,4,5,6].map(i=>calAddDays(s,i));};
   const openNew=(date)=>{setDetail(null);setEventModal({event:null,date:date||current});};
   const openEdit=(ev)=>{setDetail(null);setEventModal({event:ev,date:ev.date});};
-  const saveEvent=(ev)=>{setEvents(es=>ev.id?es.map(x=>x.id===ev.id?ev:x):[...es,{...ev,id:Date.now()}]);setEventModal(null);addToast('Event saved');};
-  const delEvent=(ev)=>{openConfirm({title:'Delete this event?',body:'"'+ev.title+'" will be removed from your calendar.',confirmLabel:'Delete',danger:true,onConfirm:()=>{setEvents(es=>es.filter(x=>x.id!==ev.id));setDetail(null);addToast('Event deleted');}});};
+  const saveEvent=(ev)=>{if(ev.id)updateItem(ev);else addItem(ev);setEventModal(null);addToast('Event saved');};
+  const delEvent=(ev)=>{openConfirm({title:'Delete this event?',body:'"'+ev.title+'" will be removed from your calendar.',confirmLabel:'Delete',danger:true,onConfirm:()=>{deleteItem(ev.id);setDetail(null);addToast('Event deleted');}});};
   const VIEWS=[{k:'month',l:'Month'},{k:'week',l:'Week'},{k:'day',l:'Day'}];
   const TYPE_KEYS=Object.keys(EVENT_TYPES);
   return(
@@ -6208,26 +6421,130 @@ function CalendarPage({goTo}){
               {view==='day'&&<CalTimeGrid days={[current]} hourPx={60} events={visible} onSlotClick={(d)=>openNew(d)} onEventClick={(e)=>setDetail(e)}/>}
             </div>
           </div>
-          <CalUpcoming events={visible} onEventClick={(e)=>setDetail(e)}/>
+          <CalUpcoming events={visible} onEventClick={(e)=>setDetail(e)} onToggleTask={toggleDone}/>
         </div>
         <AppFooter note="Calendar syncs with your connected Google Calendar"/>
       </div>
-      {detail&&<CalEventDetailModal event={detail} onClose={()=>setDetail(null)} onEdit={()=>openEdit(detail)} onDelete={()=>delEvent(detail)} onComplete={()=>{setEvents(es=>es.filter(x=>x.id!==detail.id));setDetail(null);addToast('Task completed');}} goTo={goTo}/>}
+      {detail&&<CalEventDetailModal event={detail} onClose={()=>setDetail(null)} onEdit={()=>openEdit(detail)} onDelete={()=>delEvent(detail)} onComplete={()=>{toggleDone(detail.id);setDetail(null);addToast(detail.done?'Task reopened':'Task completed');}} goTo={goTo}/>}
       {eventModal&&<CalEventFormModal initial={eventModal.event} defaultDate={eventModal.date} onClose={()=>setEventModal(null)} onSave={saveEvent}/>}
       {confirmNode}
       <ToastContainer toasts={toasts}/>
     </div>
   );
 }
+// ?? TasksPage (dedicated view over the shared CalendarContext task store) ?????
+function TasksPage({goTo}){
+  const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
+  const [view,setView]=React.useState('list');
+  const [filter,setFilter]=React.useState('open');
+  const [search,setSearch]=React.useState('');
+  const [modal,setModal]=React.useState(null);
+  const {confirmNode,openConfirm}=useConfirm();
+  const {toasts,addToast}=useToast();
+  const now=new Date();const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const tasks=items.filter(e=>e.type==='task');
+  const isOverdue=(t)=>!t.done&&t.date<startToday;
+  const isToday=(t)=>calSameDay(t.date,now);
+  const FILTERS=[{k:'all',l:'All'},{k:'open',l:'Open'},{k:'overdue',l:'Overdue'},{k:'today',l:'Today'},{k:'done',l:'Done'}];
+  const counts={all:tasks.length,open:tasks.filter(t=>!t.done).length,overdue:tasks.filter(isOverdue).length,today:tasks.filter(t=>isToday(t)&&!t.done).length,done:tasks.filter(t=>t.done).length};
+  const list=tasks.filter(t=>{
+    if(search&&!(t.title||'').toLowerCase().includes(search.toLowerCase()))return false;
+    if(filter==='open'&&t.done)return false;
+    if(filter==='done'&&!t.done)return false;
+    if(filter==='overdue'&&!isOverdue(t))return false;
+    if(filter==='today'&&!(isToday(t)&&!t.done))return false;
+    return true;
+  }).sort((a,b)=>(a.done-b.done)||(a.date-b.date));
+  const dueLabel=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(t.done)return{txt:s,c:null};if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(t.date<startToday)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
+  const linkedTxt=(t)=>[t.contact,t.company,t.deal].filter(Boolean).join(' · ');
+  const save=(ev)=>{if(ev.id)updateItem(ev);else addItem(ev);setModal(null);addToast('Task saved');};
+  const del=(t)=>openConfirm({title:'Delete task?',body:'"'+t.title+'" will be removed.',confirmLabel:'Delete',danger:true,onConfirm:()=>{deleteItem(t.id);addToast('Task deleted');}});
+  const COL='34px 1fr 150px 84px 64px';
+  const Row=({t,last})=>{const d=dueLabel(t);const lt=linkedTxt(t);return(
+    <div className={['w-full grid items-center gap-4 px-7 py-3 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+      <button onClick={()=>toggleDone(t.id)} className={['w-4.5 h-4.5 w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
+      <button onClick={()=>setModal({task:t})} className="min-w-0 text-left">
+        <p className={['text-[13px] font-medium truncate',t.done?'text-white/40 line-through':'text-white'].join(' ')}>{t.title}</p>
+        {lt&&<p className="text-[11px] text-white/40 truncate mt-0.5">{lt}</p>}
+      </button>
+      <div className="flex items-center gap-1.5 min-w-0">{d.c&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:d.c}}/>}<span className="text-[12px] truncate" style={{color:d.c||'rgba(255,255,255,0.55)'}}>{d.txt}</span></div>
+      {t.priority?<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium w-fit" style={{background:(CAL_PRIORITY_C[t.priority]||'#64748b')+'1f',color:CAL_PRIORITY_C[t.priority]||'#94a3b8',boxShadow:'inset 0 0 0 1px '+(CAL_PRIORITY_C[t.priority]||'#64748b')+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[t.priority]||'#64748b'}}/>{t.priority}</span>:<span/>}
+      <div className="flex items-center justify-end gap-1">
+        <button onClick={()=>setModal({task:t})} title="Edit" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.Edit size={12}/></button>
+        <button onClick={()=>del(t)} title="Delete" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={12}/></button>
+      </div>
+    </div>);};
+  const BoardCard=({t})=>{const d=dueLabel(t);const lt=linkedTxt(t);return(
+    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 hover:border-white/[0.12] transition-all group">
+      <div className="flex items-start gap-2">
+        <button onClick={()=>toggleDone(t.id)} className={['w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0 mt-0.5',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
+        <button onClick={()=>setModal({task:t})} className="min-w-0 flex-1 text-left"><p className={['text-[13px] font-medium leading-snug',t.done?'text-white/40 line-through':'text-white'].join(' ')}>{t.title}</p>{lt&&<p className="text-[11px] text-white/40 truncate mt-1">{lt}</p>}</button>
+      </div>
+      <div className="flex items-center gap-1.5 mt-2 pl-[26px]">{d.c&&<span className="w-1.5 h-1.5 rounded-full" style={{background:d.c}}/>}<span className="text-[11px]" style={{color:d.c||'rgba(255,255,255,0.45)'}}>{d.txt}</span></div>
+    </div>);};
+  return(
+    <div className="h-full flex" style={{background:'var(--s925)'}}>
+      <AppSidebar active="tasks" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} title="Tasks" subtitle={`${counts.open} open · ${counts.overdue} overdue`}
+          rightSlot={<>
+            <button onClick={()=>goTo('calendar')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Calendar size={13}/>Calendar</button>
+            <button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Task</button>
+          </>}/>
+        <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tasks..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40"/></div>
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{FILTERS.map(f=>{const a=filter===f.k;return(<button key={f.k} onClick={()=>setFilter(f.k)} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{f.l}<span className={['text-[10px] font-mono px-1 py-0.5 rounded-full',a?'bg-white/20 text-white':'bg-white/[0.06] text-white/45'].join(' ')}>{counts[f.k]}</span></button>);})}</div>
+          <div className="ml-auto inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[{k:'list',Icon:I.LayoutDash,l:'List'},{k:'board',Icon:I.Filter,l:'Board'}].map(v=>{const a=view===v.k;return(<button key={v.k} onClick={()=>setView(v.k)} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all',a?'bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25':'text-white/45 hover:text-white/70'].join(' ')}><v.Icon size={13}/>{v.l}</button>);})}</div>
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          {tasks.length===0?(
+            <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.CheckSquare size={26}/></div><p className="text-[16px] font-bold text-white">No tasks yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">Create a task to keep follow-ups on track. Tasks also show on your Calendar and dashboard.</p><button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add task</button></div></div>
+          ):view==='list'?(
+            <div>
+              <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}><span/><span>Task</span><span>Due</span><span>Priority</span><span/></div>
+              {list.length===0?(<div className="py-16 text-center text-[13px] text-white/45">No tasks match this filter.</div>):list.map((t,i)=>(<Row key={t.id} t={t} last={i===list.length-1}/>))}
+            </div>
+          ):(
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">{['High','Medium','Low'].map(pr=>{const col=list.filter(t=>!t.done&&(t.priority||'Medium')===pr);return(
+              <div key={pr} className="flex flex-col rounded-2xl bg-white/[0.018] border border-white/[0.05] overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.05] flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:CAL_PRIORITY_C[pr]}}/><span className="text-[13px] font-semibold text-white">{pr}</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono ml-auto">{col.length}</span></div>
+                <div className="p-3 flex flex-col gap-2.5 min-h-[120px]">{col.length===0?<p className="text-[11px] text-white/30 px-1 py-3">Nothing here.</p>:col.map(t=>(<BoardCard key={t.id} t={t}/>))}</div>
+              </div>);})}</div>
+          )}
+        </div>
+        {modal&&<CalEventFormModal initial={modal==='new'?{type:'task',allDay:true,priority:'Medium'}:modal.task} onClose={()=>setModal(null)} onSave={save}/>}
+        {confirmNode}
+        <ToastContainer toasts={toasts}/>
+        <AppFooter note="Tasks sync with your Calendar"/>
+      </div>
+    </div>
+  );
+}
 // ?? App Router ????????????????????????????????????????????????????????????????
 function App(){
   const [page,setPage]=React.useState('landing');
+  const [nav,setNav]=React.useState(null);
   const [searchOpen,setSearchOpen]=React.useState(false);
   const [cmdOpen,setCmdOpen]=React.useState(false);
+  const [contacts,setContacts]=React.useState(CONTACTS_DATA);
+  const [leads,setLeads]=React.useState(LEADS_DATA);
+  const [companies,setCompanies]=React.useState(COMPANIES_DATA);
+  const crm=React.useMemo(()=>({
+    contacts,leads,companies,setContacts,setLeads,setCompanies,
+    updateContact:(id,patch)=>setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
+    updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
+    updateCompany:(id,patch)=>setCompanies(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
+  }),[contacts,leads,companies]);
   const [billingState,setBillingState]=React.useState('active');
   const [mailAccounts,setMailAccounts]=React.useState([{addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'},{addr:'alex@bloom.co',initials:'AM',color:'#0078d4',provider:'microsoft365'}]);
   const connectMail=React.useCallback((acct)=>setMailAccounts(a=>a.find(x=>x.addr===acct.addr)?a:[...a,acct]),[]);
   const disconnectMail=React.useCallback((addr)=>setMailAccounts(a=>a.filter(x=>x.addr!==addr)),[]);
+  const [calItems,setCalItems]=React.useState(calSeedEvents);
+  const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
+  const calUpdateItem=React.useCallback((ev)=>setCalItems(a=>a.map(x=>x.id===ev.id?{...x,...ev}:x)),[]);
+  const calDeleteItem=React.useCallback((id)=>setCalItems(a=>a.filter(x=>x.id!==id)),[]);
+  const calToggleDone=React.useCallback((id)=>setCalItems(a=>a.map(x=>x.id===id?{...x,done:!x.done}:x)),[]);
+  const calCtx=React.useMemo(()=>({items:calItems,addItem:calAddItem,updateItem:calUpdateItem,deleteItem:calDeleteItem,toggleDone:calToggleDone}),[calItems,calAddItem,calUpdateItem,calDeleteItem,calToggleDone]);
   const goTo=React.useCallback((p)=>{setPage(p);window.scrollTo&&window.scrollTo(0,0);},[]);
   React.useEffect(()=>{window.__nrturOpenSearch=()=>setSearchOpen(true);window.__nrturOpenCmd=()=>setCmdOpen(true);return()=>{delete window.__nrturOpenSearch;delete window.__nrturOpenCmd;};},[]);
   React.useEffect(()=>{const fn=(e)=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setSearchOpen(false);setCmdOpen(true);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
@@ -6237,6 +6554,7 @@ function App(){
   return(
     <BillingContext.Provider value={{billingState,setBillingState}}>
      <MailAccountsContext.Provider value={{accounts:mailAccounts,connect:connectMail,disconnect:disconnectMail}}>
+     <CalendarContext.Provider value={calCtx}>
       {page==='landing'           && <LandingPage {...p}/>}
       {page==='signup'            && <SignUpPage {...p}/>}
       {page==='signin'            && <SignInPage {...p}/>}
@@ -6264,6 +6582,7 @@ function App(){
       {page==='deal-detail'       && <DealDetailPage {...p}/>}
       {page==='add-deal'          && <AddDealPage {...p}/>}
       {page==='calendar'          && <CalendarPage {...p}/>}
+      {page==='tasks'             && <TasksPage {...p}/>}
       {page==='inbox'             && <InboxPage {...p}/>}
       {page==='automation-builder'&& <AutomationBuilderPage {...p}/>}
       {page==='sms-sequence-builder' && <SequenceBuilderPage channel="sms" {...p}/>}
@@ -6278,6 +6597,7 @@ function App(){
       {page==='settings-general'  && <SettingsGeneralPage {...p}/>}
       {page==='settings-integrations' && <SettingsIntegrationsPage {...p}/>}
       {page==='settings-pipeline' && <SettingsPipelinePage {...p}/>}
+      {page==='settings-booking' && <SettingsBookingPage {...p}/>}
       {page==='settings-notifications' && <SettingsNotificationsPage {...p}/>}
       {page==='settings-unsubscribes' && <SettingsUnsubscribesPage {...p}/>}
       {page==='settings-privacy'  && <SettingsPrivacyPage {...p}/>}
@@ -6286,6 +6606,7 @@ function App(){
       {cmdOpen&&<CommandPalette close={()=>setCmdOpen(false)} goTo={(pg)=>{goTo(pg);setCmdOpen(false);}}/>}
       </div>}
       <DevNav goTo={goTo}/>
+     </CalendarContext.Provider>
      </MailAccountsContext.Provider>
     </BillingContext.Provider>
   );
