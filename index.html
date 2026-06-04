@@ -968,11 +968,12 @@ function AppTopbar({goTo,title,subtitle,rightSlot,noSearch,tabs}){
     <React.Fragment>
       {__bc.billingState==='payment-failed'&&(<div className="shrink-0 bg-red-500/15 border-b border-red-500/30 px-7 py-2 flex items-center gap-2"><I.Ban size={13} className="text-red-300 shrink-0"/><span className="text-[12px] text-red-200 font-medium">Payment failed — your card was declined. Update it to avoid suspension on June 8.</span><button onClick={()=>goTo('settings-billing')} className="ml-auto shrink-0 text-[12px] font-semibold text-red-100 hover:text-white underline">Fix now</button></div>)}
     <header className="app-topbar shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-6" style={{background:'var(--s925)'}}>
-      <div className="min-w-0 flex items-center gap-4">
+      <div className="min-w-0 flex items-center gap-3.5">
         {tabs}
+        {tabs&&(title||subtitle)&&<div className="w-px h-6 bg-white/[0.08] shrink-0"/>}
         {(title||subtitle)&&(<div className="min-w-0">
           {title&&!tabs&&<h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">{title}</h1>}
-          {subtitle&&<p className={['text-white/50 text-[13px]',title&&!tabs?'mt-1':''].join(' ')}>{subtitle}</p>}
+          {subtitle&&(typeof subtitle==='string'?<p className={['text-white/50 text-[13px]',title&&!tabs?'mt-1':''].join(' ')}>{subtitle}</p>:<div className="min-w-0">{subtitle}</div>)}
         </div>)}
       </div>
       {rightSlot&&(<div className="flex items-center gap-2.5 shrink-0">{rightSlot}</div>)}
@@ -2029,10 +2030,17 @@ function ContactsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="contacts" goTo={goTo}/>} title="Contacts" subtitle={`${activeView.label} · ${list.length} contact${list.length!==1?'s':''}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="contacts" goTo={goTo}/>}
+          subtitle={<div className="flex items-center gap-2.5 min-w-0">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><ActiveIcon size={14}/></span>
+            <span className="text-[15px] font-semibold text-white truncate">{activeView.label}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/60 text-[11px] font-semibold tabular-nums ring-1 ring-white/[0.08] shrink-0">{list.length}</span>
+          </div>}
           rightSlot={<>
-            <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
-            <button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+              <button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>
+              <button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>
+            </div>
             <button onClick={()=>goTo('add-contact')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Contact</button>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
@@ -2490,10 +2498,17 @@ function CompaniesPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="companies" goTo={goTo}/>} title="Companies" subtitle={`${activeView.label} · ${list.length} compan${list.length!==1?'ies':'y'}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="companies" goTo={goTo}/>}
+          subtitle={<div className="flex items-center gap-2.5 min-w-0">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><ActiveIcon size={14}/></span>
+            <span className="text-[15px] font-semibold text-white truncate">{activeView.label}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/60 text-[11px] font-semibold tabular-nums ring-1 ring-white/[0.08] shrink-0">{list.length}</span>
+          </div>}
           rightSlot={<>
-            <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
-            <button onClick={()=>showToast('Exported '+list.length+' companies to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+              <button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>
+              <button onClick={()=>showToast('Exported '+list.length+' companies to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>
+            </div>
             <button onClick={()=>goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Company</button>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
@@ -2802,10 +2817,17 @@ function LeadsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="leads" goTo={goTo}/>} title="Leads" subtitle={`${activeView.label} · ${list.length} lead${list.length!==1?'s':''}`}
+        <AppTopbar goTo={goTo} tabs={<ObjectTabs active="leads" goTo={goTo}/>}
+          subtitle={<div className="flex items-center gap-2.5 min-w-0">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><ActiveIcon size={14}/></span>
+            <span className="text-[15px] font-semibold text-white truncate">{activeView.label}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/60 text-[11px] font-semibold tabular-nums ring-1 ring-white/[0.08] shrink-0">{list.length}</span>
+          </div>}
           rightSlot={<>
-            <button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button>
-            <button onClick={()=>showToast('Exported '+list.length+' leads to CSV')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export</button>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+              <button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>
+              <button onClick={()=>showToast('Exported '+list.length+' leads to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>
+            </div>
             <button onClick={()=>goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Lead</button>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
