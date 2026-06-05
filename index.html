@@ -533,25 +533,26 @@ function Skel({ w, h='11px', r='5px', s={} }) {
   return <div style={{width:w,height:h,borderRadius:r,flexShrink:0,background:'linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 40%,rgba(255,255,255,0.04) 80%)',backgroundSize:'200% 100%',animation:'nrturShimmer 1.7s ease-in-out infinite',...s}}/>;
 }
 function useSkeleton(delay=1100){const [l,setL]=React.useState(true);React.useEffect(()=>{const t=setTimeout(()=>setL(false),delay);return()=>clearTimeout(t);},[]);return l;}
-// a11y: focus the dialog on open, trap Tab inside it, and restore focus to the trigger on close.
-function useFocusTrap(ref){
+// a11y: one global focus manager for every [role="dialog"] — focuses the dialog on open, traps Tab inside it, restores focus on close. Wrapped in try/catch so it can never break rendering.
+function GlobalDialogTrap(){
   React.useEffect(()=>{
-    const node=ref&&ref.current;if(!node)return;
-    const prev=document.activeElement;
     const sel='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
-    const focusables=()=>Array.prototype.slice.call(node.querySelectorAll(sel)).filter(el=>el.offsetParent!==null||el===document.activeElement);
-    const f0=focusables()[0];(f0||node).focus&&(f0||node).focus();
-    const onKey=(e)=>{if(e.key!=='Tab')return;const f=focusables();if(!f.length)return;const a=f[0],b=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();b.focus();}else if(!e.shiftKey&&document.activeElement===b){e.preventDefault();a.focus();}};
-    node.addEventListener('keydown',onKey);
-    return()=>{node.removeEventListener('keydown',onKey);prev&&prev.focus&&prev.focus();};
+    let prev=null;
+    const top=()=>{try{const ds=Array.prototype.slice.call(document.querySelectorAll('[role="dialog"]'));return ds[ds.length-1]||null;}catch(e){return null;}};
+    const foc=(node)=>Array.prototype.slice.call(node.querySelectorAll(sel)).filter(el=>el.offsetParent!==null||el===document.activeElement);
+    const onKey=(e)=>{try{if(e.key!=='Tab')return;const d=top();if(!d)return;const f=foc(d);if(!f.length)return;const a=f[0],b=f[f.length-1];if(e.shiftKey&&(document.activeElement===a||!d.contains(document.activeElement))){e.preventDefault();b.focus();}else if(!e.shiftKey&&(document.activeElement===b||!d.contains(document.activeElement))){e.preventDefault();a.focus();}}catch(err){}};
+    const obs=new MutationObserver(()=>{try{const d=top();if(d&&!d.__nt){d.__nt=1;prev=document.activeElement;const f=foc(d)[0];if(f&&!d.contains(document.activeElement))setTimeout(()=>{try{if(!d.contains(document.activeElement))f.focus();}catch(e){}},0);}else if(!d&&prev){const p=prev;prev=null;setTimeout(()=>{try{p.focus&&p.focus();}catch(e){}},0);}}catch(err){}});
+    document.addEventListener('keydown',onKey,true);
+    try{obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
+    return()=>{document.removeEventListener('keydown',onKey,true);try{obs.disconnect();}catch(e){}};
   },[]);
+  return null;
 }
 function ConfirmModal({title,body,confirmLabel='Delete',danger=true,onConfirm,onCancel}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onCancel();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onCancel]);
-  const dref=React.useRef(null);useFocusTrap(dref);
   return(
     <div className="fixed inset-0 z-[200] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div ref={dref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{width:400,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
+      <div role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{width:400,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
         <div className="flex items-start gap-4 mb-6">
           <div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',danger?'bg-red-500/10 ring-red-500/25':'bg-brand-500/10 ring-brand-500/25'].join(' ')}>
             {danger?<I.Trash size={17} style={{color:'#f87171'}}/>:<I.Sparkles size={17} style={{color:'#818cf8'}}/>}
@@ -795,7 +796,7 @@ function QuickContactModal({close,onToast}){
   const create=()=>{onToast&&onToast((f.first+' '+f.last).trim()+' added to contacts');close();};
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:520,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.UserPlus size={16}/></div><div><p className="text-white text-[15px] font-bold">New contact</p><p className="text-white/45 text-[12px]">Add a person or company to your CRM.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -825,7 +826,7 @@ function QuickDealModal({close,onToast}){
   const create=()=>{onToast&&onToast((f.name.trim()||'Deal')+' created');close();};
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:480,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:480,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.GitBranch size={16}/></div><div><p className="text-white text-[15px] font-bold">New deal</p><p className="text-white/45 text-[12px]">Start tracking a new opportunity.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
           <div><label className={L}>Deal name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Q3 Retainer" className={I_F}/></div>
@@ -851,7 +852,7 @@ function QuickLeadModal({close,onToast}){
   const create=()=>{onToast&&onToast((f.name.trim()||'Lead')+' added to leads');close();};
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:520,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Target size={16}/></div><div><p className="text-white text-[15px] font-bold">New lead</p><p className="text-white/45 text-[12px]">Capture an inbound or outbound lead.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -883,7 +884,7 @@ function QuickCompanyModal({close,onToast}){
   const create=()=>{onToast&&onToast((f.name.trim()||'Company')+' added to companies');close();};
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:520,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Building size={16}/></div><div><p className="text-white text-[15px] font-bold">New company</p><p className="text-white/45 text-[12px]">Add an organization or account.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1675,7 +1676,7 @@ function WidgetLibraryPanel({close,onAdd,role}){
   const [q,setQ]=React.useState('');
   return(<>
     <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
-    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[320px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+    <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[150] w-[320px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
       <div className="px-5 py-4 border-b border-white/[0.06] shrink-0"><div className="flex items-center justify-between mb-3"><p className="text-[15px] font-bold text-white">Add widget</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div><div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search widgets..." className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/></div></div>
       <div className="flex-1 overflow-y-auto scroll-area px-4 py-4 flex flex-col gap-5">
         {WIDGET_LIBRARY.map(sec=>{const locked=sec.team&&role==='Rep';const ids=sec.ids.filter(id=>{const d=getDef(id);return !q||d.name.toLowerCase().includes(q.toLowerCase())||d.desc.toLowerCase().includes(q.toLowerCase());});if(ids.length===0)return null;return(
@@ -1883,7 +1884,7 @@ function ContactsFilterPanel({close,onApply}){
   return(
     <>
       <div className="fixed inset-0 z-[90] bg-black/40" onClick={close}/>
-      <div className="fixed right-0 top-0 bottom-0 z-[100] w-72 flex flex-col border-l border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.5)]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)'}}>
+      <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[100] w-72 flex flex-col border-l border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.5)]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)'}}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-2"><p className="text-[14px] font-bold text-white">Filters</p>{activeCount>0&&<span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-white">{activeCount}</span>}</div>
           <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={15}/></button>
@@ -1913,7 +1914,7 @@ function DuplicateDetectionModal({email,close,onKeepBoth,onMerge}){
   const existing={name:'Sarah Chen',email:'sarah@meridian.co',co:'Meridian Agency',status:'Active',last:'2h ago',deal:'$24k'};
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
+      <div role="dialog" aria-modal="true" style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
         <div className="flex items-start gap-4 mb-6">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 flex items-center justify-center shrink-0"><I.Users size={17} style={{color:'#fbbf24'}}/></div>
           <div><p className="text-white text-[15px] font-bold">Possible duplicate detected</p><p className="text-white/55 text-[13px] mt-1">A contact with email <span className="text-white font-medium">{email}</span> already exists.</p></div>
@@ -2022,7 +2023,7 @@ function ViewBuilderPanel({initial,close,onSave,rows,fields=VIEW_FIELDS,fieldOps
     </div>);};
   return(<>
     <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
-    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[380px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+    <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[150] w-[380px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><p className="text-[15px] font-bold text-white">{initial?'Edit view':'New view'}</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-5">
         <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">View name</label><input value={name} onChange={e=>setName(e.target.value)} autoFocus placeholder="e.g. At-risk customers" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>
@@ -2862,7 +2863,7 @@ function ConvertLeadModal({lead,close,onConfirm}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
+      <div role="dialog" aria-modal="true" style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
         <div className="flex items-start gap-4 mb-6">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.ArrowRight size={17} style={{color:'#34d399'}}/></div>
           <div><p className="text-white text-[15px] font-bold">Convert {lead.name}</p><p className="text-white/55 text-[13px] mt-1">This qualified lead becomes a Contact and a Company. Pick what to create.</p></div>
@@ -3192,7 +3193,7 @@ function MailboxConnectModal({close,onConnected}){
   const headSub=step==='provider'?'Choose your email provider':(P&&P.auth==='oauth'?'Secure sign-in with '+P.label.split(' / ')[0]:'Enter your mail server details');
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:480,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:480,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3">{prov?<Mark pkey={prov} size={12}/>:<div className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center"><I.Mail size={16}/></div>}<div><p className="text-white text-[15px] font-bold">{headTitle}</p><p className="text-white/45 text-[12px]">{headSub}</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-5 py-5" style={{background:'var(--s850)'}}>
           {step==='provider'&&(<div className="grid grid-cols-2 gap-2.5">{PROVIDER_ORDER.map(k=>{const pp=PROVIDERS[k];return(
@@ -4137,7 +4138,7 @@ function TriggerPicker({current,onPick,close}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:560,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:560,maxHeight:'86vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Zap size={16}/></div><div><p className="text-white text-[15px] font-bold">Choose a trigger</p><p className="text-white/45 text-[12px]">The event that starts this automation.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="px-6 pt-4 shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40"><I.Search size={13} className="text-white/40"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search triggers…" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30"/></div></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-4 flex flex-col gap-5" style={{background:'var(--s850)'}}>
@@ -4644,7 +4645,7 @@ function BookingLinkModal({initial,close,onSave}){
   const valid=name.trim();
   const autoSlug=(slug||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''))||'link';
   return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-    <div style={{width:480}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+    <div style={{width:480}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><p className="text-white text-[15px] font-bold">{ed.id?'Edit booking link':'New booking link'}</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
         <div><label className={L}>Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Intro Call" className={I_F}/></div>
@@ -5445,7 +5446,7 @@ function AutomationLogModal({auto,close}){
   const CHIPS=['All','Success','Warning','Failed'];
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:560,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:560,maxHeight:'86vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.History size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-bold truncate">Run log</p><p className="text-white/45 text-[12px] truncate">{auto?auto.name:'Automation'}</p></div></div><button onClick={close} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
         <div className="px-6 py-3 border-b border-white/[0.06] shrink-0 flex items-center gap-4 flex-wrap" style={{background:'var(--s850)'}}>
           <div className="flex items-center gap-1.5 text-[12px] text-white/45"><I.Play size={10}/>Runs <span className="text-white font-bold tabular-nums">{auto?auto.runs:0}</span></div>
@@ -5512,7 +5513,7 @@ function EnrolledContactsModal({flow,close}){
   const CHIPS=['All','Active','Waiting','Completed','Exited'];
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:600,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:600,maxHeight:'86vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.Users size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-bold truncate">Enrolled contacts</p><p className="text-white/45 text-[12px] truncate">{flow?flow.name:''} · who is at which step right now</p></div></div><button onClick={close} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
         <div className="px-6 py-3 border-b border-white/[0.06] shrink-0 flex items-center gap-4 flex-wrap" style={{background:'var(--s850)'}}>
           <div className="flex items-center gap-1.5 text-[12px] text-white/45"><I.Users size={11}/>Active <span className="text-white font-bold tabular-nums">{all.filter(e=>e.status==='active'||e.status==='waiting').length}</span></div>
@@ -5557,7 +5558,7 @@ function EngagementModal({flow,close}){
   const EVIC={opened:[I.Eye,'#34d399'],clicked:[I.ExternalLink,'#60a5fa'],replied:[I.Reply,'#a78bfa'],bounced:[I.Ban,'#fbbf24'],unsub:[I.Ban,'#f87171']};
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:560,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:560,maxHeight:'86vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.BarChart size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-bold truncate">Engagement</p><p className="text-white/45 text-[12px] truncate">{flow?flow.name:''}</p></div></div><button onClick={close} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-5" style={{background:'var(--s850)'}}>
           <div>
@@ -5598,7 +5599,7 @@ function AutomationTemplatePanel({close,onUse}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(<>
     <div className="fixed inset-0 z-[140] bg-black/40" onClick={close}/>
-    <div className="fixed right-0 top-0 bottom-0 z-[150] w-[360px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
+    <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[150] w-[360px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
       <div className="px-5 py-4 border-b border-white/[0.06] shrink-0"><div className="flex items-center justify-between mb-3"><p className="text-[15px] font-bold text-white">Automation templates</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div><div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates..." className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30"/></div></div>
       <div className="px-5 py-2.5 border-b border-white/[0.06] flex items-center gap-1.5 overflow-x-auto scroll-area shrink-0">{cats.map(c=>(<button key={c} onClick={()=>setCat(c)} className={['shrink-0 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all',cat===c?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>{c}</button>))}</div>
       <div className="flex-1 overflow-y-auto scroll-area p-4 flex flex-col gap-3">{list.map(t=>(<div key={t.name} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4"><p className="text-[14px] font-bold text-white">{t.name}</p><p className="text-[11px] text-white/45 mt-1"><span className="text-white/35">When:</span> {t.trigger}</p><div className="mt-3 flex flex-col gap-1.5">{t.steps.map((s,i)=>(<div key={i} className="flex items-center gap-2 text-[11px] text-white/60"><span className="w-1 h-1 rounded-full bg-brand-400 shrink-0"/>{s}</div>))}</div><button onClick={()=>onUse(t)} className="mt-3.5 w-full py-2 rounded-xl text-[12px] font-semibold text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}{list.length===0&&<div className="text-center text-[12px] text-white/35 py-10">No templates found.</div>}</div>
@@ -5856,7 +5857,7 @@ function FormSubmissionsModal({form,close}){
   const rows=FORM_SUBMISSIONS.filter(s=>s.form===(form&&form.name));
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:560,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div style={{width:560,maxHeight:'86vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.Note size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-bold truncate">Submissions</p><p className="text-white/45 text-[12px] truncate">{form?form.name:''} · {form?form.submissions:0} total</p></div></div><button onClick={close} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-4 flex flex-col gap-2" style={{background:'var(--s850)'}}>
           {rows.length===0?(<div className="text-center py-10"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/25"><I.Note size={20}/></div><p className="text-[13px] font-semibold text-white/55">No submissions yet</p><p className="text-[12px] text-white/35 mt-1">Embed this form to start collecting leads.</p></div>):rows.map((s,i)=>(
@@ -6336,7 +6337,7 @@ function CalEventDetailModal({event,onClose,onEdit,onDelete,onComplete,goTo}){
   const dateLabel=CAL_DAYS[event.date.getDay()]+' '+event.date.getDate()+' '+CAL_MONTHS[event.date.getMonth()].slice(0,3)+(event.allDay?' · All day':' · '+calFmtTime(event.date)+(event.end?' – '+calFmtTime(event.end):''));
   const Row=({Icon,children})=>(<div className="flex items-center gap-3 text-[13px] text-white/75"><Icon size={15} className="text-white/40 shrink-0"/>{children}</div>);
   return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{width:480,borderLeft:'3px solid '+ty.color}} className="rounded-2xl border border-white/[0.10] overflow-hidden">
+    <div role="dialog" aria-modal="true" style={{width:480,borderLeft:'3px solid '+ty.color}} className="rounded-2xl border border-white/[0.10] overflow-hidden">
       <div className="px-6 py-5" style={{background:'var(--s850)'}}>
         <div className="flex items-start justify-between gap-3 mb-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{background:ty.bg,color:ty.color,border:'1px solid '+ty.border}}><span className="w-1.5 h-1.5 rounded-full" style={{background:ty.color}}/>{ty.label}</span><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <h2 className="text-white text-[18px] font-bold mb-4">{event.title}</h2>
@@ -6386,7 +6387,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
     onSave(ev);
   };
   return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+    <div style={{width:520,maxHeight:'90vh'}} role="dialog" aria-modal="true" className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><p className="text-white text-[15px] font-bold">{ed.id?'Edit event':'New event'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Add title…" className="w-full bg-transparent outline-none text-[16px] font-semibold text-white placeholder:text-white/30 border-b border-white/[0.10] focus:border-brand-500/40 pb-2 transition-all"/>
@@ -6655,6 +6656,7 @@ function App(){
       {cmdOpen&&<CommandPalette close={()=>setCmdOpen(false)} goTo={(pg)=>{goTo(pg);setCmdOpen(false);}}/>}
       </div>}
       <DevNav goTo={goTo}/>
+      <GlobalDialogTrap/>
      </CalendarContext.Provider>
      </CrmDataContext.Provider>
      </MailAccountsContext.Provider>
