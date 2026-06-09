@@ -1101,11 +1101,12 @@ function NewContactSplitButton({goTo,onImport}){
 }
 // ── QuickAddMenu ── two-panel hover: records (toggle + list) | Build & automate ──
 function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
-  const [bulkOpen,setBulkOpen]=React.useState(false);
-  const bulkT=React.useRef(null);
-  const openBulk=()=>{clearTimeout(bulkT.current);setBulkOpen(true);};
-  const closeBulk=()=>{clearTimeout(bulkT.current);bulkT.current=setTimeout(()=>setBulkOpen(false),120);};
-  const doBulk=(t)=>{close();if(window.__nrturQuickAdd){window.__nrturQuickAdd(t,'multiple');}else{openMulti(t);}};
+  const [mode,setMode]=React.useState('single');
+  const [impOpen,setImpOpen]=React.useState(false);
+  const impT=React.useRef(null);
+  const openImp=()=>{clearTimeout(impT.current);setImpOpen(true);};
+  const closeImp=()=>{clearTimeout(impT.current);impT.current=setTimeout(()=>setImpOpen(false),120);};
+  const doImport=(t)=>{close();setQuickModal('import:'+t);};
   const pick=(m)=>{close();if(['contact','company','deal','lead'].includes(m)&&window.__nrturQuickAdd){window.__nrturQuickAdd(m);}else{setQuickModal(m);}};
   const nav=(p)=>{close();goTo(p);};
   const SINGLE=[
@@ -1117,11 +1118,17 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
     {l:'Email',d:'Compose a message',Icon:I.Mail,c:'#6366f1',m:'email'},
     {l:'Call',d:'Log an outcome',Icon:I.Phone,c:'#34d399',m:'call'},
   ];
-  const BULK=[
+  const MULTI=[
+    {l:'Contacts',d:'Spreadsheet entry',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
+    {l:'Leads',d:'Spreadsheet entry',Icon:I.Target,c:'#10b981',t:'lead'},
+    {l:'Companies',d:'Spreadsheet entry',Icon:I.Building,c:'#0ea5e9',t:'company'},
+    {l:'Deals',d:'Spreadsheet entry',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
+  ];
+  const IMPORT=[
     {l:'Contacts',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
-    {l:'Leads',Icon:I.Target,c:'#10b981',t:'lead'},
     {l:'Companies',Icon:I.Building,c:'#0ea5e9',t:'company'},
     {l:'Deals',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
+    {l:'Leads',Icon:I.Target,c:'#10b981',t:'lead'},
   ];
   const BUILD=[
     {l:'Form',d:'Capture leads on your site',Icon:I.Note,c:'#22d3ee',go:'form-builder'},
@@ -1129,32 +1136,36 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
     {l:'Automation',d:'Trigger-based workflow',Icon:I.Zap,c:'#f59e0b',go:'automation-builder'},
     {l:'Sequence',d:'Multi-step outreach',Icon:I.Layers,c:'#a78bfa',go:'email-sequence-builder'},
   ];
-  const list=SINGLE;
+  const list=mode==='single'?SINGLE:MULTI;
   return(<div onMouseEnter={onEnter} onMouseLeave={onLeave} className="absolute left-[42px] top-0 z-50 flex rounded-2xl border border-white/[0.08] overflow-hidden" style={{width:606,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
     {/* LEFT — records */}
     <div className="w-[300px] shrink-0 py-2 border-r border-white/[0.07] flex flex-col">
-      <p className="px-3.5 pt-2 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Add a record</p>
-      <div className="overflow-y-auto scroll-area" style={{maxHeight:300}}>
-      {SINGLE.map(it=>(<button key={it.l} onClick={()=>pick(it.m)} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+      <div className="px-2 pb-2">
+        <div className="flex p-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06]">
+          {[['single','Single record',I.UserPlus],['multiple','Multiple records',I.Layers]].map(([m,lb,Ic])=>(<button key={m} onClick={()=>setMode(m)} className={['flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11.5px] font-semibold transition-all',mode===m?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={12}/>{lb}</button>))}
+        </div>
+      </div>
+      <p className="px-3.5 pt-1 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">{mode==='single'?'Add a single record':'Add several at once'}</p>
+      <div className="flex-1 overflow-y-auto scroll-area" style={{maxHeight:330}}>
+      {list.map(it=>(<button key={it.l} onClick={()=>{if(mode==='single'){pick(it.m);}else{close();openMulti(it.t);}}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
         <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={14}/></span>
         <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
+        {mode==='multiple'&&<I.ChevronRight size={14} className="shrink-0 text-white/25 group-hover:text-brand-300"/>}
       </button>))}
       </div>
-      <div className="relative" onMouseEnter={openBulk} onMouseLeave={closeBulk}>
-        <button onClick={openBulk} className={['w-full flex items-center gap-3 px-3 py-2 text-left transition-colors group',bulkOpen?'bg-white/[0.05]':'hover:bg-white/[0.05]'].join(' ')}>
-          <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.06] text-white/70" style={{boxShadow:'inset 0 0 0 1px rgba(255,255,255,0.08)'}}><I.Layers size={14}/></span>
-          <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">Bulk add</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">Multiple records at once</span></span>
-          <I.ChevronRight size={14} className="shrink-0 text-white/30 group-hover:text-brand-300"/>
+      <div className="h-px bg-white/[0.06] mx-2 my-1"/>
+      <div className="relative" onMouseEnter={openImp} onMouseLeave={closeImp}>
+        <button onClick={openImp} className={['w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[12.5px] font-semibold text-emerald-300 hover:text-emerald-200 transition-colors',impOpen?'bg-white/[0.04]':'hover:bg-white/[0.04]'].join(' ')}>
+          <I.Upload size={14}/><span className="flex-1">Import in bulk</span>
+          <I.ChevronRight size={14} className="shrink-0 text-emerald-300/60"/>
         </button>
-        {bulkOpen&&(<div onMouseEnter={openBulk} onMouseLeave={closeBulk} className="absolute left-full top-0 ml-1 z-[60] w-[176px] py-1 rounded-xl border border-white/[0.08]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-          {BULK.map(it=>(<button key={it.t} onClick={()=>doBulk(it.t)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] cursor-pointer text-left transition-colors">
+        {impOpen&&(<div onMouseEnter={openImp} onMouseLeave={closeImp} className="absolute left-full bottom-0 ml-1 z-[60] w-[176px] py-1 rounded-xl border border-white/[0.08]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+          {IMPORT.map(it=>(<button key={it.t} onClick={()=>doImport(it.t)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] cursor-pointer text-left transition-colors">
             <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={13}/></span>
-            <span className="text-[12.5px] font-medium text-white/85">{it.l}</span>
+            <span className="text-[12.5px] font-medium text-white/85">Import {it.l.toLowerCase()}</span>
           </button>))}
         </div>)}
       </div>
-      <div className="h-px bg-white/[0.06] mx-2 my-1"/>
-      <button onClick={()=>{close();setQuickModal('import');}} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[12.5px] font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-white/[0.04] transition-colors"><I.Upload size={14}/>Import contacts in bulk</button>
     </div>
     {/* RIGHT — build & automate */}
     <div className="flex-1 flex flex-col p-4 relative" style={{background:'linear-gradient(160deg, rgba(129,140,248,0.14), rgba(129,140,248,0.02) 60%)'}}>
@@ -1513,7 +1524,7 @@ function AppSidebar({active,goTo}){
       {quickModal==='task'&&<TaskFormModal initial={{type:'task',allDay:true,priority:'Medium'}} onClose={()=>setQuickModal(null)} onSave={(ev)=>{calAddItem(ev);setQuickModal(null);sideToastFn('Task created');}}/>}
       {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
       {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
-      {quickModal==='import'&&<BulkImportWizard object='contact' close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {typeof quickModal==='string'&&quickModal.indexOf('import')===0&&<BulkImportWizard object={quickModal.split(':')[1]||'contact'} close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
       {/* bulk entry now consolidated into AddRecordDrawer (initialMode='multiple') */}
       {sideToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{sideToast}</div>)}
     </aside>
