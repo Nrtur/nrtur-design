@@ -2536,8 +2536,8 @@ function BulkImportWizard({object='contact',close,onToast}){
     onToast&&onToast(nCreated+' '+(nCreated===1?cfg.label.toLowerCase():cfg.noun)+' imported');
   };
   const SEL='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40';
-  return(<div className="fixed inset-0 z-[175] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-    <div style={{width:760,maxWidth:'100%',maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" onClick={e=>e.stopPropagation()}>
+  return(<><div className="fixed inset-0 bg-black/40 z-[174]" onClick={close}/>
+    <div role="dialog" aria-modal="true" className="app-drawer fixed right-0 top-0 bottom-0 z-[175] w-[600px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}} onClick={e=>e.stopPropagation()}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
         <div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:cfg.c+'1f',color:cfg.c,boxShadow:'inset 0 0 0 1px '+cfg.c+'33'}}><I.Upload size={17}/></span><div><p className="text-white text-[15px] font-bold leading-tight">Import {cfg.noun}</p><p className="text-white/45 text-[12px] mt-0.5">Bring records in from a CSV file.</p></div></div>
         <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
@@ -2616,7 +2616,7 @@ function BulkImportWizard({object='contact',close,onToast}){
         </div>
       </div>
     </div>
-  </div>);
+  </>);
 }
 
 function CsvImportModal({close,onToast}){
