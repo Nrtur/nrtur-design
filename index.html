@@ -355,6 +355,644 @@ function NotifDropdown({close,goTo}){
   );
 }
 // ?? AppSidebar ????????????????????????????????????????????????????????????????
+// Quick-add modal forms (opened from the sidebar "+" button — open in place, no navigation)
+// ── ContactFields ── the single-contact form inputs, shared by Quick Add + Add Contact page ──
+function ContactFields({f,set}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  return(<React.Fragment>
+    <div className="grid grid-cols-2 gap-4 mb-4">
+      <div><label className={L}>First name</label><input value={f.first} onChange={e=>set('first',e.target.value)} placeholder="Sarah" className={I_F}/></div>
+      <div><label className={L}>Last name</label><input value={f.last} onChange={e=>set('last',e.target.value)} placeholder="Chen" className={I_F}/></div>
+      <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Meridian Agency" className={I_F}/></div>
+      <div><label className={L}>Job title</label><input value={f.title} onChange={e=>set('title',e.target.value)} placeholder="CEO" className={I_F}/></div>
+    </div>
+    <div className="mb-4"><label className={L}>Work email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="email@company.com" className={I_F}/></div>
+    <div className="grid grid-cols-2 gap-4">
+      <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+      <div><label className={L}>Status</label><select value={f.status} onChange={e=>set('status',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CONTACT_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+    </div>
+  </React.Fragment>);
+}
+function QuickContactModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({first:'',last:'',email:'',phone:'',company:'',title:'',status:'Prospect'});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.first.trim()&&f.email.trim();
+  const create=()=>{onToast&&onToast((f.first+' '+f.last).trim()+' added to contacts');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.UserPlus size={16}/></div><div><p className="text-white text-[15px] font-bold">New contact</p><p className="text-white/45 text-[12px]">Add a person or company to your CRM.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <ContactFields f={f} set={set}/>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create contact</button></div>
+      </div>
+    </div>
+  );
+}
+function QuickDealModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',company:'',value:'',date:'',stage:DEAL_STAGE_ORDER[0]});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Deal')+' created');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:480,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.GitBranch size={16}/></div><div><p className="text-white text-[15px] font-bold">New deal</p><p className="text-white/45 text-[12px]">Start tracking a new opportunity.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+          <div><label className={L}>Deal name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Q3 Retainer" className={I_F}/></div>
+          <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Search or add..." className={I_F}/></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Deal value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input value={f.value} onChange={e=>set('value',e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
+            <div><label className={L}>Close date</label><input type="date" value={f.date} onChange={e=>set('date',e.target.value)} className={I_F} style={{colorScheme:'dark'}}/></div>
+          </div>
+          <div><label className={L}>Stage</label><select value={f.stage} onChange={e=>set('stage',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create deal</button></div>
+      </div>
+    </div>
+  );
+}
+function QuickLeadModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',company:'',email:'',phone:'',source:LEAD_SOURCES[0],status:LEAD_STATUSES[0],value:''});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim()&&f.email.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Lead')+' added to leads');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Target size={16}/></div><div><p className="text-white text-[15px] font-bold">New lead</p><p className="text-white/45 text-[12px]">Capture an inbound or outbound lead.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Full name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Olivia Bennett" className={I_F}/></div>
+            <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Brightwave Studio" className={I_F}/></div>
+          </div>
+          <div className="mb-4"><label className={L}>Email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="name@company.com" className={I_F}/></div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+            <div><label className={L}>Est. value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input value={f.value} onChange={e=>set('value',e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Source</label><select value={f.source} onChange={e=>set('source',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{LEAD_SOURCES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+            <div><label className={L}>Status</label><select value={f.status} onChange={e=>set('status',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{LEAD_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create lead</button></div>
+      </div>
+    </div>
+  );
+}
+function QuickCompanyModal({close,onToast}){
+  const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const [f,setF]=React.useState({name:'',domain:'',industry:INDUSTRIES[0],type:COMPANY_TYPES[0],size:'',phone:''});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const valid=f.name.trim();
+  const create=()=>{onToast&&onToast((f.name.trim()||'Company')+' added to companies');close();};
+  return(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Building size={16}/></div><div><p className="text-white text-[15px] font-bold">New company</p><p className="text-white/45 text-[12px]">Add an organization or account.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Company name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Meridian Agency" className={I_F}/></div>
+            <div><label className={L}>Website</label><input value={f.domain} onChange={e=>set('domain',e.target.value)} placeholder="https://meridian.co" className={I_F}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div><label className={L}>Industry</label><select value={f.industry} onChange={e=>set('industry',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{INDUSTRIES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+            <div><label className={L}>Type</label><select value={f.type} onChange={e=>set('type',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{COMPANY_TYPES.map(s=>(<option key={s}>{s}</option>))}</select></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className={L}>Employees</label><input type="number" value={f.size} onChange={e=>set('size',e.target.value)} placeholder="50" className={I_F}/></div>
+            <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={create} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create company</button></div>
+      </div>
+    </div>
+  );
+}
+// ── sheetTypeCfg ── column model for the spreadsheet entry grid, per record type ──
+function sheetTypeCfg(type){
+  if(type==='lead')return{label:'Leads',noun:'leads',one:'lead',Icon:I.Target,c:'#10b981',req:['name','email'],minW:880,
+    cols:[{key:'name',label:'Full name',ph:'Olivia Bennett'},{key:'company',label:'Company',ph:'Brightwave'},{key:'email',label:'Email',ph:'name@company.com'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'},{key:'source',label:'Source',type:'select',opts:LEAD_SOURCES},{key:'status',label:'Status',type:'select',opts:LEAD_STATUSES}]};
+  if(type==='company')return{label:'Companies',noun:'companies',one:'company',Icon:I.Building,c:'#0ea5e9',req:['name'],minW:820,
+    cols:[{key:'name',label:'Company name',ph:'Meridian Agency'},{key:'domain',label:'Website',ph:'https://meridian.co'},{key:'industry',label:'Industry',type:'select',opts:INDUSTRIES},{key:'ctype',label:'Type',type:'select',opts:COMPANY_TYPES},{key:'size',label:'Size',ph:'25'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'}]};
+  if(type==='deal')return{label:'Deals',noun:'deals',one:'deal',Icon:I.GitBranch,c:'#8b5cf6',req:['name'],minW:760,
+    cols:[{key:'name',label:'Deal name',ph:'Q3 Retainer'},{key:'company',label:'Company',ph:'Meridian Agency'},{key:'value',label:'Value ($)',ph:'24000'},{key:'stage',label:'Stage',type:'select',opts:DEAL_STAGE_ORDER},{key:'date',label:'Close date',ph:'2026-09-01'}]};
+  return{label:'Contacts',noun:'contacts',one:'contact',Icon:I.UserPlus,c:'#3b82f6',req:['first','email'],minW:880,
+    cols:[{key:'first',label:'First name',ph:'Sarah'},{key:'last',label:'Last name',ph:'Chen'},{key:'email',label:'Email',ph:'sarah@meridian.co'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'},{key:'company',label:'Company',ph:'Meridian Agency'},{key:'title',label:'Job title',ph:'CEO'},{key:'status',label:'Status',type:'select',opts:CONTACT_STATUSES}]};
+}
+// ── RecordSheet ── Excel-style grid for entering / pasting many records of one type at once ──
+function RecordSheet({type='contact',variant='page',onToast,onCreate,onCreateRows}){
+  const cfg=sheetTypeCfg(type);
+  const COLS=cfg.cols;
+  const compact=variant==='panel';
+  const newRow=()=>{const o={_id:Math.random().toString(36).slice(2,9)};COLS.forEach(c=>{o[c.key]=c.type==='select'?c.opts[0]:'';});return o;};
+  const [rows,setRows]=React.useState(()=>Array.from({length:compact?4:6},newRow));
+  const wrapRef=React.useRef(null);
+  const tpl=['28px',...COLS.map(c=>c.type==='select'?'120px':(c.key==='email'?'minmax(170px,1.7fr)':'minmax(120px,1.1fr)')),'34px'].join(' ');
+  const minW=cfg.minW;
+  const setCell=(ri,key,val)=>setRows(rs=>rs.map((r,i)=>i===ri?{...r,[key]:val}:r));
+  const addRows=(n=1)=>setRows(rs=>[...rs,...Array.from({length:n},newRow)]);
+  const delRow=(ri)=>setRows(rs=>rs.length<=1?[newRow()]:rs.filter((_,i)=>i!==ri));
+  const isReady=(r)=>cfg.req.every(k=>k==='email'?/\S+@\S+\.\S+/.test(r.email||''):String(r[k]||'').trim().length>0);
+  const ready=rows.filter(isReady);
+  const focusCell=(ri,ci)=>{const el=wrapRef.current&&wrapRef.current.querySelector(`[data-r="${ri}"][data-c="${ci}"]`);if(el){el.focus();el.select&&el.select();}};
+  const onCellKey=(e,ri,ci)=>{
+    if(e.key==='Enter'){e.preventDefault();if(ri>=rows.length-1){addRows(1);setTimeout(()=>focusCell(ri+1,ci),0);}else focusCell(ri+1,ci);}
+    else if(e.key==='ArrowDown'){e.preventDefault();focusCell(Math.min(ri+1,rows.length-1),ci);}
+    else if(e.key==='ArrowUp'){e.preventDefault();focusCell(Math.max(ri-1,0),ci);}
+  };
+  const onCellPaste=(e,ri,ci)=>{
+    const txt=e.clipboardData.getData('text');
+    if(!/[\t\n]/.test(txt))return;
+    e.preventDefault();
+    let lines=txt.replace(/\r/g,'').split('\n');
+    if(lines.length&&lines[lines.length-1]==='')lines.pop();
+    setRows(rs=>{
+      const next=rs.map(r=>({...r}));
+      lines.forEach((line,li)=>{
+        const tr=ri+li; while(next.length<=tr)next.push(newRow());
+        line.split('\t').forEach((val,k)=>{
+          const col=COLS[ci+k]; if(!col)return; const v=val.trim();
+          if(col.type==='select'){const m=col.opts.find(o=>o.toLowerCase()===v.toLowerCase());next[tr][col.key]=m||next[tr][col.key];}
+          else next[tr][col.key]=v;
+        });
+      });
+      return next;
+    });
+    onToast&&onToast(lines.length+(lines.length===1?' row pasted':' rows pasted'));
+  };
+  const cellCls='w-full bg-transparent px-2.5 py-[9px] text-[12.5px] text-white placeholder:text-white/20 outline-none focus:bg-brand-500/[0.10] focus:shadow-[inset_0_0_0_1.5px_rgba(99,102,241,0.55)] transition-colors';
+  const HCELL='px-2.5 py-2 text-[10px] font-semibold text-white/40 uppercase tracking-[0.13em] border-r border-white/[0.05] truncate';
+  return(<div>
+    <div ref={wrapRef} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'rgba(255,255,255,0.015)'}}>
+      <div className="overflow-x-auto scroll-area">
+        <div style={{minWidth:minW}}>
+          <div className="grid bg-white/[0.04] border-b border-white/[0.07]" style={{gridTemplateColumns:tpl}}>
+            <div className="px-1 py-2 text-[10px] font-semibold text-white/40 text-center border-r border-white/[0.05]">#</div>
+            {COLS.map(c=>(<div key={c.key} className={HCELL}>{c.label}</div>))}
+            <div/>
+          </div>
+          <div className="overflow-y-auto scroll-area" style={{maxHeight:compact?208:360}}>
+            {rows.map((r,ri)=>(
+              <div key={r._id} className="grid group hover:bg-white/[0.02] transition-colors" style={{gridTemplateColumns:tpl}}>
+                <div className="border-r border-b border-white/[0.05] flex items-center justify-center text-[11px] text-white/25 tabular-nums select-none">{ri+1}</div>
+                {COLS.map((c,ci)=>(
+                  <div key={c.key} className="border-r border-b border-white/[0.05] min-w-0">
+                    {c.type==='select'
+                      ?<select data-r={ri} data-c={ci} value={r[c.key]} onChange={e=>setCell(ri,c.key,e.target.value)} className={cellCls+' appearance-none cursor-pointer'} style={{colorScheme:'dark',background:'transparent'}}>{c.opts.map(o=>(<option key={o} style={{background:'var(--s850)'}}>{o}</option>))}</select>
+                      :<input data-r={ri} data-c={ci} value={r[c.key]} onChange={e=>setCell(ri,c.key,e.target.value)} onKeyDown={e=>onCellKey(e,ri,ci)} onPaste={e=>onCellPaste(e,ri,ci)} placeholder={c.ph} className={cellCls} spellCheck={false} autoComplete="off"/>}
+                  </div>
+                ))}
+                <div className="border-b border-white/[0.05] flex items-center justify-center">
+                  <button onClick={()=>delRow(ri)} title="Remove row" className="w-6 h-6 rounded-md flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"><I.Trash size={12}/></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className="flex items-center gap-2 mt-3 flex-wrap">
+      <button onClick={()=>addRows(1)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:text-white transition-all"><I.Plus size={12} stroke={2.4}/>Add row</button>
+      <button onClick={()=>addRows(5)} className="px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.04] transition-all">+5 rows</button>
+      <span className="inline-flex items-center gap-1.5 text-[11px] text-white/30 pl-1"><I.Copy size={11}/>Paste rows straight from Excel or Google Sheets</span>
+      <div className="ml-auto flex items-center gap-3">
+        <span className="text-[12px] text-white/45 tabular-nums">{ready.length} of {rows.length} ready</span>
+        <button disabled={!ready.length} onClick={()=>{onCreateRows&&onCreateRows(ready);onCreate&&onCreate(ready.length);}} className={['inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold transition-all',ready.length?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{ready.length?`Create ${ready.length} ${ready.length===1?cfg.one:cfg.noun}`:`Create ${cfg.noun}`}</button>
+      </div>
+    </div>
+  </div>);
+}
+// ── ContactCreator ── renders ONE mode (single form or multiple sheet); no in-page toggle ──
+function ContactCreator({variant='page',initialMode='single',goTo,onSingle,onBulk,onToast}){
+  const mode=initialMode==='multiple'?'multiple':'single';
+  const [f,setF]=React.useState({first:'',last:'',email:'',phone:'',company:'',title:'',status:'Prospect'});
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  const valid=f.first.trim()&&/\S+@\S+\.\S+/.test(f.email);
+  const submitSingle=()=>{if(!valid)return;onSingle&&onSingle(f);};
+  if(mode==='multiple')return(<RecordSheet variant={variant} onToast={onToast} onCreate={onBulk}/>);
+  return(<div onKeyDown={e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))submitSingle();}}>
+    <ContactFields f={f} set={set}/>
+    <div className="flex items-center justify-end gap-3 mt-5">
+      <button onClick={()=>goTo&&goTo('contacts')} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+      <button onClick={submitSingle} disabled={!valid} className={['inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.UserPlus size={14}/>Create contact</button>
+    </div>
+  </div>);
+}
+// ── NewContactSplitButton ── primary "New contact" with single / multiple / import menu ──
+function NewContactSplitButton({goTo,onImport}){
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const items=[
+    {l:'Add single contact',d:'One person at a time',Icon:I.UserPlus,act:()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact'):goTo('add-contact','single')},
+    {l:'Add multiple contacts',d:'Spreadsheet-style entry',Icon:I.Layers,act:()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact'):goTo('add-contact','multiple')},
+  ];
+  return(<div ref={ref} className="relative">
+    <div className="flex items-stretch rounded-xl overflow-hidden shadow-brand">
+      <button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact'):goTo('add-contact','single')} className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-colors"><I.Plus size={14} stroke={2.4}/>New Contact</button>
+      <button onClick={()=>setOpen(v=>!v)} aria-label="More create options" className={['px-2 flex items-center justify-center text-white border-l border-white/20 transition-colors',open?'bg-brand-400':'bg-brand-500 hover:bg-brand-400'].join(' ')}><I.ChevronDown size={14}/></button>
+    </div>
+    {open&&(<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+      {items.map(it=>(<button key={it.l} onClick={()=>{setOpen(false);it.act();}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+        <span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><it.Icon size={14}/></span>
+        <span className="min-w-0"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
+      </button>))}
+      <div className="h-px bg-white/[0.06] mx-2 my-1"/>
+      <button onClick={()=>{setOpen(false);onImport&&onImport();}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white/55" style={{background:'rgba(255,255,255,0.05)'}}><I.Upload size={14}/></span>
+        <span className="min-w-0"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">Import from CSV</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">Bulk upload & map columns</span></span>
+      </button>
+    </div>)}
+  </div>);
+}
+// ── QuickAddMenu ── two-panel hover: records (toggle + list) | Build & automate ──
+function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
+  const [mode,setMode]=React.useState('single');
+  const [impOpen,setImpOpen]=React.useState(false);
+  const impT=React.useRef(null);
+  const openImp=()=>{clearTimeout(impT.current);setImpOpen(true);};
+  const closeImp=()=>{clearTimeout(impT.current);impT.current=setTimeout(()=>setImpOpen(false),120);};
+  const doImport=(t)=>{close();setQuickModal('import:'+t);};
+  const pick=(m)=>{close();if(['contact','company','deal','lead'].includes(m)&&window.__nrturQuickAdd){window.__nrturQuickAdd(m);}else{setQuickModal(m);}};
+  const nav=(p)=>{close();goTo(p);};
+  const SINGLE=[
+    {l:'Lead',d:'Inbound or outbound',Icon:I.Target,c:'#10b981',m:'lead'},
+    {l:'Contact',d:'A person',Icon:I.UserPlus,c:'#3b82f6',m:'contact'},
+    {l:'Company',d:'An organization',Icon:I.Building,c:'#0ea5e9',m:'company'},
+    {l:'Deal',d:'An opportunity',Icon:I.GitBranch,c:'#8b5cf6',m:'deal'},
+    {l:'Task',d:'A to-do or reminder',Icon:I.CheckSquare,c:'#fbbf24',m:'task'},
+    {l:'Email',d:'Compose a message',Icon:I.Mail,c:'#6366f1',m:'email'},
+    {l:'Call',d:'Log an outcome',Icon:I.Phone,c:'#34d399',m:'call'},
+  ];
+  const MULTI=[
+    {l:'Contacts',d:'Spreadsheet entry',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
+    {l:'Leads',d:'Spreadsheet entry',Icon:I.Target,c:'#10b981',t:'lead'},
+    {l:'Companies',d:'Spreadsheet entry',Icon:I.Building,c:'#0ea5e9',t:'company'},
+    {l:'Deals',d:'Spreadsheet entry',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
+  ];
+  const IMPORT=[
+    {l:'Contacts',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
+    {l:'Companies',Icon:I.Building,c:'#0ea5e9',t:'company'},
+    {l:'Deals',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
+    {l:'Leads',Icon:I.Target,c:'#10b981',t:'lead'},
+  ];
+  const BUILD=[
+    {l:'Form',d:'Capture leads on your site',Icon:I.Note,c:'#22d3ee',go:'form-builder'},
+    {l:'Email template',d:'Reusable message',Icon:I.Mail,c:'#818cf8',go:'email-builder'},
+    {l:'Automation',d:'Trigger-based workflow',Icon:I.Zap,c:'#f59e0b',go:'automation-builder'},
+    {l:'Sequence',d:'Multi-step outreach',Icon:I.Layers,c:'#a78bfa',go:'email-sequence-builder'},
+  ];
+  const list=mode==='single'?SINGLE:MULTI;
+  return(<div onMouseEnter={onEnter} onMouseLeave={onLeave} className="absolute left-[42px] top-0 z-50 flex rounded-2xl border border-white/[0.08] overflow-hidden" style={{width:606,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+    {/* LEFT — records */}
+    <div className="w-[300px] shrink-0 py-2 border-r border-white/[0.07] flex flex-col">
+      <div className="px-2 pb-2">
+        <div className="flex p-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06]">
+          {[['single','Single record',I.UserPlus],['multiple','Multiple records',I.Layers]].map(([m,lb,Ic])=>(<button key={m} onClick={()=>setMode(m)} className={['flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11.5px] font-semibold transition-all',mode===m?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={12}/>{lb}</button>))}
+        </div>
+      </div>
+      <p className="px-3.5 pt-1 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">{mode==='single'?'Add a single record':'Add several at once'}</p>
+      <div className="flex-1 overflow-y-auto scroll-area" style={{maxHeight:330}}>
+      {list.map(it=>(<button key={it.l} onClick={()=>{if(mode==='single'){pick(it.m);}else{close();openMulti(it.t);}}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={14}/></span>
+        <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
+        {mode==='multiple'&&<I.ChevronRight size={14} className="shrink-0 text-white/25 group-hover:text-brand-300"/>}
+      </button>))}
+      </div>
+      <div className="h-px bg-white/[0.06] mx-2 my-1"/>
+      <div className="relative" onMouseEnter={openImp} onMouseLeave={closeImp}>
+        <button onClick={openImp} className={['w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[12.5px] font-semibold text-emerald-300 hover:text-emerald-200 transition-colors',impOpen?'bg-white/[0.04]':'hover:bg-white/[0.04]'].join(' ')}>
+          <I.Upload size={14}/><span className="flex-1">Import in bulk</span>
+          <I.ChevronRight size={14} className="shrink-0 text-emerald-300/60"/>
+        </button>
+        {impOpen&&(<div onMouseEnter={openImp} onMouseLeave={closeImp} className="absolute left-full bottom-0 ml-1 z-[60] w-[176px] py-1 rounded-xl border border-white/[0.08]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+          {IMPORT.map(it=>(<button key={it.t} onClick={()=>doImport(it.t)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] cursor-pointer text-left transition-colors">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={13}/></span>
+            <span className="text-[12.5px] font-medium text-white/85">Import {it.l.toLowerCase()}</span>
+          </button>))}
+        </div>)}
+      </div>
+    </div>
+    {/* RIGHT — build & automate */}
+    <div className="flex-1 flex flex-col p-4 relative" style={{background:'linear-gradient(160deg, rgba(129,140,248,0.14), rgba(129,140,248,0.02) 60%)'}}>
+      <div aria-hidden className="absolute inset-0 pointer-events-none opacity-[0.5]" style={{backgroundImage:'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.4px)',backgroundSize:'15px 15px'}}/>
+      <div className="relative">
+        <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-[0.16em]">Build &amp; automate</p>
+        <p className="text-[15px] font-bold text-white mt-1 leading-tight">Get data in — automatically</p>
+        <p className="text-[11.5px] text-white/50 mt-1 mb-3 leading-snug">Forms, templates, and workflows that feed your CRM without the busywork.</p>
+        <div className="flex flex-col gap-1.5">
+          {BUILD.map(it=>(<button key={it.l} onClick={()=>nav(it.go)} className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all text-left group">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={14}/></span>
+            <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
+            <I.ChevronRight size={14} className="shrink-0 text-white/25 group-hover:text-brand-300"/>
+          </button>))}
+        </div>
+      </div>
+      <div className="relative mt-auto pt-3">
+        <div className="rounded-xl bg-white/[0.05] border border-white/[0.07] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
+          <p className="text-[11px] font-semibold text-white/70 mb-2">Intake form</p>
+          <div className="flex flex-col gap-1.5">
+            <div className="h-2 rounded-full bg-white/[0.10]" style={{width:'82%'}}/>
+            <div className="h-2 rounded-full bg-white/[0.10]" style={{width:'64%'}}/>
+            <div className="h-2 rounded-full bg-white/[0.10]" style={{width:'74%'}}/>
+          </div>
+          <div className="h-5 rounded-md bg-brand-500/80 mt-2.5"/>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+// ?? AddRecordDrawer — slide-over create experience (Contacts/Companies/Deals/Leads) ??
+const AR_PALETTE=['#3b82f6','#8b5cf6','#ec4899','#10b981','#f59e0b','#0ea5e9','#a78bfa','#f472b6'];
+function arInitials(name){return String(name||'').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'?';}
+function arPick(){return AR_PALETTE[Math.floor(Math.random()*AR_PALETTE.length)];}
+function arOwnerColor(code){const m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(u=>u.avatar===code);return m?m.color:'#3b82f6';}
+function arNum(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;}
+function arMoney(v){const n=arNum(v);return n==null?'—':'$'+n.toLocaleString('en-US');}
+const AR_OBJ={
+  contact:{tab:'Contacts',label:'Contact',Icon:I.UserPlus,c:'#3b82f6',sheet:'contact'},
+  company:{tab:'Companies',label:'Company',Icon:I.Building,c:'#0ea5e9',sheet:'company'},
+  deal:{tab:'Deals',label:'Deal',Icon:I.GitBranch,c:'#8b5cf6',sheet:'deal'},
+  lead:{tab:'Leads',label:'Lead',Icon:I.Target,c:'#10b981',sheet:'lead'},
+};
+// Default create-field schema (used when Properties has nothing marked "Show in create form")
+function arDefaultFields(object){
+  const F=(o)=>Object.assign({create:true,detail:'primary',required:false,important:false,options:[],defaultValue:''},o);
+  if(object==='company')return[
+    F({id:'co_name',label:'Name',type:'Text',required:true}),F({id:'co_domain',label:'Website',type:'Text',required:true}),
+    F({id:'co_industry',label:'Industry',type:'Single select',options:INDUSTRIES}),F({id:'co_owner',label:'Owner',type:'Lookup'}),
+    F({id:'co_size',label:'Employees size',type:'Number'}),F({id:'co_rev',label:'Annual revenue',type:'Currency',important:true}),
+    F({id:'co_loc',label:'Location / HQ',type:'Text'}),F({id:'co_tags',label:'Tags',type:'Multi select'}),
+    F({id:'co_type',label:'Company type',type:'Single select',detail:'secondary',options:COMPANY_TYPES}),F({id:'co_website',label:'Website',type:'URL',create:true,detail:'secondary'}),
+    F({id:'co_linkedin',label:'LinkedIn',type:'URL',create:true,detail:'secondary'}),F({id:'co_desc',label:'Description',type:'Long text',create:true,detail:'secondary'}),
+  ];
+  if(object==='deal')return[
+    F({id:'d_name',label:'Name',type:'Text',required:true}),F({id:'d_amount',label:'Amount',type:'Currency'}),
+    F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Qualified','Proposal','Negotiation','Won','Lost']}),
+    F({id:'d_close',label:'Expected close date',type:'Date'}),F({id:'d_owner',label:'Owner',type:'Lookup'}),
+    F({id:'d_contact',label:'Primary contact',type:'Lookup'}),F({id:'d_company',label:'Company',type:'Lookup'}),
+    F({id:'d_next',label:'Next action',type:'Text'}),F({id:'d_tags',label:'Tags',type:'Multi select'}),
+    F({id:'d_source',label:'Source',type:'Single select',create:true,detail:'secondary',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'d_amttype',label:'Amount type',type:'Single select',create:true,detail:'secondary',options:['One-time','ACV','TCV','ARR','MRR']}),
+  ];
+  if(object==='lead')return[
+    F({id:'l_name',label:'Name',type:'Text',required:true}),F({id:'l_company',label:'Company name',type:'Text'}),
+    F({id:'l_title',label:'Job title',type:'Text'}),F({id:'l_domain',label:'Company domain',type:'Text'}),
+    F({id:'l_email',label:'Primary email',type:'Email'}),F({id:'l_phone',label:'Phone',type:'Phone'}),
+    F({id:'l_source',label:'Source',type:'Single select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'l_status',label:'Status',type:'Single select',options:['New','Contacted','Engaged','Qualified','Unqualified']}),
+    F({id:'l_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'l_close',label:'Expected close date',type:'Date'}),
+    F({id:'l_value',label:'Estimated value',type:'Currency',important:true}),F({id:'l_owner',label:'Owner',type:'Lookup'}),F({id:'l_tags',label:'Tags',type:'Multi select'}),
+    F({id:'l_industry',label:'Industry',type:'Single select',detail:'secondary',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']}),F({id:'l_employees',label:'Employees size',type:'Number',detail:'secondary'}),
+  ];
+  return[
+    F({id:'c_first',label:'First name',type:'Text',required:true}),F({id:'c_last',label:'Last name',type:'Text',required:true}),
+    F({id:'c_email',label:'Primary email',type:'Email'}),F({id:'c_phone',label:'Phone',type:'Phone'}),
+    F({id:'c_company',label:'Company',type:'Lookup'}),F({id:'c_title',label:'Job title',type:'Text'}),
+    F({id:'c_owner',label:'Owner',type:'Lookup'}),F({id:'c_lifecycle',label:'Lifecycle stage',type:'Single select',options:['Subscriber','Lead','Marketing Qualified Lead','Sales Qualified Lead','Opportunity','Customer','Evangelist','Other']}),
+    F({id:'c_status',label:'Status',type:'Single select',options:['New','Contacted','Nurturing','Qualified','Unqualified']}),F({id:'c_tags',label:'Tags',type:'Multi select'}),
+    F({id:'c_source',label:'Source',type:'Single select',create:true,detail:'secondary',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'c_salutation',label:'Salutation',type:'Single select',create:true,detail:'secondary',options:['Mr.','Mrs.','Ms.','Dr.']}),
+    F({id:'c_address',label:'Mailing address',type:'Long text',create:true,detail:'secondary'}),
+  ];
+}
+function arCreateFields(props,object){
+  const cfg=AR_OBJ[object];const secs=props&&props[cfg.tab];
+  if(secs&&secs.length){const flat=secs.flatMap(s=>s.fields).filter(f=>f.create);if(flat.length)return flat;}
+  return arDefaultFields(object);
+}
+function arFieldKind(f){
+  const l=(f.label||'').toLowerCase();
+  if(/owner/.test(l))return'owner';
+  if(/tags/.test(l)||f.type==='Multi select')return'tags';
+  if((f.type==='Lookup')&&/company/.test(l))return'lookup-company';
+  if((f.type==='Lookup')&&/contact/.test(l))return'lookup-contact';
+  if(f.type==='Single select'&&/lifecycle|^status$|stage/.test(l))return'pill';
+  if(f.type==='Single select'||f.type==='Lookup'||f.type==='Autocomplete')return'select';
+  if(f.type==='Currency')return'currency';
+  if(f.type==='Number')return'number';
+  if(f.type==='Date')return'date';
+  if(f.type==='Date range')return'date';
+  if(f.type==='Long text')return'longtext';
+  if(f.type==='Boolean')return'boolean';
+  if(f.type==='Email')return'email';
+  if(f.type==='Phone')return'phone';
+  return'text';
+}
+function arIsWide(f){const k=arFieldKind(f);return k==='tags'||k==='longtext'||k==='lookup-company'||k==='lookup-contact'||/email|address/i.test(f.label||'');}
+function arPillColor(label,v){if(/stage/i.test(label)){return (typeof DEAL_STAGE_COLOR!=='undefined'&&DEAL_STAGE_COLOR[v])||'#818cf8';}return pillC(v);}
+// ── searchable lookup with inline "+ Create new" ──
+function ARLookup({value,onChange,options,placeholder,onCreateNew,Icon,error}){
+  const [open,setOpen]=React.useState(false);const [q,setQ]=React.useState('');const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const filtered=options.filter(o=>o.toLowerCase().includes(q.toLowerCase())).slice(0,40);
+  const exact=options.some(o=>o.toLowerCase()===q.trim().toLowerCase());
+  return(<div ref={ref} className="relative">
+    <button type="button" onClick={()=>setOpen(o=>!o)} className={['w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border text-[13px] text-left transition-all',error?'border-red-500/50':'border-white/[0.10] hover:border-white/[0.18] focus:border-brand-500/40'].join(' ')}>
+      {Icon&&<Icon size={13} className="text-white/35 shrink-0"/>}
+      <span className={['flex-1 truncate',value?'text-white':'text-white/30'].join(' ')}>{value||placeholder}</span>
+      {value&&<span role="button" tabIndex={0} onClick={(e)=>{e.stopPropagation();onChange('');}} className="text-white/30 hover:text-white/70"><I.X size={12}/></span>}
+      <I.ChevronDown size={13} className="text-white/30 shrink-0"/>
+    </button>
+    {open&&<div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+      <div className="p-2 border-b border-white/[0.06]"><div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04]"><I.Search size={12} className="text-white/35"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="flex-1 bg-transparent outline-none text-[12.5px] text-white placeholder:text-white/30"/></div></div>
+      <div className="max-h-[200px] overflow-y-auto scroll-area py-1">
+        {filtered.map(o=>(<button key={o} type="button" onClick={()=>{onChange(o);setOpen(false);setQ('');}} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{background:arPick()}}>{arInitials(o)}</span><span className="flex-1 text-[12.5px] text-white/80 truncate">{o}</span>{value===o&&<I.Check size={12} className="text-brand-300"/>}</button>))}
+        {filtered.length===0&&!q&&<p className="px-3 py-2 text-[12px] text-white/30">No records yet.</p>}
+      </div>
+      {q.trim()&&!exact&&<button type="button" onClick={()=>{onCreateNew&&onCreateNew(q.trim());onChange(q.trim());setOpen(false);setQ('');}} className="w-full flex items-center gap-2 px-3 py-2.5 border-t border-white/[0.06] text-left hover:bg-brand-500/10 transition-colors text-brand-300"><I.Plus size={13}/><span className="text-[12.5px] font-medium">Create "{q.trim()}"</span></button>}
+    </div>}
+  </div>);
+}
+// ── tag chips input ──
+function ARTags({value,onChange,error}){
+  const [draft,setDraft]=React.useState('');
+  const add=()=>{const t=draft.trim();if(t&&!(value||[]).includes(t)){onChange([...(value||[]),t]);}setDraft('');};
+  return(<div className={['flex flex-wrap items-center gap-1.5 px-2.5 py-2 rounded-xl bg-white/[0.04] border min-h-[42px] transition-all',error?'border-red-500/50':'border-white/[0.10] focus-within:border-brand-500/40'].join(' ')}>
+    {(value||[]).map(t=>(<span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20">{t}<button type="button" onClick={()=>onChange(value.filter(x=>x!==t))} className="hover:text-white"><I.X size={9}/></button></span>))}
+    <input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'||e.key===','){e.preventDefault();add();}else if(e.key==='Backspace'&&!draft&&(value||[]).length){onChange(value.slice(0,-1));}}} onBlur={add} placeholder={(value||[]).length?'':'Add tags…'} className="flex-1 min-w-[80px] bg-transparent outline-none text-[12.5px] text-white placeholder:text-white/30"/>
+  </div>);
+}
+// ── owner avatar+name select ──
+function AROwner({value,onChange}){
+  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const cur=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(u=>u.avatar===value)||TEAM_MEMBERS[0];
+  return(<div ref={ref} className="relative">
+    <button type="button" onClick={()=>setOpen(o=>!o)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] hover:border-white/[0.18] transition-all">
+      <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:cur.color}}>{cur.avatar}</span>
+      <span className="flex-1 text-[13px] text-white text-left truncate">{cur.name}</span><I.ChevronDown size={13} className="text-white/30"/>
+    </button>
+    {open&&<div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-white/[0.08] overflow-hidden py-1 max-h-[220px] overflow-y-auto scroll-area" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+      {TEAM_MEMBERS.map(m=>(<button key={m.avatar} type="button" onClick={()=>{onChange(m.avatar);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="flex-1 text-[12.5px] text-white/85 truncate">{m.name}</span>{value===m.avatar&&<I.Check size={12} className="text-brand-300"/>}</button>))}
+    </div>}
+  </div>);
+}
+function ARField({f,value,onChange,error,nudge,crm,onCreateCompany,onCreateContact}){
+  const kind=arFieldKind(f);
+  const L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const INP=['w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border text-[13px] text-white placeholder:text-white/25 outline-none transition-all',error?'border-red-500/50':'border-white/[0.10] focus:border-brand-500/40'].join(' ');
+  let ctrl;
+  if(kind==='owner')ctrl=<AROwner value={value} onChange={onChange}/>;
+  else if(kind==='tags')ctrl=<ARTags value={value} onChange={onChange} error={error}/>;
+  else if(kind==='lookup-company')ctrl=<ARLookup value={value} onChange={onChange} options={(crm.companies||[]).map(c=>c.name)} placeholder="Search or create…" onCreateNew={onCreateCompany} Icon={I.Building} error={error}/>;
+  else if(kind==='lookup-contact')ctrl=<ARLookup value={value} onChange={onChange} options={(crm.contacts||[]).map(c=>c.name)} placeholder="Search or create…" onCreateNew={onCreateContact} Icon={I.UserPlus} error={error}/>;
+  else if(kind==='pill'){const opts=f.options||[];const col=value?arPillColor(f.label,value):null;ctrl=(<div className="relative"><select value={value} onChange={e=>onChange(e.target.value)} className={INP+' appearance-none pl-8'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">Select…</option>{opts.map(o=>(<option key={o}>{o}</option>))}</select><span className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none" style={{background:col||'#475569'}}/><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>);}
+  else if(kind==='select'){const opts=f.options||[];ctrl=(<div className="relative"><select value={value} onChange={e=>onChange(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">Select…</option>{opts.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>);}
+  else if(kind==='currency')ctrl=(<div className={['flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border transition-all',error?'border-red-500/50':'border-white/[0.10] focus-within:border-brand-500/40'].join(' ')}><span className="text-white/40 text-[13px]">$</span><input value={value} onChange={e=>onChange(e.target.value)} placeholder="0" inputMode="decimal" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div>);
+  else if(kind==='number')ctrl=<input type="number" value={value} onChange={e=>onChange(e.target.value)} placeholder="0" className={INP}/>;
+  else if(kind==='date')ctrl=<input type="date" value={value} onChange={e=>onChange(e.target.value)} className={INP} style={{colorScheme:'dark'}}/>;
+  else if(kind==='longtext')ctrl=<textarea rows={2} value={value} onChange={e=>onChange(e.target.value)} placeholder={'Enter '+(f.label||'').toLowerCase()} className={INP+' resize-none leading-relaxed'}/>;
+  else if(kind==='boolean')ctrl=<div className="pt-1"><Toggle on={value===true||value==='true'} onChange={v=>onChange(v)}/></div>;
+  else ctrl=<input type={kind==='email'?'email':'text'} value={value} onChange={e=>onChange(e.target.value)} placeholder={'Enter '+(f.label||'').toLowerCase()} className={INP}/>;
+  return(<div className={arIsWide(f)?'col-span-2':''}>
+    <label className={L}>{f.label}{f.required&&<span className="text-red-400/80 ml-0.5">*</span>}</label>
+    {ctrl}
+    {error&&<p className="text-[11px] text-red-400 mt-1 flex items-center gap-1"><I.Ban size={10}/>{error}</p>}
+    {!error&&nudge&&<p className="text-[11px] text-amber-400/80 mt-1 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block shrink-0"/>{nudge}</p>}
+  </div>);
+}
+function arBuildInitial(fields,object){
+  const o={};
+  fields.forEach(f=>{
+    const k=arFieldKind(f);const l=(f.label||'').toLowerCase();
+    if(k==='owner')o[f.id]=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS[0].avatar:'AM');
+    else if(k==='tags')o[f.id]=[];
+    else if(/lifecycle/.test(l))o[f.id]=f.defaultValue||'Lead';
+    else if(/^status$/.test(l))o[f.id]=f.defaultValue||'New';
+    else if(/pipeline/.test(l))o[f.id]=f.defaultValue||(f.options&&f.options[0])||'';
+    else if(/stage/.test(l))o[f.id]=f.defaultValue||(f.options&&f.options[0])||'';
+    else if(/amount type/.test(l))o[f.id]=f.defaultValue||'One-time';
+    else o[f.id]=f.defaultValue||'';
+  });
+  return o;
+}
+function arById(fields){const m={};fields.forEach(f=>{m[(f.label||'').toLowerCase()]=f.id;});return m;}
+function arGet(vals,fields,labelRe){const f=fields.find(x=>labelRe.test((x.label||'').toLowerCase()));return f?vals[f.id]:'';}
+function arBuildRecord(object,vals,fields){
+  const g=(re)=>arGet(vals,fields,re);
+  const owner=g(/owner/)||'AM';const id=Date.now()+Math.floor(Math.random()*1000);
+  if(object==='company'){const name=g(/^name|company name/)||'Untitled';return{id,name,domain:g(/domain/),industry:g(/industry/)||INDUSTRIES[0],type:g(/company type|^type$/)||'Prospect',owner,ownerColor:arOwnerColor(owner),avatar:arInitials(name),color:arPick(),size:arNum(g(/employees|size/)),annualRevenue:arNum(g(/revenue/)),loc:g(/location|hq/),website:g(/website/),linkedin:g(/linkedin/),desc:g(/description/),tags:g(/tags/)||[],days:0,last:'Just now',createdBy:owner,createdAt:'Just now',archived:false};}
+  if(object==='deal'){const name=g(/^name|deal name/)||'Untitled deal';const company=g(/company/);const amt=arNum(g(/amount/));const stageName=g(/stage/)||'Qualified';const keyMap={Prospecting:'prospecting',Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};const sk=keyMap[stageName]||'qualified';return{id,name,company:company||name,value:amt!=null?('$'+amt.toLocaleString('en-US')):'$0',amount:amt,stageKey:sk,dStage:stageName,pipeline:g(/pipeline/),closeDate:g(/close/),primaryContact:g(/contact/),nextAction:g(/next action/),source:g(/source/),amountType:g(/amount type/)||'One-time',tags:g(/tags/)||[],owner,ownerColor:arOwnerColor(owner),tag:'New',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',createdBy:owner,createdAt:'Just now'};}
+  if(object==='lead'){const name=g(/^name/)||'Untitled';let status=g(/^status$/)||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';const num=arNum(g(/estimated value|value/));return{id,name,company:g(/company name|^company$/),companyDomain:g(/domain/),email:g(/email/),phone:g(/phone/),avatar:arInitials(name),color:arPick(),source:g(/source/)||(typeof LEAD_SOURCES!=='undefined'?LEAD_SOURCES[0]:'Web form'),status,score:Math.floor(Math.random()*35)+35,owner,ownerColor:arOwnerColor(owner),estValue:num!=null?('$'+num.toLocaleString('en-US')):'—',estValueNum:num,title:g(/job title|^title$/)||'',pipeline:g(/pipeline/)||'Sales Pipeline',expectedCloseDate:g(/close/)||'',industry:g(/industry/)||'',employeesSize:arNum(g(/employee/)),loc:'',tags:g(/tags/)||[],emails:[],phones:[],days:0,created:'Just now',createdBy:owner,createdAt:'Just now',converted:false,archived:false};}
+  const first=g(/first/)||'';const last=g(/last/)||'';const name=(first+' '+last).trim()||'Unnamed';return{id,name,first,last,co:g(/company/),email:g(/email/),phone:g(/phone/),title:g(/job title|^title$/),avatar:arInitials(name),color:arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,lifecycle:g(/lifecycle/)||'Lead',mktStatus:g(/^status$/)||'New',source:g(/source/),salutation:g(/salutation/),address:g(/mailing|address/),score:null,tags:g(/tags/)||[],archived:false};
+}
+function arBuildFromSheet(object,row){
+  const owner='AM';const id=Date.now()+Math.floor(Math.random()*100000);
+  if(object==='company')return{id,name:row.name,domain:row.domain,industry:row.industry||INDUSTRIES[0],type:row.ctype||'Prospect',owner,ownerColor:arOwnerColor(owner),avatar:arInitials(row.name),color:arPick(),size:arNum(row.size),annualRevenue:null,loc:'',tags:[],days:0,last:'Just now',archived:false};
+  if(object==='deal'){const amt=arNum(row.value);const stageName=row.stage||'Qualified';const keyMap={Prospecting:'prospecting',Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};return{id,name:row.name,company:row.company||row.name,value:amt!=null?('$'+amt.toLocaleString('en-US')):'$0',amount:amt,stageKey:keyMap[stageName]||'qualified',dStage:stageName,closeDate:row.date,owner,ownerColor:arOwnerColor(owner),tag:'New',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:[],createdAt:'Just now'};}
+  if(object==='lead'){let status=row.status||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';return{id,name:row.name,company:row.company,email:row.email,phone:row.phone,avatar:arInitials(row.name),color:arPick(),source:row.source||LEAD_SOURCES[0],status,score:Math.floor(Math.random()*35)+35,owner,ownerColor:arOwnerColor(owner),estValue:'—',estValueNum:null,title:'',loc:'',tags:[],days:0,created:'Just now',converted:false,archived:false};}
+  const name=((row.first||'')+' '+(row.last||'')).trim()||'Unnamed';return{id,name,first:row.first,last:row.last,co:row.company,email:row.email,phone:row.phone,title:row.title,avatar:arInitials(name),color:arPick(),status:'Active',cstatus:CONTACT_STATUSES.includes(row.status)?row.status:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,lifecycle:'Lead',score:null,tags:[],archived:false};
+}
+function AddRecordDrawer({object,close,onToast,goTo,initialMode}){
+  const cfg=AR_OBJ[object]||AR_OBJ.contact;
+  const {props}=React.useContext(PropertiesContext);
+  const crm=React.useContext(CrmDataContext);
+  const fields=React.useMemo(()=>arCreateFields(props,object),[props,object]);
+  const primary=fields.filter(f=>f.detail!=='secondary');
+  const secondary=fields.filter(f=>f.detail==='secondary');
+  const [mode,setMode]=React.useState(initialMode==='multiple'?'multiple':'single');
+  const [vals,setVals]=React.useState(()=>arBuildInitial(fields,object));
+  const [showMore,setShowMore]=React.useState(false);
+  const [submitted,setSubmitted]=React.useState(false);
+  const [createOpen,setCreateOpen]=React.useState(false);
+  const createRef=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(createRef.current&&!createRef.current.contains(e.target))setCreateOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const set=(id,v)=>setVals(s=>({...s,[id]:v}));
+  const emailRe=/\S+@\S+\.\S+/;
+  const errorFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());if(f.required&&empty)return'Required';if(f.type==='Email'&&!empty&&!emailRe.test(v))return'Enter a valid email';return'';};
+  const nudgeFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());return(f.important&&empty)?'Recommended':'';};
+  const allValid=fields.every(f=>!errorFor(f));
+  const addCompanyRec=(name)=>{const id=Date.now()+Math.floor(Math.random()*1000);crm.setCompanies(a=>[{id,name,domain:'',industry:INDUSTRIES[0],type:'Prospect',owner:'AM',ownerColor:'#3b82f6',avatar:arInitials(name),color:arPick(),size:null,tags:[],days:0,last:'Just now',archived:false},...a]);};
+  const addContactRec=(name)=>{const id=Date.now()+Math.floor(Math.random()*1000);crm.setContacts(a=>[{id,name,first:name.split(' ')[0]||name,last:name.split(' ').slice(1).join(' '),co:'',email:'',phone:'',avatar:arInitials(name),color:arPick(),status:'Active',cstatus:'Prospect',owner:'AM',ownerColor:'#3b82f6',last:'Just now',deal:'—',days:0,lifecycle:'Lead',score:null,tags:[],archived:false},...a]);};
+  const persist=(rec)=>{if(object==='company')crm.setCompanies(a=>[rec,...a]);else if(object==='deal')crm.setDeals(a=>[rec,...a]);else if(object==='lead')crm.setLeads(a=>[rec,...a]);else crm.setContacts(a=>[rec,...a]);};
+  const doCreate=(another)=>{
+    setSubmitted(true);
+    if(!allValid){const firstErr=fields.find(f=>errorFor(f));if(firstErr&&secondary.includes(firstErr))setShowMore(true);return;}
+    const rec=arBuildRecord(object,vals,fields);persist(rec);
+    onToast&&onToast((rec.name||cfg.label)+' created');
+    if(another){setVals(arBuildInitial(fields,object));setSubmitted(false);setCreateOpen(false);}
+    else close();
+  };
+  const onKey=(e)=>{
+    if(e.key==='Escape'){close();return;}
+    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();doCreate(true);return;}
+    if(e.key==='Enter'&&e.target.tagName!=='TEXTAREA'&&mode==='single'){e.preventDefault();doCreate(false);}
+  };
+  const validCount=()=>0;
+  return(<div className="fixed inset-0 z-[170] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div onKeyDown={onKey} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:mode==='multiple'?720:520,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3"><span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:cfg.c+'1f',color:cfg.c,boxShadow:'inset 0 0 0 1px '+cfg.c+'33'}}><cfg.Icon size={17}/></span><div><p className="text-white text-[15px] font-bold leading-tight">New {cfg.label}</p><p className="text-white/45 text-[12px] mt-0.5">{mode==='single'?'Add one record — Enter to save, ⌘↵ to save &amp; add another.':'Type or paste rows from Excel — validates as you go.'}</p></div></div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+      </div>
+      <div className="px-6 pt-3 shrink-0" style={{background:'var(--s850)'}}>
+        <div className="inline-flex p-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06]">
+          {[['single','Single',I.Note],['multiple','Multiple',I.Layers]].map(([m,lb,Ic])=>(<button key={m} onClick={()=>setMode(m)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[12px] font-semibold transition-all',mode===m?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={12}/>{lb}</button>))}
+        </div>
+      </div>
+      {mode==='single'?(<React.Fragment>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <div className="grid grid-cols-2 gap-4">
+            {primary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>set(f.id,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}
+          </div>
+          {secondary.length>0&&<div className="mt-4">
+            <button onClick={()=>setShowMore(o=>!o)} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"><I.ChevronDown size={14} style={{transform:showMore?'rotate(180deg)':'none',transition:'transform .15s'}}/>{showMore?'Hide':'Show more fields'}<span className="text-white/35 font-normal">({secondary.length})</span></button>
+            {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>set(f.id,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
+          </div>}
+        </div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+          <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+          <div ref={createRef} className="relative ml-auto flex items-stretch rounded-xl overflow-hidden shadow-brand">
+            <button onClick={()=>doCreate(false)} className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 transition-colors">Create {cfg.label.toLowerCase()}</button>
+            <button onClick={()=>setCreateOpen(o=>!o)} aria-label="More create options" className={['px-2 flex items-center justify-center text-white border-l border-white/20 transition-colors',createOpen?'bg-brand-400':'bg-brand-500 hover:bg-brand-400'].join(' ')}><I.ChevronDown size={14}/></button>
+            {createOpen&&<div className="absolute right-0 bottom-[calc(100%+6px)] z-50 w-60 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+              <button onClick={()=>doCreate(true)} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group"><span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><I.Plus size={14}/></span><span className="min-w-0"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">Create &amp; add another</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">Keeps this panel open · ⌘↵</span></span></button>
+            </div>}
+          </div>
+        </div>
+      </React.Fragment>):(<React.Fragment>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+          <RecordSheet type={cfg.sheet} variant="modal" onToast={onToast} onCreateRows={(rows)=>{const recs=rows.map(r=>arBuildFromSheet(object,r));if(object==='company')crm.setCompanies(a=>[...recs,...a]);else if(object==='deal')crm.setDeals(a=>[...recs,...a]);else if(object==='lead')crm.setLeads(a=>[...recs,...a]);else crm.setContacts(a=>[...recs,...a]);onToast&&onToast(recs.length+' '+(recs.length===1?cfg.label.toLowerCase():cfg.label.toLowerCase()+'s')+' created');close();}}/>
+        </div>
+        <div className="flex items-center px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+          <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+          <span className="ml-auto text-[12px] text-white/35">Use “Create all” in the grid to save valid rows.</span>
+        </div>
+      </React.Fragment>)}
+    </div>
+  </div>);
+}
+
+// ── MultiRecordModal ── full spreadsheet for bulk entry of one record type ──
+function MultiRecordModal({type,close,onToast}){
+  const cfg=sheetTypeCfg(type);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const w=Math.min(980,cfg.minW+96);
+  return(<div className="fixed inset-0 z-[150] flex items-start justify-center p-4 pt-[8vh]" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div style={{width:w,maxWidth:'100%',maxHeight:'84vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:cfg.c+'1f',color:cfg.c,boxShadow:'inset 0 0 0 1px '+cfg.c+'33'}}><cfg.Icon size={17}/></div><div><p className="text-white text-[15px] font-bold leading-tight">Add multiple {cfg.noun}</p><p className="text-white/45 text-[12px] mt-0.5">Type a row, hit Enter for the next — or paste a whole list from Excel or Google Sheets.</p></div></div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+        <RecordSheet type={type} variant="modal" onToast={onToast} onCreate={(n)=>{onToast&&onToast(n+' '+(n===1?cfg.one:cfg.noun)+' added');close();}}/>
+      </div>
+    </div>
+  </div>);
+}
 function AppSidebar({active,goTo}){
   const items=[
     {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
@@ -388,6 +1026,12 @@ function AppSidebar({active,goTo}){
         <button onClick={()=>goTo('settings-general')} title="Settings" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',settActive?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Settings size={16}/></button>
         <button onClick={()=>goTo('profile')} title="Profile" className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/[0.06] hover:ring-white/20 transition-all" style={{background:'#3b82f6'}}>AM</button>
       </div>
+      {quickModal==='task'&&<TaskFormModal initial={{type:'task',allDay:true,priority:'Medium'}} onClose={()=>setQuickModal(null)} onSave={(ev)=>{calAddItem(ev);setQuickModal(null);sideToastFn('Task created');}}/>}
+      {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
+      {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
+      {typeof quickModal==='string'&&quickModal.indexOf('import')===0&&<BulkImportWizard object={quickModal.split(':')[1]||'contact'} close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
+      {/* bulk entry now consolidated into AddRecordDrawer (initialMode='multiple') */}
+      {sideToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{sideToast}</div>)}
     </aside>
   );
 }
