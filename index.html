@@ -539,6 +539,14 @@ const I = {
   Smile:     (p)=><Ico {...p} d={<><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></>}/>,
   ExternalLink:(p)=><Ico {...p} d={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></>}/>,
   Snooze:    (p)=><Ico {...p} d={<><circle cx="12" cy="13" r="8"/><path d="M5 3 2 6"/><path d="M22 6l-3-3"/><path d="M12 9v4l3 1"/></>}/>,
+  AlertTriangle:(p)=><Ico {...p} d={<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>}/>,
+  Pause:     (p)=><Ico {...p} d={<><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></>}/>,
+  Mic:       (p)=><Ico {...p} d={<><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></>}/>,
+  MicOff:    (p)=><Ico {...p} d={<><line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/></>}/>,
+  PhoneOff:  (p)=><Ico {...p} d={<><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" x2="2" y1="2" y2="22"/></>}/>,
+  Voicemail: (p)=><Ico {...p} d={<><circle cx="6" cy="12" r="4"/><circle cx="18" cy="12" r="4"/><line x1="6" x2="18" y1="16" y2="16"/></>}/>,
+  ArrowDownLeft:(p)=><Ico {...p} d={<><line x1="17" x2="7" y1="7" y2="17"/><polyline points="17 17 7 17 7 7"/></>}/>,
+  ArrowUpRight:(p)=><Ico {...p} d={<><line x1="7" x2="17" y1="17" y2="7"/><polyline points="7 7 17 7 17 17"/></>}/>,
 };
 // ?? Skeleton + Confirm ???????????????????????????????????????????????????????
 function Skel({ w, h='11px', r='5px', s={} }) {
@@ -610,6 +618,36 @@ function ToastContainer({toasts}){
           {t.type==='success'?<I.Check size={14} stroke={2.4}/>:<I.Bell size={14}/>}{t.msg}
         </div>
       ))}
+    </div>
+  );
+}
+// ── GlobalToastHost ── app-wide stacked toasts (success/error/warning). window.__nrturToast(msg,type) ──
+function GlobalToastHost(){
+  const [items,setItems]=React.useState([]);
+  React.useEffect(()=>{
+    const onToast=(e)=>{
+      const {msg,type='success'}=e.detail||{};
+      if(!msg)return;
+      const id=Date.now()+Math.random();
+      const dur=(type==='error'||type==='warning')?4500:3000;
+      setItems(list=>{const next=[...list,{id,msg,type}];return next.slice(-3);});
+      setTimeout(()=>setItems(list=>list.filter(x=>x.id!==id)),dur);
+    };
+    window.addEventListener('nrtur:toast',onToast);
+    window.__nrturToast=(msg,type)=>window.dispatchEvent(new CustomEvent('nrtur:toast',{detail:{msg,type}}));
+    return()=>{window.removeEventListener('nrtur:toast',onToast);delete window.__nrturToast;};
+  },[]);
+  const styleFor=(t)=>t==='error'?'bg-red-500/12 text-red-300 border border-red-500/25'
+    :t==='warning'?'bg-amber-500/12 text-amber-300 border border-amber-500/25'
+    :'bg-emerald-500/12 text-emerald-200 border border-emerald-500/25';
+  const IconFor=(t)=>t==='error'?I.AlertTriangle:t==='warning'?I.AlertTriangle:I.Check;
+  return(
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[260] flex flex-col items-center gap-2 pointer-events-none">
+      {items.map(t=>{const Ic=IconFor(t.type);return(
+        <div key={t.id} className={['pointer-events-auto inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md max-w-[90vw]',styleFor(t.type)].join(' ')}
+          style={{animation:'fadeUp 300ms ease-out both'}}>
+          <Ic size={15} stroke={2.2} className="shrink-0"/><span className="truncate">{t.msg}</span>
+        </div>);})}
     </div>
   );
 }
@@ -908,7 +946,7 @@ function QuickCompanyModal({close,onToast}){
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div><label className={L}>Company name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Meridian Agency" className={I_F}/></div>
-            <div><label className={L}>Website</label><input value={f.domain} onChange={e=>set('domain',e.target.value)} placeholder="company.com" className={I_F}/></div>
+            <div><label className={L}>Website</label><input value={f.domain} onChange={e=>set('domain',e.target.value)} placeholder="https://meridian.co" className={I_F}/></div>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div><label className={L}>Industry</label><select value={f.industry} onChange={e=>set('industry',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{INDUSTRIES.map(s=>(<option key={s}>{s}</option>))}</select></div>
@@ -929,7 +967,7 @@ function sheetTypeCfg(type){
   if(type==='lead')return{label:'Leads',noun:'leads',one:'lead',Icon:I.Target,c:'#10b981',req:['name','email'],minW:880,
     cols:[{key:'name',label:'Full name',ph:'Olivia Bennett'},{key:'company',label:'Company',ph:'Brightwave'},{key:'email',label:'Email',ph:'name@company.com'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'},{key:'source',label:'Source',type:'select',opts:LEAD_SOURCES},{key:'status',label:'Status',type:'select',opts:LEAD_STATUSES}]};
   if(type==='company')return{label:'Companies',noun:'companies',one:'company',Icon:I.Building,c:'#0ea5e9',req:['name'],minW:820,
-    cols:[{key:'name',label:'Company name',ph:'Meridian Agency'},{key:'domain',label:'Domain',ph:'meridian.co'},{key:'industry',label:'Industry',type:'select',opts:INDUSTRIES},{key:'ctype',label:'Type',type:'select',opts:COMPANY_TYPES},{key:'size',label:'Size',ph:'25'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'}]};
+    cols:[{key:'name',label:'Company name',ph:'Meridian Agency'},{key:'domain',label:'Website',ph:'https://meridian.co'},{key:'industry',label:'Industry',type:'select',opts:INDUSTRIES},{key:'ctype',label:'Type',type:'select',opts:COMPANY_TYPES},{key:'size',label:'Size',ph:'25'},{key:'phone',label:'Phone',ph:'+1 555 000 0000'}]};
   if(type==='deal')return{label:'Deals',noun:'deals',one:'deal',Icon:I.GitBranch,c:'#8b5cf6',req:['name'],minW:760,
     cols:[{key:'name',label:'Deal name',ph:'Q3 Retainer'},{key:'company',label:'Company',ph:'Meridian Agency'},{key:'value',label:'Value ($)',ph:'24000'},{key:'stage',label:'Stage',type:'select',opts:DEAL_STAGE_ORDER},{key:'date',label:'Close date',ph:'2026-09-01'}]};
   return{label:'Contacts',noun:'contacts',one:'contact',Icon:I.UserPlus,c:'#3b82f6',req:['first','email'],minW:880,
@@ -1063,7 +1101,11 @@ function NewContactSplitButton({goTo,onImport}){
 }
 // ── QuickAddMenu ── two-panel hover: records (toggle + list) | Build & automate ──
 function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
-  const [mode,setMode]=React.useState('single');
+  const [bulkOpen,setBulkOpen]=React.useState(false);
+  const bulkT=React.useRef(null);
+  const openBulk=()=>{clearTimeout(bulkT.current);setBulkOpen(true);};
+  const closeBulk=()=>{clearTimeout(bulkT.current);bulkT.current=setTimeout(()=>setBulkOpen(false),120);};
+  const doBulk=(t)=>{close();if(window.__nrturQuickAdd){window.__nrturQuickAdd(t,'multiple');}else{openMulti(t);}};
   const pick=(m)=>{close();if(['contact','company','deal','lead'].includes(m)&&window.__nrturQuickAdd){window.__nrturQuickAdd(m);}else{setQuickModal(m);}};
   const nav=(p)=>{close();goTo(p);};
   const SINGLE=[
@@ -1075,11 +1117,11 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
     {l:'Email',d:'Compose a message',Icon:I.Mail,c:'#6366f1',m:'email'},
     {l:'Call',d:'Log an outcome',Icon:I.Phone,c:'#34d399',m:'call'},
   ];
-  const MULTI=[
-    {l:'Contacts',d:'Spreadsheet entry',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
-    {l:'Leads',d:'Spreadsheet entry',Icon:I.Target,c:'#10b981',t:'lead'},
-    {l:'Companies',d:'Spreadsheet entry',Icon:I.Building,c:'#0ea5e9',t:'company'},
-    {l:'Deals',d:'Spreadsheet entry',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
+  const BULK=[
+    {l:'Contacts',Icon:I.UserPlus,c:'#3b82f6',t:'contact'},
+    {l:'Leads',Icon:I.Target,c:'#10b981',t:'lead'},
+    {l:'Companies',Icon:I.Building,c:'#0ea5e9',t:'company'},
+    {l:'Deals',Icon:I.GitBranch,c:'#8b5cf6',t:'deal'},
   ];
   const BUILD=[
     {l:'Form',d:'Capture leads on your site',Icon:I.Note,c:'#22d3ee',go:'form-builder'},
@@ -1087,22 +1129,29 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
     {l:'Automation',d:'Trigger-based workflow',Icon:I.Zap,c:'#f59e0b',go:'automation-builder'},
     {l:'Sequence',d:'Multi-step outreach',Icon:I.Layers,c:'#a78bfa',go:'email-sequence-builder'},
   ];
-  const list=mode==='single'?SINGLE:MULTI;
+  const list=SINGLE;
   return(<div onMouseEnter={onEnter} onMouseLeave={onLeave} className="absolute left-[42px] top-0 z-50 flex rounded-2xl border border-white/[0.08] overflow-hidden" style={{width:606,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
     {/* LEFT — records */}
     <div className="w-[300px] shrink-0 py-2 border-r border-white/[0.07] flex flex-col">
-      <div className="px-2 pb-2">
-        <div className="flex p-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06]">
-          {[['single','Single record',I.UserPlus],['multiple','Multiple records',I.Layers]].map(([m,lb,Ic])=>(<button key={m} onClick={()=>setMode(m)} className={['flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11.5px] font-semibold transition-all',mode===m?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={12}/>{lb}</button>))}
-        </div>
-      </div>
-      <p className="px-3.5 pt-1 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">{mode==='single'?'Add a single record':'Add several at once'}</p>
-      <div className="flex-1 overflow-y-auto scroll-area" style={{maxHeight:330}}>
-      {list.map(it=>(<button key={it.l} onClick={()=>{if(mode==='single'){pick(it.m);}else{close();openMulti(it.t);}}} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
+      <p className="px-3.5 pt-2 pb-1 text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Add a record</p>
+      <div className="overflow-y-auto scroll-area" style={{maxHeight:300}}>
+      {SINGLE.map(it=>(<button key={it.l} onClick={()=>pick(it.m)} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors group">
         <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={14}/></span>
         <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">{it.l}</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">{it.d}</span></span>
-        {mode==='multiple'&&<I.ChevronRight size={14} className="shrink-0 text-white/25 group-hover:text-brand-300"/>}
       </button>))}
+      </div>
+      <div className="relative" onMouseEnter={openBulk} onMouseLeave={closeBulk}>
+        <button onClick={openBulk} className={['w-full flex items-center gap-3 px-3 py-2 text-left transition-colors group',bulkOpen?'bg-white/[0.05]':'hover:bg-white/[0.05]'].join(' ')}>
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.06] text-white/70" style={{boxShadow:'inset 0 0 0 1px rgba(255,255,255,0.08)'}}><I.Layers size={14}/></span>
+          <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white/85 group-hover:text-white leading-tight">Bulk add</span><span className="block text-[11px] text-white/40 leading-tight mt-0.5">Multiple records at once</span></span>
+          <I.ChevronRight size={14} className="shrink-0 text-white/30 group-hover:text-brand-300"/>
+        </button>
+        {bulkOpen&&(<div onMouseEnter={openBulk} onMouseLeave={closeBulk} className="absolute left-full top-0 ml-1 z-[60] w-[176px] py-1 rounded-xl border border-white/[0.08]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+          {BULK.map(it=>(<button key={it.t} onClick={()=>doBulk(it.t)} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] cursor-pointer text-left transition-colors">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:it.c+'1f',color:it.c,boxShadow:'inset 0 0 0 1px '+it.c+'33'}}><it.Icon size={13}/></span>
+            <span className="text-[12.5px] font-medium text-white/85">{it.l}</span>
+          </button>))}
+        </div>)}
       </div>
       <div className="h-px bg-white/[0.06] mx-2 my-1"/>
       <button onClick={()=>{close();setQuickModal('import');}} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[12.5px] font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-white/[0.04] transition-colors"><I.Upload size={14}/>Import contacts in bulk</button>
@@ -1153,7 +1202,7 @@ const AR_OBJ={
 function arDefaultFields(object){
   const F=(o)=>Object.assign({create:true,detail:'primary',required:false,important:false,options:[],defaultValue:''},o);
   if(object==='company')return[
-    F({id:'co_name',label:'Name',type:'Text',required:true}),F({id:'co_domain',label:'Domain',type:'Text',required:true}),
+    F({id:'co_name',label:'Name',type:'Text',required:true}),F({id:'co_domain',label:'Website',type:'Text',required:true}),
     F({id:'co_industry',label:'Industry',type:'Single select',options:INDUSTRIES}),F({id:'co_owner',label:'Owner',type:'Lookup'}),
     F({id:'co_size',label:'Employees size',type:'Number'}),F({id:'co_rev',label:'Annual revenue',type:'Currency',important:true}),
     F({id:'co_loc',label:'Location / HQ',type:'Text'}),F({id:'co_tags',label:'Tags',type:'Multi select'}),
@@ -1315,14 +1364,14 @@ function arBuildFromSheet(object,row){
   if(object==='lead'){let status=row.status||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';return{id,name:row.name,company:row.company,email:row.email,phone:row.phone,avatar:arInitials(row.name),color:arPick(),source:row.source||LEAD_SOURCES[0],status,score:Math.floor(Math.random()*35)+35,owner,ownerColor:arOwnerColor(owner),estValue:'—',estValueNum:null,title:'',loc:'',tags:[],days:0,created:'Just now',converted:false,archived:false};}
   const name=((row.first||'')+' '+(row.last||'')).trim()||'Unnamed';return{id,name,first:row.first,last:row.last,co:row.company,email:row.email,phone:row.phone,title:row.title,avatar:arInitials(name),color:arPick(),status:'Active',cstatus:CONTACT_STATUSES.includes(row.status)?row.status:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,lifecycle:'Lead',score:null,tags:[],archived:false};
 }
-function AddRecordDrawer({object,close,onToast,goTo}){
+function AddRecordDrawer({object,close,onToast,goTo,initialMode}){
   const cfg=AR_OBJ[object]||AR_OBJ.contact;
   const {props}=React.useContext(PropertiesContext);
   const crm=React.useContext(CrmDataContext);
   const fields=React.useMemo(()=>arCreateFields(props,object),[props,object]);
   const primary=fields.filter(f=>f.detail!=='secondary');
   const secondary=fields.filter(f=>f.detail==='secondary');
-  const [mode,setMode]=React.useState('single');
+  const [mode,setMode]=React.useState(initialMode==='multiple'?'multiple':'single');
   const [vals,setVals]=React.useState(()=>arBuildInitial(fields,object));
   const [showMore,setShowMore]=React.useState(false);
   const [submitted,setSubmitted]=React.useState(false);
@@ -1465,7 +1514,7 @@ function AppSidebar({active,goTo}){
       {quickModal==='email'&&<EmailComposeModal close={()=>setQuickModal(null)}/>}
       {quickModal==='call'&&<LogCallModal close={()=>setQuickModal(null)} onSave={()=>sideToastFn('Call logged')}/>}
       {quickModal==='import'&&<BulkImportWizard object='contact' close={()=>setQuickModal(null)} onToast={sideToastFn}/>}
-      {multiRecord&&<MultiRecordModal type={multiRecord} close={()=>setMultiRecord(null)} onToast={sideToastFn}/>}
+      {/* bulk entry now consolidated into AddRecordDrawer (initialMode='multiple') */}
       {sideToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{sideToast}</div>)}
     </aside>
   );
@@ -1583,7 +1632,7 @@ function SettingsSubNav({active,goTo}){
 // ?? ALL_PAGES + DevNav ????????????????????????????????????????????????????????
 const ALL_PAGES=[
   'landing','signup','signin','forgot-password',
-  'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5',
+  'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','onboarding-6',
   'dashboard',
   'leads','lead-detail','add-lead','edit-lead',
   'contacts','contact-detail','add-contact','edit-contact',
@@ -1915,6 +1964,7 @@ const ONB_STEPS=[
   {label:'Integrations',eyebrow:'Integrations',title:['Connect your','tools'],desc:'Sync email, SMS, and calendar so every touch logs automatically.'},
   {label:'Contacts',eyebrow:'Contacts',title:['Bring in your','contacts'],desc:'Add a few people now to get started, or import a spreadsheet anytime.'},
   {label:'Invite team',eyebrow:'Team',title:['Invite your','team'],desc:'Add teammates now or later. Everyone gets the 14-day free trial.'},
+  {label:'Done',eyebrow:'All set',title:["You're",'all set'],desc:"Your workspace is ready. Here's what you can do next."},
 ];
 function OnboardingDropdown({options,value,onChange,placeholder}){
   const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
@@ -1926,13 +1976,18 @@ function OnboardingPage({step,goTo}){
   const [industry,setIndustry]=React.useState('');
   const [teamSize,setTeamSize]=React.useState('');
   const [pipeline,setPipeline]=React.useState('sales');
-  const [integ,setInteg]=React.useState({gmail:true,twilio:false,slack:false,calendar:false});
+  const [integ,setInteg]=React.useState({gmail:'connected',twilio:'idle',slack:'idle',calendar:'idle'});
+  const [inviteEmail,setInviteEmail]=React.useState('');
+  const [sentInvites,setSentInvites]=React.useState([]);
+  const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>setInteg(m=>({...m,[key]:'connected'})),1200);};
+  const disconnectInteg=(key)=>setInteg(m=>({...m,[key]:'idle'}));
+  const sendInvite=()=>{const e=inviteEmail.trim();if(!e)return;setSentInvites(a=>a.includes(e)?a:[...a,e]);setInviteEmail('');};
   const [invites,setInvites]=React.useState(['','']);
   const [csvOpen,setCsvOpen]=React.useState(false);
   const meta=ONB_STEPS[step-1];
   const prev=step>1?`onboarding-${step-1}`:null;
-  const next=step<5?`onboarding-${step+1}`:'dashboard';
-  const pct=Math.round((step/5)*100);
+  const next=step<6?`onboarding-${step+1}`:'dashboard';
+  const pct=Math.round((step/6)*100);
   const PIPES=[
     {key:'sales',name:'B2B Sales',desc:'Prospect → Qualified → Proposal → Negotiation → Won',Icon:I.GitBranch},
     {key:'agency',name:'Agency / Services',desc:'Lead → Scoping → Proposal → Active → Delivered',Icon:I.Layers},
@@ -1961,8 +2016,8 @@ function OnboardingPage({step,goTo}){
           <div className="rounded-3xl border border-white/[0.06] overflow-hidden" style={{background:'rgba(255,255,255,0.025)',backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 100px rgba(0,0,0,0.6),0 0 140px rgba(99,102,241,0.08)'}}>
             <div className="px-6 sm:px-9 pt-7 pb-6 border-b border-white/[0.05]">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">{ONB_STEPS.map((s,i)=>{const idx=i+1,done=idx<step,active=idx===step;return(<div key={idx} className="flex items-center gap-2"><div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold transition-all duration-300',done?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/40':active?'bg-brand-500 text-white shadow-brand':'bg-white/[0.04] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}>{done?<I.Check size={12} stroke={2.6}/>:idx}</div><span className={['hidden sm:inline text-[12px] font-medium',active?'text-white':done?'text-white/60':'text-white/30'].join(' ')}>{s.label}</span>{idx<4&&<div className="w-5 h-px bg-white/[0.06] ml-1"/>}</div>);})}</div>
-                <span className="text-[11px] text-white/40 font-medium">Step {step} of 5</span>
+                <div className="flex items-center gap-2 flex-wrap">{ONB_STEPS.map((s,i)=>{const idx=i+1,done=idx<step,active=idx===step;return(<div key={idx} className="flex items-center gap-2"><div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold transition-all duration-300',done?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/40':active?'bg-brand-500 text-white shadow-brand':'bg-white/[0.04] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}>{done?<I.Check size={12} stroke={2.6}/>:idx}</div><span className={['hidden sm:inline text-[12px] font-medium',active?'text-white':done?'text-white/60':'text-white/30'].join(' ')}>{s.label}</span>{idx<6&&<div className="w-5 h-px bg-white/[0.06] ml-1"/>}</div>);})}</div>
+                <span className="text-[11px] text-white/40 font-medium">Step {step} of 6</span>
               </div>
               <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)',boxShadow:'0 0 12px rgba(99,102,241,0.5)'}}/></div>
             </div>
@@ -1979,7 +2034,7 @@ function OnboardingPage({step,goTo}){
                       <div><div className="flex items-center justify-between mb-2"><label className="text-[12px] font-medium text-white/70">Team size</label><span className="text-[11px] text-white/40">Pick what’s closest</span></div><div className="grid grid-cols-4 gap-2">{['Just me','2–3','4–5','5+'].map(o=>{const s=teamSize===o;return(<button key={o} onClick={()=>setTeamSize(o)} className={['px-3 py-2.5 rounded-xl text-[13px] font-medium border transition-all',s?'bg-brand-500/15 border-brand-500/40 text-brand-200 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] text-white/60 hover:text-white hover:border-white/[0.16]'].join(' ')}>{o}</button>);})}</div></div>
                     </div>)}
                     {step===2&&(<div className="flex flex-col gap-3">{PIPES.map(p=>{const s=pipeline===p.key;return(<button key={p.key} onClick={()=>setPipeline(p.key)} className={['flex items-center gap-4 p-4 rounded-2xl border text-left transition-all',s?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}><div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0',s?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><p.Icon size={18}/></div><div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white">{p.name}</p><p className="text-[12px] text-white/50 mt-0.5 leading-relaxed">{p.desc}</p></div><span className={['w-5 h-5 rounded-full border flex items-center justify-center shrink-0',s?'bg-brand-500 border-brand-500':'border-white/20'].join(' ')}>{s&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</span></button>);})}</div>)}
-                    {step===3&&(<div className="flex flex-col gap-3">{INTEGS.map(it=>{const on=integ[it.key];return(<div key={it.key} className="flex items-center gap-3.5 p-4 rounded-2xl border border-white/[0.08] bg-white/[0.03]"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[13px] shrink-0" style={{background:it.color+'22',color:it.color,border:`1px solid ${it.color}40`}}>{it.name[0]}</div><div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white">{it.name}</p><p className="text-[12px] text-white/50 mt-0.5">{it.desc}</p></div><Toggle on={on} onChange={v=>setInteg(m=>({...m,[it.key]:v}))}/></div>);})}</div>)}
+                    {step===3&&(<div className="flex flex-col gap-3">{INTEGS.map(it=>{const st=integ[it.key]||'idle';return(<div key={it.key} className="flex items-center gap-3.5 p-4 rounded-2xl border border-white/[0.08] bg-white/[0.03]"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[13px] shrink-0" style={{background:it.color+'22',color:it.color,border:`1px solid ${it.color}40`}}>{it.name[0]}</div><div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white">{it.name}</p><p className="text-[12px] text-white/50 mt-0.5">{it.desc}</p>{st==='connected'&&<button onClick={()=>disconnectInteg(it.key)} className="text-[11px] text-white/40 hover:text-red-300 mt-1 transition-colors">Disconnect</button>}</div>{st==='connected'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-emerald-500/12 text-emerald-300 border border-emerald-500/25"><I.Check size={13} stroke={2.6}/>Connected</span>):st==='connecting'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-brand-300 border border-brand-500/30 bg-brand-500/10"><span className="w-3.5 h-3.5 rounded-full border-2 border-brand-300/30 border-t-brand-300 animate-spin"/>Connecting…</span>):(<button onClick={()=>connectInteg(it.key)} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold border border-brand-500/30 text-brand-300 hover:bg-brand-500/10 transition-all">Connect</button>)}</div>);})}</div>)}
                     {step===4&&(<div className="flex flex-col gap-4">
                       <div>
                         <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2.5">Add contacts manually</p>
@@ -1992,13 +2047,14 @@ function OnboardingPage({step,goTo}){
                       </div>
                       {csvOpen&&<CsvImportModal close={()=>setCsvOpen(false)} onToast={()=>{}}/>}
                     </div>)}
-                                        {step===5&&(<div className="flex flex-col gap-3">{invites.map((v,i)=>(<div key={i} className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={v} onChange={e=>setInvites(arr=>arr.map((x,j)=>j===i?e.target.value:x))} placeholder={i===0?'teammate@company.com':'Another teammate (optional)'} className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><select className="px-3 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[13px] text-white/70 outline-none focus:border-brand-500/40 appearance-none"><option>Member</option><option>Admin</option></select></div>))}<button onClick={()=>setInvites(a=>[...a,''])} className="inline-flex items-center gap-2 text-[13px] text-brand-300 hover:text-brand-200 w-fit"><I.Plus size={14} stroke={2.4}/>Add another</button></div>)}
+                                        {step===5&&(<div className="flex flex-col gap-4"><div className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendInvite();}} placeholder="teammate@company.com" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><button onClick={sendInvite} disabled={!inviteEmail.trim()} className={['inline-flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-bold transition-all shrink-0',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Plus size={14} stroke={2.4}/>Send invite</button></div>{sentInvites.length>0&&<div className="flex flex-wrap gap-2">{sentInvites.map((em,i)=>(<span key={i} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-brand-500/12 border border-brand-500/25 text-[12px] text-brand-200"><span className="w-4 h-4 rounded-full bg-brand-500/30 text-brand-200 flex items-center justify-center text-[9px] font-bold">{em[0].toUpperCase()}</span>{em}<button onClick={()=>setSentInvites(a=>a.filter((_,j)=>j!==i))} className="text-brand-300/60 hover:text-red-300 transition-colors"><I.X size={12}/></button></span>))}</div>}<div className="flex items-center gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><I.Mail size={13} className="text-white/40 shrink-0"/><span className="text-[12px] text-white/50">They'll get an email to join your workspace.</span></div></div>)}
+                    {step===6&&(<div className="flex flex-col gap-5"><div className="flex justify-center"><span className="w-16 h-16 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/25 flex items-center justify-center"><I.Check size={30} stroke={2.4} className="text-emerald-300"/></span></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[{Icon:I.LayoutDash,label:'Go to Dashboard',sub:'See your workspace',go:'dashboard'},{Icon:I.Upload,label:'Import contacts',sub:'Bring in your list',go:'contacts'},{Icon:I.UserPlus,label:'Invite your team',sub:'Add teammates',go:'settings-team'}].map(c=>(<button key={c.label} onClick={()=>goTo(c.go)} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-white/[0.05] transition-all p-4 text-center flex flex-col items-center gap-2"><span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center"><c.Icon size={17}/></span><span className="text-[13px] font-semibold text-white">{c.label}</span><span className="text-[11px] text-white/45">{c.sub}</span></button>))}</div></div>)}
                   </div>
                   <div className="mt-9 flex items-center justify-between gap-4">
-                    <button onClick={()=>goTo('dashboard')} className="text-[13px] text-white/50 hover:text-white transition-colors">I’ll do this later</button>
+                    {step!==6&&<button onClick={()=>goTo('dashboard')} className="text-[13px] text-white/50 hover:text-white transition-colors">I’ll do this later</button>}
                     <div className="flex items-center gap-2.5">
                       {prev&&<button onClick={()=>goTo(prev)} className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">Back</button>}
-                      <button onClick={()=>goTo(next)} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{step===5?'Go to dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
+                      <button onClick={()=>goTo(next)} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{step===6?'Go to Dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
                     </div>
                   </div>
                 </div>
@@ -2160,8 +2216,8 @@ function WidgetConfigPopover({def,cfg,onClose,onApply}){
 }
 function DashboardWidget({uid,item,def,cfg,data,editMode,configOpen,onConfig,onCloseConfig,onApplyConfig,onRemove,goTo,onDragStart,onDragOver,onDrop,onDragEnd,dragging,dragOver}){
   return(
-    <div draggable={editMode} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}
-      className={['relative rounded-2xl bg-white/[0.03] transition-all',editMode?'border border-dashed border-white/[0.20] '+(dragging?'opacity-30':'opacity-95')+(dragOver?' ring-2 ring-brand-500/50':''):'border border-white/[0.06] hover:border-white/[0.10]'].join(' ')}
+    <div draggable={true} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}
+      className={['relative rounded-2xl bg-white/[0.03] transition-all',dragging?'cursor-grabbing opacity-40 scale-[0.98]':'cursor-grab',editMode?'border border-dashed border-white/[0.20]':'border border-white/[0.06] hover:border-white/[0.10]',dragOver?'ring-2 ring-brand-500/40 border-brand-500/40 bg-brand-500/[0.04]':''].join(' ')}
       style={{gridColumn:item.w===2?'span 2':'span 1'}}>
       {editMode&&(<div className="absolute -top-3 left-2 right-2 flex items-center justify-between z-20 pointer-events-none">
         <span className="pointer-events-auto cursor-grab inline-flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-md border border-white/[0.12] text-white/45 text-[10px] font-medium" style={{background:'var(--s800)'}}><I.Grip size={11}/>Drag</span>
@@ -2249,7 +2305,7 @@ function DashboardPage({goTo}){
         </div>)}/>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1480px] mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start" style={{gridAutoFlow:'row dense'}}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch" style={{gridAutoFlow:'row dense'}}>
               {layout.map((item,idx)=>{const def=getDef(item.id);const cfg=configs[item.uid]||{};return(
                 <DashboardWidget key={item.uid} uid={item.uid} item={item} def={def} cfg={cfg} data={dashData} editMode={editMode}
                   configOpen={configUid===item.uid} onConfig={()=>setConfigUid(configUid===item.uid?null:item.uid)} onCloseConfig={()=>setConfigUid(null)} onApplyConfig={(c)=>applyConfig(item.uid,c)}
@@ -2344,7 +2400,7 @@ function csvEscape(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.repla
 function downloadCSV(filename,text){try{const blob=new Blob([text],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){}}
 function importBaseFields(object){
   if(object==='company')return[
-    {key:'name',label:'Name',required:true},{key:'domain',label:'Domain',required:true,unique:true},
+    {key:'name',label:'Name',required:true},{key:'domain',label:'Website',required:true,unique:true},
     {key:'industry',label:'Industry',opts:INDUSTRIES},{key:'type',label:'Company type',opts:COMPANY_TYPES},
     {key:'owner',label:'Owner'},{key:'size',label:'Employees size'},{key:'annualRevenue',label:'Annual revenue'},
     {key:'loc',label:'Location / HQ'},{key:'website',label:'Website'},{key:'tags',label:'Tags'},
@@ -2920,7 +2976,7 @@ function omFieldSchema(object,props,rows){
       F('score','Score','number',null,r=>r.score),F('deal','Deal value','currency',null,r=>parseMoney(r.deal)),F('days','Days since activity','number',null,r=>r.days),
       F('tags','Tags','multiselect',omUniqTags(rows,r=>r.tags||(r.tag?[r.tag]:[])),r=>r.tags||(r.tag?[r.tag]:[])),F('dnc','Do not contact','boolean',null,r=>!!r.dnc),F('createdAt','Created date','date',null,r=>r.createdAt)];
   } else if(object==='company'){
-    fields=[F('name','Name','text'),F('domain','Domain','text'),F('industry','Industry','select',INDUSTRIES),F('type','Type','select',COMPANY_TYPES),
+    fields=[F('name','Name','text'),F('domain','Website','text'),F('industry','Industry','select',INDUSTRIES),F('type','Type','select',COMPANY_TYPES),
       F('size','Employees','number',null,r=>r.size),F('annualRevenue','Annual revenue','currency',null,r=>r.annualRevenue),F('loc','Location','text'),
       F('owner','Owner','owner',ownerOpts,r=>r.owner),F('tags','Tags','multiselect',omUniqTags(rows,r=>r.tags||[]),r=>r.tags||[]),
       F('opendeals','Open deals','number',null,r=>dealsForCompany(r.name).open),F('days','Days since activity','number',null,r=>r.days),F('website','Website','text'),F('createdAt','Created date','date',null,r=>r.createdAt)];
@@ -3403,10 +3459,11 @@ function ContactDetailPage({goTo,nav}){
                   <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span></div>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Log Call',fn:()=>setCallModal(true),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox'),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
+                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Call',fn:()=>goTo('inbox',{channel:'calls',contactId:c.id,phone:c.phone}),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
                     <button key={i} disabled={off} onClick={b.fn} title={off?'Disabled — Do Not Contact':b.l} className={['flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all text-[10px] font-medium',off?'bg-white/[0.02] border-white/[0.05] text-white/25 cursor-not-allowed':b.accent?'bg-brand-500/10 hover:bg-brand-500/15 border-brand-500/20 hover:border-brand-500/40 text-brand-300':b.danger?'bg-red-500/[0.07] hover:bg-red-500/12 border-red-500/15 hover:border-red-500/30 text-red-400/80 hover:text-red-300':'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white'].join(' ')}><b.Icon size={14}/>{b.l}</button>
                   );})}
                 </div>
+                <button onClick={()=>setCallModal(true)} className="block mx-auto mt-2 text-[11px] text-white/35 hover:text-white/60 transition-colors">Log call manually</button>
               </div>
               </div>
               <RecordProperties record={crec} primary={cPrimary} secondary={cSecondary} meta={cMeta} onChange={onFieldChange} goTo={goTo}/>
@@ -3591,7 +3648,7 @@ function OmViewMenu({views,activeKey,onSelect,favs,onToggleFav,onSaveView,dirty,
 }
 function PipelinePage({goTo}){
   const loading=useSkeleton(1000);
-  const {deals:_deals}=React.useContext(CrmDataContext);
+  const {deals:_deals,setDeals}=React.useContext(CrmDataContext);
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const dealFields=React.useMemo(()=>omFieldSchema('deal',_propsCtx,_deals),[_propsCtx,_deals]);
   const [workFilter,setWorkFilter]=React.useState({match:'AND',conds:[]});
@@ -3627,6 +3684,10 @@ function PipelinePage({goTo}){
   const [cfgOpen,setCfgOpen]=React.useState(false);
   const [colorEdit,setColorEdit]=React.useState(null);
   const [newStage,setNewStage]=React.useState('');
+  const [editStages,setEditStages]=React.useState(false);
+  const [focusStageId,setFocusStageId]=React.useState(null);
+  const [dragDeal,setDragDeal]=React.useState(null);
+  const [dropStageId,setDropStageId]=React.useState(null);
   const dragRef=React.useRef(null);
   const [dragOver,setDragOver]=React.useState(null);
   const active=pipelines.find(p=>p.id===activeId)||pipelines[0];
@@ -3642,6 +3703,10 @@ function PipelinePage({goTo}){
   const setColor=(id,color)=>{setStages(s=>s.map(x=>x.id===id?{...x,color}:x));setColorEdit(null);};
   const delStage=(stage)=>{if(active.stages.length<=1)return;openConfirm({title:'Delete "'+stage.name+'" stage?',body:'Deals in this stage will be moved to the previous stage.',confirmLabel:'Delete stage',danger:true,onConfirm:()=>setStages(s=>s.filter(x=>x.id!==stage.id))});};
   const onDropStage=(to)=>{const from=dragRef.current;dragRef.current=null;setDragOver(null);if(from==null||from===to)return;setStages(s=>{const a=[...s];const[m]=a.splice(from,1);a.splice(from<to?to-1:to,0,m);return a;});};
+  const STAGE_PRESET6=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa'];
+  const cycleColor=(id,cur)=>{const i=STAGE_PRESET6.indexOf(cur);setColor(id,STAGE_PRESET6[(i+1)%STAGE_PRESET6.length]);};
+  const addStageInline=()=>{const id='st'+Date.now();setStages(s=>[...s,{id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setFocusStageId(id);setEditStages(true);};
+  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd)return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
@@ -3674,9 +3739,10 @@ function PipelinePage({goTo}){
                   {pipelines.map(p=>{const on=p.id===active.id;return(<button key={p.id} onClick={()=>{setActiveId(p.id);setPipeMenu(false);}} className={['w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-all',on?'bg-brand-500/12 text-white':'text-white/75 hover:bg-white/[0.05]'].join(' ')}><I.GitBranch size={13} className={on?'text-brand-300':'text-white/40'}/><span className="flex-1 text-left truncate">{p.name}</span><span className="text-[10px] font-bold tabular-nums text-white/40">{p.stages.length}</span>{on&&<I.Check size={13} className="text-brand-300"/>}</button>);})}
                   <div className="h-px bg-white/[0.06] my-1.5 mx-1"/>
                   <button onClick={addPipeline} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-brand-300 hover:bg-brand-500/10 transition-all"><I.Plus size={13} stroke={2.4}/>New pipeline</button>
+                  <button onClick={()=>{setCfgOpen(true);setPipeMenu(false);}} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-white/75 hover:bg-white/[0.05] transition-all"><I.Settings size={13} className="text-white/40"/>Pipeline settings</button>
                 </div>)}
               </div>
-              <button onClick={()=>setCfgOpen(true)} title="Edit stages" aria-label="Edit stages" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Settings size={14}/></button>
+              <button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing':'Edit stages'} aria-label="Edit stages" className={['inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-semibold border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<React.Fragment><I.Check size={13} stroke={2.6}/>Done</React.Fragment>:<React.Fragment><I.Settings size={13}/>Edit stages</React.Fragment>}</button>
             </div>
             <p className="text-white/45 text-[12.5px] pl-0.5">{allVisible.length} open deals · {fmtK(totalVal)} total</p>
           </div>
@@ -3691,25 +3757,25 @@ function PipelinePage({goTo}){
         </div>
         <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
           <div className="h-full p-6 flex gap-4 min-w-max">
-            {active.stages.map(stage=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return(
-              <div key={stage.id} className="w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border border-white/[0.05] overflow-hidden">
+            {active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return(
+              <div key={stage.id} onDragOver={editStages?(e=>{e.preventDefault();if(dragOver!==si)setDragOver(si);}):undefined} onDrop={editStages?(e=>{e.preventDefault();onDropStage(si);}):undefined} onDragEnd={editStages?(()=>{dragRef.current=null;setDragOver(null);}):undefined} className={['w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}>
                 <div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-semibold text-white">{stage.name}</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setCfgOpen(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>
+                  {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><button onClick={()=>cycleColor(stage.id,stage.color)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 shrink-0 hover:scale-110 transition-transform" style={{background:stage.color}}/><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} className="flex-1 min-w-0 bg-transparent text-[13px] font-semibold text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-semibold text-white">{stage.name}</span><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
                   <div className="flex items-center justify-between mt-1.5"><span className="text-[12px] font-bold text-white tabular-nums">{sval}</span><span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span></div>
                 </div>
-                <div className="flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px]">
-                  {sd.map(d=>(<button key={d.id} onClick={()=>stage.real&&goTo('deal-detail',d.id)} className="deal-card w-full rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] p-3.5 text-left group cursor-grab">
+                <div onDragOver={e=>{if(dragDeal){e.preventDefault();if(dropStageId!==stage.id)setDropStageId(stage.id);}}} onDrop={e=>{if(dragDeal){e.preventDefault();moveDeal(stage);}}} className={['flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors',dragDeal&&dropStageId===stage.id?'bg-brand-500/[0.05]':''].join(' ')}>
+                  {sd.map(d=>(<button key={d.id} draggable={!editStages} onDragStart={e=>{setDragDeal({id:d.id,fromStageId:stage.id});e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragDeal(null);setDropStageId(null);}} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] p-3.5 text-left group cursor-grab',dragDeal&&dragDeal.id===d.id?'opacity-50 scale-[0.97]':''].join(' ')}>
                     {(cardF.name||cardF.amount)&&<div className="flex items-start justify-between gap-2 mb-2">{cardF.name?<p className="text-[13px] font-semibold text-white leading-tight truncate">{d.company}</p>:<span/>}{cardF.amount&&<span className="text-[14px] font-bold text-white tabular-nums shrink-0">{d.value}</span>}</div>}
                     {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags?<span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',d.tagBg,d.tagFg].join(' ')}>{d.tag}</span>:<span/>}{cardF.rot&&<div className="flex items-center gap-1.5 text-[10px] text-white/35" title="Deal age / rotting"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>}</div>}
                     {cardF.contact&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.UserPlus size={11} className="text-white/35 shrink-0"/><span className="truncate">{d.primaryContact||contactsForCompany(d.company)[0]&&contactsForCompany(d.company)[0].name||'No contact'}</span></div>}
                     {cardF.close&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.Calendar size={11} className="text-white/35 shrink-0"/>{d.closeDate?fmtShortDate(d.closeDate):'No close date'}</div>}
                     <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]"><div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:d.ownerColor}}>{d.owner}</div><span className="text-[10px] text-white/50">{d.owner}</span></div><I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
                   </button>))}
-                  <button onClick={()=>goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>
+                  {dragDeal&&dropStageId===stage.id&&<div className="h-10 rounded-xl border-2 border-dashed border-brand-500/50 bg-brand-500/[0.06] flex items-center justify-center text-[10.5px] text-brand-300/90 font-semibold">Drop deal here</div>}<button onClick={()=>goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>
                 </div>
               </div>
             );})}
-            <button onClick={()=>setCfgOpen(true)} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">Add / edit stages</span></button>
+            <button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>
           </div>
         </div>
         <AppFooter note="Drag deals between stages to move them"/>
@@ -4075,7 +4141,7 @@ function CompanyDetailPage({goTo,nav}){
   const co=companies.find(x=>x.id===nav)||companies[0];
   const people=contactsForCompany(co.name);
   const dl=dealsForCompany(co.name);
-  const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Domain',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency'},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
+  const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Website',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency'},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
   const coSecondary=[{key:'type',label:'Company type',type:'select',options:['Prospect','Customer','Partner','Competitor','Other']},{key:'website',label:'Website',type:'url',linkKind:'url'},{key:'parent',label:'Parent company',type:'lookup',go:(g)=>g('company-detail')},{key:'linkedin',label:'LinkedIn',type:'url',linkKind:'url'},{key:'desc',label:'Description',type:'text'},{key:'billing',label:'Billing address',type:'address'},{key:'shipping',label:'Shipping address',type:'address'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   const coMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
   const [noteText,setNoteText]=React.useState('');
@@ -4102,7 +4168,7 @@ function CompanyDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(99,102,241,0.10),transparent 70%)'}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:co.color}}>{co.avatar}</div>
-                  <div><h2 className="text-white text-[20px] font-bold">{co.name}</h2><a href="#" onClick={e=>e.preventDefault()} className="text-[13px] text-brand-300 mt-1 inline-block">{co.domain}</a><div className="mt-2"><CompanyTypeDropdown value={co.type} onChange={(tp)=>updateCompany(co.id,{type:tp})}/></div></div>
+                  <div><h2 className="text-white text-[20px] font-bold">{co.name}</h2><a href={(String(co.domain||'').startsWith('http')?'':'https://')+co.domain} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="text-[13px] text-brand-300 mt-1 inline-block hover:text-brand-200">{co.domain}</a><div className="mt-2"><CompanyTypeDropdown value={co.type} onChange={(tp)=>updateCompany(co.id,{type:tp})}/></div></div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[{Icon:I.Users,l:'Contacts',v:people.length,fn:()=>goTo('contacts')},{Icon:I.GitBranch,l:'Open deals',v:dl.open,fn:()=>goTo('pipeline')},{Icon:I.Dollar,l:'Pipeline',v:fmtK(dl.openValue),fn:()=>goTo('pipeline')}].map((b,i)=>(
@@ -5044,6 +5110,143 @@ function PreviewStateToggle({label,options,value,onChange}){
   return(<div className="fixed bottom-6 left-[72px] z-[80] flex items-center gap-1 p-1.5 rounded-xl border border-white/[0.10]" style={{background:'rgba(13,13,26,0.95)',backdropFilter:'blur(16px)',boxShadow:'0 12px 40px rgba(0,0,0,0.5)'}}>
     <span className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] px-2">{label}</span>
     {options.map(o=>(<button key={o.k} onClick={()=>onChange(o.k)} className={['px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',value===o.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.06]'].join(' ')}>{o.l}</button>))}
+  </div>);
+}
+// ── CallsWorkspace ── full two-panel calling environment (lives inside Inbox > Calls tab) ──
+function CallsWorkspace({goTo,onToast,preload}){
+  const {contacts}=React.useContext(CrmDataContext);
+  const integ=React.useContext(IntegrationsContext);
+  const conns=integ.conns||{};
+  const LBL='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 transition-all';
+  const [filter,setFilter]=React.useState('all');
+  const [search,setSearch]=React.useState('');
+  const [provider,setProvider]=React.useState('builtin');
+  const [connBanner,setConnBanner]=React.useState(null);
+  const [view,setView]=React.useState('dialer');
+  const [dialContact,setDialContact]=React.useState(null);
+  const [digits,setDigits]=React.useState('');
+  const [contactQuery,setContactQuery]=React.useState('');
+  const [seconds,setSeconds]=React.useState(0);
+  const [mute,setMute]=React.useState(false);
+  const [hold,setHold]=React.useState(false);
+  const [keypad,setKeypad]=React.useState(false);
+  const [callNote,setCallNote]=React.useState('');
+  const [outcome,setOutcome]=React.useState('Answered');
+  const [nextAction,setNextAction]=React.useState('None');
+  const [postNotes,setPostNotes]=React.useState('');
+  const timerRef=React.useRef(null);
+  React.useEffect(()=>{ if(preload){ setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setView('dialer'); setDigits(''); } },[preload]);
+  React.useEffect(()=>{ if(view==='active'&&!hold){ timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000); return ()=>clearInterval(timerRef.current); } },[view,hold]);
+  const PROV=[{k:'builtin',l:'Built-in',connected:true},{k:'twilio',l:'Twilio',connected:!!conns.twilio},{k:'googlevoice',l:'Google Voice',connected:!!conns.googlevoice}];
+  const fmtTimer=(s)=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  const isMissed=(c)=>/no answer|missed/i.test(c.outcome||'');
+  const isVm=(c)=>/voicemail/i.test(c.outcome||'');
+  const isToday=(c)=>/^today/i.test(c.date||'');
+  const counts={missed:CALLS_DATA.filter(isMissed).length,vm:CALLS_DATA.filter(isVm).length,today:CALLS_DATA.filter(isToday).length};
+  let rows=CALLS_DATA.slice();
+  if(filter==='missed')rows=rows.filter(isMissed); else if(filter==='voicemail')rows=rows.filter(isVm); else if(filter==='today')rows=rows.filter(isToday);
+  if(search.trim()){const q=search.toLowerCase();rows=rows.filter(c=>(c.contact||'').toLowerCase().includes(q)||(c.company||'').toLowerCase().includes(q));}
+  const loadIntoDialer=(c)=>{ const ct=contacts.find(x=>x.name===c.contact); setDialContact({name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color}); setView('dialer'); setDigits(''); };
+  const startCall=()=>{ setSeconds(0);setMute(false);setHold(false);setKeypad(false);setView('active'); };
+  const endCall=()=>{ clearInterval(timerRef.current); setView('postcall'); onToast&&onToast('Call ended','success'); };
+  const saveLog=()=>{ onToast&&onToast('Call logged \u2713','success'); resetDialer(); };
+  const resetDialer=()=>{ setView('dialer');setSeconds(0);setCallNote('');setPostNotes('');setOutcome('Answered');setNextAction('None'); };
+  const matches=contactQuery.trim()?contacts.filter(c=>!c.archived&&(c.name.toLowerCase().includes(contactQuery.toLowerCase())||(c.phone||'').includes(contactQuery))).slice(0,5):[];
+  const canCall=!!dialContact||digits.length>0;
+  const DIGITS=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
+  const ini=(o)=>o.avatar||((o.name||'?').slice(0,2).toUpperCase());
+  return(<div className="flex-1 flex min-h-0">
+    <div className="w-[380px] shrink-0 border-r border-white/[0.06] flex flex-col" style={{background:'var(--s925)'}}>
+      <div className="shrink-0 px-4 py-3 border-b border-white/[0.05] flex flex-col gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[{k:'missed',l:counts.missed+' Missed'},{k:'voicemail',l:counts.vm+' Voicemails'},{k:'today',l:counts.today+' Today'},{k:'all',l:'All'}].map(ch=>(
+            <button key={ch.k} onClick={()=>setFilter(ch.k)} className={['px-2.5 py-1 rounded-full text-[11.5px] font-medium transition-all',filter===ch.k?'bg-brand-500 text-white shadow-brand':'bg-white/[0.05] text-white/55 hover:text-white border border-white/[0.08]'].join(' ')}>{ch.l}</button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search calls..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-full"/></div>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-2 py-2">
+        {rows.length===0&&<p className="text-[12px] text-white/35 text-center py-10">No calls match.</p>}
+        {rows.map(c=>{ const dir=isMissed(c)?'missed':c.direction; return(
+          <div key={c.id} onClick={()=>loadIntoDialer(c)} className="rounded-xl px-4 py-3 hover:bg-white/[0.04] cursor-pointer transition-all border-b border-white/[0.04] flex items-center gap-3 group">
+            <div className="relative shrink-0"><div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{background:c.color}}>{c.avatar}</div>{isVm(c)&&<span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center text-[8px] ring-2 ring-[#09091a]">\uD83C\uDFB5</span>}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-white truncate">{c.contact||c.number}</p>
+              <div className="flex items-center gap-1.5 text-[12px] text-white/50 truncate mt-0.5">
+                <span className={['inline-flex items-center gap-0.5 font-medium shrink-0',dir==='in'?'text-brand-300':dir==='missed'?'text-red-300':'text-emerald-300'].join(' ')}>{dir==='in'?<React.Fragment><I.ArrowDownLeft size={11}/>Incoming</React.Fragment>:dir==='missed'?<React.Fragment><I.X size={10}/>Missed</React.Fragment>:<React.Fragment><I.ArrowUpRight size={11}/>Outgoing</React.Fragment>}</span>
+                <span className="text-white/25">\u00b7</span><span className="truncate">{c.date}</span>
+                {c.duration&&c.duration!=='0:00'&&!isVm(c)&&<React.Fragment><span className="text-white/25">\u00b7</span><span className="font-mono shrink-0">{c.duration}</span></React.Fragment>}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0" onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>loadIntoDialer(c)} className="bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 hover:bg-brand-500/25 rounded-lg px-3 py-1.5 text-[12px] font-semibold inline-flex items-center gap-1.5 transition-all"><I.Phone size={11}/>Call back</button>
+              <button onClick={()=>{loadIntoDialer(c);setView('postcall');}} className="bg-white/[0.05] text-white/55 hover:text-white hover:bg-white/[0.09] rounded-lg px-3 py-1.5 text-[12px] border border-white/[0.08] transition-all">Add note</button>
+            </div>
+          </div>); })}
+      </div>
+    </div>
+    <div className="flex-1 flex flex-col min-w-0" style={{background:'var(--s900)'}}>
+      {view==='dialer'&&(<div className="flex-1 overflow-y-auto scroll-area p-6 flex flex-col items-center">
+        <div className="w-full max-w-[360px] flex flex-col gap-5">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            {PROV.map(p=>{const active=provider===p.k;return(
+              <button key={p.k} onClick={()=>{ if(!p.connected){setConnBanner(b=>b===p.k?null:p.k);} else {setProvider(p.k);setConnBanner(null);} }} className={['px-3 py-1.5 rounded-full text-[12px] font-medium border inline-flex items-center gap-1.5 transition-all',active?'bg-brand-500/20 text-brand-300 border-brand-500/35':'text-white/45 border-white/[0.08] hover:text-white hover:bg-white/[0.05]'].join(' ')}>{p.k==='builtin'&&<span>\uD83D\uDCDE</span>}{p.l}{!p.connected&&<I.Key size={10} className="opacity-60"/>}</button>);})}
+          </div>
+          {connBanner&&(<div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Plug size={15}/></div>
+            <div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-white">{(PROV.find(p=>p.k===connBanner)||{}).l}</p><p className="text-[11.5px] text-white/45 mt-0.5">Connect to place calls through your own number.</p></div>
+            <button onClick={()=>{integ.connect(connBanner);setProvider(connBanner);setConnBanner(null);onToast&&onToast('Provider connected','success');}} className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-brand-200 bg-brand-500/12 border border-brand-500/30 hover:bg-brand-500/20 transition-all">Connect</button>
+          </div>)}
+          {dialContact?(<div className="relative rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 flex items-center gap-3">
+            <button onClick={()=>setDialContact(null)} className="absolute top-2 right-2 text-white/35 hover:text-white"><I.X size={14}/></button>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-[15px] font-bold text-white shrink-0" style={{background:dialContact.color||'#6366f1'}}>{ini(dialContact)}</div>
+            <div className="min-w-0"><p className="text-[16px] font-bold text-white truncate">{dialContact.name}</p><p className="text-[13px] text-white/55">{dialContact.phone||'No number on file'}</p></div>
+          </div>):(<div className="relative">
+            <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.10] rounded-xl px-3 py-2.5 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={contactQuery} onChange={e=>setContactQuery(e.target.value)} placeholder="Search contacts or type a number..." className="bg-transparent outline-none text-[13px] text-white placeholder:text-white/30 w-full"/></div>
+            {matches.length>0&&(<div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 rounded-xl border border-white/[0.08] py-1 overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+              {matches.map(c=>(<button key={c.id} onClick={()=>{setDialContact({name:c.name,phone:c.phone,avatar:c.avatar,color:c.color});setContactQuery('');}} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] text-left transition-colors"><div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><p className="text-[12.5px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.phone}</p></div></button>))}
+            </div>)}
+          </div>)}
+          <div className="flex items-center gap-2">
+            <input readOnly value={digits} placeholder="Enter a number" className="flex-1 text-[26px] font-mono text-white text-center tracking-[0.18em] h-14 bg-transparent outline-none placeholder:text-white/20 placeholder:text-[15px] placeholder:tracking-normal"/>
+            {digits&&<button onClick={()=>setDigits(d=>d.slice(0,-1))} title="Backspace" className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.06] transition-all">\u232b</button>}
+          </div>
+          <div className="grid grid-cols-3 gap-3 justify-items-center">
+            {DIGITS.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="w-16 h-16 rounded-full bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[20px] font-semibold transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[9px] text-white/30 mt-1 tracking-wider">{sub}</span>}</button>))}
+          </div>
+          <button disabled={!canCall} onClick={startCall} className={['w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all bg-emerald-500 hover:bg-emerald-400',!canCall?'opacity-40 cursor-not-allowed':''].join(' ')} style={canCall?{boxShadow:'0 0 32px rgba(16,185,129,0.4)'}:undefined}><I.Phone size={26} className="text-white"/></button>
+          <p className="text-[11px] text-white/35 text-center inline-flex items-center justify-center gap-1">Calling from: +1 415-555-0100 <I.ChevronDown size={11}/></p>
+        </div>
+      </div>)}
+      {view==='active'&&(<div className="flex-1 flex flex-col items-center justify-center p-6 gap-5">
+        <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-[22px] font-bold text-white ring-4 ring-brand-500/40" style={{background:dialContact?(dialContact.color||'#6366f1'):'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{dialContact?ini(dialContact):'#'}</div>
+        <div className="text-center"><p className="text-[20px] font-bold text-white">{dialContact?dialContact.name:digits}</p><p className="text-emerald-400 text-[12px] mt-0.5">{hold?'On hold':'Connected'}</p></div>
+        <p className="font-mono text-[32px] font-bold text-white tabular-nums">{fmtTimer(seconds)}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={()=>setMute(m=>!m)} title="Mute" className={['w-14 h-14 rounded-full flex items-center justify-center text-white transition-all',mute?'bg-white/20 ring-1 ring-white/30':'bg-white/[0.08] hover:bg-white/[0.13]'].join(' ')}>{mute?<I.MicOff size={20}/>:<I.Mic size={20}/>}</button>
+          <button onClick={()=>setHold(h=>!h)} title="Hold" className={['w-14 h-14 rounded-full flex items-center justify-center transition-all',hold?'bg-amber-500/25 text-amber-300 ring-1 ring-amber-500/40':'bg-white/[0.08] text-white hover:bg-white/[0.13]'].join(' ')}><I.Pause size={20}/></button>
+          <button onClick={()=>setKeypad(k=>!k)} title="Keypad" className={['w-14 h-14 rounded-full flex items-center justify-center text-white transition-all',keypad?'bg-white/20 ring-1 ring-white/30':'bg-white/[0.08] hover:bg-white/[0.13]'].join(' ')}><I.Hash size={20}/></button>
+          <button onClick={endCall} title="End call" className="w-14 h-14 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-all" style={{boxShadow:'0 0 24px rgba(239,68,68,0.4)'}}><I.PhoneOff size={20}/></button>
+        </div>
+        {keypad&&<div className="grid grid-cols-3 gap-2 w-[210px]">{DIGITS.map(([d])=>(<button key={d} className="h-11 rounded-lg bg-white/[0.06] text-white text-[16px] font-semibold hover:bg-white/[0.10] transition-all">{d}</button>))}</div>}
+        <textarea value={callNote} onChange={e=>setCallNote(e.target.value)} rows={2} placeholder="Quick note..." className="w-full max-w-[320px] px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 resize-none transition-all"/>
+      </div>)}
+      {view==='postcall'&&(<div className="flex-1 overflow-y-auto scroll-area p-6 flex flex-col items-center">
+        <div className="w-full max-w-[380px] flex flex-col gap-4">
+          <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center"><I.Check size={16}/></span><p className="text-white text-[16px] font-bold">Log this call</p></div>
+          {dialContact&&<div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:dialContact.color||'#6366f1'}}>{ini(dialContact)}</div><span className="text-[13px] text-white">{dialContact.name}</span></div>}
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Duration</label><input readOnly value={seconds?fmtTimer(seconds):'\u2014'} className={INP+' font-mono'}/></div>
+            <div><label className={LBL}>Direction</label><input readOnly value="Outgoing" className={INP}/></div>
+          </div>
+          <div><label className={LBL}>Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{['Answered','No answer','Left voicemail','Busy','Wrong number'].map(o=>(<option key={o}>{o}</option>))}</select></div>
+          <div><label className={LBL}>Notes</label><textarea value={postNotes} onChange={e=>setPostNotes(e.target.value)} rows={4} placeholder="What happened on this call?" className={INP+' resize-none'}/></div>
+          <div><label className={LBL}>Next action</label><select value={nextAction} onChange={e=>setNextAction(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{['None','Send follow-up email','Schedule meeting','Create task','Send proposal'].map(o=>(<option key={o}>{o}</option>))}</select></div>
+          <div className="flex flex-col gap-2 pt-1"><button onClick={saveLog} className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save log</button><button onClick={resetDialer} className="w-full py-2 rounded-xl text-[13px] font-medium text-white/40 hover:text-white/70 transition-all">Skip</button></div>
+        </div>
+      </div>)}
+    </div>
   </div>);
 }
 function InboxPage({goTo}){
@@ -9071,10 +9274,11 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
     {k:'Medium',c:CAL_PRIORITY_C.Medium,d:'Normal'},
     {k:'High',c:CAL_PRIORITY_C.High,d:'Urgent'},
   ];
-  return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{width:480,maxHeight:'92vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+  return(<React.Fragment>
+    <div className="fixed inset-0 bg-black/40 z-[169]" onClick={onClose}/>
+    <div role="dialog" aria-modal="true" className="app-drawer fixed right-0 top-0 bottom-0 z-[170] w-[420px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
-        <div className="flex items-center gap-2.5"><span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'rgba(99,102,241,0.16)',color:'#818cf8',boxShadow:'inset 0 0 0 1px rgba(99,102,241,0.32)'}}><I.CheckSquare size={14}/></span><p className="text-white text-[15px] font-bold">{isEdit?'Edit task':'New task'}</p></div>
+        <div className="flex items-center gap-2.5"><span className="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><I.CheckSquare size={16}/></span><div><p className="text-white text-[15px] font-bold leading-tight">{isEdit?'Edit Task':'New Task'}</p><p className="text-[12px] text-white/45 mt-0.5">Press ⌘↵ to save.</p></div></div>
         <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
       </div>
       <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-5" style={{background:'var(--s850)'}}>
@@ -9134,7 +9338,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
         <button onClick={save} disabled={!valid} className={['flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{isEdit?'Save changes':'Create task'}</button>
       </div>
     </div>
-  </div>);
+  </React.Fragment>);
 }
 function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const ed=initial||{};
@@ -9447,7 +9651,7 @@ function App(){
   const [addRecord,setAddRecord]=React.useState(null);
   const [appToast,setAppToast]=React.useState('');
   const appToastFn=React.useCallback((m)=>{setAppToast(m);setTimeout(()=>setAppToast(''),2200);},[]);
-  React.useEffect(()=>{window.__nrturQuickAdd=(m)=>setAddRecord(m);},[]);
+  React.useEffect(()=>{window.__nrturQuickAdd=(m,initialMode)=>setAddRecord({object:m,initialMode:initialMode||'single'});},[]);
   React.useEffect(()=>{window.__nrturOpenSearch=()=>setSearchOpen(true);window.__nrturOpenCmd=()=>setCmdOpen(true);window.__nrturGoTo=goTo;return()=>{delete window.__nrturOpenSearch;delete window.__nrturOpenCmd;delete window.__nrturGoTo;};},[goTo]);
   React.useEffect(()=>{const fn=(e)=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setSearchOpen(false);setCmdOpen(true);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   const p={goTo,nav};
@@ -9460,6 +9664,7 @@ function App(){
      <PropertiesContext.Provider value={propsCtx}>
      <IntegrationsContext.Provider value={integCtx}>
      <CalendarContext.Provider value={calCtx}>
+      <GlobalToastHost/>
       {page==='landing'           && <LandingPage {...p}/>}
       {page==='signup'            && <SignUpPage {...p}/>}
       {page==='signin'            && <SignInPage {...p}/>}
@@ -9469,6 +9674,7 @@ function App(){
       {page==='onboarding-3'      && <OnboardingPage step={3} {...p}/>}
       {page==='onboarding-4'      && <OnboardingPage step={4} {...p}/>}
       {page==='onboarding-5'      && <OnboardingPage step={5} {...p}/>}
+      {page==='onboarding-6'      && <OnboardingPage step={6} {...p}/>}
       {isApp&&<div className="app-shell" style={{height:'100%'}}>
       {page==='dashboard'         && <DashboardPage {...p}/>}
       {page==='leads'             && <LeadsPage {...p}/>}
@@ -9511,7 +9717,7 @@ function App(){
       {page==='profile'           && <ProfilePage {...p}/>}
       {searchOpen&&<GlobalSearchOverlay close={()=>setSearchOpen(false)} goTo={(pg)=>{goTo(pg);setSearchOpen(false);}}/>}
       {cmdOpen&&<CommandPalette close={()=>setCmdOpen(false)} goTo={(pg)=>{goTo(pg);setCmdOpen(false);}}/>}
-      {addRecord&&<AddRecordDrawer object={addRecord} close={()=>setAddRecord(null)} onToast={appToastFn} goTo={goTo}/>}
+      {addRecord&&<AddRecordDrawer object={addRecord.object} initialMode={addRecord.initialMode} close={()=>setAddRecord(null)} onToast={appToastFn} goTo={goTo}/>}
       {appToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[210] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md"><I.Check size={15}/>{appToast}</div>)}
       </div>}
       <DevNav goTo={goTo}/>
