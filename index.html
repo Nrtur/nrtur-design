@@ -3707,6 +3707,7 @@ function ContactDetailPage({goTo,nav}){
   const [tab,setTab]=React.useState('all');
   const [noteText,setNoteText]=React.useState('');
   const [callModal,setCallModal]=React.useState(false);
+  const [dialerOpen,setDialerOpen]=React.useState(false);
   const [composeOpen,setComposeOpen]=React.useState(false);
   const [dnc,setDnc]=React.useState(c.dnc);
   const [enriched,setEnriched]=React.useState(false);
@@ -3715,6 +3716,15 @@ function ContactDetailPage({goTo,nav}){
   const filterTabs=[{k:'all',l:'All',n:timeline.length},{k:'emails',l:'Emails',n:timeline.filter(e=>e.kind.startsWith('email')).length},{k:'notes',l:'Notes',n:timeline.filter(e=>e.kind==='note').length},{k:'deals',l:'Deals',n:timeline.filter(e=>e.kind==='deal').length}];
   const filtered=timeline.filter(e=>{if(tab==='emails')return e.kind.startsWith('email');if(tab==='notes')return e.kind==='note';if(tab==='deals')return e.kind==='deal';return true;});
   const onLogCall=(cd)=>{setTimeline(t=>[{kind:'call',time:'Just now',label:'CALL LOGGED',chipBg:'bg-blue-500/15 ring-blue-500/25 text-blue-300',Icon:I.Phone,iconColor:'#60a5fa',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),meta:'By Alex Morgan'},...t]);};
+  const onPopoverCall=(data,seconds)=>{
+    const dur=fmtDur(seconds||0);
+    setTimeline(t=>[{kind:'call',time:'Just now',label:'CALL LOGGED',chipBg:'bg-blue-500/15 ring-blue-500/25 text-blue-300',Icon:I.Phone,iconColor:'#60a5fa',title:'Outbound call'+(data&&data.outcome?' — '+data.outcome:''),body:(data&&data.notes)||('Duration '+dur),meta:'By Alex Morgan'},...t]);
+    setDialerOpen(false);
+    window.__nrturToast&&window.__nrturToast('Call logged ✓','success');
+    if(!data)return;
+    if(data.status){updateContact(c.id,{pstatus:data.status});setTimeout(()=>window.__nrturToast&&window.__nrturToast('Status → '+data.status+' ✓','success'),400);}
+    if(data.decision&&data.decision!=='None'){setTimeout(()=>window.__nrturToast&&window.__nrturToast(decisionToast(data.decision),'success'),800);}
+  };
   const _cp=(c.name||'').split(' ');const _cf0=_cp[0]||'';const _cl0=_cp.slice(1).join(' ');
   const crec={...c,first:c.first!=null?c.first:_cf0,last:c.last!=null?c.last:_cl0,tags:c.tags||(c.tag?[c.tag]:[])};
   const onFieldChange=(k,v)=>{if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else{updateContact(c.id,{[k]:v});}};
@@ -3737,6 +3747,7 @@ function ContactDetailPage({goTo,nav}){
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
             <div className="flex flex-col gap-4">
+            <div className="relative">
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden">
               <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(59,130,246,0.10),transparent 70%)'}}>
                 <div className="flex items-center gap-4 mb-4">
@@ -3744,12 +3755,14 @@ function ContactDetailPage({goTo,nav}){
                   <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span></div>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Call',fn:()=>goTo('inbox',{channel:'calls',contactId:c.id,phone:c.phone}),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
+                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Make call',fn:()=>setDialerOpen(o=>!o),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
                     <button key={i} disabled={off} onClick={b.fn} title={off?'Disabled — Do Not Contact':b.l} className={['flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all text-[10px] font-medium',off?'bg-white/[0.02] border-white/[0.05] text-white/25 cursor-not-allowed':b.accent?'bg-brand-500/10 hover:bg-brand-500/15 border-brand-500/20 hover:border-brand-500/40 text-brand-300':b.danger?'bg-red-500/[0.07] hover:bg-red-500/12 border-red-500/15 hover:border-red-500/30 text-red-400/80 hover:text-red-300':'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white'].join(' ')}><b.Icon size={14}/>{b.l}</button>
                   );})}
                 </div>
-                <button onClick={()=>setCallModal(true)} className="block mx-auto mt-2 text-[11px] text-white/35 hover:text-white/60 transition-colors">Log call manually</button>
+                <button onClick={()=>setCallModal(true)} className="block mx-auto mt-2 text-[11px] text-white/35 hover:text-white/60 transition-colors">Log manually</button>
               </div>
+              </div>
+              {dialerOpen&&!dnc&&<ContactDialerPopover contact={{name:c.name,phone:c.phone,avatar:c.avatar,color:c.color}} statusOptions={['New','Contacted','Nurturing','Qualified','Unqualified']} currentStatus={c.pstatus} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
               </div>
               <RecordProperties record={crec} primary={cPrimary} secondary={cSecondary} meta={cMeta} onChange={onFieldChange} goTo={goTo}/>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4 flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Blocks all email, SMS, and calls.</p></div><Toggle on={dnc} onChange={setDnc}/></div>
@@ -5402,7 +5415,202 @@ function PreviewStateToggle({label,options,value,onChange}){
   </div>);
 }
 // ── CallsWorkspace ── full two-panel calling environment (lives inside Inbox > Calls tab) ──
-function CallsWorkspace({goTo,onToast,preload}){
+// ── Call experience: shared helpers + timeline / recording / enrichment (Inbox Calls + Contact detail) ──
+const CALL_OUTCOMES=['Connected','No answer','Left voicemail','Busy','Wrong number'];
+const CALL_REASONS=['Discovery','Follow-up','Demo','Negotiation','Check-in','Support','Other'];
+const CALL_DECISIONS=['None','Schedule follow-up','Send proposal','Send email','Create task','Mark deal won','Mark deal lost'];
+function callDirMeta(dir){
+  if(dir==='missed')return{label:'Missed',dot:'#f87171',chip:'bg-red-500/15 text-red-300 ring-red-500/25',Icon:I.X};
+  if(dir==='in')return{label:'Incoming',dot:'#6366f1',chip:'bg-brand-500/15 text-brand-300 ring-brand-500/25',Icon:I.ArrowDownLeft};
+  return{label:'Outgoing',dot:'#10b981',chip:'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25',Icon:I.ArrowUpRight};
+}
+function decisionToast(d){if(d==='Mark deal won')return'Deal marked won ✓';if(d==='Mark deal lost')return'Deal marked lost ✓';return d+' ✓';}
+function parseDur(s){if(!s)return 0;const p=String(s).split(':').map(Number);if(p.length===2)return (p[0]*60)+p[1];return Number(s)||0;}
+function fmtDur(sec){sec=Math.max(0,Math.floor(sec));return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');}
+function fmtTalk(sec){const m=Math.floor(sec/60);if(m<60)return m+'m '+(sec%60)+'s';const h=Math.floor(m/60);return h+'h '+(m%60)+'m';}
+// Deterministic, realistic per-person call history (most recent first).
+const _CALL_HIST_BASE=[
+  {dir:'out',date:'Today · 2:14 PM',dur:'14:32',rec:true,outcome:'Connected',reason:'Follow-up',notes:'Walked through the Q3 proposal — wants to move forward, looping in legal for redlines.'},
+  {dir:'in',date:'Yesterday · 4:32 PM',dur:'8:07',rec:true,outcome:'Connected',reason:'Discovery',notes:'Budget questions on the annual plan. Confirmed the $48k range works.'},
+  {dir:'missed',date:'Mon · 11:20 AM',dur:null,rec:false,outcome:null,reason:null,notes:null},
+  {dir:'out',date:'May 28 · 1:15 PM',dur:'22:18',rec:true,outcome:'Left voicemail',reason:'Check-in',notes:null},
+  {dir:'out',date:'May 26 · 9:00 AM',dur:'5:52',rec:false,outcome:'No answer',reason:'Follow-up',notes:null},
+];
+function buildCallHistory(name){
+  const seed=(name||'x').split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
+  const n=4+(seed%2);
+  return _CALL_HIST_BASE.slice(0,n).map((e,i)=>({...e,id:'ch-'+seed+'-'+i,recLen:e.rec?e.dur:null}));
+}
+function callStats(history){
+  const total=history.length;
+  const answered=history.filter(e=>e.dir!=='missed'&&e.dur&&!/no answer/i.test(e.outcome||'')&&!/voicemail/i.test(e.outcome||''));
+  const talk=history.reduce((a,e)=>a+(e.dur?parseDur(e.dur):0),0);
+  const answerRate=total?Math.round(answered.length/total*100):0;
+  const avg=answered.length?Math.round(talk/answered.length):0;
+  const oc={};history.forEach(e=>{const k=e.outcome||(e.dir==='missed'?'No answer':null);if(k)oc[k]=(oc[k]||0)+1;});
+  const outcomes=Object.keys(oc).map(k=>({k,n:oc[k]})).sort((a,b)=>b.n-a.n);
+  const rc={};history.forEach(e=>{if(e.reason)rc[e.reason]=(rc[e.reason]||0)+1;});
+  const reasons=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
+  return{total,talk,answerRate,avg,outcomes,topReason:reasons[0]||'—',spark:history.map(e=>e.dur?parseDur(e.dur):0).reverse()};
+}
+// Simulated recording player — state-driven progress, no real audio.
+function RecordingBar({len}){
+  const total=parseDur(len)||1;
+  const [playing,setPlaying]=React.useState(false);
+  const [pos,setPos]=React.useState(0);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{
+    if(!playing)return;
+    ref.current=setInterval(()=>setPos(p=>{const nx=p+1;if(nx>=total){clearInterval(ref.current);setPlaying(false);return total;}return nx;}),180);
+    return()=>clearInterval(ref.current);
+  },[playing,total]);
+  const pct=Math.min(100,pos/total*100);
+  return(<div className="flex items-center gap-2.5 mt-2.5">
+    <button onClick={()=>{if(pos>=total)setPos(0);setPlaying(p=>!p);}} className="w-8 h-8 rounded-full bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0 hover:bg-brand-500/25 transition-all">{playing?<I.Pause size={13}/>:<I.Play size={12}/>}</button>
+    <div className="flex-1 h-1 rounded-full bg-white/[0.10] overflow-hidden"><div className="h-full rounded-full bg-brand-500" style={{width:pct+'%',transition:'width 0.15s linear'}}/></div>
+    <span className="text-[11px] font-mono text-white/45 tabular-nums shrink-0">{fmtDur(pos)} / {len}</span>
+  </div>);
+}
+// Vertical timeline of a person's calls (reused in Calls-tab detail + full-history overlay).
+function CallTimeline({history,onAddNotes}){
+  if(!history.length)return(<p className="text-[12px] text-white/35 text-center py-8">No calls yet.</p>);
+  return(<div>{history.map(e=>{
+    const m=callDirMeta(e.dir);
+    return(<div key={e.id} className="relative pl-7">
+      <div className="absolute left-[5px] top-1.5 bottom-0 w-px bg-white/[0.08]"/>
+      <span className="absolute left-0 top-[18px] w-2.5 h-2.5 rounded-full" style={{background:m.dot,boxShadow:'0 0 0 3px var(--s900)'}}/>
+      <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={['inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1',m.chip].join(' ')}><m.Icon size={10}/>{m.label}</span>
+          <span className="text-[12px] text-white/45">{e.date}</span>
+          <span className="text-white/20">·</span>
+          {e.dur?<span className="font-mono text-[12px] text-white/60">{e.dur}</span>:<span className="text-[12px] text-red-300/80 font-medium">Missed</span>}
+        </div>
+        {e.rec&&<RecordingBar len={e.recLen||e.dur}/>}
+        {(e.outcome||e.notes)?(<div className="mt-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {e.outcome&&<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.05] text-white/70 border border-white/[0.08]">{e.outcome}</span>}
+            {e.reason&&<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-300 border border-brand-500/20">{e.reason}</span>}
+          </div>
+          {e.notes&&<p className="text-[12px] text-white/60 leading-relaxed mt-2">{e.notes}</p>}
+        </div>):(<div className="mt-2.5 flex items-center gap-2"><span className="text-[12px] text-white/35">No notes</span><button onClick={()=>onAddNotes&&onAddNotes(e)} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Add notes</button></div>)}
+      </div>
+    </div>);
+  })}</div>);
+}
+// One-step post-call enrichment form (Part C) — reused in dialer popover + Calls-tab right panel.
+function CallEnrichmentForm({duration,statusOptions,currentStatus,onSave,onSkip,compact}){
+  const LBL='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 transition-all';
+  const SEL=INP+' appearance-none';
+  const selStyle={colorScheme:'dark',background:'var(--s850)'};
+  const [outcome,setOutcome]=React.useState('Connected');
+  const [reason,setReason]=React.useState('Follow-up');
+  const [status,setStatus]=React.useState('');
+  const [decision,setDecision]=React.useState('None');
+  const [notes,setNotes]=React.useState('');
+  const submit=()=>onSave&&onSave({outcome,reason,status,decision,notes,duration});
+  return(<div className={['flex flex-col',compact?'gap-2.5':'gap-3.5'].join(' ')}>
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[12px] font-semibold"><I.Check size={12}/>Call ended</span>
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.05] border border-white/[0.08] text-[12px] text-white/70"><I.Clock size={11}/><span className="font-mono">{duration||'—'}</span></span>
+    </div>
+    <div><label className={LBL}>Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className={SEL} style={selStyle}>{CALL_OUTCOMES.map(o=>(<option key={o}>{o}</option>))}</select></div>
+    <div><label className={LBL}>Call reason</label><select value={reason} onChange={e=>setReason(e.target.value)} className={SEL} style={selStyle}>{CALL_REASONS.map(o=>(<option key={o}>{o}</option>))}</select></div>
+    {statusOptions&&statusOptions.length>0&&<div><label className={LBL}>Update contact status (optional)</label><select value={status} onChange={e=>setStatus(e.target.value)} className={SEL} style={selStyle}><option value="">No change{currentStatus?' · currently '+currentStatus:''}</option>{statusOptions.map(o=>(<option key={o}>{o}</option>))}</select></div>}
+    <div><label className={LBL}>Decision / next step</label><select value={decision} onChange={e=>setDecision(e.target.value)} className={SEL} style={selStyle}>{CALL_DECISIONS.map(o=>(<option key={o}>{o}</option>))}</select></div>
+    <div><label className={LBL}>Notes</label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} placeholder="What happened on this call?" className={INP+' resize-none'}/></div>
+    <div className="flex gap-2 pt-0.5"><button onClick={submit} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save log</button><button onClick={onSkip} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/45 hover:text-white/80 bg-white/[0.04] border border-white/[0.08] transition-all">Skip</button></div>
+  </div>);
+}
+// Calls-tab right panel: per-person call detail timeline (Part B).
+function CallDetailView({contact,history,onBack,onCall,onViewHistory,onSaveNotes}){
+  const [enrichEntry,setEnrichEntry]=React.useState(null);
+  const st=callStats(history);
+  const ini=contact.avatar||((contact.name||'?').slice(0,2).toUpperCase());
+  const lastShort=history[0]?String(history[0].date).split('·')[0].trim():'—';
+  const stat=(num,label)=>(<div className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2"><p className="text-[18px] font-black text-white leading-none">{num}</p><p className="text-[11px] text-white/45 mt-1">{label}</p></div>);
+  return(<div className="flex-1 overflow-y-auto scroll-area p-6">
+    <div className="max-w-[560px] mx-auto flex flex-col gap-4">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-[12px] text-white/50 hover:text-white transition-colors w-fit"><I.ChevronLeft size={14}/>Back to dialer</button>
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold text-white shrink-0" style={{background:contact.color||'#6366f1'}}>{ini}</div>
+        <div className="min-w-0 flex-1"><p className="text-[18px] font-bold text-white truncate">{contact.name}</p><p className="text-[13px] text-white/55 truncate">{contact.phone||'No number on file'}</p></div>
+        <button onClick={onCall} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0"><I.Phone size={13}/>Call</button>
+      </div>
+      <div className="-mt-1"><button onClick={onViewHistory} className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">View full history<I.ArrowRight size={11}/></button></div>
+      <div className="grid grid-cols-3 gap-2">{stat(st.total,'Total calls')}{stat(fmtTalk(st.talk),'Talk time')}{stat(lastShort,'Last contacted')}</div>
+      {enrichEntry&&<div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4"><p className="text-[13px] font-bold text-white mb-3">Add notes to this call</p><CallEnrichmentForm duration={enrichEntry.dur||'—'} onSave={(d)=>{onSaveNotes(enrichEntry.id,d);setEnrichEntry(null);}} onSkip={()=>setEnrichEntry(null)}/></div>}
+      <div className="pt-1"><CallTimeline history={history} onAddNotes={(e)=>setEnrichEntry(e)}/></div>
+    </div>
+  </div>);
+}
+// Full call-history deep-dive overlay (Part D).
+function CallHistoryOverlay({contact,history,onClose}){
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
+  const st=callStats(history);
+  const maxOc=Math.max(1,...st.outcomes.map(o=>o.n));
+  const ini=contact.avatar||((contact.name||'?').slice(0,2).toUpperCase());
+  const sparkMax=Math.max(1,...st.spark);
+  const pts=st.spark.length>1?st.spark.map((v,i)=>((i/(st.spark.length-1))*100).toFixed(1)+','+(28-(v/sparkMax)*24).toFixed(1)).join(' '):'0,16 100,16';
+  const cell=(num,label)=>(<div className="rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2.5"><p className="text-[20px] font-black text-white leading-none">{num}</p><p className="text-[11px] text-white/45 mt-1">{label}</p></div>);
+  return(<div className="fixed inset-0 z-[185] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} className="max-w-[820px] w-full max-h-[90vh] flex flex-col rounded-2xl overflow-hidden border border-white/[0.10]" style={{background:'var(--s850)'}}>
+      <div className="shrink-0 px-5 py-4 border-b border-white/[0.07] flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{background:contact.color||'#6366f1'}}>{ini}</div><div className="min-w-0"><p className="text-[15px] font-bold text-white truncate">{contact.name}</p><p className="text-[12px] text-white/45">Call history</p></div></div>
+        <button onClick={onClose} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={18}/></button>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col sm:flex-row overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-y-auto scroll-area p-5 order-2 sm:order-1"><CallTimeline history={history}/></div>
+        <div className="sm:w-[320px] shrink-0 border-b sm:border-b-0 sm:border-l border-white/[0.07] overflow-y-auto scroll-area p-5 order-1 sm:order-2 flex flex-col gap-4" style={{background:'var(--s900)'}}>
+          <div className="grid grid-cols-2 gap-2">{cell(st.total,'Total calls')}{cell(st.answerRate+'%','Answer rate')}{cell(fmtDur(st.avg),'Avg duration')}{cell(fmtTalk(st.talk),'Total talk')}</div>
+          <div>
+            <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2.5">Outcomes</p>
+            <div className="flex flex-col gap-2">{st.outcomes.map(o=>(<div key={o.k}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/65">{o.k}</span><span className="text-[11px] font-mono text-white/40">{o.n}</span></div><div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full bg-brand-500" style={{width:(o.n/maxOc*100)+'%'}}/></div></div>))}</div>
+          </div>
+          <div><p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-1.5">Most common reason</p><span className="inline-flex items-center text-[12px] font-medium px-2.5 py-1 rounded-lg bg-brand-500/10 text-brand-300 border border-brand-500/20">{st.topReason}</span></div>
+          <div><p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2">Calls over time</p><svg viewBox="0 0 100 28" preserveAspectRatio="none" className="w-full h-10"><polyline points={pts} fill="none" stroke="#6366f1" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+// Inline dialer popover for the contact detail action bar (Part A).
+function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLogged}){
+  const [mode,setMode]=React.useState('dial');
+  const [digits,setDigits]=React.useState('');
+  const [seconds,setSeconds]=React.useState(0);
+  const [mute,setMute]=React.useState(false);
+  const timerRef=React.useRef(null);
+  React.useEffect(()=>{if(mode==='active'){timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000);return()=>clearInterval(timerRef.current);}},[mode]);
+  const PAD=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
+  const ini=contact.avatar||((contact.name||'?').slice(0,2).toUpperCase());
+  const start=()=>{setSeconds(0);setMute(false);setMode('active');};
+  const end=()=>{clearInterval(timerRef.current);setMode('enrich');};
+  return(<div onClick={e=>e.stopPropagation()} className="absolute z-[120] left-1/2 -translate-x-1/2 top-[calc(100%+8px)] w-[300px] rounded-2xl border border-white/[0.10] p-4 max-h-[440px] overflow-y-auto scroll-area" style={{background:'var(--pop2)',backdropFilter:'blur(12px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+    <div className="flex items-center justify-between mb-3 gap-2">
+      <div className="flex items-center gap-2.5 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0" style={{background:contact.color||'#6366f1'}}>{ini}</div><div className="min-w-0"><p className="text-[13px] font-bold text-white truncate">{contact.name}</p><p className="text-[11px] text-white/50 truncate">{contact.phone||'No number'}</p></div></div>
+      <button onClick={onClose} className="text-white/40 hover:text-white shrink-0 transition-colors"><I.X size={15}/></button>
+    </div>
+    {mode==='dial'&&<React.Fragment>
+      <div className="grid grid-cols-3 gap-2 mb-3.5">
+        {PAD.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[17px] font-semibold transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[8px] text-white/30 mt-0.5 tracking-wider">{sub}</span>}</button>))}
+      </div>
+      <button onClick={start} className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 transition-all" style={{boxShadow:'0 0 24px rgba(16,185,129,0.35)'}}><I.Phone size={15}/>Call</button>
+    </React.Fragment>}
+    {mode==='active'&&<div className="flex flex-col items-center gap-3 py-2">
+      <div className="w-14 h-14 rounded-full flex items-center justify-center text-[16px] font-bold text-white ring-4 ring-brand-500/40" style={{background:contact.color||'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{ini}</div>
+      <p className="text-emerald-400 text-[12px]">Connected</p>
+      <p className="font-mono text-[26px] font-bold text-white tabular-nums">{fmtDur(seconds)}</p>
+      <div className="flex items-center gap-3">
+        <button onClick={()=>setMute(m=>!m)} title="Mute" className={['w-11 h-11 rounded-full flex items-center justify-center text-white transition-all',mute?'bg-white/20 ring-1 ring-white/30':'bg-white/[0.08] hover:bg-white/[0.13]'].join(' ')}>{mute?<I.MicOff size={17}/>:<I.Mic size={17}/>}</button>
+        <button onClick={end} title="End call" className="w-11 h-11 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-all" style={{boxShadow:'0 0 20px rgba(239,68,68,0.4)'}}><I.PhoneOff size={17}/></button>
+      </div>
+    </div>}
+    {mode==='enrich'&&<CallEnrichmentForm compact duration={fmtDur(seconds)} statusOptions={statusOptions} currentStatus={currentStatus} onSave={(d)=>onLogged(d,seconds)} onSkip={()=>onLogged(null,seconds)}/>}
+  </div>);
+}
+function CallsWorkspace({goTo,onToast,preload,apiRef}){
   const {contacts}=React.useContext(CrmDataContext);
   const integ=React.useContext(IntegrationsContext);
   const conns=integ.conns||{};
@@ -5412,7 +5620,8 @@ function CallsWorkspace({goTo,onToast,preload}){
   const [search,setSearch]=React.useState('');
   const [provider,setProvider]=React.useState('builtin');
   const [connBanner,setConnBanner]=React.useState(null);
-  const [view,setView]=React.useState('dialer');
+  const [view,setView]=React.useState('empty');
+  const [logOpen,setLogOpen]=React.useState(false);
   const [dialContact,setDialContact]=React.useState(null);
   const [digits,setDigits]=React.useState('');
   const [contactQuery,setContactQuery]=React.useState('');
@@ -5424,8 +5633,18 @@ function CallsWorkspace({goTo,onToast,preload}){
   const [outcome,setOutcome]=React.useState('Answered');
   const [nextAction,setNextAction]=React.useState('None');
   const [postNotes,setPostNotes]=React.useState('');
+  const [detail,setDetail]=React.useState(null);
+  const [overlay,setOverlay]=React.useState(null);
+  const [histories,setHistories]=React.useState({});
   const timerRef=React.useRef(null);
-  React.useEffect(()=>{ if(preload){ setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setView('dialer'); setDigits(''); } },[preload]);
+  const histFor=(name)=>histories[name]||buildCallHistory(name);
+  const ensureHistory=(name)=>setHistories(h=>h[name]?h:{...h,[name]:buildCallHistory(name)});
+  const addCall=(name,entry)=>setHistories(h=>{const cur=h[name]||buildCallHistory(name);return{...h,[name]:[entry,...cur]};});
+  const updateCall=(name,id,patch)=>setHistories(h=>{const cur=h[name]||buildCallHistory(name);return{...h,[name]:cur.map(e=>e.id===id?{...e,...patch}:e)};});
+  const applyEnrichment=(d)=>{ if(!d)return; if(d.status){setTimeout(()=>onToast&&onToast('Status → '+d.status+' ✓','success'),400);} if(d.decision&&d.decision!=='None'){setTimeout(()=>onToast&&onToast(decisionToast(d.decision),'success'),700);} };
+  const openDialer=()=>{ setDialContact(null); setDigits(''); setContactQuery(''); setDetail(null); setView('dialer'); };
+  React.useEffect(()=>{ if(apiRef){apiRef.current={openDialer};} return()=>{ if(apiRef)apiRef.current=null; }; },[apiRef]);
+  React.useEffect(()=>{ if(preload){ setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setDetail(null); setView('dialer'); setDigits(''); } },[preload]);
   React.useEffect(()=>{ if(view==='active'&&!hold){ timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000); return ()=>clearInterval(timerRef.current); } },[view,hold]);
   const PROV=[{k:'builtin',l:'Built-in',connected:true},{k:'twilio',l:'Twilio',connected:!!conns.twilio},{k:'googlevoice',l:'Google Voice',connected:!!conns.googlevoice}];
   const fmtTimer=(s)=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -5437,10 +5656,14 @@ function CallsWorkspace({goTo,onToast,preload}){
   if(filter==='missed')rows=rows.filter(isMissed); else if(filter==='voicemail')rows=rows.filter(isVm); else if(filter==='today')rows=rows.filter(isToday);
   if(search.trim()){const q=search.toLowerCase();rows=rows.filter(c=>(c.contact||'').toLowerCase().includes(q)||(c.company||'').toLowerCase().includes(q));}
   const loadIntoDialer=(c)=>{ const ct=contacts.find(x=>x.name===c.contact); setDialContact({name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color}); setView('dialer'); setDigits(''); };
+  const openDetail=(c)=>{ const ct=contacts.find(x=>x.name===c.contact); const info={name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color}; ensureHistory(info.name); setDetail(info); setView('detail'); };
   const startCall=()=>{ setSeconds(0);setMute(false);setHold(false);setKeypad(false);setView('active'); };
   const endCall=()=>{ clearInterval(timerRef.current); setView('postcall'); onToast&&onToast('Call ended','success'); };
+  const newCallEntry=(d)=>({id:'ch-new-'+Date.now(),dir:'out',date:'Just now',dur:seconds?fmtDur(seconds):null,rec:seconds>0,recLen:seconds?fmtDur(seconds):null,outcome:d?d.outcome:'Connected',reason:d?d.reason:null,notes:d?d.notes:null});
+  const onSaveCallLog=(d)=>{ if(dialContact)addCall(dialContact.name,newCallEntry(d)); onToast&&onToast('Call logged ✓','success'); applyEnrichment(d); resetDialer(); };
+  const onSkipCallLog=()=>{ if(dialContact)addCall(dialContact.name,newCallEntry(null)); resetDialer(); };
   const saveLog=()=>{ onToast&&onToast('Call logged ✓','success'); resetDialer(); };
-  const resetDialer=()=>{ setView('dialer');setSeconds(0);setCallNote('');setPostNotes('');setOutcome('Answered');setNextAction('None'); };
+  const resetDialer=()=>{ setView('empty');setSeconds(0);setCallNote('');setPostNotes('');setOutcome('Answered');setNextAction('None'); };
   const matches=contactQuery.trim()?contacts.filter(c=>!c.archived&&(c.name.toLowerCase().includes(contactQuery.toLowerCase())||(c.phone||'').includes(contactQuery))).slice(0,5):[];
   const canCall=!!dialContact||digits.length>0;
   const DIGITS=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
@@ -5458,7 +5681,7 @@ function CallsWorkspace({goTo,onToast,preload}){
       <div className="flex-1 overflow-y-auto scroll-area px-2 py-2">
         {rows.length===0&&<p className="text-[12px] text-white/35 text-center py-10">No calls match.</p>}
         {rows.map(c=>{ const dir=isMissed(c)?'missed':c.direction; return(
-          <div key={c.id} onClick={()=>loadIntoDialer(c)} className="rounded-xl px-4 py-3 hover:bg-white/[0.04] cursor-pointer transition-all border-b border-white/[0.04] flex items-center gap-3 group">
+          <div key={c.id} onClick={()=>openDetail(c)} className={['rounded-xl px-4 py-3 hover:bg-white/[0.04] cursor-pointer transition-all border-b border-white/[0.04] flex items-center gap-3 group',detail&&view==='detail'&&detail.name===(c.contact||c.number)?'bg-brand-500/[0.08] ring-1 ring-brand-500/20':''].join(' ')}>
             <div className="relative shrink-0"><div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{background:c.color}}>{c.avatar}</div>{isVm(c)&&<span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center text-[8px] ring-2 ring-[#09091a]">🎵</span>}</div>
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-white truncate">{c.contact||c.number}</p>
@@ -5470,13 +5693,30 @@ function CallsWorkspace({goTo,onToast,preload}){
             </div>
             <div className="flex items-center gap-1.5 shrink-0" onClick={e=>e.stopPropagation()}>
               <button onClick={()=>loadIntoDialer(c)} className="bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 hover:bg-brand-500/25 rounded-lg px-3 py-1.5 text-[12px] font-semibold inline-flex items-center gap-1.5 transition-all"><I.Phone size={11}/>Call back</button>
-              <button onClick={()=>{loadIntoDialer(c);setView('postcall');}} className="bg-white/[0.05] text-white/55 hover:text-white hover:bg-white/[0.09] rounded-lg px-3 py-1.5 text-[12px] border border-white/[0.08] transition-all">Add note</button>
+              <button onClick={()=>openDetail(c)} className="bg-white/[0.05] text-white/55 hover:text-white hover:bg-white/[0.09] rounded-lg px-3 py-1.5 text-[12px] border border-white/[0.08] transition-all">Add note</button>
             </div>
           </div>); })}
       </div>
     </div>
     <div className="flex-1 flex flex-col min-w-0" style={{background:'var(--s900)'}}>
-      {view==='dialer'&&(<div className="flex-1 overflow-y-auto scroll-area p-6 flex flex-col items-center">
+      {view==='empty'&&(<div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 mb-5"><I.Phone size={26}/></div>
+        <p className="text-white text-[17px] font-bold">Ready when you are</p>
+        <p className="text-[13px] text-white/45 mt-1.5 max-w-[300px] leading-relaxed">Open the dialer to place a call, or pick someone from the list on the left to see their full call history.</p>
+        <div className="flex items-center gap-2.5 mt-6">
+          <button onClick={openDialer} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Phone size={14}/>Make a call</button>
+          <button onClick={()=>setLogOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-all"><I.Edit size={13}/>Log manually</button>
+        </div>
+        <div className="flex items-center gap-5 mt-8 text-center">
+          {[{n:counts.today,l:'Today'},{n:counts.missed,l:'Missed'},{n:counts.vm,l:'Voicemails'}].map(s=>(<div key={s.l}><p className="text-[20px] font-black text-white leading-none">{s.n}</p><p className="text-[11px] text-white/40 mt-1">{s.l}</p></div>))}
+        </div>
+      </div>)}
+      {view==='dialer'&&(<div className="flex-1 flex flex-col min-h-0">
+        <div className="shrink-0 px-6 py-3 border-b border-white/[0.05] flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-white inline-flex items-center gap-2"><span className="w-6 h-6 rounded-lg bg-brand-500/12 text-brand-300 flex items-center justify-center"><I.Phone size={12}/></span>New call</p>
+          <button onClick={()=>setView('empty')} title="Close dialer" className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-area p-6 flex flex-col items-center">
         <div className="w-full max-w-[360px] flex flex-col gap-5">
           <div className="flex items-center gap-2 flex-wrap justify-center">
             {PROV.map(p=>{const active=provider===p.k;return(
@@ -5507,6 +5747,7 @@ function CallsWorkspace({goTo,onToast,preload}){
           <button disabled={!canCall} onClick={startCall} className={['w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all bg-emerald-500 hover:bg-emerald-400',!canCall?'opacity-40 cursor-not-allowed':''].join(' ')} style={canCall?{boxShadow:'0 0 32px rgba(16,185,129,0.4)'}:undefined}><I.Phone size={26} className="text-white"/></button>
           <p className="text-[11px] text-white/35 text-center inline-flex items-center justify-center gap-1">Calling from: +1 415-555-0100 <I.ChevronDown size={11}/></p>
         </div>
+        </div>
       </div>)}
       {view==='active'&&(<div className="flex-1 flex flex-col items-center justify-center p-6 gap-5">
         <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-[22px] font-bold text-white ring-4 ring-brand-500/40" style={{background:dialContact?(dialContact.color||'#6366f1'):'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{dialContact?ini(dialContact):'#'}</div>
@@ -5522,26 +5763,23 @@ function CallsWorkspace({goTo,onToast,preload}){
         <textarea value={callNote} onChange={e=>setCallNote(e.target.value)} rows={2} placeholder="Quick note..." className="w-full max-w-[320px] px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 resize-none transition-all"/>
       </div>)}
       {view==='postcall'&&(<div className="flex-1 overflow-y-auto scroll-area p-6 flex flex-col items-center">
-        <div className="w-full max-w-[380px] flex flex-col gap-4">
-          <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center"><I.Check size={16}/></span><p className="text-white text-[16px] font-bold">Log this call</p></div>
+        <div className="w-full max-w-[400px] flex flex-col gap-4">
+          <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center"><I.Check size={16}/></span><div><p className="text-white text-[16px] font-bold">Call ended — log it</p><p className="text-[12px] text-white/45">Auto-logged. Add details below.</p></div></div>
           {dialContact&&<div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:dialContact.color||'#6366f1'}}>{ini(dialContact)}</div><span className="text-[13px] text-white">{dialContact.name}</span></div>}
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={LBL}>Duration</label><input readOnly value={seconds?fmtTimer(seconds):'—'} className={INP+' font-mono'}/></div>
-            <div><label className={LBL}>Direction</label><input readOnly value="Outgoing" className={INP}/></div>
-          </div>
-          <div><label className={LBL}>Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{['Answered','No answer','Left voicemail','Busy','Wrong number'].map(o=>(<option key={o}>{o}</option>))}</select></div>
-          <div><label className={LBL}>Notes</label><textarea value={postNotes} onChange={e=>setPostNotes(e.target.value)} rows={4} placeholder="What happened on this call?" className={INP+' resize-none'}/></div>
-          <div><label className={LBL}>Next action</label><select value={nextAction} onChange={e=>setNextAction(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{['None','Send follow-up email','Schedule meeting','Create task','Send proposal'].map(o=>(<option key={o}>{o}</option>))}</select></div>
-          <div className="flex flex-col gap-2 pt-1"><button onClick={saveLog} className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save log</button><button onClick={resetDialer} className="w-full py-2 rounded-xl text-[13px] font-medium text-white/40 hover:text-white/70 transition-all">Skip</button></div>
+          <CallEnrichmentForm duration={seconds?fmtTimer(seconds):'—'} statusOptions={['New','Contacted','Nurturing','Qualified','Unqualified']} onSave={onSaveCallLog} onSkip={onSkipCallLog}/>
         </div>
       </div>)}
+      {view==='detail'&&detail&&(<CallDetailView contact={detail} history={histFor(detail.name)} onBack={()=>{setView('dialer');setDetail(null);}} onCall={()=>{setDialContact(detail);setDigits('');setView('dialer');}} onViewHistory={()=>setOverlay(detail)} onSaveNotes={(id,d)=>{updateCall(detail.name,id,{outcome:d.outcome,reason:d.reason,notes:d.notes});onToast&&onToast('Call logged ✓','success');applyEnrichment(d);}}/>)}
     </div>
+    {overlay&&<CallHistoryOverlay contact={overlay} history={histFor(overlay.name)} onClose={()=>setOverlay(null)}/>}
+    {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',date:'Just now',dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:null,notes:cd.notes||null}); onToast&&onToast('Call logged ✓','success'); }}/>}
   </div>);
 }
 function InboxPage({goTo,nav}){
   const navCh=(nav&&nav.channel)||null;
   const [tab,setTab]=React.useState(navCh==='calls'||navCh==='sms'?navCh:'all');
   const [callPreload,setCallPreload]=React.useState(null);
+  const callsApi=React.useRef(null);
   const {contacts:_allContacts}=React.useContext(CrmDataContext);
   const [folder,setFolder]=React.useState('inbox');
   const [emails,setEmails]=React.useState(()=>MAIL_EMAILS.map(e=>({...e,folder:e.folder||'inbox'})));
@@ -5621,7 +5859,7 @@ function InboxPage({goTo,nav}){
             {(tab==='email'||tab==='all')&&(mailSynced?<span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/>{mailShort} · live sync</span>:<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium"><I.Ban size={11}/>Inbox not synced</span>)}
             {(tab==='email'||tab==='all')&&mailSynced&&<button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>}
             {tab==='sms'&&<button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plug size={13}/>Configure SMS</button>}
-            {tab==='calls'&&<button onClick={()=>setLogModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>Log call</button>}
+            {tab==='calls'&&<button onClick={()=>callsApi.current&&callsApi.current.openDialer()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Phone size={14}/>Make a call</button>}
           </div>
         </header>
         {tab==='email'&&(mailSynced?(<div className="flex-1 flex min-h-0 crm-split">
@@ -5649,7 +5887,7 @@ function InboxPage({goTo,nav}){
             </div>
           </div>):(<div className="flex-1 flex items-center justify-center"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Hash size={22}/></div><p className="text-[14px] font-semibold text-white/50">Select a conversation</p></div></div>)}
         </div>)}
-        {tab==='calls'&&<CallsWorkspace goTo={goTo} onToast={(m,t)=>{showToast(m);if(window.__nrturToast)window.__nrturToast(m,t||'success');}} preload={callPreload}/>}
+        {tab==='calls'&&<CallsWorkspace goTo={goTo} onToast={(m,t)=>{showToast(m);if(window.__nrturToast)window.__nrturToast(m,t||'success');}} preload={callPreload} apiRef={callsApi}/>}
         {tab==='all'&&(mailSynced?(<div className="flex-1 overflow-y-auto scroll-area">
           {ALL_ITEMS.map((it,i)=>(<button key={i} onClick={()=>setTab(it.tab)} className={['w-full flex items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors text-left',i<ALL_ITEMS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
             <div className="relative shrink-0"><div className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.08] flex items-center justify-center" style={{color:it.cc}}><it.Icon size={14}/></div>{it.unread&&<span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-400 ring-2 ring-[#09091a]"/>}</div>
@@ -9928,7 +10166,530 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
     </div>
   </div>);
 }
+// ── Calendly-style scheduling engine (Part 1): event types, availability, booking page ──
+const SCHED_COLORS=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+const SCHED_DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const SCHED_LOCATIONS=['Google Meet','Zoom','Phone call','In person','Custom'];
+const SCHED_DURATIONS=[15,30,45,60,90];
+const SCHED_BUFFERS=['None','5 min','10 min','15 min','30 min'];
+const SCHED_NOTICES=['1 hour','4 hours','1 day','2 days'];
+const SCHED_CAPS=['No limit','2 meetings','4 meetings','6 meetings','8 meetings'];
+const SCHED_TZS=['(GMT-08:00) Pacific Time','(GMT-07:00) Mountain Time','(GMT-06:00) Central Time','(GMT-05:00) Eastern Time','(GMT+00:00) UTC','(GMT+01:00) Central European Time','(GMT+05:30) India Standard Time'];
+const SCHED_TIMES=(()=>{const out=[];for(let h=0;h<24;h++){for(const m of [0,30]){const ap=h<12?'AM':'PM';let hr=h%12;if(hr===0)hr=12;out.push(hr+':'+String(m).padStart(2,'0')+' '+ap);}}return out;})();
+const SCHED_INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 transition-all placeholder:text-white/30';
+const SCHED_SEL=SCHED_INP+' appearance-none';
+const SCHED_LBL='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+const SCHED_SELSTYLE={colorScheme:'dark',background:'var(--s850)'};
+const SCHED_DEFAULT_EVENT_TYPES=[
+  {id:'et1',name:'30 Min Intro Call',duration:30,location:'Google Meet',slug:'intro-call',color:'#6366f1',desc:"A quick intro to see if we're a fit.",questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'4 hours'},
+  {id:'et2',name:'Product Demo',duration:45,location:'Zoom',slug:'demo',color:'#10b981',desc:'Walkthrough of the platform.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day'},
+  {id:'et3',name:'Onboarding Session',duration:60,location:'Phone call',slug:'onboarding',color:'#f59e0b',desc:'Get set up and running.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day'},
+];
+const SCHED_DEFAULT_AVAIL={
+  tz:'(GMT-08:00) Pacific Time',
+  days:SCHED_DAYS.reduce((acc,d)=>{acc[d]={on:d!=='Saturday'&&d!=='Sunday',ranges:[['9:00 AM','5:00 PM']]};return acc;},{}),
+  overrides:[],
+  minNotice:'4 hours',
+  dailyCap:'No limit',
+  buffer:'None',
+};
+function schedSlug(s){return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function schedParseTime(t){const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)/i);if(!m)return 0;let h=(+m[1])%12;if(/pm/i.test(m[3]))h+=12;return h*60+(+m[2]);}
+function schedFmtTime(mins){let h=Math.floor(mins/60);const m=mins%60;const ap=h<12?'AM':'PM';let hr=h%12;if(hr===0)hr=12;return hr+':'+String(m).padStart(2,'0')+' '+ap;}
+function schedDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function schedSlotsFor(avail,date,duration){
+  const dayName=SCHED_DAYS[(date.getDay()+6)%7];
+  const ov=avail.overrides.find(o=>o.date===schedDateKey(date));
+  let ranges;
+  if(ov){ if(!ov.available)return []; ranges=[[ov.from||'9:00 AM',ov.to||'5:00 PM']]; }
+  else { const dd=avail.days[dayName]; if(!dd||!dd.on)return []; ranges=dd.ranges; }
+  const out=[];
+  ranges.forEach(([s,e])=>{const start=schedParseTime(s),end=schedParseTime(e);for(let t=start;t+duration<=end;t+=30)out.push(schedFmtTime(t));});
+  return out;
+}
+function schedLocIcon(loc){if(/phone/i.test(loc))return I.Phone;if(/person/i.test(loc))return I.MapPin;return I.Globe;}
+
+function SchedEventTypesTab({eventTypes,onNew,onEdit,onPreview,addToast}){
+  const copy=(slug)=>{const link='nrtur.app/book/alex/'+slug;try{navigator.clipboard&&navigator.clipboard.writeText('https://'+link);}catch(e){}addToast('Link copied ✓');};
+  return(<div className="flex-1 overflow-y-auto scroll-area">
+    <div className="max-w-[1200px] mx-auto px-6 py-6">
+      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+        <div><h2 className="text-white text-[17px] font-bold">Event types</h2><p className="text-[12.5px] text-white/45 mt-0.5">Shareable links people use to book time with you.</p></div>
+        <button onClick={onNew} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all shrink-0"><I.Plus size={14} stroke={2.4}/>New event type</button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {eventTypes.map(et=>{const Loc=schedLocIcon(et.location);return(
+          <div key={et.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:border-brand-500/30 p-5 transition-all flex flex-col">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:et.color}}/>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/70"><I.Clock size={10}/>{et.duration} min</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/55"><Loc size={10}/>{et.location}</span>
+            </div>
+            <p className="text-[15px] font-bold text-white">{et.name}</p>
+            <p className="text-[12px] text-white/50 mt-1 leading-relaxed flex-1">{et.desc}</p>
+            <div className="flex items-center gap-2 mt-4 rounded-lg bg-white/[0.04] border border-white/[0.08] px-3 py-2">
+              <span className="font-mono text-[12px] text-white/70 truncate flex-1">nrtur.app/book/alex/{et.slug}</span>
+              <button onClick={()=>copy(et.slug)} className="text-[11.5px] font-semibold text-brand-300 hover:text-brand-200 shrink-0 inline-flex items-center gap-1"><I.Copy size={11}/>Copy</button>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <button onClick={()=>onEdit(et)} className="flex-1 py-2 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Edit</button>
+              <button onClick={()=>onPreview(et)} className="flex-1 py-2 rounded-lg text-[12.5px] font-semibold text-brand-300 bg-brand-500/[0.06] border border-brand-500/30 hover:bg-brand-500/12 transition-all">Preview</button>
+            </div>
+          </div>);})}
+      </div>
+    </div>
+  </div>);
+}
+
+function EventTypeDrawer({initial,onClose,onSave}){
+  const [name,setName]=React.useState(initial?initial.name:'');
+  const [duration,setDuration]=React.useState(initial?initial.duration:30);
+  const [location,setLocation]=React.useState(initial?initial.location:'Google Meet');
+  const [desc,setDesc]=React.useState(initial?initial.desc:'');
+  const [color,setColor]=React.useState(initial?initial.color:SCHED_COLORS[0]);
+  const [slug,setSlug]=React.useState(initial?initial.slug:'');
+  const [slugEdited,setSlugEdited]=React.useState(!!initial);
+  const [questions,setQuestions]=React.useState(initial&&initial.questions?initial.questions.slice():[]);
+  const [bufferBefore,setBufferBefore]=React.useState(initial?(initial.bufferBefore||'None'):'None');
+  const [bufferAfter,setBufferAfter]=React.useState(initial?(initial.bufferAfter||'None'):'None');
+  const [minNotice,setMinNotice]=React.useState(initial?(initial.minNotice||'4 hours'):'4 hours');
+  React.useEffect(()=>{if(!slugEdited)setSlug(schedSlug(name));},[name,slugEdited]);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
+  const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'et'+Date.now(),name:name.trim(),duration:+duration,location,desc:desc.trim(),color,slug:(slug.trim()||schedSlug(name)),questions:questions.filter(q=>q.trim()),bufferBefore,bufferAfter,minNotice});};
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[160] bg-black/40" onClick={onClose}/>
+    <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[170] w-[420px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><p className="text-[15px] font-bold text-white flex items-center gap-2"><I.Calendar size={15} className="text-brand-300"/>{initial?'Edit event type':'New event type'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-4">
+        <div><label className={SCHED_LBL}>Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 30 Min Intro Call" className={SCHED_INP}/></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={SCHED_LBL}>Duration</label><select value={duration} onChange={e=>setDuration(+e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_DURATIONS.map(d=>(<option key={d} value={d}>{d} min</option>))}</select></div>
+          <div><label className={SCHED_LBL}>Location</label><select value={location} onChange={e=>setLocation(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_LOCATIONS.map(l=>(<option key={l}>{l}</option>))}</select></div>
+        </div>
+        <div><label className={SCHED_LBL}>Description</label><textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} placeholder="What is this meeting about?" className={SCHED_INP+' resize-none'}/></div>
+        <div><label className={SCHED_LBL}>Color</label><div className="flex items-center gap-2">{SCHED_COLORS.map(co=>(<button key={co} onClick={()=>setColor(co)} className="w-7 h-7 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:color===co?('0 0 0 2px var(--panel98), 0 0 0 4px '+co):'none'}}>{color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}</div></div>
+        <div><label className={SCHED_LBL}>URL slug</label><div className="flex items-center gap-0 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all overflow-hidden"><span className="pl-3 pr-1 text-[12px] font-mono text-white/35 shrink-0">/book/alex/</span><input value={slug} onChange={e=>{setSlugEdited(true);setSlug(schedSlug(e.target.value));}} placeholder="intro-call" className="flex-1 min-w-0 pr-3 py-2.5 bg-transparent text-[13px] font-mono text-white outline-none placeholder:text-white/30"/></div></div>
+        <div>
+          <label className={SCHED_LBL}>Custom booking questions</label>
+          <div className="flex flex-col gap-2">
+            {questions.map((q,i)=>(<div key={i} className="flex items-center gap-2"><input value={q} onChange={e=>setQuestions(qs=>qs.map((x,j)=>j===i?e.target.value:x))} placeholder="e.g. What would you like to discuss?" className={SCHED_INP}/><button onClick={()=>setQuestions(qs=>qs.filter((_,j)=>j!==i))} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] shrink-0 transition-all"><I.X size={14}/></button></div>))}
+          </div>
+          <button onClick={()=>setQuestions(qs=>[...qs,''])} className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={12} stroke={2.4}/>Add question</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={SCHED_LBL}>Buffer before</label><select value={bufferBefore} onChange={e=>setBufferBefore(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(b=>(<option key={b}>{b}</option>))}</select></div>
+          <div><label className={SCHED_LBL}>Buffer after</label><select value={bufferAfter} onChange={e=>setBufferAfter(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(b=>(<option key={b}>{b}</option>))}</select></div>
+        </div>
+        <div><label className={SCHED_LBL}>Minimum notice</label><select value={minNotice} onChange={e=>setMinNotice(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_NOTICES.map(n=>(<option key={n}>{n}</option>))}</select></div>
+      </div>
+      <div className="px-5 py-4 border-t border-white/[0.06] shrink-0 flex gap-2"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!name.trim()} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',name.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Save event type</button></div>
+    </div>
+  </React.Fragment>);
+}
+
+function SchedAvailabilityTab({avail,setAvail,addToast,automation,setAutomation}){
+  const [ovDate,setOvDate]=React.useState('');
+  const [ovAvail,setOvAvail]=React.useState(false);
+  const [ovFrom,setOvFrom]=React.useState('9:00 AM');
+  const [ovTo,setOvTo]=React.useState('5:00 PM');
+  const TimeSelect=({value,onChange})=>(<select value={value} onChange={e=>onChange(e.target.value)} className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white outline-none focus:border-brand-500/40 appearance-none transition-all" style={SCHED_SELSTYLE}>{SCHED_TIMES.map(t=>(<option key={t}>{t}</option>))}</select>);
+  const setDay=(day,patch)=>setAvail(a=>({...a,days:{...a.days,[day]:{...a.days[day],...patch}}}));
+  const setRange=(day,i,idx,val)=>setAvail(a=>({...a,days:{...a.days,[day]:{...a.days[day],ranges:a.days[day].ranges.map((r,j)=>j===i?(idx===0?[val,r[1]]:[r[0],val]):r)}}}));
+  const addRange=(day)=>setAvail(a=>({...a,days:{...a.days,[day]:{...a.days[day],ranges:[...a.days[day].ranges,['1:00 PM','5:00 PM']]}}}));
+  const rmRange=(day,i)=>setAvail(a=>({...a,days:{...a.days,[day]:{...a.days[day],ranges:a.days[day].ranges.filter((_,j)=>j!==i)}}}));
+  const addOverride=()=>{if(!ovDate)return;setAvail(a=>({...a,overrides:[...a.overrides.filter(o=>o.date!==ovDate),{id:'ov'+Date.now(),date:ovDate,available:ovAvail,from:ovFrom,to:ovTo}].sort((x,y)=>x.date<y.date?-1:1)}));setOvDate('');addToast('Date override added');};
+  const rmOverride=(id)=>setAvail(a=>({...a,overrides:a.overrides.filter(o=>o.id!==id)}));
+  return(<div className="flex-1 overflow-y-auto scroll-area">
+    <div className="max-w-[760px] mx-auto px-6 py-6 flex flex-col gap-6">
+      <div>
+        <h2 className="text-white text-[17px] font-bold">Availability</h2>
+        <p className="text-[12.5px] text-white/45 mt-0.5">Set the hours you're open for bookings.</p>
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] p-5" style={{background:'var(--s900)'}}>
+        <label className={SCHED_LBL}>Timezone</label>
+        <select value={avail.tz} onChange={e=>setAvail(a=>({...a,tz:e.target.value}))} className={SCHED_SEL+' max-w-[420px]'} style={SCHED_SELSTYLE}>{SCHED_TZS.map(t=>(<option key={t}>{t}</option>))}</select>
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] p-5" style={{background:'var(--s900)'}}>
+        <p className="text-[13px] font-bold text-white mb-1">Weekly hours</p>
+        {SCHED_DAYS.map(day=>{const d=avail.days[day];return(
+          <div key={day} className="flex flex-col sm:flex-row sm:items-start gap-3 py-3 border-b border-white/[0.05] last:border-0">
+            <div className="flex items-center gap-3 sm:w-44 shrink-0">
+              <Toggle on={d.on} onChange={()=>setDay(day,{on:!d.on})}/>
+              <span className={['text-[13px] font-medium w-24',d.on?'text-white':'text-white/40'].join(' ')}>{day}</span>
+            </div>
+            {d.on?(<div className="flex-1 flex flex-col gap-2">
+              {d.ranges.map((r,i)=>(<div key={i} className="flex items-center gap-2 flex-wrap">
+                <TimeSelect value={r[0]} onChange={v=>setRange(day,i,0,v)}/>
+                <span className="text-white/35 text-[12px]">to</span>
+                <TimeSelect value={r[1]} onChange={v=>setRange(day,i,1,v)}/>
+                {d.ranges.length>1&&<button onClick={()=>rmRange(day,i)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] transition-all"><I.X size={13}/></button>}
+                {i===d.ranges.length-1&&<button onClick={()=>addRange(day)} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200 ml-1 transition-colors"><I.Plus size={11} stroke={2.4}/>Add range</button>}
+              </div>))}
+            </div>):(<span className="text-[12.5px] text-white/35 py-1.5">Unavailable</span>)}
+          </div>);})}
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] p-5" style={{background:'var(--s900)'}}>
+        <p className="text-[13px] font-bold text-white mb-1">Date overrides</p>
+        <p className="text-[12px] text-white/45 mb-3">Block out holidays/PTO or set special hours for specific dates.</p>
+        <div className="flex items-end gap-2 flex-wrap mb-4">
+          <div><label className="text-[11px] text-white/45 block mb-1">Date</label><input type="date" value={ovDate} onChange={e=>setOvDate(e.target.value)} className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}/></div>
+          <div><label className="text-[11px] text-white/45 block mb-1">Status</label><select value={ovAvail?'a':'u'} onChange={e=>setOvAvail(e.target.value==='a')} className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white outline-none focus:border-brand-500/40 appearance-none" style={SCHED_SELSTYLE}><option value="u">Unavailable</option><option value="a">Available</option></select></div>
+          {ovAvail&&<React.Fragment><div><label className="text-[11px] text-white/45 block mb-1">From</label><TimeSelect value={ovFrom} onChange={setOvFrom}/></div><div><label className="text-[11px] text-white/45 block mb-1">To</label><TimeSelect value={ovTo} onChange={setOvTo}/></div></React.Fragment>}
+          <button onClick={addOverride} disabled={!ovDate} className={['px-3 py-2 rounded-lg text-[12.5px] font-semibold transition-all',ovDate?'text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15':'text-white/30 bg-white/[0.04] border border-white/[0.08] cursor-not-allowed'].join(' ')}>Add override</button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {avail.overrides.length===0&&<p className="text-[12px] text-white/30">No overrides yet.</p>}
+          {avail.overrides.map(o=>(<div key={o.id} className="flex items-center gap-3 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+            <span className={['w-2 h-2 rounded-full shrink-0',o.available?'bg-emerald-400':'bg-red-400'].join(' ')}/>
+            <span className="text-[12.5px] font-medium text-white">{o.date}</span>
+            <span className="text-[12px] text-white/50">{o.available?(o.from+' – '+o.to):'Unavailable'}</span>
+            <button onClick={()=>rmOverride(o.id)} className="ml-auto text-white/35 hover:text-red-400 transition-colors"><I.X size={14}/></button>
+          </div>))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] p-5" style={{background:'var(--s900)'}}>
+        <p className="text-[13px] font-bold text-white mb-3">Booking rules</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div><label className={SCHED_LBL}>Minimum notice</label><select value={avail.minNotice} onChange={e=>setAvail(a=>({...a,minNotice:e.target.value}))} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_NOTICES.map(n=>(<option key={n}>{n}</option>))}</select></div>
+          <div><label className={SCHED_LBL}>Daily meeting cap</label><select value={avail.dailyCap} onChange={e=>setAvail(a=>({...a,dailyCap:e.target.value}))} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_CAPS.map(n=>(<option key={n}>{n}</option>))}</select></div>
+          <div><label className={SCHED_LBL}>Buffer between meetings</label><select value={avail.buffer} onChange={e=>setAvail(a=>({...a,buffer:e.target.value}))} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(n=>(<option key={n}>{n}</option>))}</select></div>
+        </div>
+      </div>
+      <div className="flex justify-end"><button onClick={()=>addToast('Availability updated ✓')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Check size={14} stroke={2.4}/>Save availability</button></div>
+      {automation&&setAutomation&&<SchedAutomationCard automation={automation} setAutomation={setAutomation} addToast={addToast}/>}
+    </div>
+  </div>);
+}
+
+function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,crm,addMeeting,goTo}){
+  const [slug,setSlug]=React.useState(initialSlug||(eventTypes[0]&&eventTypes[0].slug));
+  const et=eventTypes.find(e=>e.slug===slug)||eventTypes[0];
+  const [bookResult,setBookResult]=React.useState(null);
+  const [step,setStep]=React.useState('date');
+  const [month,setMonth]=React.useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
+  const [date,setDate]=React.useState(null);
+  const [slot,setSlot]=React.useState(null);
+  const [form,setForm]=React.useState({name:'',email:''});
+  const [answers,setAnswers]=React.useState({});
+  React.useEffect(()=>{setStep('date');setDate(null);setSlot(null);setForm({name:'',email:''});setAnswers({});setBookResult(null);},[slug]);
+  const Loc=schedLocIcon(et?et.location:'');
+  const today=(()=>{const d=new Date();d.setHours(0,0,0,0);return d;})();
+  const dayAvailable=(d)=>{if(d<today)return false;const ov=avail.overrides.find(o=>o.date===schedDateKey(d));if(ov)return ov.available;const dd=avail.days[SCHED_DAYS[(d.getDay()+6)%7]];return !!(dd&&dd.on);};
+  const daysInMonth=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
+  const firstDow=new Date(month.getFullYear(),month.getMonth(),1).getDay();
+  const cells=[];for(let i=0;i<firstDow;i++)cells.push(null);for(let dn=1;dn<=daysInMonth;dn++)cells.push(new Date(month.getFullYear(),month.getMonth(),dn));
+  const slots=date?schedSlotsFor(avail,date,et.duration):[];
+  const goMonth=(dir)=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()+dir,1));
+  const copy=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://nrtur.app/book/alex/'+(et?et.slug:''));}catch(e){}addToast('Link copied ✓');};
+  const dateLabel=date?(CAL_DAYS[date.getDay()]+', '+CAL_MONTHS[date.getMonth()]+' '+date.getDate()):'';
+  const confirm=()=>{
+    const auto=automation||{};
+    // 1) Assignment (round-robin / specific / me) + routing-rule overrides
+    let rep=TEAM_MEMBERS[0];
+    if(auto.assign==='specific'){rep=TEAM_MEMBERS.find(t=>t.avatar===auto.specificRep)||rep;}
+    else if(auto.assign==='roundrobin'){const pool=TEAM_MEMBERS.filter(t=>auto.rotation&&auto.rotation[t.avatar]);if(pool.length)rep=pool[Math.floor(Math.random()*pool.length)];}
+    if(auto.rules&&auto.rules.length){const hay=(form.email+' '+form.name+' '+Object.values(answers).join(' ')).toLowerCase();const hit=auto.rules.find(r=>r.value&&hay.includes(String(r.value).toLowerCase()));if(hit){const rr=TEAM_MEMBERS.find(t=>t.avatar===hit.rep);if(rr)rep=rr;}}
+    const nm=form.name.trim()||'New invitee';
+    const avatar=arInitials(nm);
+    const color=SCHED_COLORS[(nm.charCodeAt(0)||0)%SCHED_COLORS.length];
+    // 2) Contact: reuse existing by email, else auto-create the CRM record
+    let contactId=null,contactCreated=false;
+    const existing=crm&&crm.contacts&&crm.contacts.find(c=>(c.email||'').toLowerCase()===form.email.trim().toLowerCase()&&form.email.trim());
+    if(existing){contactId=existing.id;}
+    else if(auto.autoContact&&crm&&crm.setContacts){
+      contactId=Date.now();
+      const newC={id:contactId,name:nm,first:nm.split(' ')[0]||nm,last:nm.split(' ').slice(1).join(' '),co:'',email:form.email.trim(),phone:'',avatar,color,status:'New',cstatus:'Prospect',owner:rep.avatar,ownerColor:rep.color,deal:'—',days:0,dnc:false,archived:false,lifecycle:'Lead',pstatus:'New',score:null,tags:['booking'],tag:'new-lead',source:'Booking',loc:''};
+      crm.setContacts(arr=>[newC,...arr]);
+      contactCreated=true;
+      addToast('New contact created from booking ✓');
+    }
+    // 3) Deal: optionally open an opportunity from the booking
+    let dealCreated=false,dealName=null,dealValue=null;
+    if(auto.createDeal&&crm&&crm.setDeals){
+      dealName=nm+' — '+et.name;
+      const amt=parseFloat(String(auto.dealValue).replace(/[^0-9.]/g,''))||0;
+      dealValue='$'+amt.toLocaleString('en-US');
+      const stageKey=auto.dealStage||'qualified';
+      crm.setDeals(arr=>[{id:Date.now()+1,company:nm,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,probability:50,primaryContact:nm,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},...arr]);
+      dealCreated=true;
+      addToast('Deal created from booking ✓');
+    }
+    // 4) Meeting → Meetings tab (upcoming, confirmed, linked to the contact)
+    if(addMeeting&&date){
+      const mins=schedParseTime(slot);
+      const start=new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(mins/60),mins%60);
+      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',contactId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
+    }
+    setBookResult({name:nm,contactId,contactCreated,dealCreated,rep});
+    setStep('done');
+    addToast('Meeting booked ✓');
+  };
+  if(!et)return(<div className="flex-1 flex items-center justify-center text-white/40 text-[13px]">Create an event type first.</div>);
+  return(<div className="flex-1 overflow-y-auto scroll-area">
+    <div className="max-w-[1100px] mx-auto px-6 py-6">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="inline-flex items-center gap-2 text-[12px] text-white/45"><I.Globe size={13}/><span className="font-mono text-white/60">nrtur.app/book/alex/{et.slug}</span></div>
+        <div className="flex items-center gap-2">
+          <button onClick={copy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Copy booking link</button>
+          <button onClick={()=>addToast('Preview only — booking page is a demo')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ExternalLink size={12}/>Open in new tab</button>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:'var(--s850)'}}>
+        <div className="flex flex-col md:flex-row">
+          <div className="md:w-[320px] shrink-0 border-b md:border-b-0 md:border-r border-white/[0.07] p-6" style={{background:'var(--s900)'}}>
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] mb-2">Previewing</p>
+            <div className="flex flex-col gap-1.5 mb-5">
+              {eventTypes.map(e=>(<button key={e.id} onClick={()=>setSlug(e.slug)} className={['flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all',e.slug===slug?'bg-brand-500/12 ring-1 ring-brand-500/25':'hover:bg-white/[0.04]'].join(' ')}><span className="w-2 h-2 rounded-full shrink-0" style={{background:e.color}}/><span className={['text-[12.5px] truncate',e.slug===slug?'text-white font-semibold':'text-white/60'].join(' ')}>{e.name}</span></button>))}
+            </div>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[15px] font-bold mb-3" style={{background:'#3b82f6'}}>AM</div>
+            <p className="text-[12px] text-white/45">Alex Morgan</p>
+            <p className="text-white text-[18px] font-bold mt-0.5">{et.name}</p>
+            <div className="flex flex-col gap-1.5 mt-3 text-[12.5px] text-white/55">
+              <span className="inline-flex items-center gap-2"><I.Clock size={13} className="text-white/40"/>{et.duration} min</span>
+              <span className="inline-flex items-center gap-2"><Loc size={13} className="text-white/40"/>{et.location}</span>
+            </div>
+            <p className="text-[12.5px] text-white/50 mt-3 leading-relaxed">{et.desc}</p>
+          </div>
+          <div className="flex-1 min-w-0 p-6">
+            {step==='date'&&(<div>
+              <p className="text-[14px] font-bold text-white mb-4">Select a date</p>
+              <div className="max-w-[340px]">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[13px] font-semibold text-white">{CAL_MONTHS[month.getMonth()]} {month.getFullYear()}</p>
+                  <div className="flex items-center gap-1"><button onClick={()=>goMonth(-1)} className="w-7 h-7 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.ChevronLeft size={15}/></button><button onClick={()=>goMonth(1)} className="w-7 h-7 rounded-lg text-white/55 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.ChevronRight size={15}/></button></div>
+                </div>
+                <div className="grid grid-cols-7 gap-1 mb-1">{['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>(<div key={d} className="text-center text-[10px] font-semibold text-white/30 py-1">{d}</div>))}</div>
+                <div className="grid grid-cols-7 gap-1">{cells.map((d,i)=>{
+                  if(!d)return <div key={'e'+i}/>;
+                  const av=dayAvailable(d);const sel=date&&schedDateKey(date)===schedDateKey(d);
+                  return(<button key={i} disabled={!av} onClick={()=>{setDate(d);setStep('time');}} className={['aspect-square rounded-lg text-[12.5px] font-medium flex items-center justify-center transition-all',sel?'bg-brand-500 text-white shadow-brand':av?'bg-brand-500/10 text-brand-200 hover:bg-brand-500/20 ring-1 ring-brand-500/20':'text-white/20 cursor-not-allowed'].join(' ')}>{d.getDate()}</button>);
+                })}</div>
+                <div className="flex items-center gap-4 mt-4 text-[11px] text-white/40"><span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-brand-500/20 ring-1 ring-brand-500/30"/>Available</span><span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/[0.04]"/>Unavailable</span></div>
+              </div>
+            </div>)}
+            {step==='time'&&(<div>
+              <button onClick={()=>setStep('date')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
+              <p className="text-[14px] font-bold text-white">{dateLabel}</p>
+              <p className="text-[12px] text-white/45 mb-4">{et.duration} min · {avail.tz}</p>
+              {slots.length===0?(<p className="text-[12.5px] text-white/40">No times available this day.</p>):(
+                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto scroll-area pr-1 max-w-[280px]">{slots.map(s=>(<button key={s} onClick={()=>{setSlot(s);setStep('confirm');}} className="py-2.5 rounded-lg border border-white/[0.10] text-[13px] font-semibold text-white hover:border-brand-500/40 hover:bg-brand-500/[0.06] transition-all">{s}</button>))}</div>
+              )}
+            </div>)}
+            {step==='confirm'&&(<div className="max-w-[400px]">
+              <button onClick={()=>setStep('time')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
+              <p className="text-[14px] font-bold text-white">Confirm your details</p>
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 my-3 text-[12.5px] text-white/70 flex items-center gap-2"><I.Calendar size={14} className="text-brand-300"/>{dateLabel} at {slot}</div>
+              <div className="flex flex-col gap-3">
+                <div><label className={SCHED_LBL}>Name</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Your name" className={SCHED_INP}/></div>
+                <div><label className={SCHED_LBL}>Email</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="you@company.com" className={SCHED_INP}/></div>
+                {(et.questions||[]).map((q,i)=>(<div key={i}><label className={SCHED_LBL}>{q}</label><textarea value={answers[i]||''} onChange={e=>setAnswers(a=>({...a,[i]:e.target.value}))} rows={2} className={SCHED_INP+' resize-none'}/></div>))}
+                <button onClick={confirm} disabled={!form.name.trim()||!form.email.trim()} className={['py-2.5 rounded-xl text-[13px] font-bold transition-all mt-1',(form.name.trim()&&form.email.trim())?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Confirm booking</button>
+              </div>
+            </div>)}
+            {step==='done'&&(<div className="max-w-[420px] flex flex-col items-center text-center py-6">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/12 ring-1 ring-emerald-500/25 flex items-center justify-center text-emerald-300 mb-4"><I.Check size={26} stroke={2.4}/></div>
+              <p className="text-white text-[18px] font-bold">You're booked! 🎉</p>
+              <p className="text-[12.5px] text-white/50 mt-1">A calendar invite is on its way{form.email?(' to '+form.email):''}.</p>
+              {bookResult&&(<div className="flex items-center gap-1.5 flex-wrap justify-center mt-3">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75">Booked with {bookResult.name}</span>
+                {bookResult.contactCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.UserPlus size={11}/>Contact created</span>}
+                {bookResult.dealCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-500/12 border border-brand-500/25 text-[11.5px] font-medium text-brand-200"><I.Target size={11}/>Added to your pipeline</span>}
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75"><I.Users size={11}/>Assigned to {bookResult.rep.avatar}</span>
+              </div>)}
+              <div className="w-full rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 mt-4 text-left flex flex-col gap-2">
+                <p className="text-white text-[14px] font-bold">{et.name}</p>
+                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Calendar size={13} className="text-white/40"/>{dateLabel} at {slot}</span>
+                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Clock size={13} className="text-white/40"/>{et.duration} min</span>
+                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><Loc size={13} className="text-white/40"/>{et.location}</span>
+                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Users size={13} className="text-white/40"/>Alex Morgan{form.name?(' & '+form.name):''}</span>
+              </div>
+              <p className="text-[11px] text-white/40 mt-3 inline-flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>This booking landed on the contact, deal & timeline — not just a calendar.</p>
+              <div className="flex items-center gap-3 mt-3">
+                {bookResult&&bookResult.contactId!=null&&goTo&&<button onClick={()=>goTo('contact-detail',bookResult.contactId)} className="text-[12.5px] font-semibold text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">View contact record<I.ArrowRight size={12}/></button>}
+                <button onClick={()=>{setStep('date');setDate(null);setSlot(null);setBookResult(null);}} className="text-[12.5px] font-medium text-white/45 hover:text-white/70 transition-colors">Schedule another</button>
+              </div>
+            </div>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+
+// ── Scheduling engine (Part 2): meetings list + CRM-native automation ──
+const SCHED_DEAL_STAGES=[['prospecting','Prospecting'],['qualified','Qualified'],['proposal','Proposal'],['negotiation','Negotiation']];
+const SCHED_PIPELINES=['Sales Pipeline','Partnerships','Expansion'];
+const SCHED_RULE_FIELDS=['Company size','Budget','Use case','Email domain','Job title'];
+const SCHED_RULE_OPS=['is','contains'];
+const SCHED_MINI='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none';
+const SCHED_DEFAULT_AUTOMATION={autoContact:true,autoTimeline:true,createDeal:false,dealStage:'qualified',dealValue:'',pipeline:'Sales Pipeline',assign:'me',rotation:{AM:true,SC:true,JK:true,RL:false,MR:false},specificRep:'AM',rules:[]};
+function schedMtgTime(m){const end=new Date(m.date.getTime()+m.duration*60000);return schedFmtTime(m.date.getHours()*60+m.date.getMinutes())+' – '+schedFmtTime(end.getHours()*60+end.getMinutes());}
+function schedStatusChip(s){const map={confirmed:['Confirmed','bg-emerald-500/15 text-emerald-300 ring-emerald-500/25'],pending:['Pending','bg-amber-500/15 text-amber-300 ring-amber-500/25'],cancelled:['Cancelled','bg-red-500/15 text-red-300 ring-red-500/25']};const v=map[s]||map.confirmed;return {l:v[0],c:v[1]};}
+function schedSeedMeetings(){
+  const n=new Date();const d=(off,h,m)=>new Date(n.getFullYear(),n.getMonth(),n.getDate()+off,h,m);
+  return [
+    {id:'m1',name:'30 Min Intro Call',color:'#6366f1',date:d(1,10,0),duration:30,location:'Google Meet',status:'confirmed',contactId:1,contactName:'Sarah Chen',avatar:'SC',contactColor:'#3b82f6',dealName:'Meridian — Managed CRM',dealValue:'$8,400',questions:[{q:'What would you like to discuss?',a:'Scaling our outbound with your CRM.'}],notes:'',host:'Alex Morgan',join:'meet.google.com/abc-defg-hij',rep:'AM'},
+    {id:'m2',name:'Product Demo',color:'#10b981',date:d(2,14,30),duration:45,location:'Zoom',status:'confirmed',contactId:2,contactName:'James Rivera',avatar:'JR',contactColor:'#8b5cf6',dealName:'Summit — Renewal',dealValue:'$31,000',questions:[{q:'Team size?',a:'~40 people'}],notes:'',host:'Alex Morgan',join:'zoom.us/j/9921234',rep:'JK'},
+    {id:'m3',name:'Onboarding Session',color:'#f59e0b',date:d(3,9,0),duration:60,location:'Phone call',status:'pending',contactId:3,contactName:'Maria Lopez',avatar:'ML',contactColor:'#ec4899',questions:[],notes:'',host:'Alex Morgan',join:'',rep:'AM'},
+    {id:'m4',name:'30 Min Intro Call',color:'#6366f1',date:d(-2,11,0),duration:30,location:'Google Meet',status:'confirmed',contactId:6,contactName:'Emily Tran',avatar:'ET',contactColor:'#14b8a6',dealName:'Forge — Expansion',dealValue:'$44,000',questions:[],notes:'Great call — ready to expand to the Business plan.',host:'Alex Morgan',join:'meet.google.com/xyz-1234',rep:'AM'},
+    {id:'m5',name:'Product Demo',color:'#10b981',date:d(-5,15,0),duration:45,location:'Zoom',status:'cancelled',contactId:5,contactName:'Marcus Rios',avatar:'MR',contactColor:'#f59e0b',questions:[],notes:'',host:'Alex Morgan',join:'',rep:'MR'},
+  ];
+}
+
+function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
+  const [seg,setSeg]=React.useState('upcoming');
+  const [open,setOpen]=React.useState(null);
+  const [menu,setMenu]=React.useState(null);
+  const now=new Date();
+  const isPast=(m)=>m.status==='cancelled'||m.date<now;
+  const list=meetings.filter(m=>seg==='upcoming'?!isPast(m):isPast(m)).sort((a,b)=>seg==='upcoming'?a.date-b.date:b.date-a.date);
+  const counts={upcoming:meetings.filter(m=>!isPast(m)).length,past:meetings.filter(isPast).length};
+  const cancel=(id)=>{setMeetings(ms=>ms.map(m=>m.id===id?{...m,status:'cancelled'}:m));setOpen(null);setMenu(null);addToast('Meeting cancelled');};
+  const saveNotes=(id,notes)=>setMeetings(ms=>ms.map(m=>m.id===id?{...m,notes}:m));
+  const openM=meetings.find(m=>m.id===open);
+  return(<div className="flex-1 overflow-y-auto scroll-area">
+    {menu&&<div className="fixed inset-0 z-20" onClick={()=>setMenu(null)}/>}
+    <div className="max-w-[920px] mx-auto px-6 py-6">
+      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+        <div><h2 className="text-white text-[17px] font-bold">Meetings</h2><p className="text-[12.5px] text-white/45 mt-0.5">Every booking is tied to a real contact, deal, and timeline.</p></div>
+        <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['upcoming','Upcoming'],['past','Past']].map(([k,l])=>(<button key={k} onClick={()=>setSeg(k)} className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',seg===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l} <span className="opacity-60">{counts[k]}</span></button>))}</div>
+      </div>
+      {list.length===0&&<div className="text-center py-16 text-white/40 text-[13px]">No {seg} meetings.</div>}
+      {list.map(m=>{const chip=schedStatusChip(m.status);const Loc=schedLocIcon(m.location);return(
+        <div key={m.id} onClick={()=>setOpen(m.id)} className="rounded-xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/25 p-4 flex flex-col sm:flex-row sm:items-center gap-4 mb-2.5 cursor-pointer transition-all">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="rounded-lg bg-brand-500/10 w-14 text-center py-1 shrink-0"><p className="text-[11px] uppercase text-brand-300 font-semibold leading-none">{CAL_MONTHS[m.date.getMonth()].slice(0,3)}</p><p className="text-[20px] font-black text-white leading-tight">{m.date.getDate()}</p></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{background:m.color}}/>
+                <span className="text-[14px] font-bold text-white truncate">{m.name}</span>
+                <span className={['inline-flex items-center text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1',chip.c].join(' ')}>{chip.l}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[12px] text-white/55">
+                <span className="inline-flex items-center gap-1"><I.Clock size={11}/>{schedMtgTime(m)}</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08]"><Loc size={10}/>{m.location}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <button onClick={e=>{e.stopPropagation();if(m.contactId!=null)goTo('contact-detail',m.contactId);}} className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:m.contactColor}}>{m.avatar}</span><span className="text-[12px] font-medium text-white/80">{m.contactName}</span></button>
+                {m.dealName&&<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/10 border border-brand-500/20 text-[11px] text-brand-200"><I.Target size={10}/>{m.dealName} · {m.dealValue}</span>}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 sm:justify-end flex-wrap" onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>addToast('Reschedule link sent')} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Reschedule</button>
+            {m.status!=='cancelled'&&<button onClick={()=>cancel(m.id)} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300/80 bg-red-500/[0.06] border border-red-500/15 hover:bg-red-500/12 transition-all">Cancel</button>}
+            <div className="relative">
+              <button onClick={()=>setMenu(menu===m.id?null:m.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.06] transition-all text-[16px] leading-none">⋯</button>
+              {menu===m.id&&(<div className="absolute right-0 top-9 z-30 w-44 rounded-xl border border-white/[0.10] py-1 shadow-[0_12px_40px_rgba(0,0,0,0.5)]" style={{background:'var(--pop)'}}>
+                <button onClick={()=>{setMenu(null);addToast(m.join?'Join link copied':'No join link');}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.ExternalLink size={12}/>Join link</button>
+                <button onClick={()=>{setMenu(null);setOpen(m.id);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.Note size={12}/>Add notes</button>
+                <button onClick={()=>{setMenu(null);if(m.contactId!=null)goTo('contact-detail',m.contactId);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.Users size={12}/>View contact</button>
+              </div>)}
+            </div>
+          </div>
+        </div>);})}
+    </div>
+    {openM&&<SchedMeetingDrawer meeting={openM} onClose={()=>setOpen(null)} onCancel={()=>cancel(openM.id)} onReschedule={()=>{addToast('Reschedule link sent');}} onSaveNotes={(notes)=>saveNotes(openM.id,notes)} goTo={goTo}/>}
+  </div>);
+}
+
+function SchedMeetingDrawer({meeting,onClose,onCancel,onReschedule,onSaveNotes,goTo}){
+  const [notes,setNotes]=React.useState(meeting.notes||'');
+  const chip=schedStatusChip(meeting.status);
+  const Loc=schedLocIcon(meeting.location);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
+  const dateLine=CAL_DAYS[meeting.date.getDay()]+', '+CAL_MONTHS[meeting.date.getMonth()]+' '+meeting.date.getDate();
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[160] bg-black/40" onClick={onClose}/>
+    <div role="dialog" aria-modal="true" className="fixed z-[170] flex flex-col border-white/[0.08] inset-x-0 bottom-0 max-h-[88vh] rounded-t-2xl border-t sm:inset-x-auto sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[420px] sm:max-w-full sm:max-h-none sm:rounded-t-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><div className="flex items-center gap-2 min-w-0"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:meeting.color}}/><p className="text-[15px] font-bold text-white truncate">{meeting.name}</p><span className={['inline-flex items-center text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1 shrink-0',chip.c].join(' ')}>{chip.l}</span></div><button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-4">
+        <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.07] p-3">
+          <span className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{background:meeting.contactColor}}>{meeting.avatar}</span>
+          <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Invitee · CRM contact</p><p className="text-[14px] font-bold text-white truncate">{meeting.contactName}</p></div>
+          {meeting.contactId!=null&&<button onClick={()=>goTo('contact-detail',meeting.contactId)} className="text-[12px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 shrink-0">View<I.ArrowRight size={11}/></button>}
+        </div>
+        {meeting.dealName&&<div className="flex items-center gap-2 rounded-lg bg-brand-500/[0.06] border border-brand-500/20 px-3 py-2"><I.Target size={13} className="text-brand-300"/><span className="text-[12.5px] text-white/80 flex-1 truncate">{meeting.dealName}</span><span className="text-[12.5px] font-bold text-white">{meeting.dealValue}</span></div>}
+        <div className="grid grid-cols-1 gap-2.5">
+          <div className="flex items-center gap-2.5 text-[12.5px] text-white/65"><I.Users size={14} className="text-white/40"/><span className="text-white/40 w-16">Host</span>{meeting.host}</div>
+          <div className="flex items-center gap-2.5 text-[12.5px] text-white/65"><I.Calendar size={14} className="text-white/40"/><span className="text-white/40 w-16">When</span>{dateLine} · {schedMtgTime(meeting)}</div>
+          <div className="flex items-center gap-2.5 text-[12.5px] text-white/65"><Loc size={14} className="text-white/40"/><span className="text-white/40 w-16">Where</span>{meeting.location}</div>
+          {meeting.join&&<div className="flex items-center gap-2.5 text-[12.5px]"><I.ExternalLink size={14} className="text-white/40"/><span className="text-white/40 w-16">Join</span><span className="font-mono text-brand-300 truncate">{meeting.join}</span></div>}
+        </div>
+        {meeting.questions&&meeting.questions.length>0&&(<div>
+          <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Booking answers</p>
+          <div className="flex flex-col gap-2">{meeting.questions.map((qa,i)=>(<div key={i} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2"><p className="text-[11.5px] text-white/45">{qa.q}</p><p className="text-[12.5px] text-white/80 mt-0.5">{qa.a||'—'}</p></div>))}</div>
+        </div>)}
+        <div>
+          <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Notes</p>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>onSaveNotes&&onSaveNotes(notes)} rows={4} placeholder="Add private notes about this meeting..." className={SCHED_INP+' resize-none'}/>
+        </div>
+      </div>
+      <div className="px-5 py-4 border-t border-white/[0.06] shrink-0 flex gap-2"><button onClick={onReschedule} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Reschedule</button>{meeting.status!=='cancelled'&&<button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-red-300 bg-red-500/[0.08] border border-red-500/20 hover:bg-red-500/15 transition-all">Cancel meeting</button>}</div>
+    </div>
+  </React.Fragment>);
+}
+
+function SchedAutomationCard({automation,setAutomation,addToast}){
+  const a=automation;const set=(patch)=>setAutomation(x=>({...x,...patch}));
+  const ToggleRow=({on,onChange,title,desc,helper})=>(<div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[13px] font-semibold text-white">{title}</p><p className="text-[12px] text-white/50 mt-0.5">{desc}</p>{helper&&<p className="text-[11px] text-brand-300/80 mt-0.5 flex items-center gap-1"><I.Zap size={10}/>{helper}</p>}</div><Toggle on={on} onChange={onChange}/></div>);
+  const addRule=()=>set({rules:[...a.rules,{id:'r'+Date.now(),field:SCHED_RULE_FIELDS[0],op:'is',value:'',rep:'AM'}]});
+  const setRule=(id,patch)=>set({rules:a.rules.map(r=>r.id===id?{...r,...patch}:r)});
+  const rmRule=(id)=>set({rules:a.rules.filter(r=>r.id!==id)});
+  return(<div className="rounded-2xl border border-brand-500/20 p-5" style={{background:'var(--s900)'}}>
+    <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center"><I.Zap size={14}/></span><p className="text-[14px] font-bold text-white">Scheduling automation</p></div>
+    <p className="text-[12px] text-white/45 mb-4">The Calendly killer — every booking lands on the right contact, deal, and rep automatically.</p>
+    <div className="flex flex-col gap-5">
+      <ToggleRow on={a.autoContact} onChange={v=>set({autoContact:v})} title="Auto-create contact" desc="Create a new contact if the invitee isn't in the CRM." helper="Every booking becomes a CRM record automatically."/>
+      <ToggleRow on={a.autoTimeline} onChange={v=>set({autoTimeline:v})} title="Auto-attach to timeline" desc="Log the meeting on the contact's activity timeline."/>
+      <div>
+        <ToggleRow on={a.createDeal} onChange={v=>set({createDeal:v})} title="Create a deal on booking" desc="Spin up an opportunity the moment someone books." helper="Turn a booking into an opportunity instantly."/>
+        {a.createDeal&&(<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          <div><label className={SCHED_LBL}>Deal stage</label><select value={a.dealStage} onChange={e=>set({dealStage:e.target.value})} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_DEAL_STAGES.map(([k,l])=>(<option key={k} value={k}>{l}</option>))}</select></div>
+          <div><label className={SCHED_LBL}>Deal value</label><input value={a.dealValue} onChange={e=>set({dealValue:e.target.value})} placeholder="$ amount" className={SCHED_INP}/></div>
+          <div><label className={SCHED_LBL}>Pipeline</label><select value={a.pipeline} onChange={e=>set({pipeline:e.target.value})} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_PIPELINES.map(p=>(<option key={p}>{p}</option>))}</select></div>
+        </div>)}
+      </div>
+      <div>
+        <label className={SCHED_LBL}>Assign bookings to</label>
+        <div className="flex items-center gap-2 flex-wrap">{[['me','Just me'],['roundrobin','Round-robin across team'],['specific','Specific rep']].map(([k,l])=>(<button key={k} onClick={()=>set({assign:k})} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium border transition-all',a.assign===k?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{l}</button>))}</div>
+        {a.assign==='roundrobin'&&(<div className="mt-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+          <div className="flex flex-col gap-1.5">{TEAM_MEMBERS.map(t=>(<div key={t.avatar} className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:t.color}}>{t.avatar}</span><span className="text-[12.5px] text-white/80">{t.name}</span></div><Toggle on={!!a.rotation[t.avatar]} onChange={v=>set({rotation:{...a.rotation,[t.avatar]:v}})}/></div>))}</div>
+          <p className="text-[11px] text-brand-300/80 mt-2.5 flex items-center gap-1"><I.Zap size={10}/>Bookings distribute evenly among selected reps.</p>
+        </div>)}
+        {a.assign==='specific'&&(<div className="mt-3 max-w-[260px]"><select value={a.specificRep} onChange={e=>set({specificRep:e.target.value})} className={SCHED_SEL} style={SCHED_SELSTYLE}>{TEAM_MEMBERS.map(t=>(<option key={t.avatar} value={t.avatar}>{t.name}</option>))}</select></div>)}
+      </div>
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-1"><label className={SCHED_LBL+' mb-0'}>Routing rules</label></div>
+        <p className="text-[11px] text-brand-300/80 mb-2.5 flex items-center gap-1"><I.Zap size={10}/>Route high-value leads to senior reps automatically.</p>
+        <div className="flex flex-col gap-2">{a.rules.map(r=>(<div key={r.id} className="flex items-center gap-2 flex-wrap rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
+          <span className="text-[11px] font-semibold text-white/35">IF</span>
+          <select value={r.field} onChange={e=>setRule(r.id,{field:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{SCHED_RULE_FIELDS.map(f=>(<option key={f}>{f}</option>))}</select>
+          <select value={r.op} onChange={e=>setRule(r.id,{op:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{SCHED_RULE_OPS.map(o=>(<option key={o}>{o}</option>))}</select>
+          <input value={r.value} onChange={e=>setRule(r.id,{value:e.target.value})} placeholder="value" className="px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 w-24 placeholder:text-white/30"/>
+          <span className="text-[11px] font-semibold text-white/35">THEN</span>
+          <select value={r.rep} onChange={e=>setRule(r.id,{rep:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{TEAM_MEMBERS.map(t=>(<option key={t.avatar} value={t.avatar}>{t.name}</option>))}</select>
+          <button onClick={()=>rmRule(r.id)} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] transition-all"><I.X size={13}/></button>
+        </div>))}</div>
+        <button onClick={addRule} className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={12} stroke={2.4}/>Add routing rule</button>
+      </div>
+    </div>
+    <div className="flex justify-end mt-5"><button onClick={()=>addToast('Scheduling automation saved ✓')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Check size={14} stroke={2.4}/>Save automation</button></div>
+  </div>);
+}
+
 function CalendarPage({goTo}){
+  const [schedTab,setSchedTab]=React.useState('calendar');
+  const [eventTypes,setEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
+  const [etDrawer,setEtDrawer]=React.useState(null);
+  const [availability,setAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
+  const [previewSlug,setPreviewSlug]=React.useState(null);
+  const [automation,setAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
+  const [meetings,setMeetings]=React.useState(schedSeedMeetings);
+  const crm=React.useContext(CrmDataContext);
+  const addMeeting=(m)=>setMeetings(ms=>[m,...ms]);
+  const SCHED_TABS=[{k:'calendar',l:'Calendar',Icon:I.Calendar},{k:'eventtypes',l:'Event Types',Icon:I.Clock},{k:'availability',l:'Availability',Icon:I.Check},{k:'bookingpage',l:'Booking Page',Icon:I.Globe},{k:'meetings',l:'Meetings',Icon:I.Users}];
+  const saveEventType=(et)=>{setEventTypes(list=>list.some(x=>x.id===et.id)?list.map(x=>x.id===et.id?et:x):[...list,et]);setEtDrawer(null);addToast('Event type saved');};
   const [view,setView]=React.useState('month');
   const [current,setCurrent]=React.useState(new Date());
   const {items:events,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
@@ -9953,8 +10714,15 @@ function CalendarPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="calendar" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Calendar" subtitle="Schedule meetings, calls, and follow-ups" rightSlot={calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}/>
-        {calConnected?(<React.Fragment>
+        <AppTopbar goTo={goTo} title="Calendar" subtitle="Schedule meetings, calls, and follow-ups" rightSlot={schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}/>
+        <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center" style={{background:'var(--s925)'}}>
+          <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
+        </div>
+        {schedTab==='eventtypes'&&<SchedEventTypesTab eventTypes={eventTypes} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>{setPreviewSlug(et.slug);setSchedTab('bookingpage');}} addToast={addToast}/>}
+        {schedTab==='availability'&&<SchedAvailabilityTab avail={availability} setAvail={setAvailability} addToast={addToast} automation={automation} setAutomation={setAutomation}/>}
+        {schedTab==='bookingpage'&&<SchedBookingPageTab eventTypes={eventTypes} avail={availability} initialSlug={previewSlug} addToast={addToast} automation={automation} crm={crm} addMeeting={addMeeting} goTo={goTo}/>}
+        {schedTab==='meetings'&&<SchedMeetingsTab meetings={meetings} setMeetings={setMeetings} addToast={addToast} goTo={goTo}/>}
+        {schedTab==='calendar'&&(calConnected?(<React.Fragment>
         <div className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-3">
             <button onClick={()=>setCurrent(new Date())} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Target size={13}/>Today</button>
@@ -9986,8 +10754,9 @@ function CalendarPage({goTo}){
           <CalUpcoming events={visible} onEventClick={(e)=>setDetail(e)} onToggleTask={toggleDone} onReorderTasks={(ids)=>ids.forEach((id,i)=>updateItem({id,order:i}))}/>
         </div>
         <AppFooter note="Calendar syncs with your connected Google Calendar"/>
-        </React.Fragment>):(<ConnectEmptyState Icon={I.Calendar} accent="#6366f1" eyebrow="Calendar" title="Connect your calendar" desc="Sync Google Calendar or Outlook to see every meeting in one place, schedule follow-ups in a click, and let automations and booking links reserve time — all without leaving nrtur." providers={[{name:'Connect Google Calendar',c:'#ea4335',Icon:I.Calendar,onClick:()=>setCalConnected(true)},{name:'Connect Outlook Calendar',c:'#0078d4',Icon:I.Calendar,onClick:()=>setCalConnected(true)}]} benefits={[{Icon:I.History,l:'Two-way sync'},{Icon:I.Check,l:'Auto-log meetings'},{Icon:I.Zap,l:'Booking links'}]} footnote="Connect more calendars later in Settings → Connections."/>)}
+        </React.Fragment>):(<ConnectEmptyState Icon={I.Calendar} accent="#6366f1" eyebrow="Calendar" title="Connect your calendar" desc="Sync Google Calendar or Outlook to see every meeting in one place, schedule follow-ups in a click, and let automations and booking links reserve time — all without leaving nrtur." providers={[{name:'Connect Google Calendar',c:'#ea4335',Icon:I.Calendar,onClick:()=>setCalConnected(true)},{name:'Connect Outlook Calendar',c:'#0078d4',Icon:I.Calendar,onClick:()=>setCalConnected(true)}]} benefits={[{Icon:I.History,l:'Two-way sync'},{Icon:I.Check,l:'Auto-log meetings'},{Icon:I.Zap,l:'Booking links'}]} footnote="Connect more calendars later in Settings → Connections."/>))}
       </div>
+      {etDrawer&&<EventTypeDrawer initial={etDrawer==='new'?null:etDrawer} onClose={()=>setEtDrawer(null)} onSave={saveEventType}/>}
       {detail&&<CalEventDetailModal event={detail} onClose={()=>setDetail(null)} onEdit={()=>openEdit(detail)} onDelete={()=>delEvent(detail)} onComplete={()=>{toggleDone(detail.id);setDetail(null);addToast(detail.done?'Task reopened':'Task completed');}} goTo={goTo}/>}
       {eventModal&&(eventModal.event&&eventModal.event.type==='task'
         ?<TaskFormModal initial={eventModal.event} onClose={()=>setEventModal(null)} onSave={saveEvent} onDelete={(t)=>{setEventModal(null);delEvent(t);}}/>
