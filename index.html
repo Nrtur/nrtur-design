@@ -1617,6 +1617,8 @@ const MailAccountsContext=React.createContext({accounts:[],connect:()=>{},discon
 const CalendarContext=React.createContext({items:[],addItem:()=>{},updateItem:()=>{},deleteItem:()=>{},toggleDone:()=>{}});
 // Shared CRM record store so list-page edits (status/owner/archive) propagate to detail pages and back. Seeded in App from the *_DATA consts.
 const CrmDataContext=React.createContext({contacts:[],leads:[],companies:[],deals:[],setContacts:()=>{},setLeads:()=>{},setCompanies:()=>{},setDeals:()=>{},updateContact:()=>{},updateLead:()=>{},updateCompany:()=>{},updateDeal:()=>{}});
+// Shared scheduling store (Calendly-style engine): event types, availability, automation, booked meetings. Config UI lives in Settings → Calendar config; Meetings list lives on the Calendar page.
+const SchedulingContext=React.createContext({eventTypes:[],availability:null,automation:null,meetings:[],setEventTypes:()=>{},setAvailability:()=>{},setAutomation:()=>{},setMeetings:()=>{},addMeeting:()=>{}});
 // Shared Properties config (the Settings → Properties screen) so the Add-record drawer respects "Show in create form".
 const PropertiesContext=React.createContext({props:{},setProps:()=>{}});
 // Shared integration connection state so Settings → Integrations and the SMS pages stay in sync.
@@ -1688,7 +1690,7 @@ function SettingsSubNav({active,goTo}){
     {title:'Templates & capture',items:[
       {label:'Email templates',page:'email-templates',Icon:I.Mail},
       {label:'Forms',page:'settings-forms',Icon:I.Note},
-      {label:'Booking links',page:'settings-booking',Icon:I.Calendar},
+      {label:'Calendar config',page:'settings-booking',Icon:I.Calendar},
     ]},
     {title:'Deliverability',items:[
       {label:'Notifications',page:'settings-notifications',Icon:I.Bell},
@@ -4677,14 +4679,14 @@ function ConvertLeadModal({lead,close,onConfirm}){
   const cap='w-9 h-9 rounded-lg flex items-center justify-center shrink-0';
   const chevCls=(o)=>['text-white/35 shrink-0 transition-transform',o?'rotate-180':''].join(' ');
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div className="flex flex-col" style={{width:580,maxWidth:'100%',maxHeight:'90vh',background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)'}}>
-        <div className="flex items-start gap-4 p-6 pb-4 shrink-0">
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:580,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-start gap-4 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.ArrowRight size={17} style={{color:'#34d399'}}/></div>
           <div className="min-w-0"><p className="text-white text-[15px] font-bold">Convert {lead.name}</p><p className="text-white/55 text-[13px] mt-1">Review what will be created. The Contact{hasCompany?', Company':''}{makeDeal?' and Deal':''} carry over this lead’s details — expand any card to edit before converting.</p></div>
           <button onClick={close} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
         </div>
-        <div className="flex-1 overflow-y-auto scroll-area px-6 flex flex-col gap-2.5">
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-2.5">
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] overflow-hidden">
             <button onClick={()=>tEx('contact')} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors">
               <span className={cap} style={{background:'#3b82f61f',color:'#3b82f6',boxShadow:'inset 0 0 0 1px #3b82f633'}}><I.UserPlus size={15}/></span>
@@ -4738,7 +4740,7 @@ function ConvertLeadModal({lead,close,onConfirm}){
             </div>):(<div className="px-4 pb-4 pt-3 border-t border-white/[0.05]"><p className="text-[12px] text-white/40">Turn on the toggle to create a deal from this lead.</p></div>))}
           </div>
         </div>
-        <div className="flex gap-3 p-6 pt-4 shrink-0"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={submit} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 border-none transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)]">Convert lead</button></div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={submit} className="ml-auto px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-emerald-500 hover:bg-emerald-400 border-none transition-all shadow-[0_4px_20px_rgba(16,185,129,0.3)]">Convert lead</button></div>
       </div>
     </div>
   );
@@ -6300,7 +6302,8 @@ function EmailTemplateEditModal({template,close,onSave}){
   const TB='w-8 h-8 rounded-lg flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.08] border border-white/[0.08] transition-all text-[13px] font-bold';
   const save=()=>{if(!valid)return;onSave({...(template||{}),id:template?.id,name:name.trim(),category,subject:subject.trim(),body,favorite});close();};
   return(
-    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      {/* z bumped to sit above sequence node drawers (z-180) and the template picker (z-190) */}
       <div style={{width:'min(1060px,95vw)',maxHeight:'92vh',background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:18,boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 90px rgba(0,0,0,0.7)'}} className="flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -6315,8 +6318,8 @@ function EmailTemplateEditModal({template,close,onSave}){
         <div className="flex-1 min-h-0 flex">
           <div className="w-[450px] shrink-0 overflow-y-auto scroll-area border-r border-white/[0.07] p-6 flex flex-col gap-5">
             <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Template name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Proposal follow-up" className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>
+            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Subject line</label><input ref={subRef} value={subject} onFocus={()=>setFocusField('subject')} onChange={e=>setSubject(e.target.value)} placeholder="Your email subject..." className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/><p className="text-[10.5px] text-white/30 mt-1.5">Part of the template — sequences that use it inherit this subject.</p></div>
             <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Category</label><div className="flex flex-wrap gap-2">{EMAIL_TEMPLATE_CATS.map(c=>{const a=category===c.key;return(<button key={c.key} onClick={()=>setCategory(c.key)} className={['px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-all',a?'':'bg-white/[0.03] border-white/[0.08] text-white/55 hover:text-white'].join(' ')} style={a?{background:`${c.color}1f`,borderColor:`${c.color}55`,color:c.color}:{}}>{c.label}</button>);})}</div></div>
-            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Subject line</label><input ref={subRef} value={subject} onFocus={()=>setFocusField('subject')} onChange={e=>setSubject(e.target.value)} placeholder="A clear, specific subject…" className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>
             <div>
               <div className="flex items-center justify-between mb-2"><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Body</label><div className="flex items-center gap-1.5"><button onClick={()=>wrap('**','**','bold')} title="Bold" className={TB} style={{fontWeight:800}}>B</button><button onClick={()=>wrap('_','_','italic')} title="Italic" className={TB} style={{fontStyle:'italic',fontFamily:'Georgia,serif'}}>I</button><button onClick={()=>wrap('[','](https://)','link text')} title="Link" className={TB}><I.ExternalLink size={13}/></button><button onClick={bullet} title="Bulleted list" className={TB}><I.Layers size={13}/></button></div></div>
               <textarea ref={bodyRef} value={body} onFocus={()=>setFocusField('body')} onChange={e=>setBody(e.target.value)} rows={9} placeholder="Hi {{first_name}},&#10;&#10;Write your message…" className="w-full px-3.5 py-3 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13.5px] text-white placeholder:text-white/28 outline-none resize-none leading-relaxed focus:border-brand-500/40"/>
@@ -6500,8 +6503,10 @@ function EmailTemplatesPage({goTo}){
         <div className="fixed inset-0 z-[180] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 max-sm:p-0" onClick={()=>setPreviewTemplate(null)}>
           <div onClick={e=>e.stopPropagation()} className="max-w-[680px] w-full max-h-[90vh] flex flex-col rounded-2xl overflow-hidden border border-white/[0.10] max-sm:max-h-screen max-sm:h-full max-sm:rounded-none">
             <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3 flex-wrap" style={{background:'var(--s850)'}}>
-              <p className="text-[15px] font-bold text-white">{previewTemplate.name}</p>
-              <Chip t={previewTemplate}/>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap"><p className="text-[15px] font-bold text-white">{previewTemplate.name}</p><Chip t={previewTemplate}/></div>
+                {previewTemplate.subject&&<p className="text-[12px] text-white/55 mt-0.5 truncate">Subject: {fillVars(previewTemplate.subject)}</p>}
+              </div>
               <div className="flex-1"/>
               <button onClick={()=>{const t=previewTemplate;setPreviewTemplate(null);setEditTemplate(t);}} className="px-4 py-2 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Edit template</button>
               <button onClick={()=>{setPreviewTemplate(null);goTo('settings-sequences');}} className="px-4 py-2 rounded-xl text-[13px] border border-white/[0.10] text-white/70 hover:text-white hover:bg-white/[0.05] transition-all">Use in sequence</button>
@@ -6930,6 +6935,7 @@ function TplPreview({t,height}){
 // Visual template picker shown inside the email action-node config drawer (welcome / reengage / proposal)
 function EmailNodeTemplatePicker({node,onChange}){
   const [pickerOpen,setPickerOpen]=React.useState(false);
+  const [editOpen,setEditOpen]=React.useState(false);
   const [q,setQ]=React.useState('');
   const selectedTemplate=EMAIL_TEMPLATES.find(t=>t.name===node.template)||null;
   const catOf=(t)=>EMAIL_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category||'email',color:'#818cf8'};
@@ -6938,11 +6944,18 @@ function EmailNodeTemplatePicker({node,onChange}){
   return(<div className="mb-4">
     <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Email template</p>
     {selectedTemplate?(<div>
-      <div className="rounded-xl border border-white/[0.08] overflow-hidden mb-3 relative" style={{maxHeight:260}}><TplPreview t={selectedTemplate} height={200}/></div>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="rounded-xl border border-white/[0.08] overflow-hidden mb-3 relative bg-white" style={{maxHeight:300}}><TplPreview t={selectedTemplate} height={240}/></div>
+      <div className="flex items-center gap-2 flex-wrap mb-2.5">
         <p className="text-[13px] font-semibold text-white">{selectedTemplate.name}</p>
         {(()=>{const c=catOf(selectedTemplate);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{background:c.color+'18',color:c.color,boxShadow:`0 0 0 1px ${c.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:c.color}}/>{c.label}</span>);})()}
-        <button onClick={()=>onChange({template:''})} className="text-[12px] text-brand-300 hover:text-brand-200 cursor-pointer ml-auto">Change template</button>
+      </div>
+      <div className="mb-2.5">
+        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em] mb-1">Subject</p>
+        <p className="text-[13px] text-white/70">{fillVars(selectedTemplate.subject)||'—'}</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <button onClick={()=>setPickerOpen(true)} className="text-[12px] text-brand-300 hover:text-brand-200 cursor-pointer">Change template</button>
+        <button onClick={()=>setEditOpen(true)} className="text-[12px] text-white/45 hover:text-white cursor-pointer">Edit in template builder</button>
       </div>
     </div>):(
       <button onClick={()=>setPickerOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 hover:bg-brand-500/20 transition-all"><I.Mail size={14}/>Select template</button>
@@ -6966,6 +6979,7 @@ function EmailNodeTemplatePicker({node,onChange}){
           </div>
         </div>
       </div>,document.body)}
+    {editOpen&&selectedTemplate&&<EmailTemplateEditModal template={selectedTemplate} close={()=>setEditOpen(false)} onSave={(rec)=>{const i=EMAIL_TEMPLATES.findIndex(t=>t.id===rec.id);if(i>=0)EMAIL_TEMPLATES[i]={...EMAIL_TEMPLATES[i],...rec};if(rec.name&&rec.name!==node.template)onChange({template:rec.name});setEditOpen(false);}}/>}
   </div>);
 }
 function ActionConfig({node,onChange,goTo}){
@@ -7019,6 +7033,7 @@ function ActionConfig({node,onChange,goTo}){
 }
 // One-line plain-English summary of an action's current config (shown under the node title + in the test trace)
 function actionSummary(node){
+  if(!node)return 'Step';
   switch(node.key){
     case 'assign': return 'Assign to '+(node.assignTo||'a rep');
     case 'welcome': case 'reengage': return 'Template: '+(node.template||'—')+' · from '+(node.fromRep||'Deal owner');
@@ -7039,7 +7054,7 @@ function actionSummary(node){
     case 'createDeal': return 'New deal · '+(node.stage||'')+' · $'+(node.dealValue||'0')+'k';
     case 'enrollSms': return 'Enroll in “'+(node.seqName||SEQ_DATA[0].name)+'”';
     case 'enrollEmail': return 'Enroll in “'+(node.seqName||EMAIL_SEQ_DATA[0].name)+'”';
-    default: return null;
+    default: return node.label||'Step';
   }
 }
 // Renders a single node card by kind, with its inline editor + nested lanes for branching nodes
@@ -7107,7 +7122,11 @@ function FlowNodeConfigBody({node,onChange,goTo}){
   </div>);
 }
 function FlowNode({node,onChange,onRemove,onDuplicate,goTo,showStats,flowName,idx}){
-  const Icon=node.Icon;
+  // Defensive: an unknown / malformed node renders a neutral placeholder instead of blanking the canvas.
+  if(!node||!node.kind){
+    return(<div className="rounded-xl bg-white/[0.03] border border-white/[0.08]" style={{width:280,minWidth:280}}><div className="flex items-center gap-2.5 px-3" style={{minHeight:46}}><span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-white/[0.06] text-white/45"><I.AlertTriangle size={12}/></span><div className="min-w-0"><p className="text-[13px] font-bold text-white">Unknown step</p><p className="text-[11px] text-white/40 truncate">{(node&&node.id)||'no id'}</p></div></div></div>);
+  }
+  const Icon=node.Icon||I.AlertTriangle;
   const ctx=React.useContext(FlowCfgCtx);
   const local=React.useState(null);
   const selId=ctx?ctx.selId:local[0];
@@ -7502,7 +7521,7 @@ function EmailStepCard({step,idx}){
     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] p-5">
       <div className="flex items-center justify-between mb-4"><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Step {idx+1}</span><select defaultValue={delays[Math.min(idx,delays.length-1)]} className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] text-white/65 outline-none appearance-none">{delays.map(d=><option key={d}>{d}</option>)}</select></div>
       <div className="flex flex-col gap-3">
-        <input defaultValue={step.subject} placeholder="Subject line..." className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[13px] text-white outline-none focus:border-brand-500/40 placeholder:text-white/25"/>
+        <div><p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-1">Subject</p><div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2 text-[13px] text-white/70">{step.subject||<span className="text-white/30">No subject set on this template</span>}</div><span className="inline-flex items-center gap-1 text-[11px] text-white/35 mt-1"><I.Lock size={10}/>Set on the template</span></div>
         <div className="px-3 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[12px] text-white/60 leading-relaxed min-h-[64px]">{step.preview}</div>
         <div className="flex items-center gap-2"><Toggle on={notOpened} onChange={setNotOpened}/><span className="text-[12px] text-white/55">Only send if previous email not opened</span></div>
       </div>
@@ -7765,6 +7784,40 @@ function SettingsBookingPage({goTo}){
     </div>
     {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
   </SettingsShell>);
+}
+// ?? Calendar config (scheduling engine) — Event Types / Availability / Booking Page, hosted in Settings ??
+function SettingsCalendarConfigPage({goTo}){
+  const sched=React.useContext(SchedulingContext);
+  const crm=React.useContext(CrmDataContext);
+  const {toasts,addToast}=useToast();
+  const [tab,setTab]=React.useState('eventtypes');
+  const [etDrawer,setEtDrawer]=React.useState(null);
+  const [previewSlug,setPreviewSlug]=React.useState(null);
+  const TABS=[{k:'eventtypes',l:'Event Types',Icon:I.Clock},{k:'availability',l:'Availability',Icon:I.Check},{k:'bookingpage',l:'Booking Page',Icon:I.Globe}];
+  const saveEventType=(et)=>{sched.setEventTypes(list=>list.some(x=>x.id===et.id)?list.map(x=>x.id===et.id?et:x):[...list,et]);setEtDrawer(null);addToast('Event type saved');};
+  return(
+    <div className="h-full flex" style={{background:'var(--s950)'}}>
+      <AppSidebar active="settings-booking" goTo={goTo}/>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AppTopbar goTo={goTo} title="Settings" subtitle="Calendar configuration"/>
+        <div className="settings-stack flex-1 flex min-h-0">
+          <SettingsSubNav active="settings-booking" goTo={goTo}/>
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
+              <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{TABS.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',tab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
+              <button onClick={()=>goTo('calendar')} className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/>Open calendar</button>
+            </div>
+            {tab==='eventtypes'&&<SchedEventTypesTab eventTypes={sched.eventTypes} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>{setPreviewSlug(et.slug);setTab('bookingpage');}} addToast={addToast}/>}
+            {tab==='availability'&&<SchedAvailabilityTab avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} automation={sched.automation} setAutomation={sched.setAutomation}/>}
+            {tab==='bookingpage'&&<SchedBookingPageTab eventTypes={sched.eventTypes} avail={sched.availability} initialSlug={previewSlug} addToast={addToast} automation={sched.automation} crm={crm} addMeeting={sched.addMeeting} goTo={goTo}/>}
+          </div>
+        </div>
+        <AppFooter note="Booking links, availability & automation power your public scheduling page"/>
+      </div>
+      {etDrawer&&<EventTypeDrawer initial={etDrawer==='new'?null:etDrawer} onClose={()=>setEtDrawer(null)} onSave={saveEventType}/>}
+      <ToastContainer toasts={toasts}/>
+    </div>
+  );
 }
 // ?? Settings Billing ??????????????????????????????????????????????????????????
 const BILLING_PLANS=[
@@ -8598,19 +8651,21 @@ function LogCallModal({close,onSave,contactName}){
   const CONTACT_LIST=['Sarah Chen','James Rivera','Maria Lopez','Ravi Lee','Marcus Rios','Emily Tran','Luca Bianchi','Priya Nair'];
   const OUTCOMES=['Reached - positive','Reached - follow-up needed','Left voicemail','No answer','Wrong number','Demo call','Contract discussion','Renewal discussion'];
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:460,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
-        <div className="flex items-center justify-between mb-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Phone size={16}/></div><div><p className="text-white text-[15px] font-bold">Log a call</p><p className="text-white/45 text-[12px]">Record call details for a contact.</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
-        <div className="flex flex-col gap-4">
-          <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Contact</label><select value={contact} onChange={e=>setContact(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select a contact...</option>{CONTACT_LIST.map(c=>(<option key={c}>{c}</option>))}</select></div>
-          <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Direction</label><div className="flex gap-2">{[{v:'out',l:'Outbound'},{v:'in',l:'Inbound'}].map(({v,l})=>(<button key={v} onClick={()=>setDirection(v)} className={['flex-1 py-2.5 rounded-xl text-[13px] font-medium border transition-all',direction===v?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{l}</button>))}</div></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Duration</label><input value={duration} onChange={e=>setDuration(e.target.value)} placeholder="e.g. 12:30" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 font-mono placeholder:text-white/25"/></div>
-            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select...</option>{OUTCOMES.map(o=>(<option key={o}>{o}</option>))}</select></div>
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:460,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Phone size={16}/></div><div><p className="text-white text-[15px] font-bold">Log a call</p><p className="text-white/45 text-[12px]">Record call details for a contact.</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5">
+          <div className="flex flex-col gap-4">
+            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Contact</label><select value={contact} onChange={e=>setContact(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select a contact...</option>{CONTACT_LIST.map(c=>(<option key={c}>{c}</option>))}</select></div>
+            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Direction</label><div className="flex gap-2">{[{v:'out',l:'Outbound'},{v:'in',l:'Inbound'}].map(({v,l})=>(<button key={v} onClick={()=>setDirection(v)} className={['flex-1 py-2.5 rounded-xl text-[13px] font-medium border transition-all',direction===v?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{l}</button>))}</div></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Duration</label><input value={duration} onChange={e=>setDuration(e.target.value)} placeholder="e.g. 12:30" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 font-mono placeholder:text-white/25"/></div>
+              <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select...</option>{OUTCOMES.map(o=>(<option key={o}>{o}</option>))}</select></div>
+            </div>
+            <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Notes</label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="What was discussed?" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 resize-none"/></div>
           </div>
-          <div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Notes</label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="What was discussed?" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 resize-none"/></div>
         </div>
-        <div className="flex gap-3 mt-6"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Save call log</button></div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} className="ml-auto px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Save call log</button></div>
       </div>
     </div>
   );
@@ -8643,17 +8698,23 @@ function CallsPage({goTo}){
   );
 }
 // ?? Sequence Builder ?????????????????????????????????????????????????????????
+// Sending numbers shown in the SMS sequence builder's "From number" picker (demo data).
+const TWILIO_NUMBERS=['+1 (415) 555-0100','+1 (628) 555-0144','+1 (917) 555-0188'];
 function SequenceBuilderPage({goTo,channel}){
   const isSms=channel==='sms';
   const {conns}=React.useContext(IntegrationsContext);
   // Twilio treated as connected by default for demo; banner (not a gate) shows when false.
   const [isConnected,setIsConnected]=React.useState(true);
+  // Sending number for SMS sequences (picker is only rendered when isSms).
+  const [fromNumber,setFromNumber]=React.useState(TWILIO_NUMBERS[0]);
   // Per-step config now lives in a side drawer (not inline in the card). draft = editable copy.
   const [activeNodeId,setActiveNodeId]=React.useState(null);
   const [draft,setDraft]=React.useState(null);
+  const [tplEdit,setTplEdit]=React.useState(null); // template being edited from the node drawer (subject lives on the template)
   const [name,setName]=React.useState(isSms?'New SMS Sequence':'New Email Sequence');
-  const [trigger,setTrigger]=React.useState('tag-added');
-  const [triggerDetail,setTriggerDetail]=React.useState('lead');
+  const TRIGGER_ID='trigger';
+  // Trigger (enrollment) config now lives in the same side drawer as step nodes — no inline fields.
+  const [trig,setTrig]=React.useState({type:'tag-applied',tag:'lead',form:FORMS_DATA[0].name,fromStage:'Qualified',toStage:'Proposal Sent',dateField:'Renewal date',offset:'3 days before',reenroll:false,limitOn:false,limit:'1',conds:[]});
   const [steps,setSteps]=React.useState(isSms
     ?[{id:1,body:'Hi {{first_name}}, thanks for connecting! Quick question — are you still looking at {{company}} options this quarter?',delay:null},{id:2,body:'Just floating this back up {{first_name}} — happy to share a 2-min overview whenever you have a sec.',delay:{n:2,unit:'days'}}]
     :[{id:1,subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nThanks for signing up! Here is how to get started in 3 quick steps.\n\nBest,\nAlex',delay:null},{id:2,subject:'A few tips to get the most out of nrtur',body:'Hi {{first_name}},\n\nNoticed you are exploring — here are the features teams love most.\n\nAlex',delay:{n:3,unit:'days'}}]);
@@ -8666,10 +8727,6 @@ function SequenceBuilderPage({goTo,channel}){
   const [linkTracking,setLinkTracking]=React.useState(true);
   const [freqCap,setFreqCap]=React.useState('3');
   const [showStats,setShowStats]=React.useState(false);
-  const [sources,setSources]=React.useState({autoTrigger:true,automation:true,manual:true,form:false});
-  const [formName,setFormName]=React.useState(FORMS_DATA[0].name);
-  const [dedup,setDedup]=React.useState('skip');
-  const setSource=(k,v)=>{setSources(s=>({...s,[k]:v}));mark();};
   const [toast,setToast]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
   const mark=()=>setDirty(true);
@@ -8689,22 +8746,36 @@ function SequenceBuilderPage({goTo,channel}){
   const stepSummary=(s)=>{if(isSms){const b=(s.body||'').trim().replace(/\s+/g,' ');return b||'Empty message — tap to write';}const subj=(s.subject||'').trim();return subj||'No subject — tap to edit';};
   const activeIdx=steps.findIndex(x=>x.id===activeNodeId);
   const TRIGGERS=[
-    {k:'tag-added',label:'A tag is added to a contact',Icon:I.Hash,detailLabel:'Which tag',detailVerb:'is added',opts:['lead','vip-prospect','cold-lead','trial-user','demo-requested','newsletter']},
-    {k:'deal-stage',label:'A deal moves to a stage',Icon:I.Layers,detailLabel:'Which stage',detailVerb:'is reached',opts:['Lead','Qualified','Proposal Sent','Negotiation','Won','Lost']},
-    {k:'form-submitted',label:'A form is submitted',Icon:I.CheckSquare,detailLabel:'Which form',detailVerb:'is submitted',opts:FORMS_DATA.map(f=>f.name)},
-    {k:'trial-started',label:'A trial is started',Icon:I.Sparkles,detailLabel:null,opts:[]},
-    {k:'manual',label:'Manually enrolled',Icon:I.UserPlus,detailLabel:null,opts:[]},
+    {k:'contact-added', label:'Contact added',      Icon:I.UserPlus},
+    {k:'deal-stage',    label:'Deal stage changes', Icon:I.Layers},
+    {k:'tag-applied',   label:'Tag applied',        Icon:I.Hash},
+    {k:'form-submitted',label:'Form submitted',     Icon:I.CheckSquare},
+    {k:'lead-created',  label:'Lead created',       Icon:I.Target},
+    {k:'manual',        label:'Manually enrolled',  Icon:I.UserPlus},
+    {k:'date-based',    label:'Date-based',         Icon:I.Calendar},
   ];
-  const curTrig=TRIGGERS.find(t=>t.k===trigger)||TRIGGERS[0];
-  const pickTrigger=(k)=>{const t=TRIGGERS.find(x=>x.k===k)||TRIGGERS[0];setTrigger(k);setTriggerDetail(t.opts[0]||'');mark();};
+  const STAGE_OPTS=['Lead','Qualified','Proposal Sent','Negotiation','Won','Lost'];
+  const TAG_OPTS=['lead','vip-prospect','cold-lead','trial-user','demo-requested','newsletter'];
+  const DATE_FIELD_OPTS=['Created date','Trial end date','Renewal date','Birthday','Last activity date'];
+  const OFFSET_OPTS=['On the day','1 day before','3 days before','1 week before','1 day after','3 days after'];
+  const AUD_FIELD_OPTS=['Status','Lead source','Country','Company size','Owner','Tag'];
+  const AUD_OP_OPTS=['is','is not','contains'];
+  const curTrig=TRIGGERS.find(t=>t.k===trig.type)||TRIGGERS[0];
   const triggerSummary=()=>{
-    const C=(txt)=><span className="text-white font-semibold">{txt}</span>;
-    if(trigger==='tag-added')      return <>When the tag {C(triggerDetail)} is added to a contact, they're enrolled in this sequence.</>;
-    if(trigger==='deal-stage')     return <>When a deal moves to {C(triggerDetail)}, the linked contact is enrolled in this sequence.</>;
-    if(trigger==='form-submitted') return <>When a contact submits {C(triggerDetail)}, they're enrolled in this sequence.</>;
-    if(trigger==='trial-started')  return <>When a contact {C('starts a free trial')}, they're enrolled in this sequence.</>;
-    return <>Contacts you {C('manually add')} are enrolled in this sequence.</>;
+    switch(trig.type){
+      case 'deal-stage':     return 'Deal moves '+trig.fromStage+' → '+trig.toStage;
+      case 'tag-applied':    return 'Tag “'+trig.tag+'” is applied';
+      case 'form-submitted': return '“'+trig.form+'” is submitted';
+      case 'lead-created':   return 'A new lead is created';
+      case 'manual':         return 'A rep manually enrolls a contact';
+      case 'date-based':     return trig.offset+' · '+trig.dateField.toLowerCase();
+      default:               return 'A contact is added';
+    }
   };
+  const openTrigger=()=>{setDraft({...trig,conds:(trig.conds||[]).map(c=>({...c}))});setActiveNodeId(TRIGGER_ID);};
+  const saveTrigger=()=>{setTrig({...draft});mark();setActiveNodeId(null);showToast('Trigger updated.');};
+  // Styled select used in the trigger drawer (value === label).
+  const DSel=({value,onChange,opts})=>(<div className="relative"><select value={value} onChange={e=>onChange(e.target.value)} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{opts.map(o=>(<option key={o} value={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>);
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="settings-automations" goTo={goTo}/>
@@ -8732,33 +8803,16 @@ function SequenceBuilderPage({goTo,channel}){
             <div className={isSms?'flex-1 min-w-0':''}>
             {isSms&&(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4 flex items-center justify-between gap-3 flex-wrap"><div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'#e1312820',color:'#e13128'}}><I.Hash size={14}/></span><div><p className="text-[13px] font-semibold text-white">From number</p><p className="text-[11px] text-white/45">Twilio · {isConnected?<span className="text-emerald-300">connected</span>:<span className="text-amber-300">not connected</span>}</p></div></div><div className="relative"><select value={fromNumber} onChange={e=>{setFromNumber(e.target.value);mark();}} style={SEL_DARK} className="pl-3 pr-9 py-2 rounded-lg border border-white/[0.12] text-[13px] font-mono text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{TWILIO_NUMBERS.map(n=>(<option key={n}>{n}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
             <div className="flex items-center gap-2 mb-4"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ring-1" style={{background:accent+'18',color:accent,boxShadow:`0 0 0 1px ${accent}40`}}>{isSms?<I.Hash size={11}/>:<I.Mail size={11}/>}{isSms?'SMS drip sequence':'Email drip sequence'}</span><span className="text-[12px] text-white/40">{steps.length} message{steps.length!==1?'s':''}</span></div>
-            <div className="rounded-2xl bg-white/[0.03] border border-brand-500/25 p-5 mb-1">
-              <div className="flex items-center gap-2 mb-1"><span className="w-6 h-6 rounded-lg flex items-center justify-center bg-brand-500/15 text-brand-300 shrink-0"><I.Zap size={13} stroke={2.2}/></span><p className="text-[10px] font-semibold text-brand-300 uppercase tracking-[0.18em]">Enrollment · how contacts enter</p></div>
-              <p className="text-[12px] text-white/45 mb-4 ml-8">A contact can enter from any enabled source below — the drip runs the same no matter how they got in.</p>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5 mb-2.5">
-                <div className="flex items-start justify-between gap-3"><div className="flex items-start gap-2.5 min-w-0"><span className="w-7 h-7 rounded-lg flex items-center justify-center bg-brand-500/12 text-brand-300 shrink-0 mt-0.5"><I.Zap size={13}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Auto-enroll by trigger</p><p className="text-[11px] text-white/45">Enroll automatically on an event. Turn off to make this sequence automation/manual-only.</p></div></div><Toggle on={sources.autoTrigger} onChange={v=>setSource('autoTrigger',v)}/></div>
-                {sources.autoTrigger&&(<div className="mt-3 pl-9">
-                  <div className={['grid gap-2.5',curTrig.detailLabel?'sm:grid-cols-2':'grid-cols-1'].join(' ')}>
-                    <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-300 pointer-events-none"><curTrig.Icon size={14}/></span><select value={trigger} onChange={e=>pickTrigger(e.target.value)} style={SEL_DARK} className="w-full pl-9 pr-9 py-2 rounded-lg border border-white/[0.12] text-[13px] font-medium text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{TRIGGERS.map(t=>(<option key={t.k} value={t.k}>{t.label}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
-                    {curTrig.detailLabel&&(<div className="relative"><select value={triggerDetail} onChange={e=>{setTriggerDetail(e.target.value);mark();}} style={SEL_DARK} className="w-full pl-3 pr-9 py-2 rounded-lg border border-white/[0.12] text-[13px] font-medium text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{curTrig.opts.map(o=>(<option key={o} value={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>)}
-                  </div>
-                  <p className="text-[11px] text-white/50 mt-2 leading-relaxed">{triggerSummary()}</p>
-                </div>)}
+            <div onClick={openTrigger} style={{width:280,minWidth:280}} className={['group cursor-pointer mx-auto rounded-2xl bg-white/[0.035] border p-4 transition-all hover:bg-white/[0.05]',activeNodeId===TRIGGER_ID?'border-brand-500/40 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-brand-500/25 hover:border-brand-500/40'].join(' ')}>
+              <p className="text-[9px] font-semibold text-brand-300 uppercase tracking-wide mb-1.5">Trigger</p>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-brand-500/15 text-brand-300"><curTrig.Icon size={15}/></span>
+                <div className="min-w-0 flex-1 overflow-hidden"><p className="text-[13px] font-bold text-white leading-tight truncate">{curTrig.label}</p><p className="text-[11px] text-white/50 truncate overflow-hidden whitespace-nowrap">{triggerSummary()}</p></div>
+                <I.ChevronRight size={12} className="text-white/25 group-hover:text-white/60 transition-colors shrink-0"/>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5 mb-2.5 flex items-start justify-between gap-3"><div className="flex items-start gap-2.5 min-w-0"><span className="w-7 h-7 rounded-lg flex items-center justify-center bg-amber-500/12 text-amber-300 shrink-0 mt-0.5"><I.GitBranch size={13}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Via automations</p><p className="text-[11px] text-white/45">An automation Enroll-in-sequence action adds contacts here even if the trigger above doesn't match — the automation's conditions decide who.</p></div></div><Toggle on={sources.automation} onChange={v=>setSource('automation',v)}/></div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5 mb-2.5 flex items-start justify-between gap-3"><div className="flex items-start gap-2.5 min-w-0"><span className="w-7 h-7 rounded-lg flex items-center justify-center bg-blue-500/12 text-blue-300 shrink-0 mt-0.5"><I.UserPlus size={13}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Manual</p><p className="text-[11px] text-white/45">Reps can add a contact from the contact record.</p></div></div><Toggle on={sources.manual} onChange={v=>setSource('manual',v)}/></div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5 mb-3">
-                <div className="flex items-start justify-between gap-3"><div className="flex items-start gap-2.5 min-w-0"><span className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/12 text-emerald-300 shrink-0 mt-0.5"><I.Note size={13}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Via form submission</p><p className="text-[11px] text-white/45">Enroll when a specific form is submitted.</p></div></div><Toggle on={sources.form} onChange={v=>setSource('form',v)}/></div>
-                {sources.form&&(<div className="mt-3 pl-9"><select value={formName} onChange={e=>{setFormName(e.target.value);mark();}} style={SEL_DARK} className="w-full px-3 py-2 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none">{FORMS_DATA.map(f=>(<option key={f.id}>{f.name}</option>))}</select></div>)}
-              </div>
-              <div className="rounded-xl bg-black/15 border border-white/[0.06] p-3.5">
-                <p className="text-[11px] font-semibold text-white/55 mb-1.5 flex items-center gap-1.5"><I.History size={12} className="text-white/40"/>Re-enrollment</p>
-                <select value={dedup} onChange={e=>{setDedup(e.target.value);mark();}} style={SEL_DARK} className="w-full px-3 py-2 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none"><option value="skip">Do not re-enroll if already active (recommended)</option><option value="restart">Re-enroll and restart from the first message</option><option value="concurrent">Allow concurrent enrollment</option></select>
-                <p className="text-[11px] text-white/40 mt-1.5">Stops the same contact being messaged twice when multiple sources point here.</p>
-              </div>
-              <div className="mt-3.5 flex items-start gap-2.5 rounded-xl bg-brand-500/[0.07] border border-brand-500/20 px-3.5 py-2.5"><I.Sparkles size={14} className="text-brand-300 shrink-0 mt-px"/><p className="text-[12px] text-white/65 leading-relaxed">Contacts enter via {[sources.autoTrigger&&'auto-trigger',sources.automation&&'automations',sources.manual&&'manual add',sources.form&&'form'].filter(Boolean).join(', ')||'no sources — enable at least one'}. Suppressed / unsubscribed contacts are always excluded.</p></div>
             </div>
-            {steps.map((s,i)=>(
+            <div className="flex items-center justify-center py-3"><div className="w-px h-4 bg-white/[0.10]"/></div>
+            {(steps||[]).map((s,i)=>(
               <React.Fragment key={s.id}>
                 {i>0&&(<div className="flex items-center justify-center gap-2 py-3"><div className="w-px h-4 bg-white/[0.10]"/><div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/60"><I.Clock size={12} className="text-white/40"/>Wait<input value={s.delay?.n??2} onChange={e=>setStep(s.id,{delay:{...(s.delay||{unit:'days'}),n:e.target.value.replace(/\D/g,'')||'0'}})} className="w-8 bg-transparent text-center text-white font-mono outline-none border-b border-white/[0.15] focus:border-brand-500/40"/><select value={s.delay?.unit||'days'} onChange={e=>setStep(s.id,{delay:{...(s.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="bg-transparent text-white outline-none appearance-none cursor-pointer">{['hours','days','weeks'].map(u=>(<option key={u}>{u}</option>))}</select>then{!isSms&&<React.Fragment> at <select value={s.sendTime||'9:00 AM'} onChange={e=>setStep(s.id,{sendTime:e.target.value})} style={SEL_DARK} className="bg-transparent text-white outline-none appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select></React.Fragment>}</div><div className="w-px h-4 bg-white/[0.10]"/></div>)}
                 <div onClick={()=>openStep(s)} style={{width:280,minWidth:280}} className={['group cursor-pointer mx-auto rounded-2xl bg-white/[0.035] border p-4 transition-all hover:bg-white/[0.05]',activeNodeId===s.id?'border-brand-500/40 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-white/[0.08] hover:border-white/[0.12]'].join(' ')}>
@@ -8798,7 +8852,7 @@ function SequenceBuilderPage({goTo,channel}){
                     <p className="text-[10px] text-white/55 mt-1 font-mono">{fromNumber}</p>
                   </div>
                   <div className="px-3 py-4 flex flex-col gap-2 min-h-[300px]">
-                    {steps.map((s,i)=>(<React.Fragment key={s.id}>
+                    {(steps||[]).map((s,i)=>(<React.Fragment key={s.id}>
                       {i>0&&<p className="text-center text-[9px] text-white/30 mt-1.5">{(s.delay?.n??2)+' '+(s.delay?.unit||'days')+' later'}</p>}
                       <div className="self-end max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-[11.5px] leading-relaxed text-white" style={{background:'#34c759'}}>{((s.body||'Your message…').replace(/\{\{first_name\}\}/g,'Sarah').replace(/\{\{company\}\}/g,'Meridian').replace(/\{\{rep_name\}\}/g,'Alex').replace(/\{\{booking_link\}\}/g,'nrtur.app/book/alex')).slice(0,220)}</div>
                     </React.Fragment>))}
@@ -8814,6 +8868,47 @@ function SequenceBuilderPage({goTo,channel}){
       {activeNodeId!=null&&draft&&ReactDOM.createPortal(<React.Fragment>
         <div className="fixed inset-0 bg-black/30 z-[179]" onClick={()=>setActiveNodeId(null)}/>
         <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[180] w-[400px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .2s ease'}}>
+          {activeNodeId===TRIGGER_ID?(<React.Fragment>
+            <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3" style={{background:'var(--s850)'}}>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-brand-500/[0.15] text-brand-300">{React.createElement((TRIGGERS.find(t=>t.k===draft.type)||TRIGGERS[0]).Icon,{size:17})}</span>
+              <div className="min-w-0"><p className="text-[15px] font-bold text-white leading-tight">Trigger</p><p className="text-[11px] text-white/45 truncate">{(TRIGGERS.find(t=>t.k===draft.type)||TRIGGERS[0]).label}</p></div>
+              <div className="flex-1"/>
+              <button onClick={()=>setActiveNodeId(null)} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+              <div className="mb-5">
+                <label className={DLBL}>Trigger type</label>
+                <div className="relative"><select value={draft.type} onChange={e=>dset({type:e.target.value})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{TRIGGERS.map(t=>(<option key={t.k} value={t.k}>{t.label}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
+              </div>
+              {draft.type==='deal-stage'&&(<div className="mb-5 grid grid-cols-2 gap-3"><div><label className={DLBL}>From stage</label><DSel value={draft.fromStage} onChange={v=>dset({fromStage:v})} opts={STAGE_OPTS}/></div><div><label className={DLBL}>To stage</label><DSel value={draft.toStage} onChange={v=>dset({toStage:v})} opts={STAGE_OPTS}/></div></div>)}
+              {draft.type==='tag-applied'&&(<div className="mb-5"><label className={DLBL}>Tag</label><DSel value={draft.tag} onChange={v=>dset({tag:v})} opts={TAG_OPTS}/></div>)}
+              {draft.type==='form-submitted'&&(<div className="mb-5"><label className={DLBL}>Form</label><DSel value={draft.form} onChange={v=>dset({form:v})} opts={FORMS_DATA.map(f=>f.name)}/></div>)}
+              {draft.type==='date-based'&&(<div className="mb-5 grid grid-cols-2 gap-3"><div><label className={DLBL}>Date field</label><DSel value={draft.dateField} onChange={v=>dset({dateField:v})} opts={DATE_FIELD_OPTS}/></div><div><label className={DLBL}>Offset</label><DSel value={draft.offset} onChange={v=>dset({offset:v})} opts={OFFSET_OPTS}/></div></div>)}
+              <div className="mb-5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3.5">
+                <p className="text-[10px] font-semibold text-white/50 uppercase tracking-[0.14em] mb-3">Entry rules</p>
+                <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Re-enrollment</p><p className="text-[11px] text-white/45">Allow contacts to re-enter this sequence.</p></div><Toggle on={!!draft.reenroll} onChange={v=>dset({reenroll:v})}/></div>
+                <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3 mt-3"><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Enrollment limit</p><p className="text-[11px] text-white/45">Cap how many times a contact can enter.</p></div><Toggle on={!!draft.limitOn} onChange={v=>dset({limitOn:v})}/></div>
+                {draft.limitOn&&(<div className="mt-3 flex items-center gap-2"><span className="text-[12px] text-white/55">Max</span><input value={draft.limit} onChange={e=>dset({limit:e.target.value.replace(/\D/g,'')||'1'})} className="w-14 px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[13px] text-white/95 text-center outline-none focus:border-brand-500/45"/><span className="text-[12px] text-white/55">enrollment(s) per contact</span></div>)}
+              </div>
+              <div className="mb-1">
+                <label className={DLBL}>Audience filter</label>
+                {(draft.conds||[]).length===0&&<p className="text-[11px] text-white/40 mb-2 -mt-0.5">Everyone matching the trigger is enrolled.</p>}
+                {(draft.conds||[]).map((c,ci)=>(<div key={ci} className="flex items-center gap-1.5 flex-wrap mb-2 rounded-lg bg-white/[0.02] border border-white/[0.07] p-2">
+                  <span className="text-[11px] text-white/45 shrink-0 pl-0.5">Only enroll if</span>
+                  <select value={c.field} onChange={e=>dset({conds:draft.conds.map((x,j)=>j===ci?{...x,field:e.target.value}:x)})} style={SEL_DARK} className="flex-1 min-w-[100px] px-2.5 py-1.5 rounded-lg border border-white/[0.12] text-[12px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{AUD_FIELD_OPTS.map(o=>(<option key={o}>{o}</option>))}</select>
+                  <select value={c.op} onChange={e=>dset({conds:draft.conds.map((x,j)=>j===ci?{...x,op:e.target.value}:x)})} style={SEL_DARK} className="px-2.5 py-1.5 rounded-lg border border-white/[0.12] text-[12px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{AUD_OP_OPTS.map(o=>(<option key={o}>{o}</option>))}</select>
+                  <input value={c.value} onChange={e=>dset({conds:draft.conds.map((x,j)=>j===ci?{...x,value:e.target.value}:x)})} placeholder="value" className="flex-1 min-w-[80px] px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[12px] text-white outline-none focus:border-brand-500/45"/>
+                  <button onClick={()=>dset({conds:draft.conds.filter((_,j)=>j!==ci)})} className="w-6 h-6 rounded-md flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"><I.X size={12}/></button>
+                </div>))}
+                <button onClick={()=>dset({conds:[...(draft.conds||[]),{field:'Status',op:'is',value:''}]})} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200 mt-0.5"><I.Plus size={12}/>Add condition</button>
+              </div>
+            </div>
+            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}>
+              <button onClick={()=>setActiveNodeId(null)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+              <div className="flex-1"/>
+              <button onClick={saveTrigger} className="px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 transition-all">Save</button>
+            </div>
+          </React.Fragment>):(<React.Fragment>
           <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3" style={{background:'var(--s850)'}}>
             <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:accent+'1f',color:accent}}>{isSms?<I.Hash size={17}/>:<I.Mail size={17}/>}</span>
             <p className="text-[15px] font-bold text-white">{isSms?'SMS message':'Email'}{activeIdx>=0?' '+(activeIdx+1):''}</p>
@@ -8829,7 +8924,15 @@ function SequenceBuilderPage({goTo,channel}){
               </div>
             </div>)}
             {!isSms&&activeIdx===0&&(<div className="mb-5"><label className={DLBL}>Send time</label><div className="relative"><select value={draft.sendTime||'9:00 AM'} onChange={e=>dset({sendTime:e.target.value})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
-            {!isSms&&(<div className="mb-5"><label className={DLBL}>Subject line</label><input value={draft.subject||''} onChange={e=>dset({subject:e.target.value})} placeholder="Welcome to nrtur, {{first_name}}" className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.12] text-[14px] font-medium text-white/95 placeholder:text-white/30 outline-none focus:border-brand-500/45 focus:bg-white/[0.07] transition-all"/></div>)}
+            {!isSms&&draft.templateId&&(()=>{const selTpl=EMAIL_TEMPLATES.find(t=>t.id===draft.templateId);if(!selTpl)return null;return(
+              <div className="mb-5">
+                <label className={DLBL}>Subject</label>
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2 text-[13px] text-white/70">{selTpl.subject?selTpl.subject:<span className="text-white/30">No subject set on this template</span>}</div>
+                <div className="flex items-center justify-between gap-2 mt-1.5">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-white/35"><I.Lock size={10}/>Set on the template</span>
+                  <button onClick={()=>setTplEdit(selTpl)} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Edit in template builder</button>
+                </div>
+              </div>);})()}
             <div><label className={DLBL}>{isSms?'Message text':'Email body'}</label>
               <div className="rounded-xl border border-white/[0.12] focus-within:border-brand-500/45 transition-all overflow-hidden" style={{background:'var(--field6)'}}>
                 <textarea value={draft.body||''} onChange={e=>dset({body:e.target.value})} rows={isSms?5:9} placeholder={isSms?'Type your SMS message...':'Write your email...'} className="w-full bg-transparent outline-none resize-none px-3.5 py-3 text-[14px] text-white/95 placeholder:text-white/30 leading-[1.7]"/>
@@ -8844,10 +8947,11 @@ function SequenceBuilderPage({goTo,channel}){
             <button onClick={()=>setActiveNodeId(null)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
             <div className="flex-1"/>
             <button onClick={saveDraft} className="px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 transition-all">Save</button>
-          </div>
+          </div></React.Fragment>)}
         </div>
       </React.Fragment>,document.body)}
-      {testOpen&&<AutomationTestModal steps={steps.map((s,i)=>({label:(isSms?'Send SMS':'Send email')+' #'+(i+1),Icon:isSms?I.Hash:I.Mail}))} close={()=>setTestOpen(false)}/>}
+      {testOpen&&<AutomationTestModal steps={(steps||[]).map((s,i)=>({label:(isSms?'Send SMS':'Send email')+' #'+(i+1),Icon:isSms?I.Hash:I.Mail}))} close={()=>setTestOpen(false)}/>}
+      {tplEdit&&<EmailTemplateEditModal template={tplEdit} close={()=>setTplEdit(null)} onSave={(rec)=>{const idx=EMAIL_TEMPLATES.findIndex(t=>t.id===rec.id);if(idx>=0)EMAIL_TEMPLATES[idx]={...EMAIL_TEMPLATES[idx],...rec,updated:'just now'};if(draft&&draft.templateId===rec.id)dset({subject:rec.subject,body:rec.body});setTplEdit(null);showToast('Template saved.');}}/>}
       {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
     </div>
   );
@@ -10137,8 +10241,8 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
     const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:contact||null,linkType:contact?linkType:null,company:company||null,deal:deal||null,reminder,repeat,notes,done:!!ed.done,priority};
     onSave(ev);
   };
-  return(<div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{width:520,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+  return(<div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{width:520,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-2.5"><span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:tyc.bg,color:tyc.color,boxShadow:'inset 0 0 0 1px '+tyc.border}}><I.Calendar size={14}/></span><p className="text-white text-[15px] font-bold">{ed.id?'Edit event':'New event'}</p></div><button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
         <input ref={titleRef} value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))save();}} placeholder="Add title…" className="w-full bg-transparent outline-none text-[16px] font-semibold text-white placeholder:text-white/30 border-b border-white/[0.10] focus:border-brand-500/40 pb-2 transition-all"/>
@@ -10680,16 +10784,8 @@ function SchedAutomationCard({automation,setAutomation,addToast}){
 
 function CalendarPage({goTo}){
   const [schedTab,setSchedTab]=React.useState('calendar');
-  const [eventTypes,setEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
-  const [etDrawer,setEtDrawer]=React.useState(null);
-  const [availability,setAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
-  const [previewSlug,setPreviewSlug]=React.useState(null);
-  const [automation,setAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
-  const [meetings,setMeetings]=React.useState(schedSeedMeetings);
-  const crm=React.useContext(CrmDataContext);
-  const addMeeting=(m)=>setMeetings(ms=>[m,...ms]);
-  const SCHED_TABS=[{k:'calendar',l:'Calendar',Icon:I.Calendar},{k:'eventtypes',l:'Event Types',Icon:I.Clock},{k:'availability',l:'Availability',Icon:I.Check},{k:'bookingpage',l:'Booking Page',Icon:I.Globe},{k:'meetings',l:'Meetings',Icon:I.Users}];
-  const saveEventType=(et)=>{setEventTypes(list=>list.some(x=>x.id===et.id)?list.map(x=>x.id===et.id?et:x):[...list,et]);setEtDrawer(null);addToast('Event type saved');};
+  const {meetings,setMeetings}=React.useContext(SchedulingContext);
+  const SCHED_TABS=[{k:'calendar',l:'Calendar',Icon:I.Calendar},{k:'meetings',l:'Meetings',Icon:I.Users}];
   const [view,setView]=React.useState('month');
   const [current,setCurrent]=React.useState(new Date());
   const {items:events,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
@@ -10718,9 +10814,6 @@ function CalendarPage({goTo}){
         <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center" style={{background:'var(--s925)'}}>
           <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
         </div>
-        {schedTab==='eventtypes'&&<SchedEventTypesTab eventTypes={eventTypes} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>{setPreviewSlug(et.slug);setSchedTab('bookingpage');}} addToast={addToast}/>}
-        {schedTab==='availability'&&<SchedAvailabilityTab avail={availability} setAvail={setAvailability} addToast={addToast} automation={automation} setAutomation={setAutomation}/>}
-        {schedTab==='bookingpage'&&<SchedBookingPageTab eventTypes={eventTypes} avail={availability} initialSlug={previewSlug} addToast={addToast} automation={automation} crm={crm} addMeeting={addMeeting} goTo={goTo}/>}
         {schedTab==='meetings'&&<SchedMeetingsTab meetings={meetings} setMeetings={setMeetings} addToast={addToast} goTo={goTo}/>}
         {schedTab==='calendar'&&(calConnected?(<React.Fragment>
         <div className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
@@ -10756,7 +10849,6 @@ function CalendarPage({goTo}){
         <AppFooter note="Calendar syncs with your connected Google Calendar"/>
         </React.Fragment>):(<ConnectEmptyState Icon={I.Calendar} accent="#6366f1" eyebrow="Calendar" title="Connect your calendar" desc="Sync Google Calendar or Outlook to see every meeting in one place, schedule follow-ups in a click, and let automations and booking links reserve time — all without leaving nrtur." providers={[{name:'Connect Google Calendar',c:'#ea4335',Icon:I.Calendar,onClick:()=>setCalConnected(true)},{name:'Connect Outlook Calendar',c:'#0078d4',Icon:I.Calendar,onClick:()=>setCalConnected(true)}]} benefits={[{Icon:I.History,l:'Two-way sync'},{Icon:I.Check,l:'Auto-log meetings'},{Icon:I.Zap,l:'Booking links'}]} footnote="Connect more calendars later in Settings → Connections."/>))}
       </div>
-      {etDrawer&&<EventTypeDrawer initial={etDrawer==='new'?null:etDrawer} onClose={()=>setEtDrawer(null)} onSave={saveEventType}/>}
       {detail&&<CalEventDetailModal event={detail} onClose={()=>setDetail(null)} onEdit={()=>openEdit(detail)} onDelete={()=>delEvent(detail)} onComplete={()=>{toggleDone(detail.id);setDetail(null);addToast(detail.done?'Task reopened':'Task completed');}} goTo={goTo}/>}
       {eventModal&&(eventModal.event&&eventModal.event.type==='task'
         ?<TaskFormModal initial={eventModal.event} onClose={()=>setEventModal(null)} onSave={saveEvent} onDelete={(t)=>{setEventModal(null);delEvent(t);}}/>
@@ -10928,6 +11020,12 @@ function App(){
     updateCompany:(id,patch)=>setCompanies(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
   }),[contacts,leads,companies,deals]);
+  const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
+  const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
+  const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
+  const [schedMeetings,setSchedMeetings]=React.useState(schedSeedMeetings);
+  const schedAddMeeting=React.useCallback((m)=>setSchedMeetings(ms=>[m,...ms]),[]);
+  const schedCtx=React.useMemo(()=>({eventTypes:schedEventTypes,setEventTypes:setSchedEventTypes,availability:schedAvailability,setAvailability:setSchedAvailability,automation:schedAutomation,setAutomation:setSchedAutomation,meetings:schedMeetings,setMeetings:setSchedMeetings,addMeeting:schedAddMeeting}),[schedEventTypes,schedAvailability,schedAutomation,schedMeetings,schedAddMeeting]);
   const [billingState,setBillingState]=React.useState('active');
   const [mailAccounts,setMailAccounts]=React.useState([{addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'},{addr:'alex@bloom.co',initials:'AM',color:'#0078d4',provider:'microsoft365'}]);
   const connectMail=React.useCallback((acct)=>setMailAccounts(a=>a.find(x=>x.addr===acct.addr)?a:[...a,acct]),[]);
@@ -10952,6 +11050,7 @@ function App(){
     <BillingContext.Provider value={{billingState,setBillingState}}>
      <MailAccountsContext.Provider value={{accounts:mailAccounts,connect:connectMail,disconnect:disconnectMail}}>
      <CrmDataContext.Provider value={crm}>
+     <SchedulingContext.Provider value={schedCtx}>
      <PropertiesContext.Provider value={propsCtx}>
      <IntegrationsContext.Provider value={integCtx}>
      <CalendarContext.Provider value={calCtx}>
@@ -11005,7 +11104,7 @@ function App(){
       {page==='settings-general'  && <SettingsGeneralPage {...p}/>}
       {page==='settings-properties' && <SettingsPropertiesPage {...p}/>}
       {page==='settings-integrations' && <SettingsIntegrationsPage {...p}/>}
-      {page==='settings-booking' && <SettingsBookingPage {...p}/>}
+      {page==='settings-booking' && <SettingsCalendarConfigPage {...p}/>}
       {page==='settings-notifications' && <SettingsNotificationsPage {...p}/>}
       {page==='settings-unsubscribes' && <SettingsUnsubscribesPage {...p}/>}
       {page==='settings-privacy'  && <SettingsPrivacyPage {...p}/>}
@@ -11019,6 +11118,7 @@ function App(){
      </CalendarContext.Provider>
      </IntegrationsContext.Provider>
      </PropertiesContext.Provider>
+     </SchedulingContext.Provider>
      </CrmDataContext.Provider>
      </MailAccountsContext.Provider>
     </BillingContext.Provider>
