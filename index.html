@@ -2526,8 +2526,8 @@ function WidgetLibraryPanel({close,onAdd,role}){
 }
 function LayoutTemplatesModal({close,onApply}){
   const [sel,setSel]=React.useState(null);
-  return(<div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-    <div style={{width:640,maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+  return(<div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div style={{width:640,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div><p className="text-white text-[15px] font-bold">Layout templates</p><p className="text-white/45 text-[12px] mt-0.5">Start from a role-based layout. This replaces your current dashboard.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area p-5 grid grid-cols-1 sm:grid-cols-2 gap-3" style={{background:'var(--s850)'}}>
         {DASH_TEMPLATES.map(tp=>{const a=sel===tp.key;return(<button key={tp.key} onClick={()=>setSel(tp.key)} className={['text-left rounded-2xl border p-5 transition-all',a?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}>
@@ -2895,8 +2895,8 @@ function CsvImportModal({close,onToast}){
   const canNext=step===1?uploaded:true;
   const next=()=>{if(step<4)setStep(step+1);else{onToast&&onToast('412 contacts imported');close();}};
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:620,maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div style={{width:620,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div><p className="text-white text-[15px] font-bold">Import contacts</p><p className="text-white/45 text-[12px] mt-0.5">Step {step} of 4 · {steps[step-1]}</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="px-6 pt-4 shrink-0" style={{background:'var(--s850)'}}><div className="flex gap-1.5">{steps.map((s,i)=>(<div key={s} className={['flex-1 h-1 rounded-full transition-all',i+1<=step?'bg-brand-500':'bg-white/[0.08]'].join(' ')}/>))}</div></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
@@ -5135,8 +5135,8 @@ function MailboxConnectModal({close,onConnected}){
   const headTitle=step==='provider'?'Connect a mailbox':(P?'Connect '+P.short:'Connect a mailbox');
   const headSub=step==='provider'?'Choose your email provider':(P&&P.auth==='oauth'?'Secure sign-in with '+P.label.split(' / ')[0]:'Enter your mail server details');
   return(
-    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:480,maxHeight:'90vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+    <div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div style={{width:480,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3">{prov?<Mark pkey={prov} size={12}/>:<div className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center"><I.Mail size={16}/></div>}<div><p className="text-white text-[15px] font-bold">{headTitle}</p><p className="text-white/45 text-[12px]">{headSub}</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-5 py-5" style={{background:'var(--s850)'}}>
           {step==='provider'&&(<div className="grid grid-cols-2 gap-2.5">{PROVIDER_ORDER.map(k=>{const pp=PROVIDERS[k];return(
@@ -6071,6 +6071,7 @@ function EmailBuilderPage({goTo}){
   const [meta,setMeta]=React.useState(init.meta);
   const [blocks,setBlocks]=React.useState(init.blocks);
   const [name,setName]=React.useState(seed?.name||'Untitled template');
+  const [subject,setSubject]=React.useState(seed?.subject||'');
   const [category,setCategory]=React.useState(seed?.category||'follow-up');
   const [sel,setSel]=React.useState(null);
   const [device,setDevice]=React.useState('desktop');
@@ -6083,7 +6084,7 @@ function EmailBuilderPage({goTo}){
   const move=(id,dir)=>setBlocks(bs=>{const i=bs.findIndex(b=>b.id===id);const j=i+dir;if(j<0||j>=bs.length)return bs;const c=[...bs];[c[i],c[j]]=[c[j],c[i]];return c;});
   const dup=(id)=>setBlocks(bs=>{const i=bs.findIndex(b=>b.id===id);const c={...bs[i],id:ebid()};return[...bs.slice(0,i+1),c,...bs.slice(i+1)];});
   const del=(id)=>{setBlocks(bs=>bs.filter(b=>b.id!==id));if(sel===id)setSel(null);};
-  const save=()=>{const design={meta,blocks};const plain=blocks.filter(b=>b.type==='text').map(b=>fillVars(b.text)).join('\n\n');const head=blocks.find(b=>b.type==='heading');const rec={name:name.trim()||'Untitled template',category,subject:head?head.text:(seed?.subject||name),body:plain||seed?.body||'',design};const idx=seed&&seed.id?EMAIL_TEMPLATES.findIndex(t=>t.id===seed.id):-1;if(idx>=0)EMAIL_TEMPLATES[idx]={...EMAIL_TEMPLATES[idx],...rec,updated:'just now'};else{const id=Math.max(0,...EMAIL_TEMPLATES.map(t=>t.id||0))+1;EMAIL_TEMPLATES.unshift({id,favorite:false,uses:0,openRate:0,replyRate:0,updated:'just now',...rec});}setToast('Template saved');setTimeout(()=>goTo(back),650);};
+  const save=()=>{const design={meta,blocks};const plain=blocks.filter(b=>b.type==='text').map(b=>fillVars(b.text)).join('\n\n');const head=blocks.find(b=>b.type==='heading');const rec={name:name.trim()||'Untitled template',category,subject:subject.trim()||(head?head.text:'')||name,body:plain||seed?.body||'',design};const idx=seed&&seed.id?EMAIL_TEMPLATES.findIndex(t=>t.id===seed.id):-1;if(idx>=0)EMAIL_TEMPLATES[idx]={...EMAIL_TEMPLATES[idx],...rec,updated:'just now'};else{const id=Math.max(0,...EMAIL_TEMPLATES.map(t=>t.id||0))+1;EMAIL_TEMPLATES.unshift({id,favorite:false,uses:0,openRate:0,replyRate:0,updated:'just now',...rec});}setToast('Template saved');setTimeout(()=>goTo(back),650);};
   const PALETTE=[{t:'heading',l:'Heading',Icon:I.Hash},{t:'text',l:'Text',Icon:I.Note},{t:'image',l:'Image',Icon:I.Image},{t:'button',l:'Button',Icon:I.ExternalLink},{t:'columns',l:'Columns',Icon:I.Grip},{t:'divider',l:'Divider',Icon:I.SliderH},{t:'spacer',l:'Spacer',Icon:I.ChevronDown},{t:'social',l:'Social',Icon:I.Globe},{t:'html',l:'HTML',glyph:'</>'}];
   const cw=device==='mobile'?Math.min(meta.width,360):meta.width;
   const ICOBTN={width:24,height:24,borderRadius:6,background:'rgba(15,23,42,0.92)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',border:'none',cursor:'pointer'};
@@ -6104,6 +6105,11 @@ function EmailBuilderPage({goTo}){
             <button onClick={save} className="px-4 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save template</button>
           </div>
         </header>
+        <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center gap-3" style={{background:'var(--s925)'}}>
+          <label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] shrink-0">Subject line</label>
+          <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Your email subject..." className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 transition-all"/>
+          <span className="hidden sm:inline text-[11px] text-white/30 shrink-0">Saved on the template — sequences inherit it</span>
+        </div>
         <div className="flex-1 flex min-h-0">
           <aside className="w-[176px] shrink-0 border-r border-white/[0.06] overflow-y-auto scroll-area px-3 py-4" style={{background:'var(--s925)'}}>
             <p className="px-1 mb-2 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Add block</p>
@@ -7199,8 +7205,8 @@ function TriggerPicker({current,onPick,close}){
   const [q,setQ]=React.useState('');
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(
-    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:560,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+    <div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div style={{width:560,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Zap size={16}/></div><div><p className="text-white text-[15px] font-bold">Choose a trigger</p><p className="text-white/45 text-[12px]">The event that starts this automation.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="px-6 pt-4 shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40"><I.Search size={13} className="text-white/40"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search triggers…" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/30"/></div></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-4 flex flex-col gap-5" style={{background:'var(--s850)'}}>
@@ -7251,8 +7257,8 @@ function AutomationTestModal({nodes,steps,close}){
   const out=[];if(ran&&sel)simulateFlow(flow,sel,out,0);
   const ICON={ok:{Icon:I.Check,c:'#34d399',bg:'bg-emerald-500/15'},yes:{Icon:I.GitBranch,c:'#34d399',bg:'bg-emerald-500/15'},no:{Icon:I.GitBranch,c:'#94a3b8',bg:'bg-white/10'},wait:{Icon:I.Clock,c:'#fbbf24',bg:'bg-amber-500/15'},branch:{Icon:I.Filter,c:'#c084fc',bg:'bg-purple-500/15'},exit:{Icon:I.Target,c:'#34d399',bg:'bg-emerald-500/15'},skip:{Icon:I.X,c:'#64748b',bg:'bg-white/10'}};
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:500,maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div style={{width:500,maxWidth:'100%',background:'var(--s900)'}} className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Play size={16}/></div><div><p className="text-white text-[15px] font-bold">Test automation</p><p className="text-white/45 text-[12px]">Simulate the flow — conditions pick the path.</p></div></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area p-6" style={{background:'var(--s850)'}}>
           <label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Pick a test contact</label>
@@ -8402,14 +8408,16 @@ function TwilioSetupModal({close,onConnected}){
   const [num,setNum]=React.useState('');
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:480,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
-        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:'#e13128',border:'1px solid rgba(225,49,40,0.3)'}}>T</div><div><p className="text-white text-[15px] font-bold">Connect Twilio</p><p className="text-white/45 text-[12px]">Step {step} of 3</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
-        <div className="flex gap-1.5 mb-6 mt-4">{[1,2,3].map(s=>(<div key={s} className={['flex-1 h-1 rounded-full transition-all',s<=step?'bg-brand-500':'bg-white/[0.08]'].join(' ')}/>))}</div>
-        {step===1&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Twilio Account SID and Auth Token from the Twilio Console.</p>{[{l:'Account SID',v:sid,set:setSid,ph:'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'},{l:'Auth Token',v:tok,set:setTok,ph:'...'}].map(f=>(<div key={f.l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{f.l}</label><input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/20"/></div>))}</div>)}
-        {step===2&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Twilio phone number.</p><div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Twilio Phone Number</label><input value={num} onChange={e=>setNum(e.target.value)} placeholder="+1 415 555 0100" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/25"/></div><div className="rounded-xl bg-brand-500/08 border border-brand-500/20 p-3"><p className="text-[12px] text-brand-200">Credentials verified. Number will be confirmed via SMS.</p></div></div>)}
-        {step===3&&(<div className="rounded-2xl bg-emerald-500/08 border border-emerald-500/20 p-5 text-center"><div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center mx-auto mb-3"><I.Check size={20} stroke={2.5}/></div><p className="text-white font-bold text-[15px]" ref={(el)=>{if(el&&onConnected)onConnected();}}>Twilio connected!</p><p className="text-white/55 text-[12px] mt-1">+1 415-555-0100 is ready to send and receive SMS.</p></div>)}
-        <div className="flex gap-3 mt-6"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{step===3?'Close':'Cancel'}</button>{step<3&&(<button onClick={()=>setStep(s=>s+1)} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">{step===2?'Verify & Connect':'Next'}</button>)}</div>
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:480,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:'#e13128',border:'1px solid rgba(225,49,40,0.3)'}}>T</div><div><p className="text-white text-[15px] font-bold">Connect Twilio</p><p className="text-white/45 text-[12px]">Step {step} of 3</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5">
+          <div className="flex gap-1.5 mb-6">{[1,2,3].map(s=>(<div key={s} className={['flex-1 h-1 rounded-full transition-all',s<=step?'bg-brand-500':'bg-white/[0.08]'].join(' ')}/>))}</div>
+          {step===1&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Twilio Account SID and Auth Token from the Twilio Console.</p>{[{l:'Account SID',v:sid,set:setSid,ph:'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'},{l:'Auth Token',v:tok,set:setTok,ph:'...'}].map(f=>(<div key={f.l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{f.l}</label><input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/20"/></div>))}</div>)}
+          {step===2&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Twilio phone number.</p><div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Twilio Phone Number</label><input value={num} onChange={e=>setNum(e.target.value)} placeholder="+1 415 555 0100" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/25"/></div><div className="rounded-xl bg-brand-500/08 border border-brand-500/20 p-3"><p className="text-[12px] text-brand-200">Credentials verified. Number will be confirmed via SMS.</p></div></div>)}
+          {step===3&&(<div className="rounded-2xl bg-emerald-500/08 border border-emerald-500/20 p-5 text-center"><div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center mx-auto mb-3"><I.Check size={20} stroke={2.5}/></div><p className="text-white font-bold text-[15px]" ref={(el)=>{if(el&&onConnected)onConnected();}}>Twilio connected!</p><p className="text-white/55 text-[12px] mt-1">+1 415-555-0100 is ready to send and receive SMS.</p></div>)}
+        </div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{step===3?'Close':'Cancel'}</button>{step<3&&(<button onClick={()=>setStep(s=>s+1)} className="ml-auto px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">{step===2?'Verify & Connect':'Next'}</button>)}</div>
       </div>
     </div>
   );
@@ -8422,14 +8430,16 @@ function VonageSetupModal({close,onConnected}){
   const [num,setNum]=React.useState('');
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
   return(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div style={{width:480,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
-        <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:'#6a55fa',border:'1px solid rgba(106,85,250,0.3)'}}>V</div><div><p className="text-white text-[15px] font-bold">Connect Vonage</p><p className="text-white/45 text-[12px]">Step {step} of 3</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
-        <div className="flex gap-1.5 mb-6 mt-4">{[1,2,3].map(s=>(<div key={s} className={['flex-1 h-1 rounded-full transition-all',s<=step?'bg-brand-500':'bg-white/[0.08]'].join(' ')}/>))}</div>
-        {step===1&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Vonage API Key and Secret from the Vonage Dashboard.</p>{[{l:'API Key',v:key,set:setKey,ph:'a1b2c3d4'},{l:'API Secret',v:sec,set:setSec,ph:'...'}].map(f=>(<div key={f.l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{f.l}</label><input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/20"/></div>))}</div>)}
-        {step===2&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Select your Vonage virtual number.</p><div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Virtual Number</label><input value={num} onChange={e=>setNum(e.target.value)} placeholder="+44 20 7946 0318" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/25"/></div></div>)}
-        {step===3&&(<div className="rounded-2xl bg-emerald-500/08 border border-emerald-500/20 p-5 text-center"><div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center mx-auto mb-3"><I.Check size={20} stroke={2.5}/></div><p className="text-white font-bold text-[15px]" ref={(el)=>{if(el&&onConnected)onConnected();}}>Vonage connected!</p><p className="text-white/55 text-[12px] mt-1">Your virtual number is ready.</p></div>)}
-        <div className="flex gap-3 mt-6"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{step===3?'Close':'Cancel'}</button>{step<3&&(<button onClick={()=>setStep(s=>s+1)} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">{step===2?'Verify & Connect':'Next'}</button>)}</div>
+    <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+      <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:480,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:'#6a55fa',border:'1px solid rgba(106,85,250,0.3)'}}>V</div><div><p className="text-white text-[15px] font-bold">Connect Vonage</p><p className="text-white/45 text-[12px]">Step {step} of 3</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+        <div className="flex-1 overflow-y-auto scroll-area px-6 py-5">
+          <div className="flex gap-1.5 mb-6">{[1,2,3].map(s=>(<div key={s} className={['flex-1 h-1 rounded-full transition-all',s<=step?'bg-brand-500':'bg-white/[0.08]'].join(' ')}/>))}</div>
+          {step===1&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Enter your Vonage API Key and Secret from the Vonage Dashboard.</p>{[{l:'API Key',v:key,set:setKey,ph:'a1b2c3d4'},{l:'API Secret',v:sec,set:setSec,ph:'...'}].map(f=>(<div key={f.l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{f.l}</label><input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/20"/></div>))}</div>)}
+          {step===2&&(<div className="flex flex-col gap-4"><p className="text-[13px] text-white/65 leading-relaxed">Select your Vonage virtual number.</p><div><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">Virtual Number</label><input value={num} onChange={e=>setNum(e.target.value)} placeholder="+44 20 7946 0318" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white font-mono outline-none focus:border-brand-500/40 placeholder:text-white/25"/></div></div>)}
+          {step===3&&(<div className="rounded-2xl bg-emerald-500/08 border border-emerald-500/20 p-5 text-center"><div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center mx-auto mb-3"><I.Check size={20} stroke={2.5}/></div><p className="text-white font-bold text-[15px]" ref={(el)=>{if(el&&onConnected)onConnected();}}>Vonage connected!</p><p className="text-white/55 text-[12px] mt-1">Your virtual number is ready.</p></div>)}
+        </div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{step===3?'Close':'Cancel'}</button>{step<3&&(<button onClick={()=>setStep(s=>s+1)} className="ml-auto px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">{step===2?'Verify & Connect':'Next'}</button>)}</div>
       </div>
     </div>
   );
@@ -8443,9 +8453,10 @@ function GenericConnectModal({intg,close,onConnected}){
   const fields=intg.fields||[];
   const canNext=oauth?true:fields.every(f=>!f.req||String(vals[f.k]||'').trim());
   const done=step===(oauth?2:2);
-  return(<div className="fixed inset-0 z-[180] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-    <div className="rounded-2xl overflow-hidden" style={{width:460,maxWidth:'100%',background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,boxShadow:'0 32px 80px rgba(0,0,0,0.65)',padding:24}} onClick={e=>e.stopPropagation()}>
-      <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:intg.iconColor+'22',color:intg.iconColor,border:'1px solid '+intg.iconColor+'40'}}>{intg.name[0]}</div><div><p className="text-white text-[15px] font-bold">Connect {intg.name}</p><p className="text-white/45 text-[12px]">{oauth?'Authorize access':'Enter your credentials'}</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+  return(<div className="fixed inset-0 z-[180] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:460,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px]" style={{background:intg.iconColor+'22',color:intg.iconColor,border:'1px solid '+intg.iconColor+'40'}}>{intg.name[0]}</div><div><p className="text-white text-[15px] font-bold">Connect {intg.name}</p><p className="text-white/45 text-[12px]">{oauth?'Authorize access':'Enter your credentials'}</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-6 py-5">
       {step===1&&(oauth?(<div className="flex flex-col gap-4">
         <p className="text-[13px] text-white/65 leading-relaxed">{intg.name} uses secure OAuth. You'll be redirected to {intg.name} to grant nrtur access, then sent back here.</p>
         <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-3.5 flex flex-col gap-2">{(intg.scopes||['Read & write access','Sync data both ways']).map(sc=>(<div key={sc} className="flex items-center gap-2 text-[12px] text-white/70"><I.Check size={12} className="text-emerald-300 shrink-0"/>{sc}</div>))}</div>
@@ -8456,6 +8467,7 @@ function GenericConnectModal({intg,close,onConnected}){
         <button onClick={()=>setStep(2)} disabled={!canNext} className={['w-full py-2.5 rounded-xl text-[13px] font-bold transition-all',canNext?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Connect</button>
       </div>))}
       {step===2&&(<div className="rounded-2xl bg-emerald-500/08 border border-emerald-500/20 p-5 text-center"><div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-300 flex items-center justify-center mx-auto mb-3" ref={()=>{onConnected&&onConnected();}}><I.Check size={20} stroke={2.5}/></div><p className="text-white font-bold text-[15px]">{intg.name} connected!</p><p className="text-white/55 text-[12px] mt-1">{intg.successMsg||(intg.name+' is now syncing with nrtur.')}</p><button onClick={close} className="mt-4 w-full py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Done</button></div>)}
+      </div>
     </div>
   </div>);
 }
@@ -8935,7 +8947,13 @@ function SequenceBuilderPage({goTo,channel}){
                   <button onClick={()=>setTplEdit(selTpl)} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Edit in template builder</button>
                 </div>
               </div>);})()}
-            <div><label className={DLBL}>{isSms?'Message text':'Email body'}</label>
+            {!isSms&&draft.templateId&&(()=>{const selTpl=EMAIL_TEMPLATES.find(t=>t.id===draft.templateId);if(!selTpl)return null;return(
+              <div>
+                <div className="flex items-center justify-between mb-1.5"><label className={DLBL+' mb-0'}>Email design</label><button onClick={()=>{setEmailTplSeed(selTpl);setEmailTplReturn('email-sequence-builder');goTo('email-builder');}} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Edit size={11}/>Edit design</button></div>
+                <div className="rounded-xl border border-white/[0.10] overflow-hidden bg-white"><TplPreview t={selTpl} height={340}/></div>
+                <p className="text-[11px] text-white/35 mt-1.5 inline-flex items-center gap-1"><I.Lock size={10}/>Content comes from the template — edit it in the builder.</p>
+              </div>);})()}
+            {(isSms||!draft.templateId)&&(<div><label className={DLBL}>{isSms?'Message text':'Email body'}</label>
               <div className="rounded-xl border border-white/[0.12] focus-within:border-brand-500/45 transition-all overflow-hidden" style={{background:'var(--field6)'}}>
                 <textarea value={draft.body||''} onChange={e=>dset({body:e.target.value})} rows={isSms?5:9} placeholder={isSms?'Type your SMS message...':'Write your email...'} className="w-full bg-transparent outline-none resize-none px-3.5 py-3 text-[14px] text-white/95 placeholder:text-white/30 leading-[1.7]"/>
                 <div className="flex items-center justify-between gap-2 flex-wrap px-3 py-2.5 border-t border-white/[0.08] bg-white/[0.02]">
@@ -8943,7 +8961,7 @@ function SequenceBuilderPage({goTo,channel}){
                   {isSms&&<span className={['text-[11px] font-medium tabular-nums px-2 py-1 rounded-md shrink-0',SmsSegments((draft.body||'').length).segs>1?'bg-amber-500/12 text-amber-300':'bg-white/[0.06] text-white/55'].join(' ')}>{(draft.body||'').length} chars · {SmsSegments((draft.body||'').length).segs||0} SMS</span>}
                 </div>
               </div>
-            </div>
+            </div>)}
           </div>
           <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}>
             <button onClick={()=>setActiveNodeId(null)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
