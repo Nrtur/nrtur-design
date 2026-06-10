@@ -112,6 +112,10 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
   .pipe-board .pipe-col.pipe-col-active{display:flex !important;width:100% !important;min-width:0}
   /* --- dev nav above the bar --- */
   .dev-nav{bottom:118px !important;right:10px !important}
+  /* --- duplicates: stack record columns + merge drawer becomes bottom sheet --- */
+  .dup-cols{grid-template-columns:1fr !important}
+  .dup-drawer-wrap{align-items:flex-end !important;justify-content:stretch !important}
+  .dup-drawer{width:100% !important;max-width:100% !important;height:auto !important;max-height:88vh !important;border-left:0 !important;border-top:1px solid rgba(255,255,255,0.10) !important;border-top-left-radius:18px !important;border-top-right-radius:18px !important;animation:sheetUp .24s ease both !important}
 }
 @media (max-width:520px){
   .app-topbar{padding-left:12px !important;padding-right:12px !important}
@@ -533,7 +537,7 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-<style>@keyframes arIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}</style>
+<style>@keyframes arIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}</style>
 </head>
 <body>
 <div id="root"></div>
@@ -1683,6 +1687,9 @@ function SettingsSubNav({active,goTo}){
       {label:'Team',page:'settings-team',Icon:I.Users},
       {label:'Billing',page:'settings-billing',Icon:I.CreditCard},
     ]},
+    {title:'Data',items:[
+      {label:'Duplicates',page:'settings-duplicates',Icon:I.Copy},
+    ]},
     {title:'Automation',items:[
       {label:'Automations',page:'settings-automations',Icon:I.Zap},
       {label:'Sequences',page:'settings-sequences',Icon:I.Layers},
@@ -1694,7 +1701,7 @@ function SettingsSubNav({active,goTo}){
     ]},
     {title:'Deliverability',items:[
       {label:'Notifications',page:'settings-notifications',Icon:I.Bell},
-      {label:'Unsubscribes',page:'settings-unsubscribes',Icon:I.Ban},
+      {label:'Suppression List',page:'settings-suppression',Icon:I.Ban},
     ]},
     {title:'Connections',items:[
       {label:'Integrations',page:'settings-integrations',Icon:I.Plug},
@@ -1734,7 +1741,7 @@ const ALL_PAGES=[
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
   'reports',
   'settings-billing','settings-team','settings-general','settings-properties','settings-automations','settings-sequences','email-templates','email-builder','settings-forms','form-builder','settings-integrations',
-  'settings-booking','settings-notifications','settings-unsubscribes','settings-privacy',
+  'settings-booking','settings-notifications','settings-suppression','settings-privacy','settings-duplicates',
   'profile',
 ];
 function DevNav({goTo}){
@@ -2617,6 +2624,8 @@ const CONTACTS_DATA=[
   {id:8,name:'Priya Nair',co:'Atlas Consult',email:'priya@atlas.co',phone:'+1 555-334-7788',avatar:'PN',color:'#a855f7',status:'Qualified',owner:'SC',ownerColor:'#ec4899',last:'10 days ago',deal:'$18k',tag:'qualified',loc:'Boston, MA',cstatus:'Prospect',days:10,dnc:false,archived:false},
   {id:9,name:'Tom Barrett',co:'Clearview Media',email:'tom@clearview.tv',phone:'+1 555-770-1180',avatar:'TB',color:'#0ea5e9',status:'Lead',owner:'JK',ownerColor:'#8b5cf6',last:'6 weeks ago',deal:'-',tag:'cold',loc:'Denver, CO',cstatus:'Lost',days:44,dnc:false,archived:true},
   {id:10,name:'Riley Voss',co:'Helix Partners',email:'riley@helix.co',phone:'+1 555-662-9900',avatar:'RV',color:'#64748b',status:'Lead',owner:'AM',ownerColor:'#3b82f6',last:'2 months ago',deal:'-',tag:'cold',loc:'Portland, OR',cstatus:'Lost',days:60,dnc:false,archived:true},
+  {id:101,name:'Sarah Chen',co:'Meridian Agency',email:'Sarah@Meridian.co',phone:'+1 (555) 234 8901',avatar:'SC',color:'#6366f1',status:'Active',owner:'JK',ownerColor:'#8b5cf6',last:'1w ago',deal:'$24k',tag:'agency',loc:'San Francisco, CA',cstatus:'Customer',days:7,dnc:false,archived:false,first:'Sarah',last:'Chen',title:'Chief Executive',lifecycle:'Customer',score:84,tags:['agency','duplicate-import'],source:'Web form',createdBy:'JK',createdAt:'May 21, 2026'},
+  {id:102,name:'Maria Lopez',co:'Bloom Creative',email:'m.lopez@bloom.co',phone:'+1 555-444-1212',avatar:'ML',color:'#ec4899',status:'Warm',owner:'AM',ownerColor:'#3b82f6',last:'3d ago',deal:'$18k',tag:'q2-focus',loc:'Austin, TX',cstatus:'Prospect',days:3,dnc:false,archived:false,first:'Maria',last:'Lopez',title:'Creative Director',lifecycle:'Sales Qualified Lead',score:50,tags:['q2-focus','referral'],source:'Referral',createdBy:'AM',createdAt:'May 30, 2026'},
 ];
 const STATUS_CHIP={Active:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Hot:'bg-red-500/12 text-red-300 ring-red-500/25',Warm:'bg-amber-500/12 text-amber-300 ring-amber-500/25',New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Lead:'bg-white/[0.06] text-white/55 ring-white/[0.08]',Qualified:'bg-brand-500/12 text-brand-300 ring-brand-500/25'};
 const CONTACT_STATUSES=['Prospect','Customer','Lost'];
@@ -3454,6 +3463,249 @@ function ctSeedViews(){
     {key:'pv_cooling',label:'Going cold',scope:'private',color:'#fbbf24',filter:{match:'AND',conds:[{id:'c1',fieldKey:'days',op:'>',value:'30'}]}},
   ];
 }
+/* ==============================================================================
+   DUPLICATE DETECTION & MERGE  (Part A-E)
+   Shared matching engine + reusable DuplicatesView + field-by-field MergeDrawer.
+   ============================================================================== */
+// -- Part A: normalization helpers + matching engine --
+function dupNormEmail(s){return String(s||'').trim().toLowerCase();}
+function dupNormPhone(s){return String(s||'').replace(/[\s\-().]/g,'').replace(/^\+/,'');}
+function dupNormDomain(s){return String(s||'').trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/.*$/,'').replace(/\/+$/,'');}
+function dupNormName(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function dupNormCompany(s){return String(s||'').toLowerCase().replace(/[.,&]/g,' ').replace(/\b(inc|llc|ltd|co|corp|corporation|company|gmbh|plc|group)\b/g,' ').replace(/\s+/g,' ').trim();}
+function dupInit(name){return String(name||'').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'?';}
+const DUP_META={
+  contact:{listKey:'contacts',setKey:'setContacts',label:'contact',plural:'contacts'},
+  lead:{listKey:'leads',setKey:'setLeads',label:'lead',plural:'leads'},
+  company:{listKey:'companies',setKey:'setCompanies',label:'company',plural:'companies'},
+};
+const DUP_FIELDS={
+  contact:[{key:'name',label:'Name',kind:'text'},{key:'email',label:'Email',kind:'text'},{key:'phone',label:'Phone',kind:'text'},{key:'co',label:'Company',kind:'text'},{key:'title',label:'Title',kind:'text'},{key:'owner',label:'Owner',kind:'owner'},{key:'cstatus',label:'Status',kind:'text'},{key:'tags',label:'Tags',kind:'tags'}],
+  lead:[{key:'name',label:'Name',kind:'text'},{key:'email',label:'Email',kind:'text'},{key:'phone',label:'Phone',kind:'text'},{key:'company',label:'Company',kind:'text'},{key:'title',label:'Title',kind:'text'},{key:'owner',label:'Owner',kind:'owner'},{key:'status',label:'Status',kind:'text'},{key:'source',label:'Source',kind:'text'},{key:'tags',label:'Tags',kind:'tags'}],
+  company:[{key:'name',label:'Name',kind:'text'},{key:'domain',label:'Domain',kind:'text'},{key:'website',label:'Website',kind:'text'},{key:'industry',label:'Industry',kind:'text'},{key:'phone',label:'Phone',kind:'text'},{key:'owner',label:'Owner',kind:'owner'},{key:'type',label:'Type',kind:'text'},{key:'tags',label:'Tags',kind:'tags'}],
+};
+const dupObjIcon=(object)=>object==='company'?I.Building:object==='lead'?I.Target:I.Users;
+const dupCompanyOf=(object,r)=>object==='company'?(r.domain||r.website||''):object==='lead'?(r.company||''):(r.co||'');
+const dupCreatedOf=(r)=>r.createdAt||r.created||'-';
+function dupActivities(r){const n=Math.abs(parseInt(r.id,10)||1);return 2+(n*13)%8;}
+// Detects duplicate groups within a record array. Returns [{id,confidence,matchedOn,records}].
+function detectDuplicates(object,records){
+  const recs=(records||[]).filter(r=>!r.archived&&!r.converted);
+  const used=new Set();
+  const groups=[];
+  const collect=(keyFn,confidence,matchedOn)=>{
+    const map=new Map();
+    recs.forEach(r=>{if(used.has(r.id))return;const k=keyFn(r);if(!k)return;if(!map.has(k))map.set(k,[]);map.get(k).push(r);});
+    map.forEach((list,k)=>{if(list.length>=2){list.forEach(r=>used.add(r.id));groups.push({id:object+':'+matchedOn+':'+k,confidence,matchedOn,records:list});}});
+  };
+  if(object==='company'){
+    collect(r=>dupNormDomain(r.website||r.domain),'high','Domain');
+    collect(r=>dupNormCompany(r.name),'medium','Name');
+  }else{
+    collect(r=>dupNormEmail(r.email),'high','Email');
+    collect(r=>dupNormPhone(r.phone),'high','Phone');
+    collect(r=>{const n=dupNormName(r.name);const c=dupNormCompany(dupCompanyOf(object,r));return(n&&c)?n+'|'+c:'';},'medium','Name + Company');
+  }
+  return groups;
+}
+// Builds the merged record + list of ids to remove, honoring chosen field values + combine toggles.
+function dupBuildMerged(object,group,opts){
+  opts=opts||{};
+  const fields=DUP_FIELDS[object];
+  const primary=group.records.find(r=>r.id===opts.primaryId)||group.records[0];
+  const choices=opts.choices||{};
+  const merged={...primary};
+  fields.forEach(f=>{if(f.kind==='tags')return;const src=group.records.find(r=>r.id===choices[f.key])||primary;const v=src[f.key];if(v!==undefined&&v!==null&&v!=='')merged[f.key]=v;});
+  if(opts.combineTags!==false){const t=(primary.tags||[]).slice();group.records.forEach(r=>(r.tags||[]).forEach(x=>{if(t.indexOf(x)<0)t.push(x);}));merged.tags=t;}
+  else if(choices.tags){const src=group.records.find(r=>r.id===choices.tags);if(src)merged.tags=(src.tags||[]).slice();}
+  if(merged.owner){const u=userByCode(merged.owner);if(u)merged.ownerColor=u.color;}
+  const removedIds=group.records.filter(r=>r.id!==primary.id).map(r=>r.id);
+  return {merged,removedIds};
+}
+function dupValueDisplay(object,f,r){
+  if(f.kind==='tags')return (r.tags&&r.tags.length)?r.tags.join(', '):'-';
+  if(f.kind==='owner'){const u=userByCode(r[f.key]);return u?u.name:'-';}
+  const v=r[f.key];return (v===undefined||v===null||v==='')?'-':String(v);
+}
+function dupFieldConflict(object,f,records){
+  const vals=records.map(r=>{if(f.kind==='tags')return (r.tags||[]).slice().sort().join('|').toLowerCase();return dupNormName(String(r[f.key]==null?'':r[f.key]));}).filter(v=>v!=='');
+  return new Set(vals).size>1;
+}
+// -- Part C: field-by-field merge drawer (becomes bottom sheet on mobile) --
+function MergeDrawer({object,group,close,onMerge}){
+  const fields=DUP_FIELDS[object];
+  const [primaryId,setPrimaryId]=React.useState(group.records[0].id);
+  const [choices,setChoices]=React.useState(()=>{const c={};fields.forEach(f=>{c[f.key]=group.records[0].id;});return c;});
+  const [combineActivities,setCombineActivities]=React.useState(true);
+  const [combineTags,setCombineTags]=React.useState(true);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const pickPrimary=(id)=>{setPrimaryId(id);const c={};fields.forEach(f=>{c[f.key]=id;});setChoices(c);};
+  const totalActivities=group.records.reduce((a,r)=>a+dupActivities(r),0);
+  const doMerge=()=>{const {merged,removedIds}=dupBuildMerged(object,group,{primaryId,choices,combineTags});onMerge(merged,removedIds);};
+  return(<div className="dup-drawer-wrap fixed inset-0 z-[180] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div className="dup-drawer h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:480,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25"><I.Layers size={16}/></span><div><p className="text-white text-[15px] font-bold leading-tight">Merge {group.records.length} records</p><p className="text-white/45 text-[12px] mt-0.5">Choose the surviving value for each field.</p></div></div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-4" style={{background:'var(--s850)'}}>
+        <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Primary record</p>
+        <div className="flex flex-col gap-2 mb-5">
+          {group.records.map(r=>{const a=primaryId===r.id;return(
+            <button key={r.id} onClick={()=>pickPrimary(r.id)} className={['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',a?'bg-brand-500/10 border-brand-500/40 ring-1 ring-brand-500/25':'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.04]'].join(' ')}>
+              <span className="w-4 h-4 rounded-full border flex items-center justify-center shrink-0" style={{borderColor:a?'#818cf8':'rgba(255,255,255,0.25)'}}>{a&&<span className="w-2 h-2 rounded-full bg-brand-400"/>}</span>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{background:r.color||'#6366f1'}}>{r.avatar||dupInit(r.name)}</span>
+              <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-white truncate">{r.name}</span><span className="block text-[11px] text-white/45 truncate">{r.email||dupCompanyOf(object,r)||'-'} - {dupActivities(r)} activities</span></span>
+              {a&&<span className="text-[10px] font-semibold text-brand-200 px-2 py-0.5 rounded-full bg-brand-500/20 shrink-0">Primary</span>}
+            </button>);})}
+        </div>
+        <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Resolve fields</p>
+        <div className="flex flex-col gap-3">
+          {fields.filter(f=>f.kind!=='tags').map(f=>{const conflict=dupFieldConflict(object,f,group.records);return(
+            <div key={f.key} className={['rounded-xl border p-3',conflict?'border-amber-500/30 bg-amber-500/[0.04]':'border-white/[0.07] bg-white/[0.02]'].join(' ')}>
+              <div className="flex items-center justify-between mb-2"><span className="text-[12px] font-semibold text-white/80">{f.label}</span>{conflict&&<span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300"><I.AlertTriangle size={10}/>Conflict</span>}</div>
+              <div className="flex flex-col gap-1.5">
+                {group.records.map(r=>{const sel=choices[f.key]===r.id;const disp=dupValueDisplay(object,f,r);return(
+                  <button key={r.id} onClick={()=>setChoices(c=>({...c,[f.key]:r.id}))} className={['w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border text-left transition-all',sel?'bg-brand-500/10 border-brand-500/40':'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'].join(' ')}>
+                    <span className="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0" style={{borderColor:sel?'#818cf8':'rgba(255,255,255,0.22)'}}>{sel&&<span className="w-1.5 h-1.5 rounded-full bg-brand-400"/>}</span>
+                    <span className={['flex-1 min-w-0 truncate text-[12.5px]',disp==='-'?'text-white/30':'text-white/85'].join(' ')}>{disp}</span>
+                    <span className="text-[10px] text-white/30 shrink-0">{(r.avatar||dupInit(r.name))}</span>
+                  </button>);})}
+              </div>
+            </div>);})}
+        </div>
+        <div className="mt-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+            <div className="min-w-0"><p className="text-[12.5px] font-semibold text-white/85">Combine activity timelines</p><p className="text-[11px] text-white/45 mt-0.5">Keep all calls, emails, notes, and tasks from both records ({totalActivities} total).</p></div>
+            <Toggle on={combineActivities} onChange={setCombineActivities}/>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+            <div className="min-w-0"><p className="text-[12.5px] font-semibold text-white/85">Combine tags</p><p className="text-[11px] text-white/45 mt-0.5">Union every tag across the merged records.</p></div>
+            <Toggle on={combineTags} onChange={setCombineTags}/>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 px-5 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={doMerge} className="ml-auto inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-colors"><I.Layers size={14}/>Merge records</button>
+      </div>
+    </div>
+  </div>);
+}
+// -- Part B: reusable DuplicatesView (used by Settings page + per-object tabs) --
+function DuplicatesView({object,showToolbar}){
+  const meta=DUP_META[object];
+  const crm=React.useContext(CrmDataContext);
+  const records=crm[meta.listKey]||[];
+  const setter=crm[meta.setKey];
+  const [dismissed,setDismissed]=React.useState([]);
+  const [primaryBy,setPrimaryBy]=React.useState({});
+  const [mergeGroup,setMergeGroup]=React.useState(null);
+  const [scanKey,setScanKey]=React.useState(0);
+  const {confirmNode,openConfirm}=useConfirm();
+  const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t);};
+  const allGroups=React.useMemo(()=>detectDuplicates(object,records),[object,records,scanKey]);
+  const groups=allGroups.filter(g=>dismissed.indexOf(g.id)<0);
+  const primaryFor=(g)=>primaryBy[g.id]||g.records[0].id;
+  const setPrimary=(g,id)=>setPrimaryBy(s=>({...s,[g.id]:id}));
+  const applyMerge=(merged,removedIds)=>{setter(arr=>arr.filter(r=>removedIds.indexOf(r.id)<0).map(r=>r.id===merged.id?merged:r));toast('Records merged ✓');setMergeGroup(null);};
+  const dismiss=(g)=>{setDismissed(d=>[...d,g.id]);toast('Marked as not a duplicate');};
+  const scan=()=>{setScanKey(k=>k+1);const n=detectDuplicates(object,records).filter(g=>dismissed.indexOf(g.id)<0).length;toast('Scan complete - '+n+' duplicate'+(n===1?'':'s')+' found');};
+  const bulkMerge=()=>{
+    const highs=groups.filter(g=>g.confidence==='high');
+    if(!highs.length){toast('No high-confidence duplicates to merge','warning');return;}
+    openConfirm({title:'Bulk merge '+highs.length+' group'+(highs.length>1?'s':'')+'?',body:'This keeps the first record of each high-confidence match as primary, combines tags and activity, and removes the rest. This cannot be undone.',confirmLabel:'Merge '+highs.length+' group'+(highs.length>1?'s':''),danger:false,onConfirm:()=>{
+      let removedAll=[];const mergedMap={};
+      highs.forEach(g=>{const {merged,removedIds}=dupBuildMerged(object,g,{primaryId:g.records[0].id,combineTags:true});removedAll=removedAll.concat(removedIds);mergedMap[merged.id]=merged;});
+      setter(arr=>arr.filter(r=>removedAll.indexOf(r.id)<0).map(r=>mergedMap[r.id]||r));
+      toast('Merged '+highs.length+' high-confidence group'+(highs.length>1?'s':'')+' ✓');
+    }});
+  };
+  const Obj=dupObjIcon(object);
+  const cols=(g)=>({display:'grid',gap:'10px',gridTemplateColumns:'repeat('+Math.min(g.records.length,3)+',minmax(0,1fr))'});
+  const detailRow=(Ic,val)=>(<div className="flex items-center gap-1.5 text-[11.5px]"><Ic size={11} className="text-white/30 shrink-0"/><span className={val?'text-white/65 truncate':'text-white/25 truncate'}>{val||'-'}</span></div>);
+  return(<div>
+    {showToolbar&&(
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><Obj size={15}/></span>
+          <span className="text-[13px] text-white/70"><span className="font-bold text-white">{groups.length}</span> possible {groups.length===1?'duplicate':'duplicates'} in {meta.plural}</span>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={scan} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/75 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Sparkles size={13}/>Scan now</button>
+          <button onClick={bulkMerge} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-semibold text-amber-200 bg-amber-500/12 border border-amber-500/25 hover:bg-amber-500/[0.18] transition-all"><I.Layers size={13}/>Bulk merge high-confidence</button>
+        </div>
+      </div>
+    )}
+    {groups.length===0?(
+      <div className="flex items-center justify-center py-16 rounded-2xl border border-white/[0.06] bg-white/[0.01]">
+        <div className="text-center"><div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 text-emerald-300"><I.Check size={22}/></div><p className="text-[14px] font-semibold text-white/70">No duplicates found</p><p className="text-[12px] text-white/35 mt-1">Your {meta.plural} look clean. Run a scan after importing new records.</p></div>
+      </div>
+    ):groups.map(g=>{const high=g.confidence==='high';const pid=primaryFor(g);return(
+      <div key={g.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 mb-3">
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <span className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold',high?'bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25':'bg-white/[0.06] text-white/60 ring-1 ring-white/[0.10]'].join(' ')}>{high&&<I.AlertTriangle size={11}/>}{high?'Likely duplicate':'Possible duplicate'}</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/10 text-brand-200 ring-1 ring-brand-500/20"><I.Copy size={10}/>Matched on {g.matchedOn}</span>
+          <span className="text-[11px] text-white/40 ml-auto">{g.records.length} records</span>
+        </div>
+        <div className="dup-cols" style={cols(g)}>
+          {g.records.map(r=>{const isP=pid===r.id;return(
+            <div key={r.id} className={['rounded-xl border p-3 flex flex-col gap-2.5 transition-all',isP?'border-brand-500/35 bg-brand-500/[0.04]':'border-white/[0.06] bg-white/[0.02]'].join(' ')}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{background:r.color||'#6366f1'}}>{r.avatar||dupInit(r.name)}</span>
+                <div className="min-w-0"><p className="text-[13px] font-semibold text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{dupCompanyOf(object,r)||'-'}</p></div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {object!=='company'&&detailRow(I.Mail,r.email)}
+                {detailRow(I.Phone,r.phone)}
+                {object==='company'?detailRow(I.Globe,r.website||r.domain):detailRow(I.Building,dupCompanyOf(object,r))}
+                {detailRow(I.Calendar,dupCreatedOf(r))}
+                {detailRow(I.History,dupActivities(r)+' activities')}
+              </div>
+              <label className={['mt-0.5 inline-flex items-center gap-2 text-[11.5px] font-medium cursor-pointer select-none',isP?'text-brand-200':'text-white/50 hover:text-white/80'].join(' ')}>
+                <input type="radio" name={'dup-primary-'+g.id} checked={isP} onChange={()=>setPrimary(g,r.id)} className="sr-only"/>
+                <span className="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0" style={{borderColor:isP?'#818cf8':'rgba(255,255,255,0.25)'}}>{isP&&<span className="w-1.5 h-1.5 rounded-full bg-brand-400"/>}</span>
+                Set as primary
+              </label>
+            </div>);})}
+        </div>
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.05] flex-wrap">
+          <button onClick={()=>setMergeGroup({...g,_pid:pid})} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-colors"><I.Layers size={13}/>Merge</button>
+          <button onClick={()=>setMergeGroup({...g,_pid:pid})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all"><I.Eye size={13}/>Review</button>
+          <button onClick={()=>dismiss(g)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.04] transition-all"><I.X size={13}/>Not a duplicate</button>
+        </div>
+      </div>);})}
+    {mergeGroup&&<MergeDrawer object={object} group={{id:mergeGroup.id,confidence:mergeGroup.confidence,matchedOn:mergeGroup.matchedOn,records:mergeGroup._pid?[...mergeGroup.records].sort((a,b)=>(a.id===mergeGroup._pid?-1:b.id===mergeGroup._pid?1:0)):mergeGroup.records}} close={()=>setMergeGroup(null)} onMerge={applyMerge}/>}
+    {confirmNode}
+  </div>);
+}
+// -- Part D: global Settings -> Duplicates page --
+function SettingsDuplicatesPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const [tab,setTab]=React.useState('contact');
+  const totals=React.useMemo(()=>({
+    contact:detectDuplicates('contact',crm.contacts).length,
+    company:detectDuplicates('company',crm.companies).length,
+    lead:detectDuplicates('lead',crm.leads).length,
+  }),[crm.contacts,crm.companies,crm.leads]);
+  const grand=totals.contact+totals.company+totals.lead;
+  const tabs=[['contact','Contacts'],['company','Companies'],['lead','Leads']];
+  return(
+    <SettingsShell active="settings-duplicates" goTo={goTo}>
+      <div className="flex items-start gap-3">
+        <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><I.Copy size={18}/></span>
+        <div><h1 className="text-[18px] font-bold text-white">Duplicates</h1><p className="text-[13px] text-white/50 mt-0.5">We found <span className="font-semibold text-white/80">{grand}</span> possible {grand===1?'duplicate':'duplicates'} across your data. Review and merge to keep one clean record.</p></div>
+      </div>
+      <div className="inline-flex p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] self-start">
+        {tabs.map(([k,lb])=>{const a=tab===k;return(
+          <button key={k} onClick={()=>setTab(k)} className={['inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[12.5px] font-semibold transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>
+            {lb}<span className={['text-[10px] font-mono px-1.5 py-0.5 rounded-full min-w-[20px] text-center',a?'bg-white/20 text-white':'bg-white/[0.07] text-white/45'].join(' ')}>{totals[k]}</span>
+          </button>);})}
+      </div>
+      <div><DuplicatesView key={tab} object={tab} showToolbar/></div>
+    </SettingsShell>
+  );
+}
 function ContactsPage({goTo}){
   const loading=useSkeleton(900);
   const {props:_propsCtx}=React.useContext(PropertiesContext);
@@ -3489,7 +3741,8 @@ function ContactsPage({goTo}){
   const saveChanges=()=>{setViews(vs=>vs.map(v=>v.key===activeKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),columns:cols.slice(),sort:{...workSort}}:v));showToast('View changes saved');};
   const onSort=(colKey)=>setWorkSort(st=>omNextSort(st,colKey));
   const nonArch=rows.filter(c=>!c.archived);
-  const countFor=(v)=>{if(v.key==='archived')return rows.filter(c=>c.archived).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const countFor=(v)=>{if(v.key==='duplicates')return dupGroupCount;if(v.key==='archived')return rows.filter(c=>c.archived).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const dupGroupCount=detectDuplicates('contact',nonArch).length;
   const activeLabel=activeKey==='archived'?'Archived':(activeViewObj?activeViewObj.label:'All Contacts');
   const ActiveIcon=activeKey==='archived'?I.Archive:(activeViewObj&&activeViewObj.Icon?activeViewObj.Icon:I.Users);
   let base=rows.filter(c=>activeKey==='archived'?c.archived:!c.archived);
@@ -3530,8 +3783,9 @@ function ContactsPage({goTo}){
             <NewContactSplitButton goTo={goTo} onImport={()=>setImportModal(true)}/>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
-          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive}]}/>
+          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive},{key:'duplicates',label:'Duplicates',Icon:I.Copy}]}/>
           <div className="flex-1 flex flex-col min-w-0">
+          {activeKey==='duplicates'?(<div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6"><DuplicatesView object='contact' showToolbar/></div></div>):(<React.Fragment>
             <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contacts..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
               <div className="ml-auto flex items-center gap-2">
@@ -3570,6 +3824,7 @@ function ContactsPage({goTo}){
               )}
               {list.map((c,i)=>(<ContactRowDyn key={c.id} c={c} COL={COL} shownCols={shownCols} selected={selected.includes(c.id)} onSelect={toggleSelect} ctx={colCtx} last={i===list.length-1}/>))}
             </div>
+            </React.Fragment>)}
           </div>
         </div>
         {importModal&&<BulkImportWizard object='contact' close={()=>setImportModal(false)} onToast={showToast}/>}
@@ -3712,8 +3967,16 @@ function ContactDetailPage({goTo,nav}){
   const [dialerOpen,setDialerOpen]=React.useState(false);
   const [composeOpen,setComposeOpen]=React.useState(false);
   const [dnc,setDnc]=React.useState(c.dnc);
+  // Channel suppression (mirrors Settings -> Suppression List). DNC suppresses all channels.
+  const _supEmail=(c.email||'').toLowerCase();const _supDom=_supEmail.split('@')[1]||'';
+  const _supPhone=(c.phone||'').replace(/\s+/g,' ').trim();
+  const suppressed={
+    email:dnc||['unsub@acme.com','bounce@example.com','spam@test.io','blocked@co.org','old@company.net','donotcontact@firm.co'].includes(_supEmail)||['competitor.com','acme.com'].includes(_supDom),
+    sms:dnc||['+1 415 555 0142','+1 628 555 0190','+1 212 555 0177'].includes(_supPhone),
+    calls:dnc||['+1 628 555 0190','+1 212 555 0177'].includes(_supPhone),
+  };
   const [enriched,setEnriched]=React.useState(false);
-  const [timeline,setTimeline]=React.useState(TIMELINE);
+  const [timeline,setTimeline]=React.useState(()=>c&&c.qual?[qualTimelineEntry(c.qual),...TIMELINE]:TIMELINE);
   const {confirmNode,openConfirm}=useConfirm();
   const filterTabs=[{k:'all',l:'All',n:timeline.length},{k:'emails',l:'Emails',n:timeline.filter(e=>e.kind.startsWith('email')).length},{k:'notes',l:'Notes',n:timeline.filter(e=>e.kind==='note').length},{k:'deals',l:'Deals',n:timeline.filter(e=>e.kind==='deal').length}];
   const filtered=timeline.filter(e=>{if(tab==='emails')return e.kind.startsWith('email');if(tab==='notes')return e.kind==='note';if(tab==='deals')return e.kind==='deal';return true;});
@@ -3754,11 +4017,11 @@ function ContactDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(59,130,246,0.10),transparent 70%)'}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative"><div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:c.color}}>{c.avatar}</div><span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-[#0c0c1a]"/></div>
-                  <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span></div>
+                  <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span>{suppressed.email&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not email</span>}{suppressed.sms&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not SMS</span>}{suppressed.calls&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not call</span>}</div>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true},{Icon:I.Phone,l:'Make call',fn:()=>setDialerOpen(o=>!o),comm:true},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const off=b.comm&&dnc;return(
-                    <button key={i} disabled={off} onClick={b.fn} title={off?'Disabled — Do Not Contact':b.l} className={['flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all text-[10px] font-medium',off?'bg-white/[0.02] border-white/[0.05] text-white/25 cursor-not-allowed':b.accent?'bg-brand-500/10 hover:bg-brand-500/15 border-brand-500/20 hover:border-brand-500/40 text-brand-300':b.danger?'bg-red-500/[0.07] hover:bg-red-500/12 border-red-500/15 hover:border-red-500/30 text-red-400/80 hover:text-red-300':'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white'].join(' ')}><b.Icon size={14}/>{b.l}</button>
+                  {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true,chan:'email'},{Icon:I.Phone,l:'Make call',fn:()=>setDialerOpen(o=>!o),comm:true,chan:'calls'},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true,chan:'sms'},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const supc=b.chan&&suppressed[b.chan];const off=(b.comm&&dnc)||supc;return(
+                    <button key={i} disabled={off} onClick={b.fn} title={supc?'This contact is suppressed.':off?'Disabled — Do Not Contact':b.l} className={['flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all text-[10px] font-medium',off?'bg-white/[0.02] border-white/[0.05] text-white/25 cursor-not-allowed':b.accent?'bg-brand-500/10 hover:bg-brand-500/15 border-brand-500/20 hover:border-brand-500/40 text-brand-300':b.danger?'bg-red-500/[0.07] hover:bg-red-500/12 border-red-500/15 hover:border-red-500/30 text-red-400/80 hover:text-red-300':'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06] hover:border-white/[0.16] text-white/65 hover:text-white'].join(' ')}><b.Icon size={14}/>{b.l}</button>
                   );})}
                 </div>
                 <button onClick={()=>setCallModal(true)} className="block mx-auto mt-2 text-[11px] text-white/35 hover:text-white/60 transition-colors">Log manually</button>
@@ -4241,6 +4504,8 @@ const COMPANIES_DATA=[
   {id:9,name:'Brightwave Studio',domain:'brightwave.io',industry:'Media',size:14,revenue:'$1M–$5M',loc:'Denver, CO',type:'Partner',phone:'+1 555-902-1100',owner:'AM',ownerColor:'#3b82f6',avatar:'BR',color:'#0ea5e9',days:6,tags:['partner'],desc:'Referral partner for media accounts.',archived:false},
   {id:10,name:'Northwind Co',domain:'northwind.com',industry:'Finance',size:210,revenue:'$25M–$50M',loc:'Portland, OR',type:'Vendor',phone:'+1 555-770-3300',owner:'RL',ownerColor:'#10b981',avatar:'NW',color:'#64748b',days:18,tags:['vendor'],desc:'Data-enrichment vendor.',archived:false},
   {id:11,name:'Clearview Media',domain:'clearview.tv',industry:'Media',size:9,revenue:'<$1M',loc:'Denver, CO',type:'Prospect',phone:'+1 555-770-1100',owner:'JK',ownerColor:'#8b5cf6',avatar:'CL',color:'#0ea5e9',days:44,tags:['cold'],desc:'Went cold after initial outreach.',archived:true},
+  {id:101,name:'Meridian Agency Inc.',domain:'www.meridian.co',industry:'Marketing & Advertising',size:52,revenue:'$6M–$10M',loc:'San Francisco, CA',type:'Prospect',phone:'+1 555-234-8902',owner:'JK',ownerColor:'#8b5cf6',avatar:'ME',color:'#6366f1',days:7,tags:['agency','duplicate-import'],desc:'Re-imported account record from a partner list.',archived:false,annualRevenue:8500000,website:'http://www.meridian.co',createdBy:'JK',createdAt:'May 21, 2026'},
+  {id:102,name:'Summit Digital LLC',domain:'summitdigital.io',industry:'Software / SaaS',size:118,revenue:'$10M–$25M',loc:'New York, NY',type:'Prospect',phone:'+1 555-312-4401',owner:'SC',ownerColor:'#ec4899',avatar:'SU',color:'#a855f7',days:5,tags:['agency'],desc:'Possible duplicate of Summit Digital from a different source.',archived:false,annualRevenue:17500000,website:'https://summitdigital.io',createdBy:'SC',createdAt:'May 28, 2026'},
 ];
 const COMPANY_VIEW_FIELDS=['Type','Industry','Owner','Employees','Open deals','Last activity'];
 const COMPANY_FIELD_OPS={Type:['is','is not'],Industry:['is','is not'],Owner:['is','is not'],Employees:['greater than','less than'],'Open deals':['greater than','less than'],'Last activity':['more than','less than']};
@@ -4351,7 +4616,8 @@ function CompaniesPage({goTo}){
   const saveChanges=()=>{setViews(vs=>vs.map(v=>v.key===activeKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),columns:cols.slice(),sort:{...workSort}}:v));showToast('View changes saved');};
   const onSort=(colKey)=>setWorkSort(st=>omNextSort(st,colKey));
   const nonArch=rows.filter(c=>!c.archived);
-  const countFor=(v)=>{if(v.key==='archived')return rows.filter(c=>c.archived).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const countFor=(v)=>{if(v.key==='duplicates')return dupGroupCount;if(v.key==='archived')return rows.filter(c=>c.archived).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const dupGroupCount=detectDuplicates('company',nonArch).length;
   const activeLabel=activeKey==='archived'?'Archived':(activeViewObj?activeViewObj.label:'All Companies');
   const ActiveIcon=activeKey==='archived'?I.Archive:(activeViewObj&&activeViewObj.Icon?activeViewObj.Icon:I.Building);
   let base=rows.filter(c=>activeKey==='archived'?c.archived:!c.archived);
@@ -4392,8 +4658,9 @@ function CompaniesPage({goTo}){
             <button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('company'):goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Company</button>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
-          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive}]}/>
+          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive},{key:'duplicates',label:'Duplicates',Icon:I.Copy}]}/>
           <div className="flex-1 flex flex-col min-w-0">
+          {activeKey==='duplicates'?(<div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6"><DuplicatesView object='company' showToolbar/></div></div>):(<React.Fragment>
             <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search companies..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
               <div className="ml-auto flex items-center gap-2"><OmFiltersButton object='company' fields={fields} model={workFilter} onChange={setWorkFilter}/><ColumnsControl allCols={allCompanyCols} object='company' shown={cols} onChange={setCols}/></div>
@@ -4429,6 +4696,7 @@ function CompaniesPage({goTo}){
               )}
               {list.map((co,i)=>(<CompanyRowDyn key={co.id} co={co} COL={COL} shownCols={shownCols} selected={selected.includes(co.id)} onSelect={toggleSelect} ctx={colCtx} last={i===list.length-1}/>))}
             </div>
+            </React.Fragment>)}
           </div>
         </div>
         {importModal&&<BulkImportWizard object='company' close={()=>setImportModal(false)} onToast={showToast}/>}
@@ -4590,6 +4858,8 @@ const LEADS_DATA=[
   {id:8,name:'Raj Patel',avatar:'RP',color:'#0ea5e9',email:'raj@cobaltworks.io',phone:'+1 555-901-3345',company:'Cobalt Works',title:'CTO',source:'Referral',status:'Working',score:63,estValue:'$22k',owner:'RL',ownerColor:'#10b981',created:'2w ago',days:14,loc:'Los Angeles, CA',tags:['referral'],archived:false,converted:false},
   {id:9,name:'Emma Lindqvist',avatar:'EL',color:'#14b8a6',email:'emma@fika.design',phone:'+1 555-330-7798',company:'Fika Design',title:'Principal',source:'Event',status:'Nurturing',score:48,estValue:'$11k',owner:'AM',ownerColor:'#3b82f6',created:'3w ago',days:21,loc:'Portland, OR',tags:['saastr'],archived:false,converted:false},
   {id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Unqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
+  {id:101,name:'Olivia Bennett',avatar:'OB',color:'#6366f1',email:'Olivia@Brightwave.io',phone:'+1 (555) 610-2210',company:'Brightwave Studio',title:'Head of Marketing',source:'Referral',status:'Contacted',score:78,estValue:'$18k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Denver, CO',tags:['inbound','duplicate-import'],archived:false,converted:false,estValueNum:18000,createdBy:'JK',createdAt:'1d ago',companyDomain:'brightwave.io'},
+  {id:102,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'d.okonkwo@lumenlabs.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Growth Lead',source:'Event',status:'New',score:70,estValue:'$30k',owner:'AM',ownerColor:'#3b82f6',created:'2d ago',days:2,loc:'Austin, TX',tags:['event'],archived:false,converted:false,estValueNum:30000,createdBy:'AM',createdAt:'2d ago',companyDomain:'lumenlabs.io'},
 ];
 const LEAD_VIEW_FIELDS=['Status','Source','Owner','Score','Est. value','Created'];
 const LEAD_FIELD_OPS={Status:['is','is not'],Source:['is','is not'],Owner:['is','is not'],Score:['is'],'Est. value':['greater than','less than'],Created:['more than','less than']};
@@ -4826,7 +5096,8 @@ function LeadsPage({goTo}){
   const saveChanges=()=>{setViews(vs=>vs.map(v=>v.key===activeKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),columns:cols.slice(),sort:{...workSort}}:v));showToast('View changes saved');};
   const onSort=(colKey)=>setWorkSort(st=>omNextSort(st,colKey));
   const nonArch=rows.filter(l=>!l.archived&&!l.converted);
-  const countFor=(v)=>{if(v.key==='converted')return rows.filter(l=>l.converted).length;if(v.key==='archived')return rows.filter(l=>l.archived&&!l.converted).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const countFor=(v)=>{if(v.key==='duplicates')return dupGroupCount;if(v.key==='converted')return rows.filter(l=>l.converted).length;if(v.key==='archived')return rows.filter(l=>l.archived&&!l.converted).length;if(v.pred)return nonArch.filter(v.pred).length;return omApplyFilter(nonArch,v.filter||{conds:[]},fields).length;};
+  const dupGroupCount=detectDuplicates('lead',nonArch).length;
   const activeLabel=activeKey==='converted'?'Converted':activeKey==='archived'?'Archived':(activeViewObj?activeViewObj.label:'All Leads');
   const ActiveIcon=activeKey==='converted'?I.Check:activeKey==='archived'?I.Archive:(activeViewObj&&activeViewObj.Icon?activeViewObj.Icon:I.Target);
   let base=rows.filter(l=>activeKey==='converted'?l.converted:activeKey==='archived'?(l.archived&&!l.converted):(!l.archived&&!l.converted));
@@ -4867,8 +5138,9 @@ function LeadsPage({goTo}){
             <button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('lead'):goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Lead</button>
           </>} noSearch/>
         <div className="flex-1 flex min-h-0">
-          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'converted',label:'Converted',Icon:I.Check},{key:'archived',label:'Archived',Icon:I.Archive}]}/>
+          <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'converted',label:'Converted',Icon:I.Check},{key:'archived',label:'Archived',Icon:I.Archive},{key:'duplicates',label:'Duplicates',Icon:I.Copy}]}/>
           <div className="flex-1 flex flex-col min-w-0">
+          {activeKey==='duplicates'?(<div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6"><DuplicatesView object='lead' showToolbar/></div></div>):(<React.Fragment>
             <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search leads..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
               {!special&&<div className="ml-auto flex items-center gap-2"><OmFiltersButton object='lead' fields={fields} model={workFilter} onChange={setWorkFilter}/><ColumnsControl allCols={allLeadCols} object='lead' shown={cols} onChange={setCols}/></div>}
@@ -4912,6 +5184,7 @@ function LeadsPage({goTo}){
               )}
               {list.map((l,i)=>activeKey==='converted'?(<ConvertedLeadRow key={l.id} l={l} goTo={goTo} last={i===list.length-1}/>):(<LeadRowDyn key={l.id} l={l} COL={COL} shownCols={shownCols} selected={selected.includes(l.id)} onSelect={toggleSelect} ctx={colCtx} last={i===list.length-1}/>))}
             </div>
+            </React.Fragment>)}
           </div>
         </div>
         {importModal&&<BulkImportWizard object='lead' close={()=>setImportModal(false)} onToast={showToast}/>}
@@ -6893,9 +7166,9 @@ function FlowInserter({onInsert,variant,compact}){
     </div>);
   }
   return(<div ref={ref} className="relative flex flex-col items-center group/ins">
-    <span className={['w-0 border-l border-dashed border-white/20 group-hover/ins:border-brand-500/40 transition-colors',compact?'h-1.5':'h-2.5'].join(' ')}/>
-    <button onClick={()=>setOpen(o=>!o)} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all',compact?'w-4 h-4':'w-[19px] h-[19px]',open?'text-white bg-brand-500 border border-brand-500':'text-white/35 border border-white/[0.14] hover:text-brand-200 hover:border-brand-500/60 hover:bg-brand-500/15'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s900)'}}><I.Plus size={compact?9:11} stroke={2.6}/></button>
-    <span className={['w-0 border-l border-dashed border-white/20 group-hover/ins:border-brand-500/40 transition-colors',compact?'h-1.5':'h-2.5'].join(' ')}/>
+    <span className="w-[2px] bg-white/[0.10]" style={{height:compact?8:12}}/>
+    <button onClick={()=>setOpen(o=>!o)} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all w-6 h-6',open?'text-white bg-brand-500 border border-brand-500':'text-white/50 border border-white/[0.12] hover:text-white hover:border-brand-500/40'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s800)'}}><I.Plus size={13} stroke={2.6}/></button>
+    <span className="w-[2px] bg-white/[0.10]" style={{height:compact?8:12}}/>
     {open&&pop}
   </div>);
 }
@@ -6908,15 +7181,61 @@ function cloneNodeDeep(n){
   if(c.rows)c.rows=c.rows.map(r=>({...r}));
   return c;
 }
-// A branch lane (Yes / No / custom) holding a nested flow — renders FlowList recursively
-function Lane({label,color,nodes,onChange,goTo,onLabelChange,onRemoveLane,showStats,flowName}){
+// ── Shared compact "Tile + Spine" node — make.com medallion + n8n ports + Zapier summary chip ──
+// 132px wide, icon-forward, NOTHING editable inline; clicking opens the side config drawer.
+// Used by both the Automation builder and the Sequence builders.
+const TILE_W=132;
+function NodeTile({accent,Icon,title,summary,eyebrow,selected,onClick,onDelete,onDuplicate,noTopPort,noBottomPort,badge}){
+  accent=accent||'#818cf8';
+  Icon=Icon||I.AlertTriangle;
+  const port='absolute left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full border-2';
   return(
-    <div className="rounded-xl border border-white/[0.07] bg-black/15 p-2.5 shrink-0" style={{borderLeft:'2px solid '+color}}>
-      <div className="flex items-center justify-between mb-1.5">
-        {onLabelChange?(<input value={label} onChange={e=>onLabelChange(e.target.value)} className="bg-transparent text-[11px] font-bold uppercase tracking-[0.12em] outline-none border-b border-transparent focus:border-white/20 max-w-[100px]" style={{color}}/>):(<span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{color}}>{label}</span>)}
-        {onRemoveLane&&<button onClick={onRemoveLane} className="text-white/25 hover:text-red-400" title="Remove path"><I.X size={11}/></button>}
+    <div className="relative flex flex-col items-center shrink-0" style={{width:TILE_W}}>
+      {eyebrow&&<p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-brand-300 mb-1">{eyebrow}</p>}
+      <div onClick={onClick} className={['group relative w-full cursor-pointer rounded-2xl border bg-[var(--s850)] flex flex-col items-center text-center px-2.5 pt-4 pb-3 transition-all',selected?'border-brand-500/50 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-white/[0.08] hover:ring-1 hover:ring-white/[0.12] hover:-translate-y-px'].join(' ')} style={{minHeight:84,boxShadow:selected?undefined:'0 2px 10px rgba(0,0,0,0.28)'}}>
+        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full" style={{background:accent}}/>
+        {!noTopPort&&<span className={port+' -top-[5px]'} style={{background:accent,borderColor:'var(--s950)'}}/>}
+        <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 mb-1.5" style={{background:accent+'24',color:accent}}><Icon size={18}/></span>
+        <p className="text-[12px] font-bold text-white leading-tight truncate w-full px-1">{title}</p>
+        {summary&&<p className="text-[10px] text-white/50 leading-snug truncate w-full mt-0.5 px-1">{summary}</p>}
+        {badge}
+        {!noBottomPort&&<span className={port+' -bottom-[5px]'} style={{background:accent,borderColor:'var(--s950)'}}/>}
+        {(onDelete||onDuplicate)&&<div className="absolute -top-2 -right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onDuplicate&&<button onClick={e=>{e.stopPropagation();onDuplicate();}} title="Duplicate" className="w-5 h-5 rounded-full bg-[var(--s800)] border border-white/[0.12] text-white/40 hover:text-brand-300 hover:border-brand-500/40 flex items-center justify-center transition-colors"><I.Copy size={10}/></button>}
+          {onDelete&&<button onClick={e=>{e.stopPropagation();onDelete();}} title="Remove" className="w-5 h-5 rounded-full bg-[var(--s800)] border border-white/[0.12] text-white/40 hover:text-red-400 hover:border-red-500/40 flex items-center justify-center transition-colors"><I.X size={10}/></button>}
+        </div>}
       </div>
-      <FlowList nodes={nodes} onChange={onChange} goTo={goTo} compact showStats={showStats} flowName={flowName}/>
+    </div>
+  );
+}
+// Splits the spine into labeled lanes below a condition/branch tile — each lane is its own vertical spine.
+// Lanes stretch to equal height and rejoin into a single merge dot so the continuing flow stays connected.
+function BranchSplit({lanes,goTo,showStats,flowName,onAddPath,canAddPath}){
+  const PITCH=TILE_W+48; // lane width + 48px gap
+  const barW=Math.max(0,(lanes.length-1)*PITCH);
+  return(
+    <div className="flex flex-col items-center">
+      <span className="w-[2px] bg-white/[0.10]" style={{height:14}}/>
+      {lanes.length>1&&<div className="bg-white/[0.10] rounded-full" style={{height:2,width:barW}}/>}
+      <div className="flex flex-row items-stretch" style={{gap:48}}>
+        {lanes.map(l=>(
+          <div key={l.key} className="flex flex-col items-center self-stretch" style={{width:TILE_W}}>
+            <span className="w-[2px] bg-white/[0.10]" style={{height:12}}/>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.1em] mb-1 max-w-full" style={{background:l.color+'24',color:l.color}}>
+              {l.onLabelChange?<input value={l.label} onChange={e=>l.onLabelChange(e.target.value)} className="bg-transparent outline-none w-[54px]" style={{color:l.color}}/>:<span className="truncate">{l.label}</span>}
+              {l.onRemove&&<button onClick={l.onRemove} title="Remove path" className="text-white/40 hover:text-red-400 shrink-0"><I.X size={9}/></button>}
+            </span>
+            <FlowList nodes={l.nodes} onChange={l.onChange} goTo={goTo} compact showStats={showStats} flowName={flowName}/>
+            {/* filler connector — grows so every lane reaches the merge bar at the same y */}
+            <span className="w-[2px] flex-1 bg-white/[0.10]" style={{minHeight:12}}/>
+          </div>
+        ))}
+      </div>
+      {/* merge: lanes rejoin into a single dot, then the main flow continues from here */}
+      {lanes.length>1&&<div className="bg-white/[0.10] rounded-full" style={{height:2,width:barW}}/>}
+      <span className="w-[2px] bg-white/[0.10]" style={{height:10}}/>
+      <span className="w-3 h-3 rounded-full bg-[var(--s800)] border-2 border-white/[0.18]" title="Paths merge here"/>
+      {canAddPath&&<button onClick={onAddPath} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add path</button>}
     </div>
   );
 }
@@ -7130,51 +7449,46 @@ function FlowNodeConfigBody({node,onChange,goTo}){
 function FlowNode({node,onChange,onRemove,onDuplicate,goTo,showStats,flowName,idx}){
   // Defensive: an unknown / malformed node renders a neutral placeholder instead of blanking the canvas.
   if(!node||!node.kind){
-    return(<div className="rounded-xl bg-white/[0.03] border border-white/[0.08]" style={{width:280,minWidth:280}}><div className="flex items-center gap-2.5 px-3" style={{minHeight:46}}><span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-white/[0.06] text-white/45"><I.AlertTriangle size={12}/></span><div className="min-w-0"><p className="text-[13px] font-bold text-white">Unknown step</p><p className="text-[11px] text-white/40 truncate">{(node&&node.id)||'no id'}</p></div></div></div>);
+    return(<NodeTile accent="#64748b" Icon={I.AlertTriangle} title="Unknown step" summary={(node&&node.id)||'no id'}/>);
   }
   const Icon=node.Icon||I.AlertTriangle;
+  const accent=node.fg||'#818cf8';
   const ctx=React.useContext(FlowCfgCtx);
   const local=React.useState(null);
   const selId=ctx?ctx.selId:local[0];
   const setSelId=ctx?ctx.setSelId:local[1];
   const open=selId===node.id;
   const summary=flowNodeSummary(node);
-  const tint=node.kind==='condition'?'border-brand-500/25':node.kind==='goal'?'border-emerald-500/25':node.kind==='branch'?'border-purple-400/25':node.kind==='wait'||node.kind==='waitUntil'?'border-amber-500/20':'border-white/[0.08]';
-  const isContainer=node.kind==='condition'||node.kind==='branch';
   return(
-    <div className={['rounded-xl bg-white/[0.03] border transition-all',tint,open?'ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'hover:bg-white/[0.05]'].join(' ')} style={isContainer?{minWidth:280}:{width:280,minWidth:280}}>
-      <div className="flex items-center gap-2.5 px-3 cursor-pointer group" style={{minHeight:46,maxHeight:52}} onClick={()=>setSelId(open?null:node.id)}>
-        <span className="w-2 h-2 rounded-full shrink-0" style={{background:node.fg}}/>
-        <span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{background:node.bg,color:node.fg}}><Icon size={12}/></span>
-        <span className="text-[13px] font-bold text-white shrink-0">{node.label}</span>
-        <span className="flex-1 min-w-0 text-[11px] text-white/50 truncate">{summary}</span>
-        <span className="flex items-center gap-0.5 shrink-0">
-          {onDuplicate&&<button onClick={e=>{e.stopPropagation();onDuplicate();}} title="Duplicate step" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"><I.Copy size={12}/></button>}
-          <button onClick={e=>{e.stopPropagation();onRemove();}} title="Remove" className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={13}/></button>
-          <I.ChevronRight size={13} className="shrink-0 text-white/25 group-hover:text-white/60 transition-colors"/>
-        </span>
-      </div>
-      {node.kind==='condition'&&(<div className="px-3 pb-3 mt-1 flex flex-row flex-wrap gap-12 items-start">
-        <Lane label="Yes" color="#34d399" nodes={node.yes} onChange={v=>onChange({yes:v})} goTo={goTo}/>
-        <Lane label="No" color="#64748b" nodes={node.no} onChange={v=>onChange({no:v})} goTo={goTo}/>
-      </div>)}
-      {node.kind==='branch'&&(<div className="px-3 pb-3 mt-1"><div className="flex flex-row flex-wrap gap-12 items-start">
-        {node.lanes.map((l,li)=>(<Lane key={l.id} label={l.label} color={['#c084fc','#60a5fa','#fbbf24','#34d399'][li%4]} nodes={l.nodes} onChange={v=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,nodes:v}:x)})} goTo={goTo} showStats={showStats} flowName={flowName} onLabelChange={t=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,label:t}:x)})} onRemoveLane={node.lanes.length>2?()=>onChange({lanes:node.lanes.filter(x=>x.id!==l.id)}):null}/>))}
-      </div>
-      {node.lanes.length<4&&<button onClick={()=>onChange({lanes:[...node.lanes,{id:newNodeId(),label:'Path '+String.fromCharCode(65+node.lanes.length),nodes:[]}]})} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add path</button>}
-      </div>)}
-      {showStats&&node.kind!=='goal'&&<div className="px-3 pb-2.5"><NodeStats s={nodeStats(flowName,idx||0)} opens={node.kind==='action'||node.kind==='condition'}/></div>}
+    <div className="flex flex-col items-center">
+      <NodeTile accent={accent} Icon={Icon} title={node.label} summary={summary} selected={open}
+        onClick={()=>setSelId(open?null:node.id)} onDelete={onRemove} onDuplicate={onDuplicate||null}/>
+      {showStats&&node.kind!=='goal'&&<div className="mt-1.5 max-w-[240px]"><NodeStats s={nodeStats(flowName,idx||0)} opens={node.kind==='action'||node.kind==='condition'}/></div>}
+      {node.kind==='condition'&&<BranchSplit goTo={goTo} showStats={showStats} flowName={flowName} lanes={[
+        {key:'yes',label:'Yes',color:'#34d399',nodes:node.yes,onChange:v=>onChange({yes:v})},
+        {key:'no', label:'No', color:'#64748b',nodes:node.no, onChange:v=>onChange({no:v})},
+      ]}/>}
+      {node.kind==='branch'&&<BranchSplit goTo={goTo} showStats={showStats} flowName={flowName}
+        canAddPath={node.lanes.length<4}
+        onAddPath={()=>onChange({lanes:[...node.lanes,{id:newNodeId(),label:'Path '+String.fromCharCode(65+node.lanes.length),nodes:[]}]})}
+        lanes={node.lanes.map((l,li)=>({key:l.id,label:l.label,color:['#c084fc','#60a5fa','#fbbf24','#34d399'][li%4],nodes:l.nodes,
+          onChange:v=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,nodes:v}:x)}),
+          onLabelChange:t=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,label:t}:x)}),
+          onRemove:node.lanes.length>2?()=>onChange({lanes:node.lanes.filter(x=>x.id!==l.id)}):null}))}/>}
       {open&&ReactDOM.createPortal(<React.Fragment>
         <div className="fixed inset-0 bg-black/40 z-[169]" onClick={()=>setSelId(null)}/>
-        <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[170] w-[380px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',animation:'arIn .25s ease both'}}>
+        <div role="dialog" aria-modal="true" className="fixed z-[170] flex flex-col border-white/[0.08] inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:max-w-full sm:max-h-none sm:rounded-t-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',animation:'arIn .25s ease both'}}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0">
             <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{background:node.bg,color:node.fg}}><Icon size={15}/></span><div><p className="text-[14px] font-bold text-white leading-tight">{node.label}</p><p className="text-[11px] text-white/45 mt-0.5">Step settings</p></div></div>
             <button onClick={()=>setSelId(null)} className="text-white/40 hover:text-white transition-colors"><I.X size={15}/></button>
           </div>
           <div className="flex-1 overflow-y-auto scroll-area px-5 py-4"><FlowNodeConfigBody node={node} onChange={onChange} goTo={goTo}/></div>
-          <div className="shrink-0 px-5 py-3.5 border-t border-white/[0.07] flex items-center justify-end gap-2">
-            <button onClick={()=>setSelId(null)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/60 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
-            <button onClick={()=>{window.__nrturToast&&window.__nrturToast('Node saved.');setSelId(null);}} className="px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
+          <div className="shrink-0 px-5 py-3.5 border-t border-white/[0.07] flex items-center justify-between gap-2">
+            <button onClick={()=>{onRemove();setSelId(null);}} className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-red-300/80 hover:text-red-300 bg-red-500/[0.06] border border-red-500/20 hover:bg-red-500/[0.12] transition-all inline-flex items-center gap-1.5"><I.Trash size={12}/>Delete</button>
+            <div className="flex items-center gap-2">
+              <button onClick={()=>setSelId(null)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/60 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+              <button onClick={()=>{window.__nrturToast&&window.__nrturToast('Node saved.');setSelId(null);}} className="px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
+            </div>
           </div>
         </div>
       </React.Fragment>,document.body)}
@@ -7279,6 +7593,7 @@ function AutomationBuilderPage({goTo}){
   const [name,setName]=React.useState('New Automation');
   const [trigger,setTrigger]=React.useState('Contact created');
   const [pickTrigger,setPickTrigger]=React.useState(false);
+  const [triggerOpen,setTriggerOpen]=React.useState(false);
   const [entryOn,setEntryOn]=React.useState(false);
   const [entry,setEntry]=React.useState({field:'Status',op:'is',value:'Lead'});
   const [webhookFields,setWebhookFields]=React.useState(['full_name','email','company','phone','message']);
@@ -7313,33 +7628,13 @@ function AutomationBuilderPage({goTo}){
           </div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
-          <div className="px-7 py-6 max-w-3xl mx-auto">
+          <div className="px-7 py-6 max-w-5xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 items-start">
-              <div className="flex flex-col gap-2">
-                <div className="rounded-2xl bg-white/[0.03] border border-brand-500/25 overflow-hidden">
-                  <div className="h-1" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)'}}/>
-                  <div className="p-5">
-                    <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-[0.18em] mb-3">When this happens</p>
-                    <button onClick={()=>setPickTrigger(true)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-brand-500/40 transition-all text-left">
-                      <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{background:tm.color+'2e',color:tm.color}}><tm.Icon size={16}/></span>
-                      <div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-white">{trigger}</p><p className="text-[11px] text-white/45 truncate">Fires when {tm.hint}.</p></div>
-                      <span className="text-[11px] text-brand-300 shrink-0">Change</span>
-                    </button>
-                    {trigger.toLowerCase().includes('webhook')&&(<div className="mt-3 rounded-xl bg-black/15 border border-white/[0.06] p-3">
-                      <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-semibold text-white/55 flex items-center gap-1.5"><I.Plug size={12} className="text-white/45"/>Webhook URL</span><button onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText('https://hooks.nrtur.com/z/ab12cd');showToast('Webhook URL copied');}} className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Copy size={11}/>Copy</button></div>
-                      <code className="block text-[11px] font-mono text-white/70 bg-black/30 border border-white/[0.06] rounded-lg px-2.5 py-2 break-all">https://hooks.nrtur.com/z/ab12cd</code>
-                      <div className="flex items-center justify-between mt-3 mb-1.5"><span className="text-[11px] text-white/45">Incoming fields (Zapier sample)</span><button onClick={()=>{setWebhookFields(['full_name','email','company','phone','message','utm_source']);mark();}} className="text-[11px] text-brand-300 hover:text-brand-200">Capture sample</button></div>
-                      <div className="flex flex-wrap gap-1.5 items-center">{webhookFields.map((f,i)=>(<span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/[0.05] text-white/70 border border-white/[0.08]">{f}<button onClick={()=>{setWebhookFields(webhookFields.filter((_,j)=>j!==i));mark();}} className="text-white/30 hover:text-red-400"><I.X size={9}/></button></span>))}<input onKeyDown={e=>{if(e.key==='Enter'&&e.target.value.trim()){setWebhookFields([...webhookFields,e.target.value.trim()]);e.target.value='';mark();}}} placeholder="+ field" className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/[0.04] border border-white/[0.08] text-white outline-none focus:border-brand-500/40 w-16"/></div>
-                      <p className="text-[10px] text-white/30 mt-2 leading-relaxed">Paste this URL into a Zapier “Webhooks” action, then add a <span className="text-white/55">Map webhook fields</span> step to store the lead.</p>
-                    </div>)}
-                    <div className="mt-3 rounded-xl bg-black/15 border border-white/[0.06] p-3">
-                      <div className="flex items-center justify-between"><div className="flex items-center gap-2"><I.Filter size={12} className="text-white/45"/><span className="text-[12px] text-white/70 font-medium">Only continue if…</span></div><Toggle on={entryOn} onChange={v=>{setEntryOn(v);mark();}}/></div>
-                      {entryOn&&<div className="mt-2.5"><CondRow node={entry} onChange={p=>{setEntry({...entry,...p});mark();}}/></div>}
-                    </div>
-                  </div>
+              <div className="overflow-x-auto scroll-area pb-2">
+                <div className="flex flex-col items-center w-fit min-w-full mx-auto">
+                  <NodeTile eyebrow="Trigger" accent="#818cf8" Icon={tm.Icon} title={trigger} summary={'Fires when '+tm.hint} selected={triggerOpen} onClick={()=>setTriggerOpen(true)} noTopPort/>
+                  <FlowCfgProvider><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} showStats={showStats} flowName={name}/></FlowCfgProvider>
                 </div>
-                
-                <FlowCfgProvider><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} showStats={showStats} flowName={name}/></FlowCfgProvider>
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 sticky top-4 flex flex-col gap-4">
                 <div><p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-3">Flow summary</p>
@@ -7355,6 +7650,39 @@ function AutomationBuilderPage({goTo}){
         </div>
         <AppFooter/>{confirmNode}
       </div>
+      {triggerOpen&&ReactDOM.createPortal(<React.Fragment>
+        <div className="fixed inset-0 bg-black/40 z-[148]" onClick={()=>setTriggerOpen(false)}/>
+        <div role="dialog" aria-modal="true" className="fixed z-[149] flex flex-col border-white/[0.08] inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[400px] sm:max-w-full sm:max-h-none sm:rounded-t-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',animation:'arIn .25s ease both'}}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0">
+            <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-500/[0.15] text-brand-300"><tm.Icon size={16}/></span><div><p className="text-[14px] font-bold text-white leading-tight">Trigger</p><p className="text-[11px] text-white/45 mt-0.5">The event that starts this automation</p></div></div>
+            <button onClick={()=>setTriggerOpen(false)} className="text-white/40 hover:text-white transition-colors"><I.X size={15}/></button>
+          </div>
+          <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-4">
+            <div>
+              <label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-2">Trigger event</label>
+              <button onClick={()=>setPickTrigger(true)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-brand-500/40 transition-all text-left">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{background:tm.color+'2e',color:tm.color}}><tm.Icon size={16}/></span>
+                <div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-white">{trigger}</p><p className="text-[11px] text-white/45 truncate">Fires when {tm.hint}.</p></div>
+                <span className="text-[11px] text-brand-300 shrink-0">Change</span>
+              </button>
+            </div>
+            {trigger.toLowerCase().includes('webhook')&&(<div className="rounded-xl bg-black/15 border border-white/[0.06] p-3">
+              <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-semibold text-white/55 flex items-center gap-1.5"><I.Plug size={12} className="text-white/45"/>Webhook URL</span><button onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText('https://hooks.nrtur.com/z/ab12cd');showToast('Webhook URL copied');}} className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Copy size={11}/>Copy</button></div>
+              <code className="block text-[11px] font-mono text-white/70 bg-black/30 border border-white/[0.06] rounded-lg px-2.5 py-2 break-all">https://hooks.nrtur.com/z/ab12cd</code>
+              <div className="flex items-center justify-between mt-3 mb-1.5"><span className="text-[11px] text-white/45">Incoming fields (Zapier sample)</span><button onClick={()=>{setWebhookFields(['full_name','email','company','phone','message','utm_source']);mark();}} className="text-[11px] text-brand-300 hover:text-brand-200">Capture sample</button></div>
+              <div className="flex flex-wrap gap-1.5 items-center">{webhookFields.map((f,i)=>(<span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/[0.05] text-white/70 border border-white/[0.08]">{f}<button onClick={()=>{setWebhookFields(webhookFields.filter((_,j)=>j!==i));mark();}} className="text-white/30 hover:text-red-400"><I.X size={9}/></button></span>))}<input onKeyDown={e=>{if(e.key==='Enter'&&e.target.value.trim()){setWebhookFields([...webhookFields,e.target.value.trim()]);e.target.value='';mark();}}} placeholder="+ field" className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/[0.04] border border-white/[0.08] text-white outline-none focus:border-brand-500/40 w-16"/></div>
+              <p className="text-[10px] text-white/30 mt-2 leading-relaxed">Paste this URL into a Zapier “Webhooks” action, then add a <span className="text-white/55">Map webhook fields</span> step to store the lead.</p>
+            </div>)}
+            <div className="rounded-xl bg-black/15 border border-white/[0.06] p-3">
+              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><I.Filter size={12} className="text-white/45"/><span className="text-[12px] text-white/70 font-medium">Only continue if…</span></div><Toggle on={entryOn} onChange={v=>{setEntryOn(v);mark();}}/></div>
+              {entryOn&&<div className="mt-2.5"><CondRow node={entry} onChange={p=>{setEntry({...entry,...p});mark();}}/></div>}
+            </div>
+          </div>
+          <div className="shrink-0 px-5 py-3.5 border-t border-white/[0.07] flex items-center justify-end gap-2">
+            <button onClick={()=>setTriggerOpen(false)} className="px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Done</button>
+          </div>
+        </div>
+      </React.Fragment>,document.body)}
       {pickTrigger&&<TriggerPicker current={trigger} onPick={(t)=>{setTrigger(t);mark();}} close={()=>setPickTrigger(false)}/>}
       {testOpen&&<AutomationTestModal nodes={nodes} close={()=>setTestOpen(false)}/>}
       {logOpen&&<AutomationLogModal auto={{name,status:activated?'active':'draft',runs:0,steps:nodes,success:100}} close={()=>setLogOpen(false)}/>}
@@ -7822,7 +8150,7 @@ function SettingsCalendarConfigPage({goTo}){
         </div>
         <AppFooter note="Booking links, availability & automation power your public scheduling page"/>
       </div>
-      {etDrawer&&<EventTypeDrawer initial={etDrawer==='new'?null:etDrawer} onClose={()=>setEtDrawer(null)} onSave={saveEventType}/>}
+      {etDrawer&&<EventTypeDrawer initial={etDrawer==='new'?null:etDrawer} onClose={()=>setEtDrawer(null)} onSave={saveEventType} goTo={goTo}/>}
       <ToastContainer toasts={toasts}/>
     </div>
   );
@@ -8582,26 +8910,226 @@ function ProfilePage({goTo}){
     </div>
   );
 }
-// ?? Settings Unsubscribes ?????????????????????????????????????????????????????
-function SettingsUnsubscribesPage({goTo}){
-  const {confirmNode,openConfirm}=useConfirm();
-  const [searchQ,setSearchQ]=React.useState('');
-  const unsubs=[{email:'bounce@example.com',source:'New Lead Nurture · Email 2',date:'May 28, 2026',type:'bounce',channel:'email'},{email:'+1 415 555 0142',source:'Deal Follow-Up · SMS 1 (replied STOP)',date:'May 22, 2026',type:'manual',channel:'sms'},{email:'spam@test.io',source:'Re-engagement · Email 1',date:'May 19, 2026',type:'complaint',channel:'email'},{email:'old@company.net',source:'Manual — rep opt-out',date:'May 14, 2026',type:'manual',channel:'email'},{email:'donotcontact@firm.co',source:'GDPR erasure request',date:'May 10, 2026',type:'gdpr',channel:'email'},{email:'blocked@co.org',source:'Proposal Follow-Up · Email 3',date:'Apr 30, 2026',type:'bounce',channel:'email'}];
-  const typeChip={bounce:'bg-amber-500/12 text-amber-300 ring-amber-500/25',manual:'bg-white/[0.06] text-white/55 ring-white/[0.10]',complaint:'bg-red-500/12 text-red-300 ring-red-500/25',gdpr:'bg-brand-500/12 text-brand-300 ring-brand-500/25'};
-  const filtered=unsubs.filter(u=>!searchQ||u.email.toLowerCase().includes(searchQ.toLowerCase())||u.source.toLowerCase().includes(searchQ.toLowerCase()));
-  const COL='1.3fr 1.2fr 110px 150px 36px';
+// ?? Settings Suppression List ?????????????????????????????????????????????????
+// ── Suppression: shared bottom-sheet / modal for the "+ Block…" forms ──
+function SuppressSheet({title,sub,icon,onClose,children,footer}){
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
   return(
-    <SettingsShell active="settings-unsubscribes" goTo={goTo}>
-      <div className="flex items-center justify-between gap-4 flex-wrap"><div><p className="text-white text-[18px] font-bold">Unsubscribes & Opt-outs</p><p className="text-white/45 text-[13px] mt-1">{unsubs.length} contacts suppressed — they exit active sequences and are blocked from re-enrollment.</p></div><div className="flex items-center gap-2"><div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Search emails..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40"/></div><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Download size={12}/>Export CSV</button></div></div>
-      <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/20 px-4 py-2.5 flex items-start gap-2.5"><I.Ban size={14} className="text-amber-300 shrink-0 mt-px"/><p className="text-[12px] text-white/65 leading-relaxed">When a contact unsubscribes (email footer, SMS <span className="font-mono text-white/80">STOP</span>, hard bounce or complaint) they land here, <span className="text-white/85 font-medium">immediately exit every active sequence & automation</span>, and are blocked from all future enrollment sources.</p></div>
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
-        <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Contact</span><span>Source</span><span>Date</span><span>Type</span><span/></div>
-        {filtered.map((u,i)=>(<div key={u.email} className={['grid items-center gap-4 px-6 py-3.5 hover:bg-white/[0.02] transition-colors',i<filtered.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}><div className="flex items-center gap-2.5 min-w-0"><div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">{u.channel==='sms'?<I.Phone size={12} className="text-white/30"/>:<I.Mail size={12} className="text-white/30"/>}</div><p className="text-[12px] font-mono text-white/80 truncate">{u.email}</p></div><p className="text-[12px] text-white/55 truncate">{u.source}</p><p className="text-[12px] text-white/45">{u.date}</p><div className="flex items-center gap-1.5 flex-wrap"><span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit capitalize',typeChip[u.type]].join(' ')}>{u.type}</span><span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.05] text-white/45 ring-1 ring-white/[0.08] uppercase">{u.channel}</span></div><button onClick={()=>openConfirm({title:'Re-subscribe this contact?',body:`${u.email} will be removed from the suppression list.`,confirmLabel:'Re-subscribe',danger:false})} title="Re-subscribe" className="text-white/25 hover:text-brand-300 transition-colors ml-auto"><I.Check size={13} stroke={2.2}/></button></div>))}
+    <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center sm:p-4" style={{background:'rgba(0,0,0,0.65)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="w-full sm:w-[440px] flex flex-col rounded-t-2xl sm:rounded-2xl border border-white/[0.10] overflow-hidden animate-[fadeUp_.22s_ease]" style={{background:'var(--s850)',maxHeight:'90vh'}} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300">{icon}</div><div><p className="text-white text-[15px] font-bold">{title}</p>{sub&&<p className="text-white/45 text-[12px]">{sub}</p>}</div></div>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+        </div>
+        <div className="px-5 py-5 flex flex-col gap-4 overflow-y-auto scroll-area">{children}</div>
+        {footer&&<div className="flex gap-3 px-5 py-4 border-t border-white/[0.07] shrink-0">{footer}</div>}
       </div>
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-semibold mb-1">Compliance preferences</p><p className="text-white/45 text-[12px] mb-5">Control how unsubscribes are handled across your workspace.</p><div className="flex flex-col gap-4">{[{label:'Global opt-out suppression',sub:'Any contact who unsubscribes is suppressed from all sequences.',on:true},{label:'Honor GDPR deletion requests',sub:'Contacts requesting erasure are anonymised within 30 days.',on:true},{label:'Include unsubscribe link',sub:'Automatically append a one-click unsubscribe footer to all outbound emails.',on:true}].map(pref=>(<div key={pref.label} className="flex items-start justify-between gap-4"><div><p className="text-[13px] font-medium text-white">{pref.label}</p><p className="text-[12px] text-white/45 mt-0.5">{pref.sub}</p></div><Toggle on={pref.on} onChange={()=>{}}/></div>))}</div></div>
-      {confirmNode}
+    </div>
+  );
+}
+const SUP_REASON_CHIP={
+  'Unsubscribed':'bg-white/[0.06] text-white/55 ring-white/[0.10]',
+  'Bounced':'bg-amber-500/12 text-amber-300 ring-amber-500/25',
+  'Spam complaint':'bg-red-500/12 text-red-300 ring-red-500/25',
+  'Manual':'bg-blue-500/12 text-blue-300 ring-blue-500/25',
+  'GDPR erasure':'bg-brand-500/12 text-brand-300 ring-brand-500/25',
+  'Replied STOP':'bg-red-500/12 text-red-300 ring-red-500/25',
+  'Do-not-call':'bg-amber-500/12 text-amber-300 ring-amber-500/25',
+};
+const SUP_NEW_DATE='Jun 11, 2026';
+function SettingsSuppressionPage({goTo}){
+  const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t||'success');};
+  const [tab,setTab]=React.useState('email');
+  const [q,setQ]=React.useState('');
+  const [sheet,setSheet]=React.useState(null); // 'email' | 'domain' | 'phone' | null
+  // ── Email suppression (folds the legacy unsubscribe records as one section) ──
+  const [emails,setEmails]=React.useState([
+    {id:'e1',email:'unsub@acme.com',reason:'Unsubscribed',scope:'marketing',source:'Newsletter footer',date:'May 30, 2026'},
+    {id:'e2',email:'bounce@example.com',reason:'Bounced',scope:'all',source:'New Lead Nurture · Email 2',date:'May 28, 2026'},
+    {id:'e3',email:'spam@test.io',reason:'Spam complaint',scope:'all',source:'Re-engagement · Email 1',date:'May 19, 2026'},
+    {id:'e4',email:'old@company.net',reason:'Manual',scope:'marketing',source:'Manual — rep opt-out',date:'May 14, 2026'},
+    {id:'e5',email:'donotcontact@firm.co',reason:'GDPR erasure',scope:'all',source:'GDPR erasure request',date:'May 10, 2026'},
+    {id:'e6',email:'blocked@co.org',reason:'Bounced',scope:'all',source:'Proposal Follow-Up · Email 3',date:'Apr 30, 2026'},
+  ]);
+  // ── Domain suppression with allowed exceptions ──
+  const [domains,setDomains]=React.useState([
+    {id:'d1',domain:'competitor.com',reason:'Manual',date:'May 24, 2026',exceptions:[]},
+    {id:'d2',domain:'acme.com',reason:'Manual',date:'May 12, 2026',exceptions:['champion@acme.com']},
+  ]);
+  const [excFor,setExcFor]=React.useState(null); // domain id currently adding an exception to
+  const [excInput,setExcInput]=React.useState('');
+  // ── Phone / SMS suppression ──
+  const [phones,setPhones]=React.useState([
+    {id:'p1',phone:'+1 415 555 0142',channel:'sms',reason:'Replied STOP',source:'Deal Follow-Up · SMS 1',date:'May 22, 2026'},
+    {id:'p2',phone:'+1 628 555 0190',channel:'both',reason:'Do-not-call',source:'Manual — rep request',date:'May 18, 2026'},
+    {id:'p3',phone:'+1 212 555 0177',channel:'calls',reason:'Manual',source:'Compliance review',date:'May 12, 2026'},
+  ]);
+  // ── Channels by contact ──
+  const CH_DEFS=[{key:'marketing',label:'Marketing email'},{key:'transactional',label:'Transactional email'},{key:'sms',label:'SMS'},{key:'calls',label:'Calls'}];
+  const [people,setPeople]=React.useState([
+    {id:'c1',name:'Sarah Chen',email:'sarah@meridian.com',avatar:'SC',color:'#3b82f6',ch:{marketing:false,transactional:true,sms:true,calls:true}},
+    {id:'c2',name:'James Rivera',email:'james@summit.io',avatar:'JR',color:'#8b5cf6',ch:{marketing:true,transactional:true,sms:false,calls:true}},
+    {id:'c3',name:'Priya Nair',email:'priya@atlas.co',avatar:'PN',color:'#a855f7',ch:{marketing:false,transactional:true,sms:false,calls:false}},
+    {id:'c4',name:'Marcus Rios',email:'marcus@kapoor.com',avatar:'MR',color:'#f59e0b',ch:{marketing:true,transactional:true,sms:true,calls:true}},
+  ]);
+  const ql=q.trim().toLowerCase();
+  const fEmails=emails.filter(e=>!ql||(e.email+e.source+e.reason).toLowerCase().includes(ql));
+  const fDomains=domains.filter(d=>!ql||(d.domain+d.reason+d.exceptions.join(' ')).toLowerCase().includes(ql));
+  const fPhones=phones.filter(p=>!ql||(p.phone+p.source+p.reason).toLowerCase().includes(ql));
+  const fPeople=people.filter(p=>!ql||(p.name+p.email).toLowerCase().includes(ql));
+  // actions
+  const unblockEmail=(id)=>{setEmails(l=>l.filter(x=>x.id!==id));toast('Removed from suppression');};
+  const unblockPhone=(id)=>{setPhones(l=>l.filter(x=>x.id!==id));toast('Removed from suppression');};
+  const unblockDomain=(id)=>{setDomains(l=>l.filter(x=>x.id!==id));toast('Domain unblocked');};
+  const addExc=(d)=>{const v=excInput.trim().toLowerCase();if(!v)return;if(!v.includes('@')||!v.endsWith('@'+d.domain)){toast('Exception must be an address @'+d.domain,'warning');return;}if(d.exceptions.includes(v)){setExcFor(null);setExcInput('');return;}setDomains(l=>l.map(x=>x.id===d.id?{...x,exceptions:[...x.exceptions,v]}:x));setExcFor(null);setExcInput('');toast('Allowed contact added');};
+  const rmExc=(id,em)=>{setDomains(l=>l.map(x=>x.id===id?{...x,exceptions:x.exceptions.filter(e=>e!==em)}:x));toast('Exception removed');};
+  const toggleCh=(id,key)=>{let nm='';setPeople(l=>l.map(p=>{if(p.id!==id)return p;nm=p.name;return{...p,ch:{...p.ch,[key]:!p.ch[key]}};}));toast('Preferences updated for '+nm);};
+  const exportCsv=()=>{const n={email:fEmails.length,domains:fDomains.length,phone:fPhones.length,channels:fPeople.length}[tab];toast('Exported '+n+' rows to CSV');};
+  const TABS=[{k:'email',l:'Email'},{k:'domains',l:'Domains'},{k:'phone',l:'Phone / SMS'},{k:'channels',l:'Channels by contact'}];
+  const blockLabel={email:'Block an email',domains:'Block a domain',phone:'Block a number'}[tab];
+  const ECOL='1.5fr 1fr 1.1fr 1.3fr 110px 84px';
+  const PCOL='1.2fr 1fr 1fr 1.2fr 110px 84px';
+  const scopeChip=(s)=>s==='all'?'All email':'Marketing';
+  const phoneCh=(c)=>c==='sms'?'SMS':c==='calls'?'Calls':'SMS + Calls';
+  return(
+    <SettingsShell active="settings-suppression" goTo={goTo}>
+      <div><p className="text-white text-[18px] font-bold">Suppression List</p><p className="text-white/45 text-[13px] mt-1 max-w-[640px]">Suppressed contacts are blocked from the selected channels. They're skipped in sequences and can't be re-enrolled.</p></div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {[{Icon:I.Mail,n:emails.length,l:'emails blocked'},{Icon:I.Globe,n:domains.length,l:'domains blocked'},{Icon:I.Phone,n:phones.length,l:'phone numbers blocked'}].map((s,i)=>(
+          <div key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.07]"><s.Icon size={13} className="text-white/40"/><span className="text-[13px] font-bold text-white tabular-nums">{s.n}</span><span className="text-[12px] text-white/45">{s.l}</span></div>
+        ))}
+      </div>
+      {/* sub-tab switcher + tools */}
+      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-white/[0.06] pb-3">
+        <div className="flex items-center gap-1 flex-wrap">
+          {TABS.map(t=>(<button key={t.k} onClick={()=>{setTab(t.k);setQ('');}} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',tab===t.k?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{t.l}</button>))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-32 sm:w-40"/></div>
+          <button onClick={exportCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Download size={12}/><span className="crm-hide-sm">Export CSV</span></button>
+          {blockLabel&&<button onClick={()=>setSheet(tab==='domains'?'domain':tab==='phone'?'phone':'email')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/><span className="crm-hide-sm">{blockLabel}</span></button>}
+        </div>
+      </div>
+
+      {/* ── TAB 1 · Email ── */}
+      {tab==='email'&&(
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+          <div className="crm-mini-head grid items-center gap-4 px-5 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:ECOL}}><span>Email</span><span>Reason</span><span>Channels blocked</span><span>Source</span><span>Date</span><span/></div>
+          {fEmails.length===0&&<div className="px-5 py-10 text-center text-[13px] text-white/35">No blocked emails.</div>}
+          {fEmails.map((u,i)=>(<div key={u.id} className={['crm-mini-row grid items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors',i<fEmails.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:ECOL}}>
+            <div className="flex items-center gap-2.5 min-w-0"><div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0"><I.Mail size={12} className="text-white/30"/></div><p className="text-[12px] font-mono text-white/80 truncate">{u.email}</p></div>
+            <span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',SUP_REASON_CHIP[u.reason]||SUP_REASON_CHIP.Manual].join(' ')}>{u.reason}</span>
+            <span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',u.scope==='all'?'bg-red-500/12 text-red-300 ring-red-500/25':'bg-white/[0.05] text-white/55 ring-white/[0.08]'].join(' ')}>{scopeChip(u.scope)}</span>
+            <p className="text-[12px] text-white/55 truncate">{u.source}</p>
+            <p className="text-[12px] text-white/45">{u.date}</p>
+            <button onClick={()=>unblockEmail(u.id)} className="ml-auto text-[11px] font-medium text-white/45 hover:text-brand-300 transition-colors">Unblock</button>
+          </div>))}
+        </div>
+      )}
+
+      {/* ── TAB 2 · Domains ── */}
+      {tab==='domains'&&(
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl bg-brand-500/[0.06] border border-brand-500/20 px-4 py-2.5 flex items-start gap-2.5"><I.Globe size={14} className="text-brand-300 shrink-0 mt-px"/><p className="text-[12px] text-white/65 leading-relaxed">Block an entire company domain, then add <span className="text-white/85 font-medium">allowed exceptions</span> so you can still reach specific people — e.g. email only one champion at the company.</p></div>
+          {fDomains.length===0&&<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-10 text-center text-[13px] text-white/35">No blocked domains.</div>}
+          {fDomains.map(d=>(
+            <div key={d.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0"><I.Globe size={15} className="text-white/40"/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><p className="text-[14px] font-bold text-white font-mono">@{d.domain}</p><span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',SUP_REASON_CHIP[d.reason]||SUP_REASON_CHIP.Manual].join(' ')}>{d.reason}</span></div><p className="text-[12px] text-white/45 mt-0.5">All contacts at this domain are suppressed · {d.date}</p></div></div>
+                <button onClick={()=>unblockDomain(d.id)} className="text-[11px] font-medium text-white/45 hover:text-brand-300 transition-colors shrink-0">Unblock domain</button>
+              </div>
+              <div className="mt-4 rounded-xl bg-white/[0.02] border border-white/[0.05] p-3.5">
+                <div className="flex items-center justify-between gap-2 mb-2.5"><p className="text-[11px] font-semibold text-white/55 uppercase tracking-[0.12em]">Allowed exceptions</p><button onClick={()=>{setExcFor(d.id);setExcInput('');}} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={11} stroke={2.4}/>Add allowed contact</button></div>
+                <p className="text-[11px] text-white/40 mb-2.5">Everyone @{d.domain} is blocked except the allowed contacts below.</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {d.exceptions.length===0&&excFor!==d.id&&<span className="text-[11.5px] text-white/30 italic">No exceptions — everyone is blocked.</span>}
+                  {d.exceptions.map(em=>(<span key={em} className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-500/25 text-[11px] font-mono"><I.Check size={10} stroke={2.4}/>{em}<button onClick={()=>rmExc(d.id,em)} className="text-emerald-200/60 hover:text-emerald-100"><I.X size={11}/></button></span>))}
+                  {excFor===d.id&&(<div className="inline-flex items-center gap-1 bg-white/[0.05] border border-white/[0.12] rounded-full pl-3 pr-1 py-1 focus-within:border-brand-500/40"><input autoFocus value={excInput} onChange={e=>setExcInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')addExc(d);if(e.key==='Escape'){setExcFor(null);setExcInput('');}}} placeholder={'name@'+d.domain} className="bg-transparent outline-none text-[11px] font-mono text-white placeholder:text-white/30 w-40"/><button onClick={()=>addExc(d)} className="w-5 h-5 rounded-full bg-brand-500 hover:bg-brand-400 flex items-center justify-center text-white"><I.Check size={11} stroke={2.6}/></button></div>)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB 3 · Phone / SMS ── */}
+      {tab==='phone'&&(
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+          <div className="crm-mini-head grid items-center gap-4 px-5 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:PCOL}}><span>Number</span><span>Channel blocked</span><span>Reason</span><span>Source</span><span>Date</span><span/></div>
+          {fPhones.length===0&&<div className="px-5 py-10 text-center text-[13px] text-white/35">No blocked numbers.</div>}
+          {fPhones.map((u,i)=>(<div key={u.id} className={['crm-mini-row grid items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors',i<fPhones.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:PCOL}}>
+            <div className="flex items-center gap-2.5 min-w-0"><div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0"><I.PhoneOff size={12} className="text-white/30"/></div><p className="text-[12px] font-mono text-white/80 truncate">{u.phone}</p></div>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit bg-violet-500/12 text-violet-300 ring-violet-500/25">{phoneCh(u.channel)}</span>
+            <span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit',SUP_REASON_CHIP[u.reason]||SUP_REASON_CHIP.Manual].join(' ')}>{u.reason}</span>
+            <p className="text-[12px] text-white/55 truncate">{u.source}</p>
+            <p className="text-[12px] text-white/45">{u.date}</p>
+            <button onClick={()=>unblockPhone(u.id)} className="ml-auto text-[11px] font-medium text-white/45 hover:text-brand-300 transition-colors">Unblock</button>
+          </div>))}
+        </div>
+      )}
+
+      {/* ── TAB 4 · Channels by contact ── */}
+      {tab==='channels'&&(
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2.5 flex items-start gap-2.5"><I.ShieldCheck size={14} className="text-white/45 shrink-0 mt-px"/><p className="text-[12px] text-white/60 leading-relaxed">Set exactly which channels each contact may receive. Turn one off to keep, say, transactional email and calls while stopping all marketing.</p></div>
+          {fPeople.length===0&&<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-10 text-center text-[13px] text-white/35">No contacts match.</div>}
+          {fPeople.map(p=>(
+            <div key={p.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
+              <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white truncate">{p.name}</p><p className="text-[11.5px] font-mono text-white/45 truncate">{p.email}</p></div></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3.5">
+                {CH_DEFS.map(cd=>(<div key={cd.key} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.025] border border-white/[0.05] px-3 py-2.5"><p className={['text-[11.5px] font-medium truncate',p.ch[cd.key]?'text-white/85':'text-white/40'].join(' ')}>{cd.label}</p><Toggle on={p.ch[cd.key]} onChange={()=>toggleCh(p.id,cd.key)}/></div>))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* enforcement note */}
+      <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/20 px-4 py-2.5 flex items-start gap-2.5"><I.Ban size={14} className="text-amber-300 shrink-0 mt-px"/><p className="text-[12px] text-white/65 leading-relaxed">Suppressed contacts are <span className="text-white/85 font-medium">auto-skipped in every sequence & automation</span> and can't be re-enrolled. On a contact's record the blocked channel's send button is disabled.</p></div>
+
+      {/* compliance preferences (kept from the legacy Unsubscribes page) */}
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-semibold mb-1">Compliance preferences</p><p className="text-white/45 text-[12px] mb-5">Control how opt-outs are handled across your workspace.</p><div className="flex flex-col gap-4">{[{label:'Global opt-out suppression',sub:'Any contact who unsubscribes is suppressed from all sequences.',on:true},{label:'Honor GDPR deletion requests',sub:'Contacts requesting erasure are anonymised within 30 days.',on:true},{label:'Include unsubscribe link',sub:'Automatically append a one-click unsubscribe footer to all outbound emails.',on:true}].map(pref=>(<div key={pref.label} className="flex items-start justify-between gap-4"><div><p className="text-[13px] font-medium text-white">{pref.label}</p><p className="text-[12px] text-white/45 mt-0.5">{pref.sub}</p></div><Toggle on={pref.on} onChange={()=>{}}/></div>))}</div></div>
+
+      {sheet==='email'&&<EmailBlockSheet onClose={()=>setSheet(null)} onBlock={(e)=>{setEmails(l=>[{id:'e'+Date.now(),source:'Manual',date:SUP_NEW_DATE,...e},...l]);setSheet(null);toast('Email suppressed');}}/>}
+      {sheet==='domain'&&<DomainBlockSheet onClose={()=>setSheet(null)} onBlock={(d)=>{setDomains(l=>[{id:'d'+Date.now(),date:SUP_NEW_DATE,exceptions:[],...d},...l]);setSheet(null);toast('Domain blocked');}}/>}
+      {sheet==='phone'&&<PhoneBlockSheet onClose={()=>setSheet(null)} onBlock={(p)=>{setPhones(l=>[{id:'p'+Date.now(),source:'Manual',date:SUP_NEW_DATE,...p},...l]);setSheet(null);toast('Number suppressed');}}/>}
     </SettingsShell>
   );
+}
+const SettingsUnsubscribesPage=SettingsSuppressionPage;
+const SUP_I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
+const SUP_L='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+function EmailBlockSheet({onClose,onBlock}){
+  const [email,setEmail]=React.useState('');
+  const [reason,setReason]=React.useState('Manual');
+  const [scope,setScope]=React.useState('marketing');
+  const valid=/.+@.+\..+/.test(email.trim());
+  return(<SuppressSheet title="Block an email" sub="Stop sending to this address." icon={<I.Mail size={16}/>} onClose={onClose} footer={<><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>valid&&onBlock({email:email.trim().toLowerCase(),reason,scope})} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Block</button></>}>
+    <div><label className={SUP_L}>Email address</label><input autoFocus value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com" className={SUP_I_F+' font-mono'}/></div>
+    <div><label className={SUP_L}>Reason</label><div className="relative"><select value={reason} onChange={e=>setReason(e.target.value)} style={{colorScheme:'dark',background:'var(--s850)'}} className={SUP_I_F+' appearance-none pr-9'}>{['Unsubscribed','Bounced','Spam complaint','Manual','GDPR erasure'].map(o=>(<option key={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>
+    <div><label className={SUP_L}>Scope</label><div className="flex gap-2">{[{v:'marketing',l:'Marketing only'},{v:'all',l:'All emails'}].map(o=>(<button key={o.v} onClick={()=>setScope(o.v)} className={['flex-1 py-2.5 rounded-xl text-[12.5px] font-medium border transition-all',scope===o.v?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{o.l}</button>))}</div></div>
+  </SuppressSheet>);
+}
+function DomainBlockSheet({onClose,onBlock}){
+  const [domain,setDomain]=React.useState('');
+  const [reason,setReason]=React.useState('Manual');
+  const clean=domain.trim().toLowerCase().replace(/^@/,'').replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  const valid=/.+\..+/.test(clean);
+  return(<SuppressSheet title="Block a domain" sub="Suppress every contact at a company." icon={<I.Globe size={16}/>} onClose={onClose} footer={<><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>valid&&onBlock({domain:clean,reason})} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Block domain</button></>}>
+    <div><label className={SUP_L}>Domain</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40"><span className="text-white/35 text-[13px]">@</span><input autoFocus value={domain} onChange={e=>setDomain(e.target.value)} placeholder="acme.com" className="flex-1 bg-transparent outline-none text-[13px] font-mono text-white placeholder:text-white/25"/></div><p className="text-[11px] text-white/40 mt-1.5">You can add allowed exceptions after blocking.</p></div>
+    <div><label className={SUP_L}>Reason</label><div className="relative"><select value={reason} onChange={e=>setReason(e.target.value)} style={{colorScheme:'dark',background:'var(--s850)'}} className={SUP_I_F+' appearance-none pr-9'}>{['Manual','Spam complaint','GDPR erasure'].map(o=>(<option key={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>
+  </SuppressSheet>);
+}
+function PhoneBlockSheet({onClose,onBlock}){
+  const [phone,setPhone]=React.useState('');
+  const [channel,setChannel]=React.useState('both');
+  const [reason,setReason]=React.useState('Manual');
+  const valid=phone.replace(/\D/g,'').length>=7;
+  return(<SuppressSheet title="Block a number" sub="Stop SMS and/or calls." icon={<I.PhoneOff size={16}/>} onClose={onClose} footer={<><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>valid&&onBlock({phone:phone.trim(),channel,reason})} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Block</button></>}>
+    <div><label className={SUP_L}>Phone number</label><input autoFocus value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+1 415 555 0123" className={SUP_I_F+' font-mono'}/></div>
+    <div><label className={SUP_L}>Channel to block</label><div className="flex gap-2">{[{v:'sms',l:'SMS'},{v:'calls',l:'Calls'},{v:'both',l:'Both'}].map(o=>(<button key={o.v} onClick={()=>setChannel(o.v)} className={['flex-1 py-2.5 rounded-xl text-[12.5px] font-medium border transition-all',channel===o.v?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{o.l}</button>))}</div></div>
+    <div><label className={SUP_L}>Reason</label><div className="relative"><select value={reason} onChange={e=>setReason(e.target.value)} style={{colorScheme:'dark',background:'var(--s850)'}} className={SUP_I_F+' appearance-none pr-9'}>{['Replied STOP','Manual','Do-not-call'].map(o=>(<option key={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>
+  </SuppressSheet>);
 }
 // ?? Settings Notifications ????????????????????????????????????????????????????
 function SettingsNotificationsPage({goTo}){
@@ -8754,11 +9282,21 @@ function SequenceBuilderPage({goTo,channel}){
   const SEQ_TIMES=['8:00 AM','9:00 AM','10:00 AM','12:00 PM','1:00 PM','3:00 PM','5:00 PM'];
   const accent=isSms?'#34d399':'#818cf8';
   const DLBL='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  // Insert a new message step at position i (delay null for the first step, default 2-day wait otherwise).
+  const insertStepAt=(i)=>{setSteps(s=>{const ns={id:Date.now(),...(isSms?{body:''}:{subject:'',body:''}),delay:i===0?null:{n:2,unit:'days'}};return[...s.slice(0,i),ns,...s.slice(i)];});mark();};
   const openStep=(s)=>{setDraft({...s});setActiveNodeId(s.id);};
   const dset=(patch)=>setDraft(d=>({...d,...patch}));
   const saveDraft=()=>{setSteps(arr=>arr.map(x=>x.id===activeNodeId?{...x,...draft}:x));mark();setActiveNodeId(null);showToast('Node saved.');};
+  // Wait/delay between two messages now lives in its own tile + drawer (no inline editing on the spine).
+  const WAIT_PREFIX='wait-';
+  const openWait=(s)=>{setDraft({...s});setActiveNodeId(WAIT_PREFIX+s.id);};
+  const saveWait=()=>{const rid=String(activeNodeId).slice(WAIT_PREFIX.length);setSteps(arr=>arr.map(x=>String(x.id)===rid?{...x,delay:draft.delay,sendTime:draft.sendTime}:x));mark();setActiveNodeId(null);showToast('Delay updated.');};
+  const isWaitDrawer=typeof activeNodeId==='string'&&activeNodeId.startsWith(WAIT_PREFIX);
+  const waitSummary=(s)=>(s.delay?.n??2)+' '+(s.delay?.unit||'days')+(isSms?'':' · '+(s.sendTime||'9:00 AM'));
   const stepSummary=(s)=>{if(isSms){const b=(s.body||'').trim().replace(/\s+/g,' ');return b||'Empty message — tap to write';}const subj=(s.subject||'').trim();return subj||'No subject — tap to edit';};
   const activeIdx=steps.findIndex(x=>x.id===activeNodeId);
+  // Small spine "+" used to insert a message at a given gap.
+  const SeqSpineAdd=({onClick})=>(<div className="flex flex-col items-center"><span className="w-[2px] h-3 bg-white/[0.10]"/><button onClick={onClick} title="Add a message here" className="w-6 h-6 rounded-full bg-[var(--s800)] border border-white/[0.12] text-white/50 hover:text-white hover:border-brand-500/40 flex items-center justify-center transition-all"><I.Plus size={13} stroke={2.4}/></button><span className="w-[2px] h-3 bg-white/[0.10]"/></div>);
   const TRIGGERS=[
     {k:'contact-added', label:'Contact added',      Icon:I.UserPlus},
     {k:'deal-stage',    label:'Deal stage changes', Icon:I.Layers},
@@ -8817,31 +9355,22 @@ function SequenceBuilderPage({goTo,channel}){
             <div className={isSms?'flex-1 min-w-0':''}>
             {isSms&&(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4 flex items-center justify-between gap-3 flex-wrap"><div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'#e1312820',color:'#e13128'}}><I.Hash size={14}/></span><div><p className="text-[13px] font-semibold text-white">From number</p><p className="text-[11px] text-white/45">Twilio · {isConnected?<span className="text-emerald-300">connected</span>:<span className="text-amber-300">not connected</span>}</p></div></div><div className="relative"><select value={fromNumber} onChange={e=>{setFromNumber(e.target.value);mark();}} style={SEL_DARK} className="pl-3 pr-9 py-2 rounded-lg border border-white/[0.12] text-[13px] font-mono text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{TWILIO_NUMBERS.map(n=>(<option key={n}>{n}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
             <div className="flex items-center gap-2 mb-4"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ring-1" style={{background:accent+'18',color:accent,boxShadow:`0 0 0 1px ${accent}40`}}>{isSms?<I.Hash size={11}/>:<I.Mail size={11}/>}{isSms?'SMS drip sequence':'Email drip sequence'}</span><span className="text-[12px] text-white/40">{steps.length} message{steps.length!==1?'s':''}</span></div>
-            <div onClick={openTrigger} style={{width:280,minWidth:280}} className={['group cursor-pointer mx-auto rounded-2xl bg-white/[0.035] border p-4 transition-all hover:bg-white/[0.05]',activeNodeId===TRIGGER_ID?'border-brand-500/40 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-brand-500/25 hover:border-brand-500/40'].join(' ')}>
-              <p className="text-[9px] font-semibold text-brand-300 uppercase tracking-wide mb-1.5">Trigger</p>
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-brand-500/15 text-brand-300"><curTrig.Icon size={15}/></span>
-                <div className="min-w-0 flex-1 overflow-hidden"><p className="text-[13px] font-bold text-white leading-tight truncate">{curTrig.label}</p><p className="text-[11px] text-white/50 truncate overflow-hidden whitespace-nowrap">{triggerSummary()}</p></div>
-                <I.ChevronRight size={12} className="text-white/25 group-hover:text-white/60 transition-colors shrink-0"/>
-              </div>
+            <div className="mb-4 rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2 flex items-start gap-2"><I.Ban size={13} className="text-amber-300/80 shrink-0 mt-px"/><p className="text-[11.5px] text-white/55 leading-relaxed">Suppressed contacts are automatically skipped — they won't be enrolled or sent messages. <button onClick={()=>goTo('settings-suppression')} className="text-brand-300 hover:underline font-medium">Manage suppression list →</button></p></div>
+            <div className="flex flex-col items-center pt-1">
+              <NodeTile eyebrow="Trigger" accent="#818cf8" Icon={curTrig.Icon} title={curTrig.label} summary={triggerSummary()} selected={activeNodeId===TRIGGER_ID} onClick={openTrigger} noTopPort/>
+              <SeqSpineAdd onClick={()=>insertStepAt(0)}/>
+              {(steps||[]).map((s,i)=>(
+                <React.Fragment key={s.id}>
+                  {i>0&&(<React.Fragment>
+                    <NodeTile accent="#fbbf24" Icon={I.Clock} title="Wait" summary={waitSummary(s)} selected={activeNodeId===WAIT_PREFIX+s.id} onClick={()=>openWait(s)}/>
+                    <span className="w-[2px] h-3 bg-white/[0.10]"/>
+                  </React.Fragment>)}
+                  <NodeTile accent={accent} Icon={isSms?I.Hash:I.Mail} title={(isSms?'SMS message':'Email')+' '+(i+1)} summary={stepSummary(s)} selected={activeNodeId===s.id} onClick={()=>openStep(s)} onDelete={steps.length>1?()=>removeStep(s.id):null}/>
+                  {showStats&&<div className="mt-1.5 max-w-[240px]"><NodeStats s={nodeStats(name,i)} opens={!isSms}/></div>}
+                  <SeqSpineAdd onClick={()=>insertStepAt(i+1)}/>
+                </React.Fragment>
+              ))}
             </div>
-            <div className="flex items-center justify-center py-3"><div className="w-px h-4 bg-white/[0.10]"/></div>
-            {(steps||[]).map((s,i)=>(
-              <React.Fragment key={s.id}>
-                {i>0&&(<div className="flex items-center justify-center gap-2 py-3"><div className="w-px h-4 bg-white/[0.10]"/><div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/60"><I.Clock size={12} className="text-white/40"/>Wait<input value={s.delay?.n??2} onChange={e=>setStep(s.id,{delay:{...(s.delay||{unit:'days'}),n:e.target.value.replace(/\D/g,'')||'0'}})} className="w-8 bg-transparent text-center text-white font-mono outline-none border-b border-white/[0.15] focus:border-brand-500/40"/><select value={s.delay?.unit||'days'} onChange={e=>setStep(s.id,{delay:{...(s.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="bg-transparent text-white outline-none appearance-none cursor-pointer">{['hours','days','weeks'].map(u=>(<option key={u}>{u}</option>))}</select>then{!isSms&&<React.Fragment> at <select value={s.sendTime||'9:00 AM'} onChange={e=>setStep(s.id,{sendTime:e.target.value})} style={SEL_DARK} className="bg-transparent text-white outline-none appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select></React.Fragment>}</div><div className="w-px h-4 bg-white/[0.10]"/></div>)}
-                <div onClick={()=>openStep(s)} style={{width:280,minWidth:280}} className={['group cursor-pointer mx-auto rounded-2xl bg-white/[0.035] border p-4 transition-all hover:bg-white/[0.05]',activeNodeId===s.id?'border-brand-500/40 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-white/[0.08] hover:border-white/[0.12]'].join(' ')}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold shrink-0" style={{background:accent+'1f',color:accent}}>{i+1}</span>
-                    <div className="min-w-0 flex-1 overflow-hidden"><p className="text-[13px] font-bold text-white leading-tight truncate">{isSms?'SMS message':'Email'} {i+1}</p><p className="text-[11px] text-white/50 truncate overflow-hidden whitespace-nowrap">{stepSummary(s)}</p></div>
-                    {steps.length>1&&<button onClick={e=>{e.stopPropagation();removeStep(s.id);}} title="Remove message" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"><I.X size={14}/></button>}
-                    <I.ChevronRight size={12} className="text-white/25 group-hover:text-white/60 transition-colors shrink-0"/>
-                  </div>
-                  {showStats&&<div className="mt-3"><NodeStats s={nodeStats(name,i)} opens={!isSms}/></div>}
-                </div>
-              </React.Fragment>
-            ))}
-            <div className="flex items-center justify-center py-3"><div className="w-px h-4 bg-white/[0.10]"/></div>
-            <button onClick={addStep} style={{width:280}} className="mx-auto rounded-2xl border-2 border-dashed border-white/[0.12] hover:border-brand-500/40 hover:bg-brand-500/[0.04] transition-all flex items-center justify-center gap-2 py-4 text-white/45 hover:text-brand-300"><I.Plus size={16} stroke={2.4}/><span className="text-[13px] font-medium">Add another message</span></button>
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 mt-5">
               <p className="text-[10px] font-semibold text-white/50 uppercase tracking-[0.14em] mb-3">Exit conditions</p>
               <div className="flex items-center justify-between gap-4"><div><p className="text-[14px] font-semibold text-white/95">Stop sequence when contact replies</p><p className="text-[12px] text-white/50 mt-0.5">Remaining messages won't send once they respond.</p></div><Toggle on={exitOnReply} onChange={v=>{setExitOnReply(v);mark();}}/></div>
@@ -8881,7 +9410,7 @@ function SequenceBuilderPage({goTo,channel}){
       </div>
       {activeNodeId!=null&&draft&&ReactDOM.createPortal(<React.Fragment>
         <div className="fixed inset-0 bg-black/30 z-[179]" onClick={()=>setActiveNodeId(null)}/>
-        <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[180] w-[400px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .2s ease'}}>
+        <div role="dialog" aria-modal="true" className="fixed z-[180] flex flex-col border-white/[0.08] inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[400px] sm:max-h-none sm:rounded-t-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .2s ease'}}>
           {activeNodeId===TRIGGER_ID?(<React.Fragment>
             <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3" style={{background:'var(--s850)'}}>
               <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-brand-500/[0.15] text-brand-300">{React.createElement((TRIGGERS.find(t=>t.k===draft.type)||TRIGGERS[0]).Icon,{size:17})}</span>
@@ -8921,6 +9450,26 @@ function SequenceBuilderPage({goTo,channel}){
               <button onClick={()=>setActiveNodeId(null)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
               <div className="flex-1"/>
               <button onClick={saveTrigger} className="px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 transition-all">Save</button>
+            </div>
+          </React.Fragment>):isWaitDrawer?(<React.Fragment>
+            <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3" style={{background:'var(--s850)'}}>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:'#fbbf241f',color:'#fbbf24'}}><I.Clock size={17}/></span>
+              <div className="min-w-0"><p className="text-[15px] font-bold text-white leading-tight">Wait</p><p className="text-[11px] text-white/45 truncate">Delay before the next message</p></div>
+              <div className="flex-1"/>
+              <button onClick={()=>setActiveNodeId(null)} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+              <label className={DLBL}>Wait before sending</label>
+              <div className="flex items-center gap-2">
+                <input value={draft.delay?.n??2} onChange={e=>dset({delay:{...(draft.delay||{unit:'days'}),n:e.target.value.replace(/\D/g,'')||'0'}})} className="w-16 px-2.5 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[14px] text-white text-center font-mono outline-none focus:border-brand-500/45"/>
+                <div className="relative flex-1"><select value={draft.delay?.unit||'days'} onChange={e=>dset({delay:{...(draft.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{['hours','days','weeks'].map(u=>(<option key={u}>{u}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
+              </div>
+              {!isSms&&(<div className="mt-5"><label className={DLBL}>Send time</label><div className="relative"><select value={draft.sendTime||'9:00 AM'} onChange={e=>dset({sendTime:e.target.value})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
+            </div>
+            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}>
+              <button onClick={()=>setActiveNodeId(null)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+              <div className="flex-1"/>
+              <button onClick={saveWait} className="px-5 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 transition-all">Save</button>
             </div>
           </React.Fragment>):(<React.Fragment>
           <div className="shrink-0 px-6 py-4 border-b border-white/[0.07] flex items-center gap-3" style={{background:'var(--s850)'}}>
@@ -10304,9 +10853,46 @@ const SCHED_INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-whi
 const SCHED_SEL=SCHED_INP+' appearance-none';
 const SCHED_LBL='text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5';
 const SCHED_SELSTYLE={colorScheme:'dark',background:'var(--s850)'};
+// ── Qualification forms: bridge the custom forms system into the scheduling engine ──
+const QUAL_OPS=['is','contains','greater than'];
+const QUAL_ACTIONS=[['qualify','Qualify'],['disqualify','Disqualify'],['route','Route to rep']];
+// Resolve an attached custom form by id (FORMS_DATA is the existing custom-forms data set)
+function qualFormById(id){if(id==null||id==='none'||id==='__new')return null;return FORMS_DATA.find(f=>String(f.id)===String(id))||null;}
+// Pull the answerable questions out of a custom form (reuses the builder's block model)
+function qualQuestions(form){if(!form)return[];return toBlocks(form).filter(b=>b.kind==='field'&&b.type!=='hidden').map(b=>({label:b.label,type:b.type,required:!!b.required,options:b.options}));}
+// Apply the event type's qualification rules against the invitee's answers
+function qualEvaluate(rules,ansByLabel){
+  let status=null,routeRep=null;const reasons=[];
+  (rules||[]).forEach(r=>{
+    if(!r.q)return;
+    const raw=ansByLabel[r.q];const val=(raw==null?'':String(raw)).trim();if(val==='')return;
+    const target=String(r.value||'').trim();let hit=false;
+    if(r.op==='is')hit=val.toLowerCase()===target.toLowerCase();
+    else if(r.op==='contains')hit=val.toLowerCase().includes(target.toLowerCase());
+    else if(r.op==='greater than'){const a=parseFloat(val.replace(/[^0-9.\-]/g,'')),b=parseFloat(target.replace(/[^0-9.\-]/g,''));hit=!isNaN(a)&&!isNaN(b)&&a>b;}
+    if(!hit)return;
+    const desc=r.q+' '+r.op+' '+target;
+    if(r.action==='disqualify'){status='disqualified';reasons.push(desc);}
+    else if(r.action==='qualify'){if(status!=='disqualified')status='qualified';reasons.push(desc);}
+    else if(r.action==='route'){routeRep=r.rep;reasons.push('Route → '+desc);}
+  });
+  return {status,routeRep,reasons};
+}
+// Small emerald/amber chip shown on qualified / flagged meetings
+function qualChip(status){if(status==='qualified')return{l:'Qualified',c:'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25'};if(status==='disqualified')return{l:'Review',c:'bg-amber-500/15 text-amber-300 ring-amber-500/25'};return null;}
+// Build a contact-timeline entry from a booking's qualification result
+function qualTimelineEntry(q){
+  const ok=q.status==='qualified',bad=q.status==='disqualified';
+  return {kind:'qual',time:'Just now',label:ok?'QUALIFIED':bad?'REVIEW':'QUALIFICATION',
+    chipBg:ok?'bg-emerald-500/15 ring-emerald-500/25 text-emerald-300':bad?'bg-amber-500/15 ring-amber-500/25 text-amber-300':'bg-brand-500/15 ring-brand-500/25 text-brand-200',
+    Icon:ok?I.Check:bad?I.AlertTriangle:I.Note,iconColor:ok?'#34d399':bad?'#fbbf24':'#818cf8',
+    title:'Qualification form'+(q.formName?' — '+q.formName:''),
+    body:(q.answers||[]).filter(a=>a.a).map(a=>a.q+': '+a.a).join(' · ')||'Submitted during booking.',
+    meta:(ok?'Qualified':bad?'Flagged for review':'Captured')+(q.rep?' · assigned to '+q.rep:'')};
+}
 const SCHED_DEFAULT_EVENT_TYPES=[
   {id:'et1',name:'30 Min Intro Call',duration:30,location:'Google Meet',slug:'intro-call',color:'#6366f1',desc:"A quick intro to see if we're a fit.",questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'4 hours'},
-  {id:'et2',name:'Product Demo',duration:45,location:'Zoom',slug:'demo',color:'#10b981',desc:'Walkthrough of the platform.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day'},
+  {id:'et2',name:'Product Demo',duration:45,location:'Zoom',slug:'demo',color:'#10b981',desc:'Walkthrough of the platform.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day',qualFormId:1,qualRequired:true,qualRules:[{id:'qr1',q:'Company size',op:'contains',value:'200',action:'qualify',rep:'SC'},{id:'qr2',q:'Company size',op:'contains',value:'1-10',action:'disqualify',rep:'AM'}]},
   {id:'et3',name:'Onboarding Session',duration:60,location:'Phone call',slug:'onboarding',color:'#f59e0b',desc:'Get set up and running.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day'},
 ];
 const SCHED_DEFAULT_AVAIL={
@@ -10365,7 +10951,7 @@ function SchedEventTypesTab({eventTypes,onNew,onEdit,onPreview,addToast}){
   </div>);
 }
 
-function EventTypeDrawer({initial,onClose,onSave}){
+function EventTypeDrawer({initial,onClose,onSave,goTo}){
   const [name,setName]=React.useState(initial?initial.name:'');
   const [duration,setDuration]=React.useState(initial?initial.duration:30);
   const [location,setLocation]=React.useState(initial?initial.location:'Google Meet');
@@ -10377,9 +10963,18 @@ function EventTypeDrawer({initial,onClose,onSave}){
   const [bufferBefore,setBufferBefore]=React.useState(initial?(initial.bufferBefore||'None'):'None');
   const [bufferAfter,setBufferAfter]=React.useState(initial?(initial.bufferAfter||'None'):'None');
   const [minNotice,setMinNotice]=React.useState(initial?(initial.minNotice||'4 hours'):'4 hours');
+  const [qualFormId,setQualFormId]=React.useState(initial&&initial.qualFormId!=null?String(initial.qualFormId):'none');
+  const [qualRequired,setQualRequired]=React.useState(initial?(initial.qualRequired!==false):true);
+  const [qualRules,setQualRules]=React.useState(initial&&initial.qualRules?initial.qualRules.map(r=>({...r})):[]);
+  const qualForm=qualFormById(qualFormId);
+  const qualQs=qualQuestions(qualForm);
   React.useEffect(()=>{if(!slugEdited)setSlug(schedSlug(name));},[name,slugEdited]);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
-  const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'et'+Date.now(),name:name.trim(),duration:+duration,location,desc:desc.trim(),color,slug:(slug.trim()||schedSlug(name)),questions:questions.filter(q=>q.trim()),bufferBefore,bufferAfter,minNotice});};
+  const onPickForm=(v)=>{if(v==='__new'){setFormSeed(null);goTo&&goTo('form-builder');return;}setQualFormId(v);if(v==='none')setQualRules([]);};
+  const addQualRule=()=>setQualRules(rs=>[...rs,{id:'qr'+Date.now(),q:(qualQs[0]&&qualQs[0].label)||'',op:'is',value:'',action:'qualify',rep:'AM'}]);
+  const setQualRule=(id,patch)=>setQualRules(rs=>rs.map(r=>r.id===id?{...r,...patch}:r));
+  const rmQualRule=(id)=>setQualRules(rs=>rs.filter(r=>r.id!==id));
+  const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'et'+Date.now(),name:name.trim(),duration:+duration,location,desc:desc.trim(),color,slug:(slug.trim()||schedSlug(name)),questions:questions.filter(q=>q.trim()),bufferBefore,bufferAfter,minNotice,qualFormId:qualFormId==='none'?null:qualFormId,qualRequired,qualRules:qualRules.filter(r=>r.q)});};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[160] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[170] w-[420px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -10399,6 +10994,41 @@ function EventTypeDrawer({initial,onClose,onSave}){
             {questions.map((q,i)=>(<div key={i} className="flex items-center gap-2"><input value={q} onChange={e=>setQuestions(qs=>qs.map((x,j)=>j===i?e.target.value:x))} placeholder="e.g. What would you like to discuss?" className={SCHED_INP}/><button onClick={()=>setQuestions(qs=>qs.filter((_,j)=>j!==i))} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] shrink-0 transition-all"><I.X size={14}/></button></div>))}
           </div>
           <button onClick={()=>setQuestions(qs=>[...qs,''])} className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={12} stroke={2.4}/>Add question</button>
+        </div>
+        {/* Qualification form — reuse the existing custom forms to qualify & route invitees */}
+        <div className="rounded-2xl border border-brand-500/20 p-4" style={{background:'var(--s900)'}}>
+          <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Note size={14}/></span><p className="text-[13.5px] font-bold text-white">Qualification form</p></div>
+          <p className="text-[11.5px] text-white/45 mb-3">Ask invitees a custom form during booking, then auto-qualify or route them.</p>
+          <select value={qualFormId} onChange={e=>onPickForm(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>
+            <option value="none">None</option>
+            {FORMS_DATA.map(f=>(<option key={f.id} value={String(f.id)}>{f.name}</option>))}
+            <option value="__new">+ Create new form…</option>
+          </select>
+          {qualForm&&(<React.Fragment>
+            <div className="mt-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] mb-2">Questions in this form</p>
+              {qualQs.length===0?(<p className="text-[12px] text-white/40">This form has no questions yet.</p>):(
+                <ul className="flex flex-col gap-1.5">{qualQs.map((q,i)=>(<li key={i} className="flex items-center gap-2 text-[12.5px] text-white/75"><span className="w-4 h-4 rounded-full bg-brand-500/15 text-brand-300 text-[9px] font-bold flex items-center justify-center shrink-0">{i+1}</span><span className="truncate">{q.label}</span>{q.required&&<span className="text-[10px] text-amber-300/80 shrink-0">required</span>}</li>))}</ul>
+              )}
+              <p className="text-[11px] text-brand-300/80 mt-2.5 flex items-center gap-1"><I.Zap size={10}/>These questions are asked during booking.</p>
+            </div>
+            <div className="mt-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-white">Required to book</p><p className="text-[11px] text-white/45 mt-0.5">Invitee must complete the form to confirm.</p></div><Toggle on={qualRequired} onChange={setQualRequired}/></div>
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-2 mb-1"><label className={SCHED_LBL+' mb-0'}>Qualification rules</label></div>
+              <p className="text-[11px] text-brand-300/80 mb-2.5 flex items-center gap-1"><I.Zap size={10}/>Auto-qualify or route leads based on their answers.</p>
+              <div className="flex flex-col gap-2">{qualRules.map(r=>(<div key={r.id} className="flex items-center gap-1.5 flex-wrap rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
+                <span className="text-[11px] font-semibold text-white/35">IF</span>
+                <select value={r.q} onChange={e=>setQualRule(r.id,{q:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{qualQs.map((q,i)=>(<option key={i} value={q.label}>{q.label}</option>))}</select>
+                <select value={r.op} onChange={e=>setQualRule(r.id,{op:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{QUAL_OPS.map(o=>(<option key={o}>{o}</option>))}</select>
+                <input value={r.value} onChange={e=>setQualRule(r.id,{value:e.target.value})} placeholder="value" className="px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 w-20 placeholder:text-white/30"/>
+                <span className="text-[11px] font-semibold text-white/35">THEN</span>
+                <select value={r.action} onChange={e=>setQualRule(r.id,{action:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{QUAL_ACTIONS.map(([k,l])=>(<option key={k} value={k}>{l}</option>))}</select>
+                {r.action==='route'&&<select value={r.rep} onChange={e=>setQualRule(r.id,{rep:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{TEAM_MEMBERS.map(t=>(<option key={t.avatar} value={t.avatar}>{t.name}</option>))}</select>}
+                <button onClick={()=>rmQualRule(r.id)} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] transition-all"><I.X size={13}/></button>
+              </div>))}</div>
+              <button onClick={addQualRule} disabled={qualQs.length===0} className={['inline-flex items-center gap-1 mt-2 text-[12px] font-medium transition-colors',qualQs.length===0?'text-white/25 cursor-not-allowed':'text-brand-300 hover:text-brand-200'].join(' ')}><I.Plus size={12} stroke={2.4}/>Add rule</button>
+            </div>
+          </React.Fragment>)}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={SCHED_LBL}>Buffer before</label><select value={bufferBefore} onChange={e=>setBufferBefore(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(b=>(<option key={b}>{b}</option>))}</select></div>
@@ -10495,7 +11125,12 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   const [slot,setSlot]=React.useState(null);
   const [form,setForm]=React.useState({name:'',email:''});
   const [answers,setAnswers]=React.useState({});
-  React.useEffect(()=>{setStep('date');setDate(null);setSlot(null);setForm({name:'',email:''});setAnswers({});setBookResult(null);},[slug]);
+  const [qualAns,setQualAns]=React.useState({});
+  React.useEffect(()=>{setStep('date');setDate(null);setSlot(null);setForm({name:'',email:''});setAnswers({});setQualAns({});setBookResult(null);},[slug]);
+  const qForm=qualFormById(et&&et.qualFormId);
+  const qQs=qualQuestions(qForm);
+  const qRequired=!!qForm&&(et&&et.qualRequired!==false);
+  const qMissing=qRequired&&qQs.some(q=>q.required&&!String(qualAns[q.label]||'').trim());
   const Loc=schedLocIcon(et?et.location:'');
   const today=(()=>{const d=new Date();d.setHours(0,0,0,0);return d;})();
   const dayAvailable=(d)=>{if(d<today)return false;const ov=avail.overrides.find(o=>o.date===schedDateKey(d));if(ov)return ov.available;const dd=avail.days[SCHED_DAYS[(d.getDay()+6)%7]];return !!(dd&&dd.on);};
@@ -10513,16 +11148,26 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     if(auto.assign==='specific'){rep=TEAM_MEMBERS.find(t=>t.avatar===auto.specificRep)||rep;}
     else if(auto.assign==='roundrobin'){const pool=TEAM_MEMBERS.filter(t=>auto.rotation&&auto.rotation[t.avatar]);if(pool.length)rep=pool[Math.floor(Math.random()*pool.length)];}
     if(auto.rules&&auto.rules.length){const hay=(form.email+' '+form.name+' '+Object.values(answers).join(' ')).toLowerCase();const hit=auto.rules.find(r=>r.value&&hay.includes(String(r.value).toLowerCase()));if(hit){const rr=TEAM_MEMBERS.find(t=>t.avatar===hit.rep);if(rr)rep=rr;}}
+    // Qualification: evaluate the attached form's rules and let routing override the rep
+    const qEval=qForm?qualEvaluate(et.qualRules,qualAns):{status:null,routeRep:null,reasons:[]};
+    if(qEval.routeRep){const rr=TEAM_MEMBERS.find(t=>t.avatar===qEval.routeRep);if(rr)rep=rr;}
+    const qualAnswers=qQs.map(q=>({q:q.label,a:String(qualAns[q.label]||'')}));
+    const qualTags=qEval.status==='qualified'?['qualified']:qEval.status==='disqualified'?['disqualified']:[];
+    const qualScore=qEval.status==='qualified'?90:qEval.status==='disqualified'?20:null;
+    const qualRec=qForm?{formName:qForm.name,status:qEval.status,answers:qualAnswers,rep:rep.name,event:et.name,reasons:qEval.reasons}:null;
     const nm=form.name.trim()||'New invitee';
     const avatar=arInitials(nm);
     const color=SCHED_COLORS[(nm.charCodeAt(0)||0)%SCHED_COLORS.length];
     // 2) Contact: reuse existing by email, else auto-create the CRM record
     let contactId=null,contactCreated=false;
     const existing=crm&&crm.contacts&&crm.contacts.find(c=>(c.email||'').toLowerCase()===form.email.trim().toLowerCase()&&form.email.trim());
-    if(existing){contactId=existing.id;}
+    if(existing){contactId=existing.id;
+      // Save qualification answers + tag/score onto the existing contact
+      if(qualRec&&crm.updateContact){const merged=Array.from(new Set([...(existing.tags||[]),...qualTags]));crm.updateContact(existing.id,{qual:qualRec,tags:merged,...(qualScore?{score:qualScore}:{}),...(qEval.status==='qualified'?{pstatus:'Qualified',lifecycle:'Sales Qualified Lead'}:{})});}
+    }
     else if(auto.autoContact&&crm&&crm.setContacts){
       contactId=Date.now();
-      const newC={id:contactId,name:nm,first:nm.split(' ')[0]||nm,last:nm.split(' ').slice(1).join(' '),co:'',email:form.email.trim(),phone:'',avatar,color,status:'New',cstatus:'Prospect',owner:rep.avatar,ownerColor:rep.color,deal:'—',days:0,dnc:false,archived:false,lifecycle:'Lead',pstatus:'New',score:null,tags:['booking'],tag:'new-lead',source:'Booking',loc:''};
+      const newC={id:contactId,name:nm,first:nm.split(' ')[0]||nm,last:nm.split(' ').slice(1).join(' '),co:'',email:form.email.trim(),phone:'',avatar,color,status:'New',cstatus:'Prospect',owner:rep.avatar,ownerColor:rep.color,deal:'—',days:0,dnc:false,archived:false,lifecycle:qEval.status==='qualified'?'Sales Qualified Lead':'Lead',pstatus:qEval.status==='qualified'?'Qualified':'New',score:qualScore,tags:['booking',...qualTags],tag:'new-lead',source:'Booking',loc:'',qual:qualRec};
       crm.setContacts(arr=>[newC,...arr]);
       contactCreated=true;
       addToast('New contact created from booking ✓');
@@ -10542,11 +11187,14 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     if(addMeeting&&date){
       const mins=schedParseTime(slot);
       const start=new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(mins/60),mins%60);
-      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',contactId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
+      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',contactId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
     }
-    setBookResult({name:nm,contactId,contactCreated,dealCreated,rep});
+    setBookResult({name:nm,contactId,contactCreated,dealCreated,rep,qualStatus:qEval.status});
     setStep('done');
-    addToast('Meeting booked ✓');
+    if(qEval.status==='qualified')addToast('Qualified lead booked — assigned to '+rep.name+' ✓');
+    else if(qEval.status==='disqualified')addToast('Lead booked — flagged for review');
+    else if(qEval.routeRep)addToast('Lead booked — routed to '+rep.name+' ✓');
+    else addToast('Meeting booked ✓');
   };
   if(!et)return(<div className="flex-1 flex items-center justify-center text-white/40 text-[13px]">Create an event type first.</div>);
   return(<div className="flex-1 overflow-y-auto scroll-area">
@@ -10607,7 +11255,20 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <div><label className={SCHED_LBL}>Name</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Your name" className={SCHED_INP}/></div>
                 <div><label className={SCHED_LBL}>Email</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="you@company.com" className={SCHED_INP}/></div>
                 {(et.questions||[]).map((q,i)=>(<div key={i}><label className={SCHED_LBL}>{q}</label><textarea value={answers[i]||''} onChange={e=>setAnswers(a=>({...a,[i]:e.target.value}))} rows={2} className={SCHED_INP+' resize-none'}/></div>))}
-                <button onClick={confirm} disabled={!form.name.trim()||!form.email.trim()} className={['py-2.5 rounded-xl text-[13px] font-bold transition-all mt-1',(form.name.trim()&&form.email.trim())?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Confirm booking</button>
+                {qForm&&qQs.length>0&&(<div className="pt-1">
+                  <p className="text-[11px] font-semibold text-brand-200/90 uppercase tracking-[0.14em] flex items-center gap-1.5 mb-2.5"><I.Note size={11}/>{qForm.name}</p>
+                  <div className="flex flex-col gap-3">{qQs.map((q,i)=>{
+                    const val=qualAns[q.label]||'';const set=(v)=>setQualAns(a=>({...a,[q.label]:v}));
+                    return(<div key={i}><label className={SCHED_LBL}>{q.label}{q.required&&<span className="text-amber-300/80 ml-1">*</span>}</label>
+                      {q.type==='dropdown'?(<select value={val} onChange={e=>set(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}><option value="">Select…</option>{(q.options||[]).map(o=>(<option key={o}>{o}</option>))}</select>)
+                      :q.type==='textarea'?(<textarea value={val} onChange={e=>set(e.target.value)} rows={2} className={SCHED_INP+' resize-none'}/>)
+                      :q.type==='checkbox'?(<label className="flex items-center gap-2 text-[12.5px] text-white/70"><input type="checkbox" checked={val==='Yes'} onChange={e=>set(e.target.checked?'Yes':'')} className="accent-brand-500 w-4 h-4"/>Yes</label>)
+                      :(<input type={q.type==='number'?'number':q.type==='email'?'email':'text'} value={val} onChange={e=>set(e.target.value)} className={SCHED_INP}/>)}
+                    </div>);
+                  })}</div>
+                </div>)}
+                <button onClick={confirm} disabled={!form.name.trim()||!form.email.trim()||qMissing} className={['py-2.5 rounded-xl text-[13px] font-bold transition-all mt-1',(form.name.trim()&&form.email.trim()&&!qMissing)?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Confirm booking</button>
+                {qMissing&&<p className="text-[11px] text-amber-300/80 flex items-center gap-1 -mt-0.5"><I.AlertTriangle size={10}/>Answer the required questions to confirm.</p>}
               </div>
             </div>)}
             {step==='done'&&(<div className="max-w-[420px] flex flex-col items-center text-center py-6">
@@ -10618,6 +11279,8 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75">Booked with {bookResult.name}</span>
                 {bookResult.contactCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.UserPlus size={11}/>Contact created</span>}
                 {bookResult.dealCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-500/12 border border-brand-500/25 text-[11.5px] font-medium text-brand-200"><I.Target size={11}/>Added to your pipeline</span>}
+                {bookResult.qualStatus==='qualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.Check size={11}/>Qualified lead</span>}
+                {bookResult.qualStatus==='disqualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/12 border border-amber-500/25 text-[11.5px] font-medium text-amber-300"><I.AlertTriangle size={11}/>Flagged for review</span>}
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75"><I.Users size={11}/>Assigned to {bookResult.rep.avatar}</span>
               </div>)}
               <div className="w-full rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 mt-4 text-left flex flex-col gap-2">
@@ -10688,6 +11351,7 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
                 <span className="w-2 h-2 rounded-full shrink-0" style={{background:m.color}}/>
                 <span className="text-[14px] font-bold text-white truncate">{m.name}</span>
                 <span className={['inline-flex items-center text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1',chip.c].join(' ')}>{chip.l}</span>
+                {(()=>{const qc=qualChip(m.qualStatus);return qc?<span className={['inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1',qc.c].join(' ')}>{m.qualStatus==='qualified'?<I.Check size={9} stroke={3}/>:<I.AlertTriangle size={9}/>}{qc.l}</span>:null;})()}
               </div>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[12px] text-white/55">
                 <span className="inline-flex items-center gap-1"><I.Clock size={11}/>{schedMtgTime(m)}</span>
@@ -10743,6 +11407,14 @@ function SchedMeetingDrawer({meeting,onClose,onCancel,onReschedule,onSaveNotes,g
         {meeting.questions&&meeting.questions.length>0&&(<div>
           <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Booking answers</p>
           <div className="flex flex-col gap-2">{meeting.questions.map((qa,i)=>(<div key={i} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2"><p className="text-[11.5px] text-white/45">{qa.q}</p><p className="text-[12.5px] text-white/80 mt-0.5">{qa.a||'—'}</p></div>))}</div>
+        </div>)}
+        {meeting.qualAnswers&&meeting.qualAnswers.length>0&&(<div>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Qualification answers{meeting.qualForm?' · '+meeting.qualForm:''}</p>
+            {(()=>{const qc=qualChip(meeting.qualStatus);return qc?<span className={['inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1',qc.c].join(' ')}>{meeting.qualStatus==='qualified'?<I.Check size={9} stroke={3}/>:<I.AlertTriangle size={9}/>}{qc.l}</span>:null;})()}
+          </div>
+          <div className="flex flex-col gap-2">{meeting.qualAnswers.map((qa,i)=>(<div key={i} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2"><p className="text-[11.5px] text-white/45">{qa.q}</p><p className="text-[12.5px] text-white/80 mt-0.5">{qa.a||'—'}</p></div>))}</div>
+          {meeting.qualReason&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1"><I.Zap size={10} className="text-brand-300"/>Rule matched: {meeting.qualReason}</p>}
         </div>)}
         <div>
           <p className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] mb-2">Notes</p>
@@ -11126,8 +11798,9 @@ function App(){
       {page==='settings-integrations' && <SettingsIntegrationsPage {...p}/>}
       {page==='settings-booking' && <SettingsCalendarConfigPage {...p}/>}
       {page==='settings-notifications' && <SettingsNotificationsPage {...p}/>}
-      {page==='settings-unsubscribes' && <SettingsUnsubscribesPage {...p}/>}
+      {(page==='settings-suppression'||page==='settings-unsubscribes') && <SettingsSuppressionPage {...p}/>}
       {page==='settings-privacy'  && <SettingsPrivacyPage {...p}/>}
+      {page==='settings-duplicates' && <SettingsDuplicatesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
       {searchOpen&&<GlobalSearchOverlay close={()=>setSearchOpen(false)} goTo={(pg)=>{goTo(pg);setSearchOpen(false);}}/>}
       {cmdOpen&&<CommandPalette close={()=>setCmdOpen(false)} goTo={(pg)=>{goTo(pg);setCmdOpen(false);}}/>}
