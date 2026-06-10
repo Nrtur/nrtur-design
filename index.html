@@ -2614,7 +2614,7 @@ function DashboardPage({goTo}){
 }
 // ?? Contacts data ?????????????????????????????????????????????????????????????
 const CONTACTS_DATA=[
-  {id:1,name:'Sarah Chen',co:'Meridian Agency',email:'sarah@meridian.co',phone:'+1 555-234-8901',avatar:'SC',color:'#3b82f6',status:'Active',owner:'AM',ownerColor:'#3b82f6',last:'2h ago',deal:'$24k',tag:'top-lead',loc:'San Francisco, CA',cstatus:'Customer',days:0,dnc:false,archived:false,first:'Sarah',last:'Chen',title:'CEO',lifecycle:'Customer',pstatus:'Qualified',score:88,tags:['agency','top-lead','q2-focus'],source:'Referral',salutation:'Ms.',emails:['s.chen@meridian.co'],phones:['+1 555-234-0000'],address:{street:'500 Howard St',city:'San Francisco',state:'CA',zip:'94105',country:'USA'},linkedin:'linkedin.com/in/sarahchen',lastActivity:'2h ago',lastContacted:'Yesterday · 2:30 PM',createdBy:'AM',createdAt:'Apr 2, 2026'},
+  {id:1,name:'Sarah Chen',co:'Meridian Agency',email:'sarah@meridian.co',phone:'+1 555-234-8901',avatar:'SC',color:'#3b82f6',status:'Active',owner:'AM',ownerColor:'#3b82f6',last:'2h ago',deal:'$24k',tag:'top-lead',loc:'San Francisco, CA',cstatus:'Customer',days:0,dnc:false,archived:false,first:'Sarah',last:'Chen',title:'CEO',lifecycle:'Customer',pstatus:'Qualified',score:88,tags:['agency','top-lead','q2-focus'],source:'Referral',salutation:'Ms.',emails:['s.chen@meridian.co'],phones:['+1 555-234-0000'],address:{street:'500 Howard St',city:'San Francisco',state:'CA',zip:'94105',country:'USA'},linkedin:'linkedin.com/in/sarahchen',lastActivity:'2h ago',lastContacted:'Yesterday · 2:30 PM',createdBy:'AM',createdAt:'Apr 2, 2026',qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Scaling our outbound with your CRM.'}],event:'30 Min Intro Call',rep:'Alex Morgan'}},
   {id:2,name:'James Rivera',co:'Summit Digital',email:'james@summit.co',phone:'+1 555-312-4400',avatar:'JR',color:'#8b5cf6',status:'Hot',owner:'JK',ownerColor:'#8b5cf6',last:'5h ago',deal:'$31k',tag:'agency',loc:'New York, NY',cstatus:'Prospect',days:0,dnc:false,archived:false,first:'James',last:'Rivera',title:'VP Marketing',lifecycle:'Opportunity',pstatus:'Contacted',score:62,tags:['agency'],source:'LinkedIn',salutation:'Mr.',emails:[],phones:[],address:{city:'New York',state:'NY',country:'USA'},linkedin:'linkedin.com/in/jamesrivera',lastActivity:'5h ago',lastContacted:'2 days ago',createdBy:'JK',createdAt:'Mar 18, 2026'},
   {id:3,name:'Maria Lopez',co:'Bloom Creative',email:'maria@bloom.co',phone:'+1 555-198-7730',avatar:'ML',color:'#ec4899',status:'Warm',owner:'SC',ownerColor:'#ec4899',last:'1d ago',deal:'$18k',tag:'q2-focus',loc:'Austin, TX',cstatus:'Prospect',days:1,dnc:false,archived:false,first:'Maria',last:'Lopez',title:'Creative Director',lifecycle:'Sales Qualified Lead',pstatus:'Nurturing',score:45,tags:['q2-focus'],source:'Website',salutation:'Mrs.',emails:['maria.lopez@bloom.co'],phones:['+1 555-198-0000'],address:{street:'12 Congress Ave',city:'Austin',state:'TX',zip:'73301',country:'USA'},linkedin:'',lastActivity:'1d ago',lastContacted:'Last week',createdBy:'SC',createdAt:'Feb 27, 2026'},
   {id:4,name:'Ravi Lee',co:'Vertex Labs',email:'ravi@vertex.co',phone:'+1 555-441-6623',avatar:'RL',color:'#10b981',status:'New',owner:'RL',ownerColor:'#10b981',last:'2d ago',deal:'$6.2k',tag:'new-lead',loc:'Los Angeles, CA',cstatus:'Prospect',days:2,dnc:true,archived:false},
@@ -2656,7 +2656,7 @@ function ContactRow({c,COL,selected,onSelect,onStatus,onOwner,onArchive,onRestor
   return(
     <div className={['crm-list-row w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
       <button onClick={()=>onSelect(c.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
-      <button onClick={()=>goTo('contact-detail',c.id)} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>{c.dnc&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-white/45 ring-1 ring-white/[0.10] shrink-0" title="Do not contact"><I.Ban size={8}/>DNC</span>}</div><p className="text-[11px] text-white/45 truncate mt-0.5">{c.email}</p></div></button>
+      <button onClick={()=>goTo('contact-detail',c.id)} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>{c.dnc&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-white/45 ring-1 ring-white/[0.10] shrink-0" title="Do not contact"><I.Ban size={8}/>DNC</span>}{c.qual&&<QualBadge status={c.qual.status}/>}</div><p className="text-[11px] text-white/45 truncate mt-0.5">{c.email}</p></div></button>
       <p className="text-[13px] text-white/75 truncate">{c.co}</p>
       <ContactStatusDropdown value={c.cstatus} onChange={s=>onStatus(c.id,s)}/>
       <div className="flex items-center gap-2" title={h.l}><span className="w-2 h-2 rounded-full shrink-0" style={{background:h.c,boxShadow:`0 0 8px ${h.c}99`}}/><span className="text-[12px] text-white/55 truncate">{c.last}</span></div>
@@ -3191,7 +3191,7 @@ function ColumnsControl({allCols,shown,onChange,label,object='contact'}){
   </div>);
 }
 const CONTACT_COLS=[
-  {key:'name',label:'Name',w:'1.7fr',def:true,cell:(c,x)=>(<button onClick={()=>x.goTo('contact-detail',c.id)} className="flex items-center gap-3 min-w-0 text-left w-full"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>{c.dnc&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-white/45 ring-1 ring-white/[0.10] shrink-0" title="Do not contact"><I.Ban size={8}/>DNC</span>}</div><p className="text-[11px] text-white/45 truncate mt-0.5">{c.email}</p></div></button>)},
+  {key:'name',label:'Name',w:'1.7fr',def:true,cell:(c,x)=>(<button onClick={()=>x.goTo('contact-detail',c.id)} className="flex items-center gap-3 min-w-0 text-left w-full"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-[13px] font-semibold text-white leading-tight truncate">{c.name}</p>{c.dnc&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-white/[0.06] text-white/45 ring-1 ring-white/[0.10] shrink-0" title="Do not contact"><I.Ban size={8}/>DNC</span>}{c.qual&&<QualBadge status={c.qual.status}/>}</div><p className="text-[11px] text-white/45 truncate mt-0.5">{c.email}</p></div></button>)},
   {key:'co',label:'Company',w:'1.3fr',def:true,cell:(c)=>(<p className="text-[13px] text-white/75 truncate">{c.co}</p>)},
   {key:'cstatus',label:'Status',w:'118px',def:true,cell:(c,x)=>(<ContactStatusDropdown value={c.cstatus} onChange={s=>x.onStatus(c.id,s)}/>)},
   {key:'last',label:'Last activity',w:'150px',def:true,cell:(c)=>{const h=contactHealth(c.days);return(<div className="flex items-center gap-2" title={h.l}><span className="w-2 h-2 rounded-full shrink-0" style={{background:h.c,boxShadow:'0 0 8px '+h.c+'99'}}/><span className="text-[12px] text-white/55 truncate">{c.last}</span></div>);}},
@@ -3691,17 +3691,14 @@ function SettingsDuplicatesPage({goTo}){
   const grand=totals.contact+totals.company+totals.lead;
   const tabs=[['contact','Contacts'],['company','Companies'],['lead','Leads']];
   return(
-    <SettingsShell active="settings-duplicates" goTo={goTo}>
-      <div className="flex items-start gap-3">
-        <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0"><I.Copy size={18}/></span>
-        <div><h1 className="text-[18px] font-bold text-white">Duplicates</h1><p className="text-[13px] text-white/50 mt-0.5">We found <span className="font-semibold text-white/80">{grand}</span> possible {grand===1?'duplicate':'duplicates'} across your data. Review and merge to keep one clean record.</p></div>
-      </div>
-      <div className="inline-flex p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] self-start">
+    <SettingsShell active="settings-duplicates" goTo={goTo}
+      subtitle={<span>We found <span className="font-semibold text-white/80">{grand}</span> possible {grand===1?'duplicate':'duplicates'} across your data. Review and merge to keep one clean record.</span>}
+      tabs={<div className="inline-flex p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
         {tabs.map(([k,lb])=>{const a=tab===k;return(
           <button key={k} onClick={()=>setTab(k)} className={['inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-[12.5px] font-semibold transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>
             {lb}<span className={['text-[10px] font-mono px-1.5 py-0.5 rounded-full min-w-[20px] text-center',a?'bg-white/20 text-white':'bg-white/[0.07] text-white/45'].join(' ')}>{totals[k]}</span>
           </button>);})}
-      </div>
+      </div>}>
       <div><DuplicatesView key={tab} object={tab} showToolbar/></div>
     </SettingsShell>
   );
@@ -4017,7 +4014,7 @@ function ContactDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(59,130,246,0.10),transparent 70%)'}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative"><div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:c.color}}>{c.avatar}</div><span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-[#0c0c1a]"/></div>
-                  <div><h2 className="text-white text-[20px] font-bold">{c.name}</h2><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span>{suppressed.email&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not email</span>}{suppressed.sms&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not SMS</span>}{suppressed.calls&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not call</span>}</div>
+                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-bold">{c.name}</h2>{c.qual&&<QualBadge status={c.qual.status}/>}</div><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span>{suppressed.email&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not email</span>}{suppressed.sms&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not SMS</span>}{suppressed.calls&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not call</span>}</div>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
                   {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true,chan:'email'},{Icon:I.Phone,l:'Make call',fn:()=>setDialerOpen(o=>!o),comm:true,chan:'calls'},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true,chan:'sms'},{Icon:I.Trash,l:'Delete',fn:()=>openConfirm({title:`Delete ${c.name}?`,body:'This will archive the contact for 30 days.',confirmLabel:'Delete contact',danger:true,onConfirm:()=>goTo('contacts')}),danger:true}].map((b,i)=>{const supc=b.chan&&suppressed[b.chan];const off=(b.comm&&dnc)||supc;return(
@@ -4030,6 +4027,7 @@ function ContactDetailPage({goTo,nav}){
               {dialerOpen&&!dnc&&<ContactDialerPopover contact={{name:c.name,phone:c.phone,avatar:c.avatar,color:c.color}} statusOptions={['New','Contacted','Nurturing','Qualified','Unqualified']} currentStatus={c.pstatus} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
               </div>
               <RecordProperties record={crec} primary={cPrimary} secondary={cSecondary} meta={cMeta} onChange={onFieldChange} goTo={goTo}/>
+              {c.qual&&<QualificationCard qual={c.qual} goTo={goTo}/>}
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4 flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Blocks all email, SMS, and calls.</p></div><Toggle on={dnc} onChange={setDnc}/></div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
                 <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Deals · 2</p><button onClick={()=>goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button></div>
@@ -4848,7 +4846,7 @@ const LEAD_STATUS_DOT={New:'#60a5fa',Working:'#fbbf24',Nurturing:'#a78bfa',Quali
 const LEAD_SOURCES=['Web form','Referral','Cold outreach','Event','Ad','LinkedIn','Import'];
 function leadScoreBucket(score){if(score>=70)return{k:'hot',c:'#f87171',l:'Hot'};if(score>=40)return{k:'warm',c:'#fbbf24',l:'Warm'};return{k:'cold',c:'#60a5fa',l:'Cold'};}
 const LEADS_DATA=[
-  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'New',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound'],archived:false,converted:false,estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,pipeline:'Sales Pipeline',expectedCloseDate:'2026-07-30'},
+  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'Qualified',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound','qualified'],archived:false,converted:false,estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,pipeline:'Sales Pipeline',expectedCloseDate:'2026-07-30',qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Pipeline + automations for a 40-person team'}],event:'Product Demo',rep:'Sarah Chen'}},
   {id:2,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'daniel@lumen.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Head of Growth',source:'Referral',status:'Contacted',score:74,estValue:'$32k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Austin, TX',tags:['referral'],archived:false,converted:false,estValueNum:32000,emails:[],phones:['+1 555-441-0000'],createdBy:'JK',createdAt:'1d ago',companyDomain:'lumen.io',industry:'Software',employeesSize:60,pipeline:'Sales Pipeline',expectedCloseDate:'2026-08-12'},
   {id:3,name:'Sofia Marchetti',avatar:'SM',color:'#ec4899',email:'sofia@craftly.co',phone:'+1 555-228-6610',company:'Craftly',title:'Founder',source:'Event',status:'Engaged',score:58,estValue:'$9k',owner:'SC',ownerColor:'#ec4899',created:'2d ago',days:2,loc:'New York, NY',tags:['saastr'],archived:false,converted:true,estValueNum:9000,emails:['sofia@craftly.co'],phones:[],createdBy:'SC',createdAt:'2d ago',convContact:'Sofia Marchetti',convCompany:'Craftly',convDeal:'Craftly · $9,000',companyDomain:'craftly.co',industry:'Retail',employeesSize:8,pipeline:'Onboarding Pipeline',expectedCloseDate:'2026-07-18'},
   {id:4,name:'Marcus Webb',avatar:'MW',color:'#10b981',email:'marcus@northpeak.com',phone:'+1 555-770-4521',company:'Northpeak',title:'VP Sales',source:'Cold outreach',status:'New',score:41,estValue:'$15k',owner:'RL',ownerColor:'#10b981',created:'3d ago',days:3,loc:'Seattle, WA',tags:['outbound'],archived:false,converted:false},
@@ -4897,7 +4895,7 @@ function LeadRow({l,COL,selected,onSelect,onStatus,onOwner,onConvert,onArchive,o
   return(
     <div className={['crm-list-row w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
       <button onClick={()=>onSelect(l.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
-      <button onClick={()=>goTo('lead-detail',l.id)} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:l.color}}>{l.avatar}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white leading-tight truncate">{l.name}</p><p className="text-[11px] text-white/45 truncate mt-0.5">{l.email}</p></div></button>
+      <button onClick={()=>goTo('lead-detail',l.id)} className="flex items-center gap-3 min-w-0 text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{background:l.color}}>{l.avatar}</div><div className="min-w-0"><div className="flex items-center gap-1.5"><p className="text-[13px] font-semibold text-white leading-tight truncate">{l.name}</p>{l.qual&&<QualBadge status={l.qual.status}/>}</div><p className="text-[11px] text-white/45 truncate mt-0.5">{l.email}</p></div></button>
       <div className="min-w-0"><p className="text-[13px] text-white/75 truncate">{l.company}</p><p className="text-[11px] text-white/40 truncate">{l.title}</p></div>
       <p className="text-[12px] text-white/55 truncate">{l.source}</p>
       <LeadStatusDropdown value={l.status} onChange={s=>onStatus(l.id,s)}/>
@@ -5206,7 +5204,7 @@ function LeadDetailPage({goTo,nav}){
   const [convToast,setConvToast]=React.useState('');
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
-  const [timeline,setTimeline]=React.useState(LEAD_TIMELINE);
+  const [timeline,setTimeline]=React.useState(()=>l&&l.qual?[qualTimelineEntry(l.qual),...LEAD_TIMELINE]:LEAD_TIMELINE);
   const {confirmNode,openConfirm}=useConfirm();
   const b=leadScoreBucket(l.score);
   const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text'},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:['New','Contacted','Engaged','Qualified','Unqualified']},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'expectedCloseDate',label:'Expected close date',type:'date'},{key:'estValueNum',label:'Estimated value',type:'currency'},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
@@ -5234,12 +5232,13 @@ function LeadDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:`radial-gradient(circle at top,${b.c}1a,transparent 70%)`}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-bold ring-2 ring-white/[0.06]" style={{background:l.color}}>{l.avatar}</div>
-                  <div><h2 className="text-white text-[20px] font-bold">{l.name}</h2><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={(s)=>{setStatusState(s);updateLead(l.id,{status:s});}}/></div></div>
+                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-bold">{l.name}</h2>{l.qual&&<QualBadge status={l.qual.status}/>}</div><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={(s)=>{setStatusState(s);updateLead(l.id,{status:s});}}/></div></div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-black tabular-nums" style={{color:b.c}}>{l.score}</span></div></div>
               </div>
               </div>
               <RecordProperties record={l} primary={leadPrimary} secondary={leadSecondary} meta={leadMeta} onChange={onLeadField} goTo={goTo}/>
+              {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
               <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5">
@@ -8008,12 +8007,22 @@ function ReportsPage({goTo}){
   );
 }
 // ?? Settings Shell ????????????????????????????????????????????????????????????
-function SettingsShell({active,goTo,children}){
+// Each settings page's name — shown as the top-bar title so the header reflects the page (not a generic "Settings").
+const SETTINGS_PAGE_META={
+  'settings-general':'General','settings-properties':'Properties','settings-team':'Team','settings-billing':'Billing',
+  'settings-duplicates':'Duplicates','settings-booking':'Calendar config','settings-integrations':'Integrations',
+  'settings-suppression':'Suppression List','settings-notifications':'Notifications','settings-privacy':'Privacy & Data',
+};
+// `subtitle` = page description, `actions` = primary buttons, `tabs` = segmented switcher — both lifted into the top bar.
+// `tabsFirst` puts the slider on the left and the action button to its right.
+function SettingsShell({active,goTo,children,subtitle,actions,tabs,tabsFirst}){
+  const title=SETTINGS_PAGE_META[active]||'Settings';
+  const rightSlot=(actions||tabs)?(<React.Fragment>{tabsFirst?<React.Fragment>{tabs}{actions}</React.Fragment>:<React.Fragment>{actions}{tabs}</React.Fragment>}</React.Fragment>):null;
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active={active} goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Settings" subtitle="Workspace - Bloom Creative"/>
+        <AppTopbar goTo={goTo} title={title} subtitle={subtitle} rightSlot={rightSlot}/>
         <div className="settings-stack flex-1 flex min-h-0">
           <SettingsSubNav active={active} goTo={goTo}/>
           <div className="flex-1 overflow-y-auto scroll-area"><div className="settings-body px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">{children}</div></div>
@@ -8066,7 +8075,8 @@ function SettingsBookingPage({goTo}){
   const url='nrtur.app/book/alex-morgan';
   const copy=()=>{try{if(navigator.clipboard)navigator.clipboard.writeText('https://'+url);}catch(e){}setCopied(true);setTimeout(()=>setCopied(false),2000);};
   const TIMES=['7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM'];
-  return(<SettingsShell active="settings-booking" goTo={goTo}>
+  return(<SettingsShell active="settings-booking" goTo={goTo} subtitle="Your booking links and scheduling rules.">
+
     <div className="rounded-2xl bg-brand-500/[0.07] border border-brand-500/20 p-6">
       <div className="flex items-start gap-4">
         <div className="w-12 h-12 rounded-2xl bg-brand-500/15 ring-1 ring-brand-500/30 text-brand-300 flex items-center justify-center shrink-0"><I.Calendar size={20}/></div>
@@ -8135,14 +8145,13 @@ function SettingsCalendarConfigPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="settings-booking" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Settings" subtitle="Calendar configuration"/>
+        <AppTopbar goTo={goTo} title="Calendar config" subtitle="Event types, availability, and your public booking page." rightSlot={<React.Fragment>
+          <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{TABS.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',tab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
+          <button onClick={()=>goTo('calendar')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/>Open calendar</button>
+        </React.Fragment>}/>
         <div className="settings-stack flex-1 flex min-h-0">
           <SettingsSubNav active="settings-booking" goTo={goTo}/>
           <div className="flex-1 flex flex-col min-w-0">
-            <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
-              <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{TABS.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',tab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
-              <button onClick={()=>goTo('calendar')} className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/>Open calendar</button>
-            </div>
             {tab==='eventtypes'&&<SchedEventTypesTab eventTypes={sched.eventTypes} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>{setPreviewSlug(et.slug);setTab('bookingpage');}} addToast={addToast}/>}
             {tab==='availability'&&<SchedAvailabilityTab avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} automation={sched.automation} setAutomation={sched.setAutomation}/>}
             {tab==='bookingpage'&&<SchedBookingPageTab eventTypes={sched.eventTypes} avail={sched.availability} initialSlug={previewSlug} addToast={addToast} automation={sched.automation} crm={crm} addMeeting={sched.addMeeting} goTo={goTo}/>}
@@ -8220,7 +8229,7 @@ function SettingsBillingPage({goTo}){
   const seatPrice=cycle==='annual'?49:59;const seatTotal=seatPrice*BILLING_SEATS.length;
   const STATES=[{k:'trial',l:'Trial'},{k:'trial-expired',l:'Trial expired'},{k:'cancelled',l:'Cancelled'},{k:'payment-failed',l:'Payment failed'},{k:'active',l:'Active'}];
   return(
-    <SettingsShell active="settings-billing" goTo={goTo}>
+    <SettingsShell active="settings-billing" goTo={goTo} subtitle="Manage your plan, payment method, and invoices.">
       {billingState==='payment-failed'&&(<div className="rounded-2xl border border-red-500/30 bg-red-500/[0.10] px-5 py-3.5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-red-500/20 text-red-300 flex items-center justify-center shrink-0"><I.Ban size={15}/></div><div className="flex-1 min-w-0"><p className="text-[13px] font-semibold text-red-200">Payment failed — your card was declined on June 1, 2026.</p><p className="text-[12px] text-red-300/80 mt-0.5">Update your payment method by June 8 to avoid account suspension.</p></div><button className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-red-500 hover:bg-red-400 transition-all">Fix now</button></div>)}
 
       {billingState==='active'&&(<>
@@ -8416,8 +8425,8 @@ function SettingsTeamPage({goTo}){
   const setRole=(email,role)=>setMembers(ms=>ms.map(x=>x.email===email?{...x,role}:x));
   const COL='1.5fr 1.5fr 110px 110px 80px';
   return(
-    <SettingsShell active="settings-team" goTo={goTo}>
-      <div className="flex items-center justify-between"><div><p className="text-white text-[18px] font-bold">Team Members</p><p className="text-white/45 text-[13px] mt-1">5 of 5 seats used - Pro plan</p></div><button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button></div>
+    <SettingsShell active="settings-team" goTo={goTo} subtitle="5 of 5 seats used - Pro plan"
+      actions={<button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button>}>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Member</span><span>Email</span><span>Role</span><span>Status</span><span/></div>
         {members.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<members.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
@@ -8674,15 +8683,9 @@ function SettingsPropertiesPage({goTo}){
     setDrawer(null);
   };
   return(
-    <SettingsShell active="settings-properties" goTo={goTo}>
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-white text-[18px] font-bold">Properties</p>
-          <p className="text-[13px] text-white/50 mt-1">Define the fields on each object — control where they appear, reorder them, and add your own.</p>
-        </div>
-        <button onClick={()=>setDrawer({f:null})} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0"><I.Plus size={15} stroke={2.4}/>New property</button>
-      </div>
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] w-fit">{TABS.map(t=>(<button key={t} onClick={()=>setTab(t)} className={['px-4 py-2 rounded-lg text-[13px] font-semibold transition-all',tab===t?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{t}</button>))}</div>
+    <SettingsShell active="settings-properties" goTo={goTo} tabsFirst subtitle="Define the fields on each object — control where they appear, reorder them, and add your own."
+      actions={<button onClick={()=>setDrawer({f:null})} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0"><I.Plus size={15} stroke={2.4}/>New property</button>}
+      tabs={<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] w-fit">{TABS.map(t=>(<button key={t} onClick={()=>setTab(t)} className={['px-4 py-2 rounded-lg text-[13px] font-semibold transition-all',tab===t?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{t}</button>))}</div>}>
       <div className="flex items-center gap-4 text-[11.5px] text-white/45 -mt-1 flex-wrap">
         <span>{totals.n} fields</span><span className="text-white/20">·</span><span>{totals.create} in create form</span><span className="text-white/20">·</span><span>{totals.primary} primary</span><span className="text-white/20">·</span><span>{totals.col} list columns</span>
         <span className="ml-auto inline-flex items-center gap-1.5 text-white/35"><span className="select-none" style={{letterSpacing:'-1px'}}>⠿</span>Drag rows to reorder</span>
@@ -8712,7 +8715,7 @@ function SettingsPropertiesPage({goTo}){
 function SettingsGeneralPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   return(
-    <SettingsShell active="settings-general" goTo={goTo}>
+    <SettingsShell active="settings-general" goTo={goTo} subtitle="Workspace name, industry, timezone, and defaults.">
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
         <p className="text-white text-[18px] font-bold mb-6">Workspace settings</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">{[['Workspace name','Bloom Creative'],['Industry','Agency / Consulting'],['Timezone','America/Los_Angeles'],['Currency','USD ($)']].map(([l,v])=>(<div key={l}><label className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div>
@@ -8828,8 +8831,7 @@ function SettingsIntegrationsPage({goTo}){
   const smsConnected=conns.twilio||conns.vonage;
   const connectedCount=Object.keys(conns).filter(k=>conns[k]).length+ma.accounts.length;
   return(
-    <SettingsShell active="settings-integrations" goTo={goTo}>
-      <div className="flex items-start justify-between gap-4 flex-wrap"><div><p className="text-white text-[18px] font-bold">Integrations</p><p className="text-white/45 text-[13px] mt-1">Connect nrtur with your existing tools. {connectedCount} active.</p></div></div>
+    <SettingsShell active="settings-integrations" goTo={goTo} subtitle={'Connect nrtur with your existing tools. '+connectedCount+' active.'}>
       {/* Email accounts */}
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
         <div className="flex items-start justify-between mb-3"><div className="w-10 h-10 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center"><I.Mail size={17}/></div><button onClick={()=>setMailboxModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={11} stroke={2.4}/>Connect account</button></div>
@@ -8992,8 +8994,7 @@ function SettingsSuppressionPage({goTo}){
   const scopeChip=(s)=>s==='all'?'All email':'Marketing';
   const phoneCh=(c)=>c==='sms'?'SMS':c==='calls'?'Calls':'SMS + Calls';
   return(
-    <SettingsShell active="settings-suppression" goTo={goTo}>
-      <div><p className="text-white text-[18px] font-bold">Suppression List</p><p className="text-white/45 text-[13px] mt-1 max-w-[640px]">Suppressed contacts are blocked from the selected channels. They're skipped in sequences and can't be re-enrolled.</p></div>
+    <SettingsShell active="settings-suppression" goTo={goTo} subtitle="Suppressed contacts are blocked from the selected channels. They're skipped in sequences and can't be re-enrolled.">
       <div className="flex items-center gap-2 flex-wrap">
         {[{Icon:I.Mail,n:emails.length,l:'emails blocked'},{Icon:I.Globe,n:domains.length,l:'domains blocked'},{Icon:I.Phone,n:phones.length,l:'phone numbers blocked'}].map((s,i)=>(
           <div key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.07]"><s.Icon size={13} className="text-white/40"/><span className="text-[13px] font-bold text-white tabular-nums">{s.n}</span><span className="text-[12px] text-white/45">{s.l}</span></div>
@@ -9145,8 +9146,7 @@ function SettingsNotificationsPage({goTo}){
   const [prefs,setPrefs]=React.useState({sms_received:{email:true,app:true},email_opened:{email:false,app:true},deal_moved:{email:false,app:true},deal_won:{email:true,app:true},contact_assigned:{email:true,app:true},automation_run:{email:false,app:false},team_mention:{email:true,app:true}});
   const toggle=(key,col)=>setPrefs(p=>({...p,[key]:{...p[key],[col]:!p[key][col]}}));
   return(
-    <SettingsShell active="settings-notifications" goTo={goTo}>
-      <div><p className="text-white text-[18px] font-bold">Notification Preferences</p><p className="text-white/45 text-[13px] mt-1">Choose how you want to be notified for each event.</p></div>
+    <SettingsShell active="settings-notifications" goTo={goTo} subtitle="Choose how you want to be notified for each event.">
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015]" style={{gridTemplateColumns:'1fr 80px 80px'}}><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Event</span><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] text-center">Email</span><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] text-center">In-app</span></div>
         {CHANNELS.map((ch,i)=>(<div key={ch.key} className={['grid items-center gap-4 px-6 py-4',i<CHANNELS.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:'1fr 80px 80px'}}><div><p className="text-[13px] font-medium text-white">{ch.label}</p><p className="text-[11px] text-white/45 mt-0.5">{ch.sub}</p></div><div className="flex justify-center"><Toggle on={prefs[ch.key]?.email} onChange={()=>toggle(ch.key,'email')}/></div><div className="flex justify-center"><Toggle on={prefs[ch.key]?.app} onChange={()=>toggle(ch.key,'app')}/></div></div>))}
@@ -9161,8 +9161,7 @@ function SettingsPrivacyPage({goTo}){
   const [retention,setRetention]=React.useState('2 years');
   const RETENTIONS=['6 months','1 year','2 years','5 years','Forever'];
   return(
-    <SettingsShell active="settings-privacy" goTo={goTo}>
-      <div><p className="text-white text-[18px] font-bold">Privacy & Data</p><p className="text-white/45 text-[13px] mt-1">Manage your data, exports, and account deletion.</p></div>
+    <SettingsShell active="settings-privacy" goTo={goTo} subtitle="Manage your data, exports, and account deletion.">
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-semibold mb-1">Export workspace data</p><p className="text-white/45 text-[12px] mb-5">Download all contacts, deals, notes, and automations as a CSV archive.</p><div className="flex items-center gap-3"><button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export as CSV</button><button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export as JSON</button></div></div>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-semibold mb-1">Download account data (GDPR)</p><p className="text-white/45 text-[12px] mb-5">Receive a full export of your personal account data within 72 hours, as required under GDPR Article 20.</p><button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Download size={13}/>Request data export</button></div>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-semibold mb-1">Data retention policy</p><p className="text-white/45 text-[12px] mb-5">How long to keep deleted contacts and deals before permanent erasure.</p><div className="flex items-center gap-4"><select value={retention} onChange={e=>setRetention(e.target.value)} className="px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{RETENTIONS.map(r=>(<option key={r}>{r}</option>))}</select><p className="text-[12px] text-white/45">after deletion</p></div></div>
@@ -10890,6 +10889,29 @@ function qualTimelineEntry(q){
     body:(q.answers||[]).filter(a=>a.a).map(a=>a.q+': '+a.a).join(' · ')||'Submitted during booking.',
     meta:(ok?'Qualified':bad?'Flagged for review':'Captured')+(q.rep?' · assigned to '+q.rep:'')};
 }
+// Small inline badge that labels a record's qualification status (used on detail headers + list rows)
+function QualBadge({status}){
+  const ok=status==='qualified',bad=status==='disqualified';
+  const cls=ok?'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25':bad?'bg-amber-500/15 text-amber-300 ring-amber-500/25':'bg-brand-500/15 text-brand-200 ring-brand-500/25';
+  const Icon=ok?I.Check:bad?I.AlertTriangle:I.Note;
+  return(<span className={['inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ring-1 shrink-0',cls].join(' ')}><Icon size={9} stroke={ok?3:2.2}/>{ok?'Qualified':bad?'Review':'Captured'}</span>);
+}
+// Record-level "Qualification form" card — shows WHICH form a contact/lead filled + its answers + status
+function QualificationCard({qual,goTo}){
+  if(!qual)return null;
+  const fid=FORMS_DATA.find(f=>f.name===qual.formName);
+  return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
+    <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Note size={14}/></span><div className="min-w-0"><p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em]">Qualification form</p><p className="text-[13px] font-bold text-white truncate">{qual.formName||'Qualification'}</p></div></div>
+      <QualBadge status={qual.status}/>
+    </div>
+    <div className="flex flex-col gap-2">{(qual.answers||[]).map((a,i)=>(<div key={i} className="rounded-lg bg-white/[0.025] border border-white/[0.05] px-3 py-2"><p className="text-[11px] text-white/40">{a.q}</p><p className="text-[12.5px] text-white/80 mt-0.5">{a.a||'—'}</p></div>))}</div>
+    <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/[0.05]">
+      <p className="text-[11px] text-white/35 flex items-center gap-1.5 min-w-0 truncate">{qual.event?<React.Fragment><I.Calendar size={11} className="shrink-0"/>Captured booking “{qual.event}”{qual.rep?' · routed to '+qual.rep:''}</React.Fragment>:'Captured during booking.'}</p>
+      {fid&&goTo&&<button onClick={()=>{setFormSeed(fid);goTo('form-builder');}} className="text-[11px] font-semibold text-brand-300 hover:text-brand-200 shrink-0 inline-flex items-center gap-1">Open form<I.ArrowRight size={10}/></button>}
+    </div>
+  </div>);
+}
 const SCHED_DEFAULT_EVENT_TYPES=[
   {id:'et1',name:'30 Min Intro Call',duration:30,location:'Google Meet',slug:'intro-call',color:'#6366f1',desc:"A quick intro to see if we're a fit.",questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'4 hours'},
   {id:'et2',name:'Product Demo',duration:45,location:'Zoom',slug:'demo',color:'#10b981',desc:'Walkthrough of the platform.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day',qualFormId:1,qualRequired:true,qualRules:[{id:'qr1',q:'Company size',op:'contains',value:'200',action:'qualify',rep:'SC'},{id:'qr2',q:'Company size',op:'contains',value:'1-10',action:'disqualify',rep:'AM'}]},
@@ -10918,6 +10940,8 @@ function schedSlotsFor(avail,date,duration){
   return out;
 }
 function schedLocIcon(loc){if(/phone/i.test(loc))return I.Phone;if(/person/i.test(loc))return I.MapPin;return I.Globe;}
+// A booked meeting can be linked to a lead (inbound capture) or a contact (known person). Route accordingly.
+function mtgLink(m){if(m.recordKind==='lead'||(m.leadId!=null&&m.contactId==null))return{page:'lead-detail',id:m.leadId!=null?m.leadId:m.recordId,kind:'lead'};return{page:'contact-detail',id:m.contactId!=null?m.contactId:m.recordId,kind:'contact'};}
 
 function SchedEventTypesTab({eventTypes,onNew,onEdit,onPreview,addToast}){
   const copy=(slug)=>{const link='nrtur.app/book/alex/'+slug;try{navigator.clipboard&&navigator.clipboard.writeText('https://'+link);}catch(e){}addToast('Link copied ✓');};
@@ -11158,19 +11182,25 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     const nm=form.name.trim()||'New invitee';
     const avatar=arInitials(nm);
     const color=SCHED_COLORS[(nm.charCodeAt(0)||0)%SCHED_COLORS.length];
-    // 2) Contact: reuse existing by email, else auto-create the CRM record
-    let contactId=null,contactCreated=false;
-    const existing=crm&&crm.contacts&&crm.contacts.find(c=>(c.email||'').toLowerCase()===form.email.trim().toLowerCase()&&form.email.trim());
-    if(existing){contactId=existing.id;
-      // Save qualification answers + tag/score onto the existing contact
+    // 2) Capture the booker into the CRM (inbound-qualification funnel):
+    //    known Contact → update in place · known Lead → update · brand-new person → create a LEAD (not a contact).
+    let recordKind=null,recordId=null,contactId=null,leadId=null,recordCreated=false;
+    const emailLc=form.email.trim().toLowerCase();
+    const existing=emailLc&&crm&&crm.contacts&&crm.contacts.find(c=>(c.email||'').toLowerCase()===emailLc);
+    const existingLead=emailLc&&crm&&crm.leads&&crm.leads.find(l=>!l.converted&&(l.email||'').toLowerCase()===emailLc);
+    if(existing){recordKind='contact';contactId=existing.id;recordId=existing.id;
+      // Already a known person — update the contact in place, never downgrade to a lead
       if(qualRec&&crm.updateContact){const merged=Array.from(new Set([...(existing.tags||[]),...qualTags]));crm.updateContact(existing.id,{qual:qualRec,tags:merged,...(qualScore?{score:qualScore}:{}),...(qEval.status==='qualified'?{pstatus:'Qualified',lifecycle:'Sales Qualified Lead'}:{})});}
     }
-    else if(auto.autoContact&&crm&&crm.setContacts){
-      contactId=Date.now();
-      const newC={id:contactId,name:nm,first:nm.split(' ')[0]||nm,last:nm.split(' ').slice(1).join(' '),co:'',email:form.email.trim(),phone:'',avatar,color,status:'New',cstatus:'Prospect',owner:rep.avatar,ownerColor:rep.color,deal:'—',days:0,dnc:false,archived:false,lifecycle:qEval.status==='qualified'?'Sales Qualified Lead':'Lead',pstatus:qEval.status==='qualified'?'Qualified':'New',score:qualScore,tags:['booking',...qualTags],tag:'new-lead',source:'Booking',loc:'',qual:qualRec};
-      crm.setContacts(arr=>[newC,...arr]);
-      contactCreated=true;
-      addToast('New contact created from booking ✓');
+    else if(existingLead){recordKind='lead';leadId=existingLead.id;recordId=existingLead.id;
+      if(crm.updateLead){const merged=Array.from(new Set([...(existingLead.tags||[]),'booking',...qualTags]));crm.updateLead(existingLead.id,{qual:qualRec,tags:merged,...(qualScore!=null?{score:qualScore}:{}),owner:rep.avatar,ownerColor:rep.color,status:qEval.status==='qualified'?'Qualified':qEval.status==='disqualified'?'Unqualified':existingLead.status});}
+    }
+    else if(auto.autoContact&&crm&&crm.setLeads){
+      // New, unknown invitee → enters the CRM as a LEAD; qualification sets the status
+      leadId=Date.now();recordKind='lead';recordId=leadId;recordCreated=true;
+      const newLead={id:leadId,name:nm,avatar,color,email:form.email.trim(),phone:'',company:'',title:'',source:'Booking',status:qEval.status==='qualified'?'Qualified':qEval.status==='disqualified'?'Unqualified':'New',score:qualScore!=null?qualScore:null,estValue:'—',estValueNum:0,owner:rep.avatar,ownerColor:rep.color,days:0,loc:'',tags:['booking',...qualTags],archived:false,converted:false,createdBy:rep.avatar,createdAt:'Just now',qual:qualRec};
+      crm.setLeads(arr=>[newLead,...arr]);
+      addToast(qEval.status==='disqualified'?'Lead captured — flagged for review':'New lead captured from booking ✓');
     }
     // 3) Deal: optionally open an opportunity from the booking
     let dealCreated=false,dealName=null,dealValue=null;
@@ -11187,9 +11217,9 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     if(addMeeting&&date){
       const mins=schedParseTime(slot);
       const start=new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(mins/60),mins%60);
-      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',contactId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
+      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',recordKind,recordId,contactId,leadId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
     }
-    setBookResult({name:nm,contactId,contactCreated,dealCreated,rep,qualStatus:qEval.status});
+    setBookResult({name:nm,recordKind,recordId,recordCreated,dealCreated,rep,qualStatus:qEval.status});
     setStep('done');
     if(qEval.status==='qualified')addToast('Qualified lead booked — assigned to '+rep.name+' ✓');
     else if(qEval.status==='disqualified')addToast('Lead booked — flagged for review');
@@ -11277,7 +11307,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
               <p className="text-[12.5px] text-white/50 mt-1">A calendar invite is on its way{form.email?(' to '+form.email):''}.</p>
               {bookResult&&(<div className="flex items-center gap-1.5 flex-wrap justify-center mt-3">
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75">Booked with {bookResult.name}</span>
-                {bookResult.contactCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.UserPlus size={11}/>Contact created</span>}
+                {bookResult.recordCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.UserPlus size={11}/>{bookResult.recordKind==='lead'?'Lead captured':'Contact created'}</span>}
                 {bookResult.dealCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-500/12 border border-brand-500/25 text-[11.5px] font-medium text-brand-200"><I.Target size={11}/>Added to your pipeline</span>}
                 {bookResult.qualStatus==='qualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.Check size={11}/>Qualified lead</span>}
                 {bookResult.qualStatus==='disqualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/12 border border-amber-500/25 text-[11.5px] font-medium text-amber-300"><I.AlertTriangle size={11}/>Flagged for review</span>}
@@ -11290,9 +11320,9 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><Loc size={13} className="text-white/40"/>{et.location}</span>
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Users size={13} className="text-white/40"/>Alex Morgan{form.name?(' & '+form.name):''}</span>
               </div>
-              <p className="text-[11px] text-white/40 mt-3 inline-flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>This booking landed on the contact, deal & timeline — not just a calendar.</p>
+              <p className="text-[11px] text-white/40 mt-3 inline-flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>This booking landed on a real CRM record, the meeting & timeline — not just a calendar.</p>
               <div className="flex items-center gap-3 mt-3">
-                {bookResult&&bookResult.contactId!=null&&goTo&&<button onClick={()=>goTo('contact-detail',bookResult.contactId)} className="text-[12.5px] font-semibold text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">View contact record<I.ArrowRight size={12}/></button>}
+                {bookResult&&bookResult.recordId!=null&&goTo&&<button onClick={()=>goTo(bookResult.recordKind==='lead'?'lead-detail':'contact-detail',bookResult.recordId)} className="text-[12.5px] font-semibold text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">View {bookResult.recordKind==='lead'?'lead':'contact'} record<I.ArrowRight size={12}/></button>}
                 <button onClick={()=>{setStep('date');setDate(null);setSlot(null);setBookResult(null);}} className="text-[12.5px] font-medium text-white/45 hover:text-white/70 transition-colors">Schedule another</button>
               </div>
             </div>)}
@@ -11315,7 +11345,7 @@ function schedStatusChip(s){const map={confirmed:['Confirmed','bg-emerald-500/15
 function schedSeedMeetings(){
   const n=new Date();const d=(off,h,m)=>new Date(n.getFullYear(),n.getMonth(),n.getDate()+off,h,m);
   return [
-    {id:'m1',name:'30 Min Intro Call',color:'#6366f1',date:d(1,10,0),duration:30,location:'Google Meet',status:'confirmed',contactId:1,contactName:'Sarah Chen',avatar:'SC',contactColor:'#3b82f6',dealName:'Meridian — Managed CRM',dealValue:'$8,400',questions:[{q:'What would you like to discuss?',a:'Scaling our outbound with your CRM.'}],notes:'',host:'Alex Morgan',join:'meet.google.com/abc-defg-hij',rep:'AM'},
+    {id:'m1',name:'30 Min Intro Call',color:'#6366f1',date:d(1,10,0),duration:30,location:'Google Meet',status:'confirmed',contactId:1,contactName:'Sarah Chen',avatar:'SC',contactColor:'#3b82f6',dealName:'Meridian — Managed CRM',dealValue:'$8,400',questions:[{q:'What would you like to discuss?',a:'Scaling our outbound with your CRM.'}],qualForm:'Request a Demo',qualAnswers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Scaling our outbound with your CRM.'}],qualStatus:'qualified',qualReason:'Company size contains 200',notes:'',host:'Alex Morgan',join:'meet.google.com/abc-defg-hij',rep:'AM'},
     {id:'m2',name:'Product Demo',color:'#10b981',date:d(2,14,30),duration:45,location:'Zoom',status:'confirmed',contactId:2,contactName:'James Rivera',avatar:'JR',contactColor:'#8b5cf6',dealName:'Summit — Renewal',dealValue:'$31,000',questions:[{q:'Team size?',a:'~40 people'}],notes:'',host:'Alex Morgan',join:'zoom.us/j/9921234',rep:'JK'},
     {id:'m3',name:'Onboarding Session',color:'#f59e0b',date:d(3,9,0),duration:60,location:'Phone call',status:'pending',contactId:3,contactName:'Maria Lopez',avatar:'ML',contactColor:'#ec4899',questions:[],notes:'',host:'Alex Morgan',join:'',rep:'AM'},
     {id:'m4',name:'30 Min Intro Call',color:'#6366f1',date:d(-2,11,0),duration:30,location:'Google Meet',status:'confirmed',contactId:6,contactName:'Emily Tran',avatar:'ET',contactColor:'#14b8a6',dealName:'Forge — Expansion',dealValue:'$44,000',questions:[],notes:'Great call — ready to expand to the Business plan.',host:'Alex Morgan',join:'meet.google.com/xyz-1234',rep:'AM'},
@@ -11337,8 +11367,7 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
   return(<div className="flex-1 overflow-y-auto scroll-area">
     {menu&&<div className="fixed inset-0 z-20" onClick={()=>setMenu(null)}/>}
     <div className="max-w-[920px] mx-auto px-6 py-6">
-      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-        <div><h2 className="text-white text-[17px] font-bold">Meetings</h2><p className="text-[12.5px] text-white/45 mt-0.5">Every booking is tied to a real contact, deal, and timeline.</p></div>
+      <div className="flex items-center gap-4 mb-5 flex-wrap">
         <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['upcoming','Upcoming'],['past','Past']].map(([k,l])=>(<button key={k} onClick={()=>setSeg(k)} className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',seg===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l} <span className="opacity-60">{counts[k]}</span></button>))}</div>
       </div>
       {list.length===0&&<div className="text-center py-16 text-white/40 text-[13px]">No {seg} meetings.</div>}
@@ -11358,7 +11387,7 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08]"><Loc size={10}/>{m.location}</span>
               </div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <button onClick={e=>{e.stopPropagation();if(m.contactId!=null)goTo('contact-detail',m.contactId);}} className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:m.contactColor}}>{m.avatar}</span><span className="text-[12px] font-medium text-white/80">{m.contactName}</span></button>
+                <button onClick={e=>{e.stopPropagation();const lk=mtgLink(m);if(lk.id!=null)goTo(lk.page,lk.id);}} className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:m.contactColor}}>{m.avatar}</span><span className="text-[12px] font-medium text-white/80">{m.contactName}</span>{m.recordKind==='lead'&&<span className="text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/25">Lead</span>}</button>
                 {m.dealName&&<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/10 border border-brand-500/20 text-[11px] text-brand-200"><I.Target size={10}/>{m.dealName} · {m.dealValue}</span>}
               </div>
             </div>
@@ -11371,7 +11400,7 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
               {menu===m.id&&(<div className="absolute right-0 top-9 z-30 w-44 rounded-xl border border-white/[0.10] py-1 shadow-[0_12px_40px_rgba(0,0,0,0.5)]" style={{background:'var(--pop)'}}>
                 <button onClick={()=>{setMenu(null);addToast(m.join?'Join link copied':'No join link');}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.ExternalLink size={12}/>Join link</button>
                 <button onClick={()=>{setMenu(null);setOpen(m.id);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.Note size={12}/>Add notes</button>
-                <button onClick={()=>{setMenu(null);if(m.contactId!=null)goTo('contact-detail',m.contactId);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.Users size={12}/>View contact</button>
+                <button onClick={()=>{setMenu(null);const lk=mtgLink(m);if(lk.id!=null)goTo(lk.page,lk.id);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] flex items-center gap-2 transition-colors"><I.Users size={12}/>{mtgLink(m).kind==='lead'?'View lead':'View contact'}</button>
               </div>)}
             </div>
           </div>
@@ -11394,8 +11423,8 @@ function SchedMeetingDrawer({meeting,onClose,onCancel,onReschedule,onSaveNotes,g
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.07] p-3">
           <span className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0" style={{background:meeting.contactColor}}>{meeting.avatar}</span>
-          <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Invitee · CRM contact</p><p className="text-[14px] font-bold text-white truncate">{meeting.contactName}</p></div>
-          {meeting.contactId!=null&&<button onClick={()=>goTo('contact-detail',meeting.contactId)} className="text-[12px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 shrink-0">View<I.ArrowRight size={11}/></button>}
+          <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Invitee · CRM {mtgLink(meeting).kind}</p><p className="text-[14px] font-bold text-white truncate">{meeting.contactName}</p></div>
+          {mtgLink(meeting).id!=null&&<button onClick={()=>{const lk=mtgLink(meeting);goTo(lk.page,lk.id);}} className="text-[12px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 shrink-0">View<I.ArrowRight size={11}/></button>}
         </div>
         {meeting.dealName&&<div className="flex items-center gap-2 rounded-lg bg-brand-500/[0.06] border border-brand-500/20 px-3 py-2"><I.Target size={13} className="text-brand-300"/><span className="text-[12.5px] text-white/80 flex-1 truncate">{meeting.dealName}</span><span className="text-[12.5px] font-bold text-white">{meeting.dealValue}</span></div>}
         <div className="grid grid-cols-1 gap-2.5">
@@ -11436,7 +11465,7 @@ function SchedAutomationCard({automation,setAutomation,addToast}){
     <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center"><I.Zap size={14}/></span><p className="text-[14px] font-bold text-white">Scheduling automation</p></div>
     <p className="text-[12px] text-white/45 mb-4">The Calendly killer — every booking lands on the right contact, deal, and rep automatically.</p>
     <div className="flex flex-col gap-5">
-      <ToggleRow on={a.autoContact} onChange={v=>set({autoContact:v})} title="Auto-create contact" desc="Create a new contact if the invitee isn't in the CRM." helper="Every booking becomes a CRM record automatically."/>
+      <ToggleRow on={a.autoContact} onChange={v=>set({autoContact:v})} title="Auto-capture invitee" desc="New invitees enter as a Lead (qualify → convert); known contacts/leads update in place." helper="Every booking becomes a CRM record automatically."/>
       <ToggleRow on={a.autoTimeline} onChange={v=>set({autoTimeline:v})} title="Auto-attach to timeline" desc="Log the meeting on the contact's activity timeline."/>
       <div>
         <ToggleRow on={a.createDeal} onChange={v=>set({createDeal:v})} title="Create a deal on booking" desc="Spin up an opportunity the moment someone books." helper="Turn a booking into an opportunity instantly."/>
@@ -11502,10 +11531,10 @@ function CalendarPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="calendar" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Calendar" subtitle="Schedule meetings, calls, and follow-ups" rightSlot={schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}/>
-        <div className="shrink-0 border-b border-white/[0.05] px-6 py-2.5 flex items-center" style={{background:'var(--s925)'}}>
+        <AppTopbar goTo={goTo} title={schedTab==='meetings'?'Meetings':'Calendar'} subtitle={schedTab==='meetings'?'Every booking tied to a real contact, deal, and timeline.':'Schedule meetings, calls, and follow-ups'} rightSlot={<React.Fragment>
           <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
-        </div>
+          {schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}
+        </React.Fragment>}/>
         {schedTab==='meetings'&&<SchedMeetingsTab meetings={meetings} setMeetings={setMeetings} addToast={addToast} goTo={goTo}/>}
         {schedTab==='calendar'&&(calConnected?(<React.Fragment>
         <div className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
