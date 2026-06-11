@@ -682,22 +682,32 @@ function useFocusTrap(ref){
     return()=>{node.removeEventListener('keydown',onKey);prev&&prev.focus&&prev.focus();};
   },[]);
 }
-function ConfirmModal({title,body,confirmLabel='Delete',danger=true,onConfirm,onCancel}){
+function ConfirmModal({title,body,confirmLabel='Delete',danger=true,requireText,caseSensitive=false,onConfirm,onCancel}){
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onCancel();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onCancel]);
   const dref=React.useRef(null);useFocusTrap(dref);
+  const [txt,setTxt]=React.useState('');
+  const gated=requireText!=null&&requireText!=='';
+  const norm=(s)=>{const t=String(s==null?'':s).trim();return caseSensitive?t:t.toLowerCase();};
+  const matched=!gated||norm(txt)===norm(requireText);
+  const doConfirm=()=>{if(matched)onConfirm();};
   return(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
-      <div ref={dref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{width:400,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
-        <div className="flex items-start gap-4 mb-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
+      <div ref={dref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{width:400,maxWidth:'100%',background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
+        <div className="flex items-start gap-4 mb-5">
           <div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',danger?'bg-red-500/10 ring-red-500/25':'bg-brand-500/10 ring-brand-500/25'].join(' ')}>
             {danger?<I.Trash size={17} style={{color:'#f87171'}}/>:<I.Sparkles size={17} style={{color:'#818cf8'}}/>}
           </div>
           <div><p className="text-white text-[15px] font-semibold leading-snug">{title}</p><p className="text-white/55 text-[13px] mt-2 leading-relaxed">{body}</p></div>
         </div>
+        {gated&&(<div className="mb-5">
+          <label className="block text-[12px] text-white/55 mb-1.5">Type <span className="font-semibold text-white/85">{requireText}</span> to confirm</label>
+          <input autoFocus value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')doConfirm();}} placeholder={requireText} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors" style={{colorScheme:'dark'}}/>
+          {!matched&&txt.length>0&&<p className="text-[11px] text-white/35 mt-1.5">Doesn't match yet — type it exactly to enable {confirmLabel}.</p>}
+        </div>)}
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
-          {danger?<button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white border-none cursor-pointer" style={{background:'#dc2626'}} onMouseOver={e=>e.currentTarget.style.background='#b91c1c'} onMouseOut={e=>e.currentTarget.style.background='#dc2626'}>{confirmLabel}</button>
-          :<button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 border-none cursor-pointer">{confirmLabel}</button>}
+          {danger?<button onClick={doConfirm} disabled={!matched} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white border-none transition-all',matched?'cursor-pointer':'opacity-50 cursor-not-allowed'].join(' ')} style={{background:matched?'#dc2626':'#7f1d1d'}} onMouseOver={e=>{if(matched)e.currentTarget.style.background='#b91c1c';}} onMouseOut={e=>{if(matched)e.currentTarget.style.background='#dc2626';}}>{confirmLabel}</button>
+          :<button onClick={doConfirm} disabled={!matched} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 border-none transition-all',matched?'hover:bg-brand-400 cursor-pointer':'opacity-50 cursor-not-allowed'].join(' ')}>{confirmLabel}</button>}
         </div>
       </div>
     </div>
@@ -4628,7 +4638,7 @@ function BulkBar({object,selected,setSelected,setRows,showToast,openConfirm}){
       {object==='lead'&&<button title="Convert" onClick={()=>{close();showToast(n+' '+word+' queued for conversion');}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 transition-all"><I.ArrowRight size={12}/><span className="hidden sm:inline">Convert</span></button>}
       <button title="Archive" onClick={()=>{close();openConfirm({title:'Archive '+n+' '+word+'?',body:'Selected '+word+' will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(n+' '+word+' archived');}});}} className={BTN}><I.Archive size={12}/><span className="hidden sm:inline">Archive</span></button>
       <span className="w-px h-5 bg-white/[0.12] mx-0.5"/>
-      <button title="Delete" onClick={()=>{close();openConfirm({title:'Delete '+n+' '+word+'?',body:'This permanently removes the selected '+word+" and their activity. This can't be undone.",confirmLabel:'Delete selected',danger:true,onConfirm:()=>{setRows(r=>r.filter(x=>!selected.includes(x.id)));setSelected([]);showToast(n+' '+word+' deleted');}});}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={12}/><span className="hidden sm:inline">Delete</span></button>
+      <button title="Delete" onClick={()=>{close();openConfirm({title:'Delete '+n+' record'+(n>1?'s':'')+'?',body:'This permanently deletes '+n+' '+word+". This can't be undone.",confirmLabel:'Delete '+n+' record'+(n>1?'s':''),danger:true,requireText:'DELETE',caseSensitive:true,onConfirm:()=>{setRows(r=>r.filter(x=>!selected.includes(x.id)));setSelected([]);showToast(n+' record'+(n>1?'s':'')+' deleted');}});}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={12}/><span className="hidden sm:inline">Delete</span></button>
     </div>
     <button onClick={()=>setSelected([])} className="ml-auto text-white/40 hover:text-white transition-colors shrink-0"><I.X size={14}/></button>
   </div>);
@@ -4864,7 +4874,7 @@ function PField({f,record,onChange,goTo}){
   }
   return(<PRow label={f.label} required={f.required}>{ctrl}</PRow>);
 }
-function RecordProperties({record,primary,secondary,meta,onChange,goTo,defaultOpen}){
+function RecordProperties({record,primary,secondary,onChange,goTo,defaultOpen}){
   const [open,setOpen]=React.useState(!!defaultOpen);
   return(<div className="flex flex-col gap-4">
     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
@@ -4875,8 +4885,102 @@ function RecordProperties({record,primary,secondary,meta,onChange,goTo,defaultOp
       <button onClick={()=>setOpen(o=>!o)} className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors"><span className="text-[12px] font-semibold text-white">Show all properties</span><I.ChevronDown size={15} className="text-white/40" style={{transform:open?'rotate(180deg)':'none',transition:'transform .15s'}}/></button>
       {open&&<div className="border-t border-white/[0.05]">{secondary.map(f=><PField key={f.key} f={f} record={record} onChange={onChange} goTo={goTo}/>)}</div>}
     </div>}
-    {meta&&meta.length>0&&<div className="px-4 py-1 flex flex-col gap-2">{meta.map(f=>(<div key={f.key} className="flex items-center justify-between gap-3 text-[11px]"><span className="text-white/35">{f.label}</span><span className="text-white/55 text-right">{f.type==='user'?(userByCode(record[f.key])?userByCode(record[f.key]).name:'—'):(record[f.key]||'—')}</span></div>))}</div>}
   </div>);
+}
+// De-emphasized system-metadata footer — created-by/at (+ last activity where it exists),
+// rendered as a single quiet line at the very bottom of a record detail page.
+function RecordMetaFooter({record,meta,max='1400px'}){
+  if(!meta||!meta.length)return null;
+  const parts=meta.map(f=>{const v=f.type==='user'?(userByCode(record[f.key])?userByCode(record[f.key]).name:null):record[f.key];return v?(f.label+' '+v):null;}).filter(Boolean);
+  if(!parts.length)return null;
+  return(<div className="px-7 pb-6 mx-auto w-full" style={{maxWidth:max}}>
+    <div className="h-px bg-white/[0.06] mt-6 mb-4"/>
+    <p className="text-[11px] text-white/35 leading-relaxed">{parts.join(' · ')}</p>
+  </div>);
+}
+// ── Record edit drawer ── full-field, grouped, right-side drawer (bottom sheet on mobile) ──
+// System-managed/derived fields render read-only; everything else is editable, saved on "Save changes".
+const DR_RO_TYPES=['datetime','user','converted','score','relcontacts'];
+const drEditable=(f)=>!f.readOnly&&!DR_RO_TYPES.includes(f.type);
+const drEq=(a,b)=>JSON.stringify(a==null?'':a)===JSON.stringify(b==null?'':b);
+const DR_INP="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors";
+const DR_SEL="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none";
+function DrawerField({f,value,onChange}){
+  const label=(<label className="block text-[11px] font-medium text-white/45 mb-1.5">{f.label}{f.required&&<span className="text-red-400/70 ml-0.5">*</span>}</label>);
+  if(!drEditable(f)){
+    let disp;
+    if(f.type==='user')disp=userByCode(value)?userByCode(value).name:'—';
+    else if(f.type==='relcontacts')disp=(value&&value.length)?(value.length+' contact'+(value.length>1?'s':'')):'—';
+    else if(f.type==='converted')disp='Converted — see record';
+    else disp=(value!=null&&value!=='')?String(value):'—';
+    return(<div>{label}<div className="w-full px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[13px] text-white/40 flex items-center gap-2"><I.Lock size={11} className="text-white/25 shrink-0"/><span className="truncate">{disp}</span></div></div>);
+  }
+  switch(f.type){
+    case 'select':
+    case 'pill':
+      return(<div>{label}<select value={value||''} onChange={e=>onChange(e.target.value)} className={DR_SEL} style={{colorScheme:'dark'}}>{!f.required&&<option value="" style={{background:'var(--s900)'}}>—</option>}{(f.options||[]).map(o=>(<option key={o} value={o} style={{background:'var(--s900)'}}>{o}</option>))}</select></div>);
+    case 'owner':
+      return(<div>{label}<select value={value||''} onChange={e=>onChange(e.target.value)} className={DR_SEL} style={{colorScheme:'dark'}}>{(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>);
+    case 'tags':
+    case 'list':
+      return(<div>{label}<input value={(value||[]).join(', ')} onChange={e=>onChange(e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} placeholder="Comma separated" className={DR_INP}/></div>);
+    case 'address':{
+      const a=value||{};
+      return(<div>{label}<div className="grid grid-cols-2 gap-2">{[['street','Street',true],['city','City',false],['state','State',false],['zip','ZIP',false],['country','Country',false]].map(([k,l,full])=>(<input key={k} value={a[k]||''} onChange={e=>onChange({...a,[k]:e.target.value})} placeholder={l} className={DR_INP+(full?' col-span-2':'')}/>))}</div></div>);
+    }
+    case 'currency':
+    case 'number':
+    case 'percent':
+      return(<div>{label}<input type="number" value={value==null||value===''?'':value} onChange={e=>onChange(e.target.value===''?'':Number(e.target.value))} placeholder="0" className={DR_INP}/></div>);
+    default:
+      return(<div>{label}<input type={f.type==='email'?'email':f.type==='phone'?'tel':'text'} value={value==null?'':value} onChange={e=>onChange(e.target.value)} placeholder={f.placeholder||''} className={DR_INP}/></div>);
+  }
+}
+function RecordEditDrawer({title,Icon,groups,record,onSave,onClose}){
+  const [draft,setDraft]=React.useState(()=>({...record}));
+  const [guard,setGuard]=React.useState(false);
+  const dref=React.useRef(null);useFocusTrap(dref);
+  const allFields=[].concat(...groups.map(g=>g.fields));
+  const dirty=allFields.some(f=>drEditable(f)&&!drEq(draft[f.key],record[f.key]));
+  const setField=(k,v)=>setDraft(d=>({...d,[k]:v}));
+  const attemptClose=()=>{if(dirty&&!guard)setGuard(true);else onClose();};
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')attemptClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);});
+  const save=()=>{
+    const patch={};
+    allFields.forEach(f=>{if(drEditable(f)&&!drEq(draft[f.key],record[f.key]))patch[f.key]=draft[f.key];});
+    if(patch.owner!==undefined){const m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(t=>t.avatar===patch.owner);if(m)patch.ownerColor=m.color;}
+    onSave(patch);
+    window.__nrturToast&&window.__nrturToast((record.name||'Record')+' updated','success');
+    onClose();
+  };
+  return(<React.Fragment>
+    <div className="fixed inset-0 bg-black/40 z-[179]" onClick={attemptClose}/>
+    <div ref={dref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+      className="fixed z-[180] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[90vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[460px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l"
+      style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0">{Icon&&<Icon size={15}/>}</span><p className="text-[14px] font-semibold text-white truncate">{title}</p></div>
+        <button onClick={attemptClose} title="Close" className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-6">
+        {groups.map((g,gi)=>(<div key={gi} className="flex flex-col gap-3">
+          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{g.title}</p>
+          <div className="flex flex-col gap-3.5">{g.fields.map(f=><DrawerField key={f.key} f={f} value={draft[f.key]} onChange={(v)=>setField(f.key,v)}/>)}</div>
+        </div>))}
+      </div>
+      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]">
+        <button onClick={attemptClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={save} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-all">Save changes</button>
+      </div>
+      {guard&&(<div className="absolute inset-0 z-10 flex items-center justify-center p-5" style={{background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)'}}>
+        <div className="w-full rounded-2xl border border-white/[0.10] p-5" style={{background:'var(--pop)'}}>
+          <p className="text-[14px] font-semibold text-white">Discard changes?</p>
+          <p className="text-[12.5px] text-white/55 mt-1.5 leading-relaxed">You have unsaved edits. Closing now will lose them.</p>
+          <div className="flex gap-3 mt-4"><button onClick={()=>setGuard(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]">Keep editing</button><button onClick={()=>{setGuard(false);onClose();}} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white cursor-pointer" style={{background:'#dc2626'}}>Discard</button></div>
+        </div>
+      </div>)}
+    </div>
+  </React.Fragment>);
 }
 
 // ── Unified, cross-linked activity timeline (Contacts · Deals · Companies · Leads) ──
@@ -5150,7 +5254,7 @@ function ContactDetailPage({goTo,nav}){
   const [extra,setExtra]=React.useState([]); // session-added activities (notes, logged calls, scheduled meetings)
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:'AM',title:'Note added',body:text}),...x]);
   const {confirmNode,openConfirm}=useConfirm();
-  const doDelete=()=>openConfirm({title:`Delete ${c.name}?`,body:`This permanently removes ${c.name} and its activity. This can't be undone.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{crm.setContacts(a=>a.filter(x=>x.id!==c.id));window.__nrturToast&&window.__nrturToast(`${c.name} deleted`,'success');goTo('contacts');}});
+  const doDelete=()=>openConfirm({title:`Delete ${c.name}?`,body:`This permanently removes ${c.name} and its activity. This can't be undone.`,confirmLabel:'Delete contact',danger:true,requireText:c.name,onConfirm:()=>{crm.setContacts(a=>a.filter(x=>x.id!==c.id));window.__nrturToast&&window.__nrturToast(`${c.name} deleted`,'success');goTo('contacts');}});
   const onLogCall=(cd)=>{setExtra(x=>[mkAct('call',{ts:0,by:'AM',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),payload:{dir:cd.direction==='in'?'in':'out',outcome:cd.outcome,reason:cd.reason}}),...x]);};
   const onPopoverCall=(data,seconds)=>{
     const dur=fmtDur(seconds||0);
@@ -5167,6 +5271,9 @@ function ContactDetailPage({goTo,nav}){
   const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>g('company-detail')},{key:'owner',label:'Owner',type:'owner'},{key:'lifecycle',label:'Lifecycle stage',type:'pill',options:['Subscriber','Lead','Marketing Qualified Lead','Sales Qualified Lead','Opportunity','Customer','Evangelist','Other']},{key:'pstatus',label:'Status',type:'pill',options:['New','Contacted','Nurturing','Qualified','Unqualified']},{key:'tags',label:'Tags',type:'tags'},{key:'score',label:'Score',type:'score'}];
   const cSecondary=[{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
   const cMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
+  const [editOpen,setEditOpen]=React.useState(false);
+  const onEditSave=(patch)=>{const next={...crec,...patch};const out={...patch};if('first'in patch||'last'in patch)out.name=((next.first||'')+' '+(next.last||'')).trim();updateContact(c.id,out);};
+  const editGroups=[{title:'Basic info',fields:cPrimary},{title:'Additional details',fields:cSecondary}];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
@@ -5177,7 +5284,7 @@ function ContactDetailPage({goTo,nav}){
             <RecordSwitcher obj="contact" page="contact-detail" currentId={c.id} goTo={goTo} items={contacts} railTitle="Contacts"/>
             <button className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Star size={13}/> Star</button>
             <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
-            <button onClick={()=>goTo('edit-contact')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
+            <button onClick={()=>setEditOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
             <button onClick={doDelete} title="Delete contact" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button>
           </div>
         </header>
@@ -5202,7 +5309,7 @@ function ContactDetailPage({goTo,nav}){
               </div>
               {dialerOpen&&!dnc&&<ContactDialerPopover contact={{name:c.name,phone:c.phone,avatar:c.avatar,color:c.color}} statusOptions={['New','Contacted','Nurturing','Qualified','Unqualified']} currentStatus={c.pstatus} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
               </div>
-              <RecordProperties record={crec} primary={cPrimary} secondary={cSecondary} meta={cMeta} onChange={onFieldChange} goTo={goTo}/>
+              <RecordProperties record={crec} primary={cPrimary} secondary={cSecondary} onChange={onFieldChange} goTo={goTo}/>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4 flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Blocks all email, SMS, and calls.</p></div><Toggle on={dnc} onChange={setDnc}/></div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
                 <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · 2</p><button onClick={()=>goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button></div>
@@ -5224,9 +5331,11 @@ function ContactDetailPage({goTo,nav}){
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
+          <RecordMetaFooter record={crec} meta={cMeta}/>
         </div>
         <AppFooter/>{confirmNode}
       </div>
+      {editOpen&&<RecordEditDrawer title={'Edit '+c.name} Icon={I.UserPlus} groups={editGroups} record={crec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
       {callModal&&<LogCallModal close={()=>setCallModal(false)} contactName={c.name} onSave={onLogCall}/>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={c.email}/>}
       {schedOpen&&<CalEventFormModal initial={{type:'meeting',contact:c.name,linkType:'contact',company:c.co}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setExtra(x=>[mkAct('meeting',{ts:0,by:'AM',title:ev.title||'Meeting scheduled',body:(ev.date?('On '+ev.date):'Added to the calendar.')}),...x]);setSchedOpen(false);}}/>}
@@ -5553,7 +5662,7 @@ function DealDetailPage({goTo,nav}){
   const {updateDeal}=crm;
   const {confirmNode,openConfirm}=useConfirm();
   const dealName=d.name||(d.company+' · '+d.value);
-  const doDelete=()=>openConfirm({title:`Delete ${dealName}?`,body:`This permanently removes ${dealName} and its activity. This can't be undone.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{crm.setDeals(a=>a.filter(x=>x.id!==d.id));window.__nrturToast&&window.__nrturToast(`${dealName} deleted`,'success');goTo('pipeline');}});
+  const doDelete=()=>openConfirm({title:`Delete ${dealName}?`,body:`This permanently removes ${dealName} and its activity. This can't be undone.`,confirmLabel:'Delete deal',danger:true,requireText:(d.name||d.company),onConfirm:()=>{crm.setDeals(a=>a.filter(x=>x.id!==d.id));window.__nrturToast&&window.__nrturToast(`${dealName} deleted`,'success');goTo('pipeline');}});
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads};
   const [extra,setExtra]=React.useState([]);
   const addDealNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:d.owner||'AM',title:'Note added',body:text}),...x]);
@@ -5563,6 +5672,9 @@ function DealDetailPage({goTo,nav}){
   const onDealField=(k,v)=>{if(k==='dStage'){const mp={Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};setStage(v);updateDeal(d.id,{dStage:v,stageKey:mp[v]||d.stageKey});}else{updateDeal(d.id,{[k]:v});}};
   const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency'},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'dStage',label:'Stage',type:'pill',options:['Qualified','Proposal','Negotiation','Won','Lost']},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail')},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail')},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
+  const [editOpen,setEditOpen]=React.useState(false);
+  const onEditSave=(patch)=>{const out={...patch};if('dStage'in patch){const mp={Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};out.stageKey=mp[patch.dStage]||d.stageKey;setStage(patch.dStage);}updateDeal(d.id,out);};
+  const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
@@ -5570,7 +5682,7 @@ function DealDetailPage({goTo,nav}){
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors flex items-center gap-1.5"><I.ChevronLeft size={12}/>Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">{d.company}</span></div>
-          <div className="flex items-center gap-2"><RecordSwitcher obj="deal" page="deal-detail" currentId={d.id} goTo={goTo} items={_deals} railTitle="Deals"/>{nextStage&&<button onClick={()=>{setStage(nextStage);const k=(STAGES_DATA.find(s=>s.name===nextStage)||{}).key;if(k)updateDeal(d.id,{stageKey:k});}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button><button onClick={doDelete} title="Delete deal" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button></div>
+          <div className="flex items-center gap-2"><RecordSwitcher obj="deal" page="deal-detail" currentId={d.id} goTo={goTo} items={_deals} railTitle="Deals"/>{nextStage&&<button onClick={()=>{setStage(nextStage);const k=(STAGES_DATA.find(s=>s.name===nextStage)||{}).key;if(k)updateDeal(d.id,{stageKey:k});}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button><button onClick={()=>setEditOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button><button onClick={doDelete} title="Delete deal" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button></div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-5 items-start">
@@ -5580,13 +5692,15 @@ function DealDetailPage({goTo,nav}){
                 <div className="flex items-center gap-2 mb-6">{DEAL_STAGE_ORDER.map((s,i)=>{const done=i<=stageIdx;return(<React.Fragment key={s}><div className="flex flex-col items-center gap-1"><div className={['w-2 h-2 rounded-full transition-all',done?'':'bg-white/[0.08]'].join(' ')} style={done?{background:DEAL_STAGE_COLOR[s],boxShadow:`0 0 8px ${DEAL_STAGE_COLOR[s]}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap',done?'text-white/70':'text-white/25'].join(' ')}>{s}</span></div>{i<4&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
 
               </div>
-              <RecordProperties record={drec} primary={dealPrimary} secondary={dealSecondary} meta={dealMeta} onChange={onDealField} goTo={goTo}/>
+              <RecordProperties record={drec} primary={dealPrimary} secondary={dealSecondary} onChange={onDealField} goTo={goTo}/>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-3">Linked Contact</p>{dealContact?(<button onClick={()=>goTo('contact-detail',dealContact.id)} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:dealContact.color}}>{dealContact.avatar}</div><div><p className="text-[13px] font-medium text-white">{dealContact.name}</p><p className="text-[11px] text-white/50">{d.company}</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button>):(<p className="text-[12px] text-white/40">No linked contact.</p>)}</div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-3">Linked Company</p><button onClick={()=>goTo('company-detail',companyRec&&companyRec.id)} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:(companyRec&&companyRec.color)||'#8b5cf6'}}>{(companyRec&&companyRec.avatar)||d.company.slice(0,2).toUpperCase()}</div><div><p className="text-[13px] font-medium text-white">{d.company}</p><p className="text-[11px] text-white/50">{companyRec?companyRec.industry+' · '+companyRec.size+' employees':'Company'}</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button></div>
             </div>
             <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addDealNote} notePlaceholder="Add a deal note..."/>
           </div>
+          <RecordMetaFooter record={drec} meta={dealMeta} max="1100px"/>
         </div>
+        {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
         {confirmNode}
         <AppFooter/>
@@ -5871,7 +5985,10 @@ function CompanyDetailPage({goTo,nav}){
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
-  const doDelete=()=>openConfirm({title:`Delete ${co.name}?`,body:`This permanently removes ${co.name} and its activity. This can't be undone.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{crm.setCompanies(a=>a.filter(x=>x.id!==co.id));window.__nrturToast&&window.__nrturToast(`${co.name} deleted`,'success');goTo('companies');}});
+  const doDelete=()=>openConfirm({title:`Delete ${co.name}?`,body:`This permanently removes ${co.name} and its activity. This can't be undone.`,confirmLabel:'Delete company',danger:true,requireText:co.name,onConfirm:()=>{crm.setCompanies(a=>a.filter(x=>x.id!==co.id));window.__nrturToast&&window.__nrturToast(`${co.name} deleted`,'success');goTo('companies');}});
+  const [editOpen,setEditOpen]=React.useState(false);
+  const onEditSave=(patch)=>updateCompany(co.id,patch);
+  const editGroups=[{title:'Basic info',fields:coPrimary},{title:'Details & address',fields:coSecondary}];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
@@ -5882,7 +5999,7 @@ function CompanyDetailPage({goTo,nav}){
             <RecordSwitcher obj="company" page="company-detail" currentId={co.id} goTo={goTo} items={companies} railTitle="Companies"/>
             <button onClick={()=>goTo('add-deal')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.GitBranch size={13}/> New deal</button>
             <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
-            <button onClick={()=>goTo('edit-company')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
+            <button onClick={()=>setEditOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
             <button onClick={doDelete} title="Delete company" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button>
           </div>
         </header>
@@ -5902,7 +6019,7 @@ function CompanyDetailPage({goTo,nav}){
                 </div>
               </div>
               </div>
-              <RecordProperties record={co} primary={coPrimary} secondary={coSecondary} meta={coMeta} onChange={(k,v)=>updateCompany(co.id,{[k]:v})} goTo={goTo}/>
+              <RecordProperties record={co} primary={coPrimary} secondary={coSecondary} onChange={(k,v)=>updateCompany(co.id,{[k]:v})} goTo={goTo}/>
             </div>
                         <div className="flex flex-col gap-5">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
@@ -5924,7 +6041,9 @@ function CompanyDetailPage({goTo,nav}){
               <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
           </div>
+          <RecordMetaFooter record={co} meta={coMeta}/>
         </div>
+        {editOpen&&<RecordEditDrawer title={'Edit '+co.name} Icon={I.Building} groups={editGroups} record={co} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',company:co.name}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setExtra(x=>[mkAct('meeting',{ts:0,by:co.owner||'AM',title:ev.title||'Meeting scheduled',body:(ev.date?('On '+ev.date):'Added to the calendar.')}),...x]);setSchedOpen(false);}}/>}
         <AppFooter/>{confirmNode}
       </div>
@@ -6340,9 +6459,12 @@ function LeadDetailPage({goTo,nav}){
   const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text'},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:['New','Contacted','Engaged','Qualified','Unqualified']},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'expectedCloseDate',label:'Expected close date',type:'date'},{key:'estValueNum',label:'Estimated value',type:'currency'},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
   const leadSecondaryBase=[{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'employeesSize',label:'Employees size',type:'number'},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'}];
   const leadSecondary=l.converted?[...leadSecondaryBase,{key:'_conv',label:'Converted to',type:'converted'}]:leadSecondaryBase;
+  const [editOpen,setEditOpen]=React.useState(false);
+  const onEditSave=(patch)=>{updateLead(l.id,patch);if('status'in patch)setStatusState(patch.status);};
+  const editGroups=[{title:'Basic info',fields:leadPrimary},{title:'Additional details',fields:leadSecondary}];
   const leadMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
   const onLeadField=(k,v)=>{updateLead(l.id,{[k]:v});if(k==='status')setStatusState(v);};
-  const doDelete=()=>openConfirm({title:`Delete ${l.name}?`,body:`This permanently removes ${l.name} and its activity. This can't be undone.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{crm.setLeads(a=>a.filter(x=>x.id!==l.id));window.__nrturToast&&window.__nrturToast(`${l.name} deleted`,'success');goTo('leads');}});
+  const doDelete=()=>openConfirm({title:`Delete ${l.name}?`,body:`This permanently removes ${l.name} and its activity. This can't be undone.`,confirmLabel:'Delete lead',danger:true,requireText:l.name,onConfirm:()=>{crm.setLeads(a=>a.filter(x=>x.id!==l.id));window.__nrturToast&&window.__nrturToast(`${l.name} deleted`,'success');goTo('leads');}});
   const doConvert=(payload)=>{const {contact,company,deal}=buildConvertRecords(l,payload);setContacts(a=>[contact,...a]);if(company)setCompanies(a=>[company,...a]);if(deal)setDeals(a=>[deal,...a]);updateLead(l.id,{converted:true,convertedAt:'Just now',convertedToContactId:contact.id,convertedToCompanyId:company?company.id:null,convertedToDealId:deal?deal.id:null,convContact:contact.name,convCompany:company?company.name:'',convDeal:deal?(deal.company+' · '+deal.value):''});setConvertOpen(false);setConvToast('Lead converted — Contact'+(company?', Company':'')+(deal?' (and Deal)':'')+' created.');setTimeout(()=>goTo('contact-detail',contact.id),1100);};
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
@@ -6353,7 +6475,7 @@ function LeadDetailPage({goTo,nav}){
           <div className="flex items-center gap-2">
             <RecordSwitcher obj="lead" page="lead-detail" currentId={l.id} goTo={goTo} items={leads} railTitle="Leads"/>
             <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
-            <button onClick={()=>goTo('edit-lead')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
+            <button onClick={()=>setEditOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button>
             <button onClick={doDelete} title="Delete lead" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button>
             {l.converted?(<span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-emerald-300 bg-emerald-500/12 border border-emerald-500/25"><I.Check size={14} stroke={2.4}/>Converted</span>):(<button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-emerald-500 hover:bg-emerald-400 border-none shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={14} stroke={2.4}/>Convert lead</button>)}
           </div>
@@ -6370,7 +6492,7 @@ function LeadDetailPage({goTo,nav}){
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-bold tabular-nums" style={{color:b.c}}>{l.score}</span></div></div>
               </div>
               </div>
-              <RecordProperties record={l} primary={leadPrimary} secondary={leadSecondary} meta={leadMeta} onChange={onLeadField} goTo={goTo}/>
+              <RecordProperties record={l} primary={leadPrimary} secondary={leadSecondary} onChange={onLeadField} goTo={goTo}/>
               {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
@@ -6388,9 +6510,11 @@ function LeadDetailPage({goTo,nav}){
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
+          <RecordMetaFooter record={l} meta={leadMeta}/>
         </div>
         <AppFooter/>{confirmNode}
       </div>
+      {editOpen&&<RecordEditDrawer title={'Edit '+l.name} Icon={I.Sparkles} groups={editGroups} record={l} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
       {convertOpen&&<ConvertLeadModal lead={l} close={()=>setConvertOpen(false)} onConfirm={doConvert}/>}
       {convToast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{convToast}</div>)}
       {schedOpen&&<CalEventFormModal initial={{type:'call',contact:l.name,linkType:'lead',company:l.company}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setExtra(x=>[mkAct('meeting',{ts:0,by:l.owner||'AM',title:ev.title||'Call scheduled',body:(ev.date?('On '+ev.date):'Added to the calendar.')}),...x]);setSchedOpen(false);}}/>}
