@@ -8324,7 +8324,7 @@ function NodeTile({accent,Icon,title,summary,eyebrow,selected,onClick,onDelete,o
 }
 // Splits the spine into labeled lanes below a condition/branch tile — each lane is its own vertical spine.
 // Lanes stretch to equal height and rejoin into a single merge dot so the continuing flow stays connected.
-function BranchSplit({lanes,goTo,showStats,flowName,onAddPath,canAddPath}){
+function BranchSplit({lanes,goTo,flowName,onAddPath,canAddPath}){
   const PITCH=TILE_W+48; // lane width + 48px gap
   const barW=Math.max(0,(lanes.length-1)*PITCH);
   return(
@@ -8339,7 +8339,7 @@ function BranchSplit({lanes,goTo,showStats,flowName,onAddPath,canAddPath}){
               {l.onLabelChange?<input value={l.label} onChange={e=>l.onLabelChange(e.target.value)} className="bg-transparent outline-none w-[54px]" style={{color:l.color}}/>:<span className="truncate">{l.label}</span>}
               {l.onRemove&&<button onClick={l.onRemove} title="Remove path" className="text-white/40 hover:text-red-400 shrink-0"><I.X size={9}/></button>}
             </span>
-            <FlowList nodes={l.nodes} onChange={l.onChange} goTo={goTo} compact showStats={showStats} flowName={flowName}/>
+            <FlowList nodes={l.nodes} onChange={l.onChange} goTo={goTo} compact flowName={flowName}/>
             {/* filler connector — grows so every lane reaches the merge bar at the same y */}
             <span className="w-[2px] flex-1 bg-white/[0.10]" style={{minHeight:12}}/>
           </div>
@@ -8497,27 +8497,6 @@ function actionSummary(node){
   }
 }
 // Renders a single node card by kind, with its inline editor + nested lanes for branching nodes
-// Deterministic per-node funnel metrics for the ManyChat/ConvertKit-style analytics overlay
-function hashStr(s){let h=0;for(let i=0;i<(s||'').length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
-function nodeStats(seed,i){
-  const base=hashStr(seed)+i*7;
-  const entered=Math.max(6,120-i*18-(base%8));
-  const active=Math.max(2,Math.round(entered*0.18)+(base%4));
-  const openPct=55+((base>>2)%30);
-  const unsub=base%5;
-  const conv=Math.max(40,90-i*9-((base>>3)%10));
-  return {entered,active,openPct,unsub,conv};
-}
-function NodeStats({s,opens}){
-  const chip=(Ic,label,val,c)=>(<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium" style={{background:c+'1f',color:c}}><Ic size={9}/>{val} <span className="opacity-60">{label}</span></span>);
-  return(<div className="mt-2 pt-2 border-t border-white/[0.05] flex items-center gap-1.5 flex-wrap">
-    {chip(I.UserPlus,'entered',s.entered,'#60a5fa')}
-    {chip(I.Users,'active',s.active,'#818cf8')}
-    {opens!==false&&chip(I.Eye,'open',s.openPct+'%','#34d399')}
-    {chip(I.Ban,'unsub',s.unsub,'#f87171')}
-    {chip(I.ArrowRight,'to next',s.conv+'%','#fbbf24')}
-  </div>);
-}
 // Always-visible "who is here right now / unsubscribed here" badge for a flow step
 function StepLive({s}){
   return(<div className="flex items-center gap-1.5 shrink-0">
@@ -8560,7 +8539,7 @@ function FlowNodeConfigBody({node,onChange,goTo}){
     </div>)}
   </div>);
 }
-function FlowNode({node,onChange,onRemove,onDuplicate,goTo,showStats,flowName,idx}){
+function FlowNode({node,onChange,onRemove,onDuplicate,goTo,flowName,idx}){
   // Defensive: an unknown / malformed node renders a neutral placeholder instead of blanking the canvas.
   if(!node||!node.kind){
     return(<NodeTile accent="#64748b" Icon={I.AlertTriangle} title="Unknown step" summary={(node&&node.id)||'no id'}/>);
@@ -8577,12 +8556,11 @@ function FlowNode({node,onChange,onRemove,onDuplicate,goTo,showStats,flowName,id
     <div className="flex flex-col items-center">
       <NodeTile accent={accent} Icon={Icon} title={node.label} summary={summary} selected={open}
         onClick={()=>setSelId(open?null:node.id)} onDelete={onRemove} onDuplicate={onDuplicate||null}/>
-      {showStats&&node.kind!=='goal'&&<div className="mt-1.5 max-w-[240px]"><NodeStats s={nodeStats(flowName,idx||0)} opens={node.kind==='action'||node.kind==='condition'}/></div>}
-      {node.kind==='condition'&&<BranchSplit goTo={goTo} showStats={showStats} flowName={flowName} lanes={[
+      {node.kind==='condition'&&<BranchSplit goTo={goTo} flowName={flowName} lanes={[
         {key:'yes',label:'Yes',color:'#34d399',nodes:node.yes,onChange:v=>onChange({yes:v})},
         {key:'no', label:'No', color:'#64748b',nodes:node.no, onChange:v=>onChange({no:v})},
       ]}/>}
-      {node.kind==='branch'&&<BranchSplit goTo={goTo} showStats={showStats} flowName={flowName}
+      {node.kind==='branch'&&<BranchSplit goTo={goTo} flowName={flowName}
         canAddPath={node.lanes.length<4}
         onAddPath={()=>onChange({lanes:[...node.lanes,{id:newNodeId(),label:'Path '+String.fromCharCode(65+node.lanes.length),nodes:[]}]})}
         lanes={node.lanes.map((l,li)=>({key:l.id,label:l.label,color:['#c084fc','#60a5fa','#fbbf24','#34d399'][li%4],nodes:l.nodes,
@@ -8610,7 +8588,7 @@ function FlowNode({node,onChange,onRemove,onDuplicate,goTo,showStats,flowName,id
   );
 }
 // Recursively renders an ordered list of nodes; an insert "+" sits at every gap (before, between, after)
-function FlowList({nodes,onChange,goTo,compact,showStats,flowName}){
+function FlowList({nodes,onChange,goTo,compact,flowName}){
   const cfg=React.useContext(FlowCfgCtx);
   const update=(id,patch)=>onChange(nodes.map(n=>n.id===id?{...n,...patch}:n));
   const remove=(id)=>onChange(nodes.filter(n=>n.id!==id));
@@ -8623,7 +8601,7 @@ function FlowList({nodes,onChange,goTo,compact,showStats,flowName}){
       <FlowInserter compact={compact} onInsert={n=>insertAt(0,n)}/>
       {nodes.map((n,i)=>(
         <React.Fragment key={n.id}>
-          <FlowNode node={n} onChange={p=>update(n.id,p)} onRemove={()=>remove(n.id)} onDuplicate={()=>duplicate(i)} goTo={goTo} showStats={showStats} flowName={flowName} idx={i}/>
+          <FlowNode node={n} onChange={p=>update(n.id,p)} onRemove={()=>remove(n.id)} onDuplicate={()=>duplicate(i)} goTo={goTo} flowName={flowName} idx={i}/>
           <FlowInserter compact={compact} onInsert={node=>insertAt(i+1,node)}/>
         </React.Fragment>
       ))}
@@ -8713,7 +8691,6 @@ function AutomationBuilderPage({goTo}){
   const [entryOn,setEntryOn]=React.useState(false);
   const [entry,setEntry]=React.useState({field:'Status',op:'is',value:'Lead'});
   const [webhookFields,setWebhookFields]=React.useState(['full_name','email','company','phone','message']);
-  const [showStats,setShowStats]=React.useState(false);
   const [activated,setActivated]=React.useState(false);
   const [dirty,setDirty]=React.useState(false);
   const [testOpen,setTestOpen]=React.useState(false);
@@ -8736,8 +8713,7 @@ function AutomationBuilderPage({goTo}){
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-2 mr-1 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className={['text-[12px] font-medium',activated?'text-emerald-300':'text-white/50'].join(' ')}>{activated?'Active':'Inactive'}</span><Toggle on={activated} onChange={v=>{setActivated(v);mark();}}/></div>
             <button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>
-            <button onClick={()=>setLogOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.History size={12}/>Logs</button>
-            <button onClick={()=>setShowStats(s=>!s)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all',showStats?'text-brand-200 bg-brand-500/15 border-brand-500/40':'text-white/70 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.BarChart size={12}/>Analytics</button>
+            <button onClick={()=>setLogOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.History size={12}/>Run history</button>
             <button onClick={cancel} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
             <button onClick={()=>save('Saved as draft')} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>
             <button onClick={()=>save('Automation saved')} className="px-4 py-1.5 rounded-lg text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
@@ -8749,7 +8725,7 @@ function AutomationBuilderPage({goTo}){
               <div className="overflow-x-auto scroll-area pb-2">
                 <div className="flex flex-col items-center w-fit min-w-full mx-auto">
                   <NodeTile eyebrow="Trigger" accent="#818cf8" Icon={tm.Icon} title={trigger} summary={'Fires when '+tm.hint} selected={triggerOpen} onClick={()=>setTriggerOpen(true)} noTopPort/>
-                  <FlowCfgProvider><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} showStats={showStats} flowName={name}/></FlowCfgProvider>
+                  <FlowCfgProvider><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} flowName={name}/></FlowCfgProvider>
                 </div>
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 sticky top-4 flex flex-col gap-4">
@@ -10888,7 +10864,6 @@ function SequenceBuilderPage({goTo,channel}){
   const [bounceSuppress,setBounceSuppress]=React.useState(true);
   const [linkTracking,setLinkTracking]=React.useState(true);
   const [freqCap,setFreqCap]=React.useState('3');
-  const [showStats,setShowStats]=React.useState(false);
   const [toast,setToast]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
   const mark=()=>setDirty(true);
@@ -10987,8 +10962,8 @@ function SequenceBuilderPage({goTo,channel}){
           <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Sequences</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white/45 shrink-0">{isSms?'SMS Sequences':'Email Sequences'}</span><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-medium outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-2 mr-1 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className={['text-[12px] font-medium',activated?'text-emerald-300':'text-white/50'].join(' ')}>{activated?'Active':'Inactive'}</span><Toggle on={activated} onChange={v=>{setActivated(v);mark();}}/></div>
+            <button onClick={()=>{if(dirty){openConfirm({title:'View performance?',body:'Open the Sequences list to see delivery, engagement, and per-step analytics. Your unsaved changes here will be lost.',confirmLabel:'Discard & view',danger:true,onConfirm:()=>goTo('settings-sequences')});}else goTo('settings-sequences');}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.BarChart size={12}/>Performance</button>
             <button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>
-            <button onClick={()=>setShowStats(s=>!s)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-all',showStats?'text-brand-200 bg-brand-500/15 border-brand-500/40':'text-white/70 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.BarChart size={12}/>Analytics</button>
             <button onClick={cancel} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
             <button onClick={()=>save('Saved as draft')} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>
             <button onClick={()=>save('Sequence saved')} className="px-4 py-1.5 rounded-lg text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>
@@ -11017,7 +10992,6 @@ function SequenceBuilderPage({goTo,channel}){
                     <span className="w-[2px] h-3 bg-white/[0.10]"/>
                   </React.Fragment>)}
                   <NodeTile accent={accent} Icon={isSms?I.Hash:I.Mail} title={(isSms?'SMS message':'Email')+' '+(i+1)} summary={stepSummary(s)} selected={activeNodeId===s.id} onClick={()=>openStep(s)} onDelete={steps.length>1?()=>removeStep(s.id):null}/>
-                  {showStats&&<div className="mt-1.5 max-w-[240px]"><NodeStats s={nodeStats(name,i)} opens={!isSms}/></div>}
                   <SeqSpineAdd onClick={()=>insertStepAt(i+1)}/>
                 </React.Fragment>
               ))}
