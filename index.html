@@ -7352,6 +7352,75 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
     {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',date:'Just now',dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:null,notes:cd.notes||null}); onToast&&onToast('Call logged ✓','success'); }}/>}
   </div>);
 }
+// ?? MMS (media-first messaging) ???????????????????????????????????????????????
+// Demo media use CSS gradients as stand-in thumbnails (no binary assets in the prototype).
+const MMS_CONVOS=[
+  {id:1,contact:'Sarah Chen',avatar:'SC',color:'#3b82f6',phone:'+1 415-555-0142',time:'Just now',unread:true,preview:'And the signed floor plan',
+    lastMedia:{type:'image',grad:'linear-gradient(135deg,#6366f1,#8b5cf6)'},
+    messages:[
+      {me:false,time:'12:31 PM',text:'Here are the venue shots from this morning 📸',media:[{type:'image',grad:'linear-gradient(135deg,#6366f1,#8b5cf6)',name:'venue-hall.jpg',size:'2.4 MB'},{type:'image',grad:'linear-gradient(135deg,#0ea5e9,#6366f1)',name:'venue-stage.jpg',size:'1.9 MB'}]},
+      {me:true,time:'12:38 PM',text:'These look incredible — the lighting is perfect 🙌'},
+      {me:false,time:'12:41 PM',text:'Quick walkthrough video too',media:[{type:'video',grad:'linear-gradient(135deg,#ec4899,#8b5cf6)',name:'walkthrough.mp4',size:'14.2 MB',dur:'0:32'}]},
+      {me:false,time:'1:02 PM',text:'And the signed floor plan',media:[{type:'file',name:'floor-plan-final.pdf',size:'820 KB'}]},
+    ]},
+  {id:2,contact:'James Rivera',avatar:'JR',color:'#8b5cf6',phone:'+1 628-555-0119',time:'2h ago',unread:true,preview:'spec-sheet.pdf',
+    lastMedia:{type:'image',grad:'linear-gradient(135deg,#10b981,#0ea5e9)'},
+    messages:[
+      {me:false,time:'10:12 AM',text:'Product samples just arrived 🎉',media:[{type:'image',grad:'linear-gradient(135deg,#10b981,#0ea5e9)',name:'sample-a.jpg',size:'1.6 MB'},{type:'image',grad:'linear-gradient(135deg,#22d3ee,#3b82f6)',name:'sample-b.jpg',size:'1.4 MB'},{type:'image',grad:'linear-gradient(135deg,#34d399,#10b981)',name:'sample-c.jpg',size:'1.7 MB'}]},
+      {me:true,time:'10:20 AM',text:'Love the packaging. Can you send the spec sheet?'},
+      {me:false,time:'10:24 AM',media:[{type:'file',name:'spec-sheet.pdf',size:'1.1 MB'}]},
+    ]},
+  {id:3,contact:'Priya Nair',avatar:'PN',color:'#a855f7',phone:'+1 415-555-0188',time:'1d ago',unread:false,preview:'That made my day — thank you!',
+    lastMedia:{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)'},
+    messages:[
+      {me:false,time:'Yesterday 3:15 PM',text:'Our team recorded a quick thank-you 💜',media:[{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)',name:'thank-you.mp4',size:'9.8 MB',dur:'0:18'}]},
+      {me:true,time:'Yesterday 4:02 PM',text:'That made my day — thank you!'},
+    ]},
+  {id:4,contact:'Marcus Rios',avatar:'MR',color:'#f59e0b',phone:'+1 628-555-0170',time:'3d ago',unread:false,preview:'Storefront mockup for the campaign',
+    lastMedia:{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)'},
+    messages:[
+      {me:false,time:'3 days ago',text:'Storefront mockup for the campaign',media:[{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)',name:'storefront.png',size:'3.1 MB'}]},
+    ]},
+];
+const MMS_SAMPLE={
+  image:[{type:'image',grad:'linear-gradient(135deg,#6366f1,#a855f7)',name:'photo-'+'01.jpg',size:'2.1 MB'},{type:'image',grad:'linear-gradient(135deg,#0ea5e9,#6366f1)',name:'photo-02.jpg',size:'1.8 MB'},{type:'image',grad:'linear-gradient(135deg,#34d399,#0ea5e9)',name:'photo-03.jpg',size:'2.6 MB'},{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)',name:'photo-04.jpg',size:'1.5 MB'}],
+  video:[{type:'video',grad:'linear-gradient(135deg,#ec4899,#8b5cf6)',name:'clip-01.mp4',size:'12.4 MB',dur:'0:24'},{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)',name:'clip-02.mp4',size:'8.7 MB',dur:'0:16'}],
+  file:[{type:'file',name:'proposal.pdf',size:'940 KB'},{type:'file',name:'contract.docx',size:'310 KB'},{type:'file',name:'pricing.xlsx',size:'88 KB'}],
+};
+function MmsThumb({m,onOpen,className,style}){
+  return (<button onClick={onOpen} className={['relative group/th overflow-hidden rounded-xl border border-white/[0.08] shrink-0 block',className||''].join(' ')} style={{background:m.grad,...(style||{})}}>
+    {m.type==='video'&&<span className="absolute inset-0 flex items-center justify-center"><span className="w-8 h-8 rounded-full bg-black/45 flex items-center justify-center text-white" style={{backdropFilter:'blur(2px)'}}><I.Play size={13}/></span></span>}
+    {m.type==='video'&&m.dur&&<span className="absolute bottom-1 right-1 px-1 py-0.5 rounded text-[9px] font-medium text-white bg-black/55 tabular-nums">{m.dur}</span>}
+    <span className="absolute inset-0 bg-black/0 group-hover/th:bg-black/15 transition-colors"/>
+  </button>);
+}
+function MmsLightbox({m,close}){
+  React.useEffect(()=>{const onKey=(e)=>{if(e.key==='Escape')close();};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);},[close]);
+  return (<div onClick={close} className="fixed inset-0 z-[140] bg-black/80 flex items-center justify-center p-6" style={{backdropFilter:'blur(4px)'}}>
+    <button onClick={close} aria-label="Close" className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-colors"><I.X size={18}/></button>
+    <div onClick={e=>e.stopPropagation()} className="relative w-full max-w-[760px]">
+      <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-[0_20px_80px_rgba(0,0,0,0.6)]" style={{background:m.grad,aspectRatio:'16/10'}}>
+        {m.type==='video'&&<span className="absolute inset-0 flex items-center justify-center"><span className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center text-white" style={{backdropFilter:'blur(2px)'}}><I.Play size={26}/></span></span>}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-white/80"><span className="text-[13px] font-medium flex items-center gap-2">{m.type==='video'?<I.Play size={13}/>:<I.Image size={13}/>}{m.name}</span><span className="text-[12px] text-white/50">{m.size}{m.dur?(' · '+m.dur):''}</span></div>
+    </div>
+  </div>);
+}
+function MmsGalleryModal({contact,media,onOpen,close}){
+  React.useEffect(()=>{const onKey=(e)=>{if(e.key==='Escape')close();};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);},[close]);
+  const imgs=media.filter(m=>m.type!=='file');const files=media.filter(m=>m.type==='file');
+  return (<div onClick={close} className="fixed inset-0 z-[135] bg-black/70 flex items-center justify-center p-6" style={{backdropFilter:'blur(3px)'}}>
+    <div onClick={e=>e.stopPropagation()} className="w-full max-w-[640px] max-h-[82vh] flex flex-col rounded-2xl border border-white/[0.08] overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.6)]" style={{background:'var(--s900,#0f0f23)'}}>
+      <div className="shrink-0 px-5 py-4 border-b border-white/[0.06] flex items-center justify-between"><div><p className="text-[14px] font-semibold text-white flex items-center gap-2"><I.Layers size={14} className="text-violet-300"/>Shared media</p><p className="text-[11px] text-white/45 mt-0.5">{media.length} items with {contact}</p></div><button onClick={close} aria-label="Close" className="w-8 h-8 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-white/70 flex items-center justify-center"><I.X size={15}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area p-5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          {imgs.map((m,i)=><MmsThumb key={i} m={m} onOpen={()=>onOpen(m)} className="w-full aspect-square"/>)}
+        </div>
+        {files.length>0&&(<div className="mt-5"><p className="text-[10px] font-medium text-white/35 uppercase tracking-[0.14em] mb-2">Files</p><div className="flex flex-col gap-2">{files.map((m,i)=>(<div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]"><span className="w-8 h-8 rounded-lg bg-violet-500/15 text-violet-300 flex items-center justify-center shrink-0"><I.Note size={14}/></span><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-white/85 truncate">{m.name}</span><span className="block text-[10.5px] text-white/40">{m.size}</span></span></div>))}</div></div>)}
+      </div>
+    </div>
+  </div>);
+}
 function InboxPage({goTo,nav}){
   const navCh=(nav&&nav.channel)||null;
   const [tab,setTab]=React.useState(navCh==='calls'||navCh==='sms'?navCh:'all');
