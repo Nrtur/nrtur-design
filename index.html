@@ -46,6 +46,9 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
 
 /* hamburger (mobile full-nav trigger) — hidden on desktop, shown when the rail collapses */
 .mobile-hamburger{display:none}
+/* scrollable middle nav region keeps the bottom cluster (bell/theme/settings/profile) anchored */
+.app-sidebar .nav-mid{scrollbar-width:none}
+.app-sidebar .nav-mid::-webkit-scrollbar{width:0;height:0;display:none}
 
 /* ===== Mobile responsive layer (max 768px) ===== */
 @media (max-width:768px){
@@ -69,6 +72,8 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
   .app-sidebar .nav-overflow,.app-sidebar .nav-more,.app-sidebar .nav-edit,
   .app-sidebar > .w-6{display:none !important}
   .app-sidebar [data-nav],.app-sidebar .nav-settings{width:44px !important;height:44px !important}
+  .app-sidebar .nav-mid{display:contents !important}
+  .app-sidebar .nav-mid{display:contents !important}
   .app-sidebar > .mt-auto{margin-top:0 !important;flex-direction:row !important;gap:0 !important;align-items:center !important}
   .app-sidebar .nav-add{position:fixed;right:14px;bottom:74px;z-index:126;width:auto !important;margin:0 !important}
   .app-sidebar .nav-add > button{width:52px !important;height:52px !important;border-radius:9999px !important;background:#6366f1 !important;color:#fff !important;box-shadow:0 10px 28px rgba(0,0,0,0.55) !important}
@@ -1094,17 +1099,72 @@ function NotifDrawer({close,goTo}){
 // ?? AppSidebar ????????????????????????????????????????????????????????????????
 // Quick-add modal forms (opened from the sidebar "+" button — open in place, no navigation)
 // ── ContactFields ── the single-contact form inputs, shared by Quick Add + Add Contact page ──
+// Smart paste: turn "Jane Doe <jane@acme.com>" / "jane@acme.com" into structured
+// fields, inferring company from a non-freemail domain.
+function parseContactInput(text){
+  text=(text||'').trim();if(!text)return null;
+  const em=text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  if(!em)return null;
+  const email=em[0];
+  let name=text.replace(em[0],'').replace(/[<>,;:"']/g,' ').trim();
+  const parts=name.split(/\s+/).filter(Boolean);
+  const first=parts[0]||'';const last=parts.slice(1).join(' ');
+  const domain=(email.split('@')[1]||'').toLowerCase();
+  const FREE=['gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','proton.me','protonmail.com','aol.com','live.com','me.com'];
+  let company='';
+  if(domain&&FREE.indexOf(domain)<0){const base=domain.split('.')[0];if(base)company=base.charAt(0).toUpperCase()+base.slice(1);}
+  return{first,last,email,company,name};
+}
+// Natural-language date parsing → ISO (yyyy-mm-dd). Accepts "today", "tomorrow",
+// "next fri", "in 3 days", "2 weeks", "end of month", weekday names, or any Date-parseable string.
+function parseNaturalDate(str){
+  if(!str)return '';
+  str=String(str).trim().toLowerCase();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str))return str;
+  const today=new Date();today.setHours(0,0,0,0);
+  const iso=(d)=>{const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return d.getFullYear()+'-'+m+'-'+dd;};
+  const add=(n)=>{const d=new Date(today);d.setDate(d.getDate()+n);return d;};
+  if(str==='today')return iso(today);
+  if(str==='tomorrow'||str==='tmr'||str==='tom')return iso(add(1));
+  if(str==='yesterday')return iso(add(-1));
+  if(str==='end of month'||str==='eom')return iso(new Date(today.getFullYear(),today.getMonth()+1,0));
+  if(str==='end of week'||str==='eow')return iso(add((5-today.getDay()+7)%7));
+  let m=str.match(/^in\s+(\d+)\s*(day|days|d|week|weeks|w|month|months|mo)$/)||str.match(/^(\d+)\s*(day|days|d|week|weeks|w|month|months|mo)$/);
+  if(m){const n=parseInt(m[1],10);const u=m[2];const days=/^d/.test(u)?n:/^w/.test(u)?n*7:n*30;return iso(add(days));}
+  const DOW=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const SHORT=['sun','mon','tue','wed','thu','fri','sat'];
+  m=str.match(/^(?:next\s+|this\s+)?([a-z]+)$/);
+  if(m){let idx=DOW.indexOf(m[1]);if(idx<0)idx=SHORT.indexOf(m[1]);if(idx>=0){let delta=(idx-today.getDay()+7)%7;if(delta===0)delta=7;return iso(add(delta));}}
+  const t=Date.parse(str);
+  if(!isNaN(t)){const d=new Date(t);d.setHours(0,0,0,0);return iso(d);}
+  return '';
+}
+// Date input that accepts natural language (resolves on blur) with a native picker fallback.
+function SmartDateField({value,onChange,inputCls}){
+  const [text,setText]=React.useState('');
+  const [focused,setFocused]=React.useState(false);
+  const ref=React.useRef(null);
+  const commit=(raw)=>{const v=(raw||'').trim();if(!v){onChange('');return;}const r=parseNaturalDate(v);onChange(r||value||'');};
+  const shown=focused?text:(value?fmtShortDate(value):'');
+  return(<div className="relative">
+    <input value={shown} onFocus={()=>{setFocused(true);setText(value||'');}} onChange={e=>setText(e.target.value)} onBlur={()=>{setFocused(false);commit(text);}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} placeholder="e.g. next fri, in 2 weeks" spellCheck={false} className={(inputCls||'')+' pr-9'}/>
+    <button type="button" tabIndex={-1} onClick={()=>{if(ref.current){try{ref.current.showPicker();}catch(e){ref.current.focus();}}}} title="Pick a date" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35 hover:text-brand-300 transition-colors"><I.Calendar size={14}/></button>
+    <input ref={ref} type="date" value={value||''} onChange={e=>onChange(e.target.value)} tabIndex={-1} aria-hidden="true" className="absolute right-0 top-0 w-px h-px opacity-0 pointer-events-none" style={{colorScheme:'dark'}}/>
+  </div>);
+}
 function ContactFields({f,set}){
   const I_F='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-all';
   const L='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5';
+  const smartPaste=(e)=>{const p=parseContactInput(e.clipboardData.getData('text'));if(!p||!p.email)return;e.preventDefault();set('first',p.first);set('last',p.last);set('email',p.email);if(p.company&&!f.company)set('company',p.company);};
   return(<React.Fragment>
-    <div className="grid grid-cols-2 gap-4 mb-4">
-      <div><label className={L}>First name</label><input value={f.first} onChange={e=>set('first',e.target.value)} placeholder="Sarah" className={I_F}/></div>
+    <div className="grid grid-cols-2 gap-4 mb-1.5">
+      <div><label className={L}>First name</label><input value={f.first} onChange={e=>set('first',e.target.value)} onPaste={smartPaste} placeholder="Sarah" className={I_F}/></div>
       <div><label className={L}>Last name</label><input value={f.last} onChange={e=>set('last',e.target.value)} placeholder="Chen" className={I_F}/></div>
       <div><label className={L}>Company</label><ContactCompanyField value={f.company} onChange={v=>set('company',v)}/></div>
       <div><label className={L}>Job title</label><input value={f.title} onChange={e=>set('title',e.target.value)} placeholder="CEO" className={I_F}/></div>
     </div>
-    <div className="mb-4"><label className={L}>Work email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="email@company.com" className={I_F}/></div>
+    <p className="text-[11px] text-white/30 mb-4">Tip: paste <span className="text-white/45">Jane Doe &lt;jane@acme.com&gt;</span> into the first-name field to autofill.</p>
+    <div className="mb-4"><label className={L}>Work email</label><input type="email" value={f.email} onChange={e=>set('email',e.target.value)} onPaste={smartPaste} placeholder="email@company.com" className={I_F}/></div>
     <div className="grid grid-cols-2 gap-4">
       <div><label className={L}>Phone</label><input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="+1 555 000 0000" className={I_F}/></div>
       <div><label className={L}>Status</label><select value={f.status} onChange={e=>set('status',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CONTACT_STATUSES.map(s=>(<option key={s}>{s}</option>))}</select></div>
@@ -1148,7 +1208,7 @@ function QuickDealModal({close,onToast}){
           <div><label className={L}>Company</label><input value={f.company} onChange={e=>set('company',e.target.value)} placeholder="Search or add..." className={I_F}/></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className={L}>Deal value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input value={f.value} onChange={e=>set('value',e.target.value)} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
-            <div><label className={L}>Close date</label><input type="date" value={f.date} onChange={e=>set('date',e.target.value)} className={I_F} style={{colorScheme:'dark'}}/></div>
+            <div><label className={L}>Close date</label><SmartDateField value={f.date} onChange={v=>set('date',v)} inputCls={I_F}/></div>
           </div>
           <div><label className={L}>Stage</label><select value={f.stage} onChange={e=>set('stage',e.target.value)} className={I_F+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div>
         </div>
@@ -1756,7 +1816,8 @@ const CURRENT_USER_ROLE='Owner'; // prototype: the signed-in user is the workspa
 function navIco(name){return (name&&I[name])||I.Globe;}
 function navKey(it){return it.type==='view'?('view:'+it.target+':'+it.viewKey):it.type==='link'?('link:'+(it.url||it.id)):('page:'+it.page);}
 function navCatItem(id){const c=NAV_CATALOG.find(x=>x.id===id);return c?{...c,type:'page',pinned:true}:null;}
-const NAV_BUILTIN_DEFAULT=['dashboard','contacts','pipeline','calendar','tasks','inbox','reports'].map(navCatItem).filter(Boolean);
+const NAV_BUILTIN_DEFAULT=['dashboard','leads','contacts','companies','pipeline','calendar','tasks','inbox','reports'].map(navCatItem).filter(Boolean);
+const NAV_MAX_PINNED=12; // cap on how many items a user can pin to the rail (rest live in the More drawer)
 function navAllDestinations(){return [...NAV_CATALOG.map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG];}
 function navPinnedList(cfg){return (cfg||[]).filter(i=>i&&i.pinned!==false);}
 function navMoreList(cfg){
@@ -1843,8 +1904,8 @@ function NavCustomizeDrawer({mode,close,onToast}){
   const available=navMoreList(items);
   const reorder=(from,to)=>{if(from==null||to==null||from===to)return;setItems(arr=>{const p=arr.filter(i=>i.pinned!==false);const u=arr.filter(i=>i.pinned===false);const x=p.splice(from,1)[0];p.splice(to,0,x);return [...p,...u];});};
   const removeItem=(k)=>{if(pinned.length<=1){onToast&&onToast('Keep at least one item in the nav','warning');return;}setItems(arr=>navNormalize(arr.map(i=>navKey(i)===k?{...i,pinned:false}:i)));};
-  const addDest=(d)=>{setItems(arr=>{const k=navKey(d);const exists=arr.find(i=>navKey(i)===k);return navNormalize(exists?arr.map(i=>navKey(i)===k?{...i,pinned:true}:i):[...arr,{...d,pinned:true}]);});};
-  const addLink=()=>{let u=linkUrl.trim();if(!u){onToast&&onToast('Enter a URL','warning');return;}if(!/^https?:\/\//i.test(u))u='https://'+u;const item={id:'link-'+Date.now(),type:'link',label:(linkLabel.trim()||u.replace(/^https?:\/\//,'')),url:u,icon:linkIcon,pinned:true};setItems(arr=>navNormalize([...arr,item]));setLinkLabel('');setLinkUrl('');setPicker(false);};
+  const addDest=(d)=>{if(pinned.length>=NAV_MAX_PINNED){onToast&&onToast('Navigation is full — remove an item first (max '+NAV_MAX_PINNED+')','warning');return;}setItems(arr=>{const k=navKey(d);const exists=arr.find(i=>navKey(i)===k);return navNormalize(exists?arr.map(i=>navKey(i)===k?{...i,pinned:true}:i):[...arr,{...d,pinned:true}]);});};
+  const addLink=()=>{if(pinned.length>=NAV_MAX_PINNED){onToast&&onToast('Navigation is full — remove an item first (max '+NAV_MAX_PINNED+')','warning');return;}let u=linkUrl.trim();if(!u){onToast&&onToast('Enter a URL','warning');return;}if(!/^https?:\/\//i.test(u))u='https://'+u;const item={id:'link-'+Date.now(),type:'link',label:(linkLabel.trim()||u.replace(/^https?:\/\//,'')),url:u,icon:linkIcon,pinned:true};setItems(arr=>navNormalize([...arr,item]));setLinkLabel('');setLinkUrl('');setPicker(false);};
   const done=()=>{if(mode==='admin')ctx.setAdminNav(items);else ctx.setUserNav(items);onToast&&onToast('Navigation updated');close();};
   const reset=()=>{
     if(mode==='admin'){const d=NAV_BUILTIN_DEFAULT.map(x=>({...x}));ctx.setAdminNav(d);setItems(d);onToast&&onToast('Reset to built-in default');}
@@ -1858,7 +1919,7 @@ function NavCustomizeDrawer({mode,close,onToast}){
       </div>
       <div className="flex-1 overflow-y-auto scroll-area p-4" style={{background:'var(--s850)'}}>
         {!picker?(<React.Fragment>
-          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Pinned · {pinned.length}</p>
+          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Pinned · {pinned.length} / {NAV_MAX_PINNED}</p>
           <div className="flex flex-col gap-1.5">
             {pinned.map((it,i)=>{const Ic=navIco(it.icon);const over=dragOver===i;return(
               <div key={navKey(it)} draggable onDragStart={()=>{dragIdx.current=i;}} onDragOver={e=>{e.preventDefault();setDragOver(i);}} onDragEnd={()=>{setDragOver(null);}} onDrop={e=>{e.preventDefault();reorder(dragIdx.current,i);dragIdx.current=null;setDragOver(null);}}
@@ -1870,7 +1931,9 @@ function NavCustomizeDrawer({mode,close,onToast}){
               </div>
             );})}
           </div>
-          <button onClick={()=>setPicker(true)} className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Plus size={14} stroke={2.4}/>Add to nav</button>
+          {pinned.length>=NAV_MAX_PINNED
+            ? <p className="mt-3 text-[12px] text-amber-300/80 text-center py-2 rounded-xl bg-amber-500/[0.06] border border-amber-500/20">Navigation is full (max {NAV_MAX_PINNED}). Remove an item to add another.</p>
+            : <button onClick={()=>setPicker(true)} className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Plus size={14} stroke={2.4}/>Add to nav</button>}
         </React.Fragment>):(<React.Fragment>
           <button onClick={()=>setPicker(false)} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-white/55 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={13}/>Back</button>
           <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Add a destination</p>
@@ -1996,6 +2059,7 @@ function AppSidebar({active,goTo}){
       </div>
       <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" className="nav-search w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150"><I.Search size={16}/></button>
       <div className="w-6 h-px bg-white/[0.06] my-1.5"/>
+      <div className="nav-mid flex-1 min-h-0 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden">
       {pinned.map((it,idx)=>{
         const a=navIsActive(it,active);const Ic=navIco(it.icon);
         return(<button key={navKey(it)} data-nav={it.type==='page'?it.page:it.id} onClick={()=>navGo(it,goTo)} title={it.label+(it.type==='link'?' (opens in new tab)':'')} aria-label={it.label} aria-current={a?'page':undefined} className={['nav-pin w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0',idx>=4?'nav-overflow':'',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Ic size={16}/></button>);
@@ -2005,6 +2069,7 @@ function AppSidebar({active,goTo}){
         {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={()=>setMoreOpen(false)} onCustomize={()=>setCustomizeOpen(true)}/>}
       </div>
       <button onClick={()=>setCustomizeOpen(true)} title="Customize navigation" aria-label="Customize navigation" className="nav-edit w-9 h-9 rounded-xl flex items-center justify-center text-white/25 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150 shrink-0"><I.Edit size={15}/></button>
+      </div>
       <div className="mt-auto flex flex-col items-center gap-3">
         <div ref={notifRef} className="nav-notif relative">
           <button onClick={()=>setNotifOpen(v=>!v)} title="Notifications" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 relative',notifOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Bell size={16}/><span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/></button>
@@ -2148,9 +2213,9 @@ const ALL_PAGES=[
   'landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired',
   'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','onboarding-6',
   'dashboard',
-  'leads','lead-detail','add-lead','edit-lead',
-  'contacts','contact-detail','add-contact','edit-contact',
-  'companies','company-detail','add-company','edit-company',
+  'leads','lead-detail','add-lead',
+  'contacts','contact-detail','add-contact',
+  'companies','company-detail','add-company',
   'pipeline','deal-detail','add-deal',
   'calendar','tasks',
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder',
@@ -3222,6 +3287,16 @@ function dashFindCompany(name){if(!name)return null;const n=String(name).toLower
 // Resolve a display name to its real record and open that exact detail page (no list fallback).
 function dashGoToRecord(goTo,name){const c=dashFindContact(name);if(c){goTo('contact-detail',c.id);return true;}const l=dashFindLead(name);if(l){goTo('lead-detail',l.id);return true;}const co=dashFindCompany(name);if(co){goTo('company-detail',co.id);return true;}return false;}
 function dashDealAgeDays(d){const s=(d&&(d.age||d.lastActivity)||'').toLowerCase();if(!s||s==='today'||s.indexOf('h')>=0&&s.indexOf('d')<0)return 0;let m=s.match(/(\d+)\s*d/);if(m)return parseInt(m[1],10);m=s.match(/(\d+)\s*w/);if(m)return parseInt(m[1],10)*7;m=s.match(/(\d+)\s*mo/);if(m)return parseInt(m[1],10)*30;return 0;}
+// Threshold-based staleness: a deal is "rotting" when days since last activity meets
+// or exceeds the stage's rotDays threshold. Terminal stages (Won/Lost/Closed/Live) never rot.
+const DEAL_ROT_DEFAULT=14;
+function dealRotInfo(d,stage){
+  const days=dashDealAgeDays(d);
+  const nm=(stage&&stage.name||'').toLowerCase();
+  if(/won|lost|closed|live/.test(nm))return{rotting:false,days,thresh:0};
+  const thresh=(stage&&stage.rotDays!=null)?stage.rotDays:DEAL_ROT_DEFAULT;
+  return{rotting:thresh>0&&days>=thresh,days,thresh};
+}
 function DashEmptyBody({def,goTo,nav,label}){return(<div className="flex flex-col h-full"><DashHdr name={def.name}/><WidgetEmpty Icon={def.Icon} goTo={goTo} nav={nav} label={label}/></div>);}
 const DASH_TASK_TINT={call:'#60a5fa',meeting:'#a78bfa',demo:'#34d399',proposal:'#fbbf24',task:'#818cf8'};
 // 1 — Tasks Due Today / Overdue
@@ -5666,9 +5741,32 @@ function ActivityRow({e,last,goTo}){
       : <ActivityCompactRow e={e} open={open} toggle={toggle} goTo={goTo}/>}
   </div>);
 }
-function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,noteId,notePlaceholder,actorMe}){
-  const [filter,setFilter]=React.useState('all');
+// Sticky composer at the top of a record timeline: Note is inline; Email/Call/Task
+// are launcher tabs that open the parent page's existing modals (only shown when a
+// matching handler is passed). One click from anywhere on the record to logging.
+function TimelineComposer({me,noteId,notePlaceholder,onAddNote,onEmail,onLogCall,onSchedule}){
+  const [tab,setTab]=React.useState('note');
   const [note,setNote]=React.useState('');
+  const [open,setOpen]=React.useState(false);
+  const submit=()=>{if(!note.trim())return;onAddNote&&onAddNote(note.trim());setNote('');setOpen(false);};
+  const tabs=[{k:'note',l:'Note',Icon:I.Note}];
+  if(onEmail)tabs.push({k:'email',l:'Email',Icon:I.Send,fn:onEmail});
+  if(onLogCall)tabs.push({k:'call',l:'Call',Icon:I.Phone,fn:onLogCall});
+  if(onSchedule)tabs.push({k:'task',l:'Task',Icon:I.Calendar,fn:onSchedule});
+  const pick=(t)=>{if(t.fn){t.fn();}else{setTab(t.k);}};
+  return(<div className="border-b border-white/[0.05] px-4 py-2.5 sticky top-0 z-20" style={{background:'var(--s900)',backdropFilter:'blur(10px)'}}>
+    <div className="flex items-center gap-1 mb-2">{tabs.map(t=>{const on=!t.fn&&tab===t.k;return(<button key={t.k} onClick={()=>pick(t)} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium transition-all',on?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><t.Icon size={13}/>{t.l}</button>);})}</div>
+    {tab==='note'&&<div className="flex items-start gap-2.5">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{background:me.color}}>{me.avatar}</div>
+      <div className="flex-1 min-w-0">
+        <textarea id={noteId} rows={open?3:1} value={note} onFocus={()=>setOpen(true)} onChange={e=>setNote(e.target.value)} placeholder={notePlaceholder||'Add a note...'} className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-white placeholder:text-white/30 outline-none resize-none focus:border-brand-500/40 transition-all"/>
+        {open&&<div className="flex justify-end gap-2 mt-1.5"><button onClick={()=>{setOpen(false);setNote('');}} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/55 hover:text-white hover:bg-white/[0.05] transition-all">Cancel</button><button disabled={!note.trim()} onClick={submit} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',note.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Add note</button></div>}
+      </div>
+    </div>}
+  </div>);
+}
+function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,onEmail,onLogCall,onSchedule,noteId,notePlaceholder,actorMe}){
+  const [filter,setFilter]=React.useState('all');
   const recId=rec&&rec.id;
   const base=React.useMemo(()=>buildActivityFeed(kind,rec,ctx||{}),[kind,recId,ctx&&ctx.contacts,ctx&&ctx.companies,ctx&&ctx.deals,ctx&&ctx.leads,rec&&rec.dnc,rec&&rec.qual]);
   const items=React.useMemo(()=>[...(extra||[]),...base].slice().sort((a,b)=>a.ts-b.ts),[base,extra]);
@@ -5680,26 +5778,17 @@ function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,noteId,notePlacehol
   const visible=expanded?shown:shown.slice(0,COLLAPSE_LIMIT);
   const hiddenCount=shown.length-visible.length;
   const me=actorMe||actActor('AM');
-  const submit=()=>{if(!note.trim())return;onAddNote&&onAddNote(note.trim());setNote('');};
   return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md flex flex-col">
     <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between gap-3 flex-wrap">
       <div><p className="text-white font-medium">Activity</p><p className="text-[11px] text-white/45 mt-0.5">{items.length} event{items.length!==1?'s':''} · own + linked records</p></div>
       <div className="flex items-center gap-1 flex-wrap">{ACT_CAT.map(([k,l])=>{const n=counts[k]||0;if(k!=='all'&&n===0)return null;return(<button key={k} onClick={()=>setFilter(k)} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium transition-all',filter===k?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/50 hover:text-white/85 hover:bg-white/[0.04]'].join(' ')}>{l}<span className={['text-[10px] font-mono px-1 py-0.5 rounded-full',filter===k?'bg-brand-500/25 text-brand-200':'bg-white/[0.05] text-white/40'].join(' ')}>{n}</span></button>);})}</div>
     </div>
+    {onAddNote&&<TimelineComposer me={me} noteId={noteId} notePlaceholder={notePlaceholder} onAddNote={onAddNote} onEmail={onEmail} onLogCall={onLogCall} onSchedule={onSchedule}/>}
     <div className="p-5">
       {shown.length===0&&<p className="text-[12.5px] text-white/35 text-center py-8">No {filter==='all'?'':filter+' '}activity yet.</p>}
       {visible.map((e,i)=>(<ActivityRow key={e.id} e={e} last={i===visible.length-1} goTo={goTo}/>))}
       {shown.length>COLLAPSE_LIMIT&&(<button onClick={()=>setExpanded(x=>!x)} className="w-full mt-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-medium text-white/55 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-all">{expanded?(<React.Fragment>Show less<I.ChevronUp size={14}/></React.Fragment>):(<React.Fragment>Show {hiddenCount} earlier event{hiddenCount!==1?'s':''}<I.ChevronDown size={14}/></React.Fragment>)}</button>)}
     </div>
-    {onAddNote&&<div className="border-t border-white/[0.05] p-4">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0 mt-0.5" style={{background:me.color}}>{me.avatar}</div>
-        <div className="flex-1 rounded-xl bg-white/[0.04] border border-white/[0.08] focus-within:border-brand-500/40 transition-all">
-          <textarea id={noteId} rows={2} value={note} onChange={e=>setNote(e.target.value)} placeholder={notePlaceholder||'Add a note...'} className="w-full bg-transparent outline-none resize-none px-4 py-3 text-[13px] text-white placeholder:text-white/30"/>
-          <div className="flex justify-end px-3 pb-2.5"><button disabled={!note.trim()} onClick={submit} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',note.trim()?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Add note</button></div>
-        </div>
-      </div>
-    </div>}
   </div>);
 }
 // ?? Record switcher ?????????????????????????????????????????????????????????
@@ -5868,7 +5957,7 @@ function ContactDetailPage({goTo,nav}){
                 </div>
               </div>
             </div>
-            <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
+            <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} onEmail={()=>{if(!dnc)setComposeOpen(true);}} onLogCall={()=>{if(!dnc)setCallModal(true);}} onSchedule={()=>setSchedOpen(true)} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
           <RecordMetaFooter record={crec} meta={cMeta}/>
@@ -5917,22 +6006,6 @@ function AddContactPage({goTo,nav}){
     </div>
   );
 }
-// ?? EditContactPage ???????????????????????????????????????????????????????????
-function EditContactPage({goTo,nav}){
-  const {contacts}=React.useContext(CrmDataContext);
-  const c=contacts.find(x=>x.id===nav)||contacts[0];
-  const _p=(c.name||'').split(' ');const first=_p[0]||'';const last=_p.slice(1).join(' ');
-  return(
-    <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="contacts" goTo={goTo}/>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('contact-detail')} className="text-white/45 hover:text-white transition-colors">{c.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">Edit</span></div><button onClick={()=>goTo('contact-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
-        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-semibold mb-6">Edit contact</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['First name',first],['Last name',last],['Work email',c.email],['Phone',c.phone],['Company',c.co],['Job title','—']].map(([l,v])=>(<div key={l}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('contact-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('contact-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
-        <AppFooter/>
-      </div>
-    </div>
-  );
-}
 // ?? Pipeline ??????????????????????????????????????????????????????????????????
 const STAGES_DATA=[
   {key:'prospecting',name:'Prospecting',color:'#94a3b8',count:8,value:'$42k',deals:[
@@ -5949,7 +6022,8 @@ const STAGES_DATA=[
     {id:8,company:'Kapoor & Assoc',value:'$28,000',owner:'MR',ownerColor:'#f59e0b',tag:'Contract sent',tagBg:'bg-amber-500/15',tagFg:'text-amber-300',age:'today',score:'hot'}]},
   {key:'won',name:'Won',color:'#34d399',count:11,value:'$134k',deals:[
     {id:9,company:'Forge & Co',value:'$44,000',owner:'SC',ownerColor:'#3b82f6',tag:'Won!',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'2h',score:'won'},
-    {id:10,company:'Barrett Digital',value:'$22,000',owner:'JK',ownerColor:'#8b5cf6',tag:'Won!',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'1d',score:'won'}]}
+    {id:10,company:'Barrett Digital',value:'$22,000',owner:'JK',ownerColor:'#8b5cf6',tag:'Won!',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'1d',score:'won'}]},
+  {key:'lost',name:'Lost',color:'#f87171',count:6,value:'$0',deals:[]}
 ];
 function fmtShortDate(x){if(!x)return '';const p=String(x).split('-').map(Number);if(p.length<3||!p[1])return String(x);return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][p[1]-1]+' '+p[2];}
 const CARD_FIELD_DEFS=[{key:'name',label:'Deal name'},{key:'amount',label:'Amount'},{key:'contact',label:'Primary contact'},{key:'close',label:'Close date'},{key:'tags',label:'Tag / status'},{key:'rot',label:'Rotting indicator'}];
@@ -6007,6 +6081,34 @@ function OmViewMenu({views,activeKey,onSelect,favs,onToggleFav,onSaveView,dirty,
     </div>}
   </div>);
 }
+// Lightweight reason capture when a deal is dragged into a Won/Lost stage.
+function DealOutcomeModal({kind,dealName,stageName,onConfirm,onClose}){
+  const won=kind==='won';
+  const REASONS=won
+    ?['Best fit / value','Competitive price','Strong relationship','Product capabilities','Good timing','Other']
+    :['Price too high','Chose a competitor','No budget','No decision / timing','Went silent','Not a fit'];
+  const [reason,setReason]=React.useState(REASONS[0]);
+  const [note,setNote]=React.useState('');
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1',won?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-red-500/12 text-red-300 ring-red-500/25'].join(' ')}>{won?<I.TrendUp size={16}/>:<I.TrendDown size={16}/>}</div>
+        <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Mark {won?'Won':'Lost'}</p><p className="text-white/45 text-[12px] truncate">{dealName||'This deal'} → {stageName}</p></div>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">{won?'Win':'Loss'} reason</label>
+          <div className="grid grid-cols-2 gap-2">{REASONS.map(r=>{const on=reason===r;return(<button key={r} onClick={()=>setReason(r)} className={['px-3 py-2 rounded-xl text-[12.5px] font-medium text-left border transition-all',on?(won?'bg-emerald-500/12 text-emerald-200 border-emerald-500/30':'bg-red-500/12 text-red-200 border-red-500/30'):'text-white/70 bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}>{r}</button>);})}</div>
+        </div>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Note (optional)</label><textarea rows={2} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add context for the team..." className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none resize-none focus:border-brand-500/40"/></div>
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={()=>onConfirm(reason,note)} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all',won?'bg-emerald-500 hover:bg-emerald-400':'bg-red-500 hover:bg-red-400'].join(' ')}>Mark {won?'Won':'Lost'}</button>
+      </div>
+    </div>
+  </div>);
+}
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
   const {deals:_deals,setDeals}=React.useContext(CrmDataContext);
@@ -6029,8 +6131,9 @@ function PipelinePage({goTo,nav}){
   const onSaveDealView=(name,scope)=>{if(editView){setDealViews(vs=>vs.map(v=>v.key===editView.key?{...v,label:name,scope}:v));}else{const key='v'+Date.now();setDealViews(vs=>[...vs,{key,label:name,scope,color:VIEW_COLORS[Math.floor(Math.random()*VIEW_COLORS.length)],filter:JSON.parse(JSON.stringify(workFilter)),sort:{...workSort}}]);setActiveViewKey(key);}setSaveOpen(false);setEditView(null);};
   const saveDealChanges=()=>setDealViews(vs=>vs.map(v=>v.key===activeViewKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),sort:{...workSort}}:v));
   const [cardF,setCardF]=React.useState({name:true,amount:true,contact:false,close:false,tags:true,rot:true});
+  const [boardView,setBoardView]=React.useState('board');
   const [importDeals,setImportDeals]=React.useState(false);
-  const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100};
+  const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100,lost:0};
   const STAGE_COLORS=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
   const [pipelines,setPipelines]=React.useState(()=>[
     {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50}))},
@@ -6064,6 +6167,7 @@ function PipelinePage({goTo,nav}){
   const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
+  const setRot=(id,v)=>setStages(s=>s.map(x=>x.id===id?{...x,rotDays:v===''?null:Math.max(0,parseInt(v,10)||0)}:x));
   const setColor=(id,color)=>{setStages(s=>s.map(x=>x.id===id?{...x,color}:x));setColorEdit(null);};
   const delStage=(stage)=>{if(active.stages.length<=1)return;openConfirm({title:'Delete "'+stage.name+'" stage?',body:'Deals in this stage will be moved to the previous stage.',confirmLabel:'Delete stage',danger:true,onConfirm:()=>setStages(s=>s.filter(x=>x.id!==stage.id))});};
   const onDropStage=(to)=>{const from=dragRef.current;dragRef.current=null;setDragOver(null);if(from==null||from===to)return;setStages(s=>{const a=[...s];const[m]=a.splice(from,1);a.splice(from<to?to-1:to,0,m);return a;});};
@@ -6072,7 +6176,9 @@ function PipelinePage({goTo,nav}){
   const addStageInline=()=>{const id='st'+Date.now();setStages(s=>[...s,{id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setFocusStageId(id);setEditStages(true);};
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
-  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd)return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd)return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
@@ -6088,6 +6194,10 @@ function PipelinePage({goTo,nav}){
     {label:'Win rate',value:'68%',delta:'-2%',up:false,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
   ];
   const GC='28px 1fr 132px 64px 34px';
+  // Stage rollups shared by the List + Forecast views and the topbar weighted total.
+  const fc_stageRows=active.stages.map(s=>{const sd=dealsFor(s);const val=sd.reduce((a,d)=>a+parseMoney(d.value),0);return{stage:s,deals:sd,val,weighted:val*((s.prob||0)/100)};});
+  const fc_weightedTotal=fc_stageRows.reduce((a,r)=>a+r.weighted,0);
+  const LIST_GC='1fr 150px 120px 110px 64px 70px';
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="pipeline" goTo={goTo}/>
@@ -6125,17 +6235,18 @@ function PipelinePage({goTo,nav}){
           </div>
         }
           rightSlot={<>
-            <div className="hidden md:inline-flex items-center gap-2 rounded-xl bg-brand-500/[0.08] border border-brand-500/20 px-3 py-1.5"><I.Target size={13} className="text-brand-300"/><div className="flex flex-col leading-tight"><span className="text-[10px] uppercase tracking-[0.14em] text-brand-300/70 font-medium">Forecast</span><span className="text-[13px] font-semibold text-white tabular-nums">$218k <span className="text-brand-300/80 font-medium text-[11px]">weighted</span></span></div></div>
+            <div className="hidden md:inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List],['forecast','Forecast',I.Target]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBoardView(k)} title={l+' view'} aria-pressed={boardView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',boardView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/>{l}</button>))}</div>
             <div className="crm-hide-sm flex items-center gap-2.5"><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges}/><OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/><OmBoardSort fields={dealFields} sort={workSort} onChange={setWorkSort}/><CardFieldsControl value={cardF} onChange={setCardF}/><button onClick={()=>setImportDeals(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button></div>
             <button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal'):goTo('add-deal')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Deal</button>
           </>}/>
-        <div className="shrink-0 border-b border-white/[0.05] px-7 py-3 flex items-center gap-3 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
-          {METRICS.map(m=>(<div key={m.label} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.10] transition-all shrink-0"><div className={['w-7 h-7 rounded-lg flex items-center justify-center border',m.colors].join(' ')}><m.Icon size={13}/></div><div><p className="text-[10px] uppercase tracking-[0.14em] text-white/45 font-medium">{m.label}</p><div className="flex items-baseline gap-2 mt-0.5"><span className="text-[16px] font-semibold text-white tabular-nums">{m.value}</span><span className={['text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-0.5',m.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{m.up?<I.TrendUp size={8} stroke={2.6}/>:<I.TrendDown size={8} stroke={2.6}/>}{m.delta}</span></div></div></div>))}
+        <div className="shrink-0 border-b border-white/[0.05] px-7 py-2 flex items-center gap-x-6 gap-y-1 flex-wrap overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
+          {METRICS.map(m=>(<div key={m.label} className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">{m.label}</span><span className="text-[14px] font-semibold text-white tabular-nums">{m.value}</span><span className={['text-[10px] font-medium inline-flex items-center gap-0.5',m.up?'text-emerald-400':'text-red-400'].join(' ')}>{m.up?<I.TrendUp size={8} stroke={2.6}/>:<I.TrendDown size={8} stroke={2.6}/>}{m.delta}</span></div>))}
+          <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-brand-300/70 font-medium">Forecast</span><span className="text-[14px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</span><span className="text-[10px] text-brand-300/70">weighted</span></div>
         </div>
-        <div className="pipe-mob-tabs shrink-0 border-b border-white/[0.05] px-3 py-2 hidden items-center gap-1.5 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
+        {boardView==='board'&&<div className="pipe-mob-tabs shrink-0 border-b border-white/[0.05] px-3 py-2 hidden items-center gap-1.5 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
           {active.stages.map((s,i)=>{const on=i===Math.min(mobStage,active.stages.length-1);return(<button key={s.id} onClick={()=>setMobStage(i)} className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all',on?'bg-brand-500/20 text-brand-200 border-brand-500/35':'text-white/50 border-white/[0.08] bg-white/[0.03]'].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:s.color}}></span>{s.name}<span className="text-[10px] font-mono opacity-70">{dealsFor(s).length}</span></button>);})}
-        </div>
-        <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
+        </div>}
+        {boardView==='board'&&<div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
           <div className="pipe-board h-full p-6 flex gap-4 min-w-max">
             {active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return(
               <React.Fragment key={stage.id}>
@@ -6144,15 +6255,16 @@ function PipelinePage({goTo,nav}){
                 <div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
                   {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}</div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
                   <div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span>{editStages?(<label className="flex items-center gap-1.5 shrink-0" title="Win probability at this stage"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:stage.color,width:64}}/><span className="text-[10px] text-white/55 tabular-nums w-8 text-right">{stage.prob}%</span></label>):(<span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span>)}</div>
+                  {editStages&&!/won|lost|closed|live/i.test(stage.name||'')&&<div className="flex items-center gap-1.5 mt-1.5" title="Flag deals as stale after this many days without activity"><I.AlertTriangle size={10} className="text-amber-300/70 shrink-0"/><span className="text-[10px] text-white/45">Rot after</span><input type="number" min="0" value={stage.rotDays!=null?stage.rotDays:DEAL_ROT_DEFAULT} onChange={e=>setRot(stage.id,e.target.value)} className="w-12 bg-white/[0.05] border border-white/[0.10] rounded-md px-1.5 py-0.5 text-[10px] text-white text-center outline-none focus:border-brand-500/40"/><span className="text-[10px] text-white/45">days</span></div>}
                 </div>
                 <div onDragOver={e=>{if(dragDeal){e.preventDefault();if(dropStageId!==stage.id)setDropStageId(stage.id);}}} onDrop={e=>{if(dragDeal){e.preventDefault();moveDeal(stage);}}} className={['flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors',dragDeal&&dropStageId===stage.id?'bg-brand-500/[0.05]':''].join(' ')}>
-                  {sd.map(d=>(<button key={d.id} draggable={!editStages} onDragStart={e=>{setDragDeal({id:d.id,fromStageId:stage.id});e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragDeal(null);setDropStageId(null);}} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] p-3.5 text-left group cursor-grab',dragDeal&&dragDeal.id===d.id?'opacity-50 scale-[0.97]':''].join(' ')}>
+                  {sd.map(d=>{const rot=dealRotInfo(d,stage);return(<button key={d.id} draggable={!editStages} onDragStart={e=>{setDragDeal({id:d.id,fromStageId:stage.id});e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragDeal(null);setDropStageId(null);}} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors',rot.rotting?'bg-amber-500/[0.04] border-amber-500/30 ring-1 ring-amber-500/20 hover:border-amber-500/45':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragDeal&&dragDeal.id===d.id?'opacity-50 scale-[0.97]':''].join(' ')}>
                     {(cardF.name||cardF.amount)&&<div className="flex items-start justify-between gap-2 mb-2">{cardF.name?<p className="text-[13px] font-medium text-white leading-tight truncate">{d.company}</p>:<span/>}{cardF.amount&&<span className="text-[14px] font-semibold text-white tabular-nums shrink-0">{d.value}</span>}</div>}
-                    {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags?<span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',d.tagBg,d.tagFg].join(' ')}>{d.tag}</span>:<span/>}{cardF.rot&&<div className="flex items-center gap-1.5 text-[10px] text-white/35" title="Deal age / rotting"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>}</div>}
+                    {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags?<span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',d.tagBg,d.tagFg].join(' ')}>{d.tag}</span>:<span/>}{cardF.rot&&(rot.rotting?<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-amber-300 bg-amber-500/12 ring-1 ring-amber-500/25" title={'No activity for '+rot.days+' days — past this stage’s '+rot.thresh+'-day threshold'}><I.AlertTriangle size={9}/>Stale {rot.days}d</span>:<div className="flex items-center gap-1.5 text-[10px] text-white/35" title={'Age '+rot.days+' days'}><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>)}</div>}
                     {cardF.contact&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.UserPlus size={11} className="text-white/35 shrink-0"/><span className="truncate">{d.primaryContact||contactsForCompany(d.company)[0]&&contactsForCompany(d.company)[0].name||'No contact'}</span></div>}
                     {cardF.close&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.Calendar size={11} className="text-white/35 shrink-0"/>{d.closeDate?fmtShortDate(d.closeDate):'No close date'}</div>}
                     <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]"><div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:d.ownerColor}}>{d.owner}</div><span className="text-[10px] text-white/50">{d.owner}</span></div><I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
-                  </button>))}
+                  </button>);})}
                   {dragDeal&&dropStageId===stage.id&&<div className="h-10 rounded-xl border-2 border-dashed border-brand-500/50 bg-brand-500/[0.06] flex items-center justify-center text-[10.5px] text-brand-300/90 font-medium">Drop deal here</div>}<button onClick={()=>goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>
                 </div>
               </div>
@@ -6160,9 +6272,48 @@ function PipelinePage({goTo,nav}){
             );})}
             <button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>
           </div>
-        </div>
-        <AppFooter note="Drag deals between stages to move them"/>
+        </div>}
+        {boardView==='list'&&(
+        <div className="flex-1 overflow-auto scroll-area">
+          <div className="min-w-[780px]">
+            <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LIST_GC,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}><span>Deal</span><span>Stage</span><span>Amount</span><span>Close date</span><span>Owner</span><span>Age</span></div>
+            {fc_stageRows.flatMap(r=>r.deals.map(d=>(
+              <button key={r.stage.id+'-'+d.id} onClick={()=>r.stage.real&&goTo('deal-detail',d.id)} className="w-full grid items-center gap-4 px-7 py-3 border-b border-white/[0.03] hover:bg-white/[0.03] text-left transition-colors" style={{gridTemplateColumns:LIST_GC}}>
+                <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p>{d.name&&<p className="text-[11px] text-white/40 truncate">{d.company}</p>}</div>
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-white/70 min-w-0"><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:r.stage.color}}/><span className="truncate">{r.stage.name}</span></span>
+                <span className="text-[13px] font-semibold text-white tabular-nums">{d.value}</span>
+                <span className="text-[12px] text-white/55">{d.closeDate?fmtShortDate(d.closeDate):'—'}</span>
+                <span className="inline-flex items-center"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:d.ownerColor}}>{d.owner}</span></span>
+                <span className="text-[11px] text-white/45">{d.age||'—'}</span>
+              </button>
+            )))}
+            {allVisible.length===0&&<div className="py-20 text-center text-white/40 text-[13px]">No deals match this view.</div>}
+          </div>
+        </div>)}
+        {boardView==='forecast'&&(
+        <div className="flex-1 overflow-auto scroll-area p-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <div><p className="text-[13px] font-medium text-white">Weighted forecast</p><p className="text-[11px] text-white/45 mt-0.5">Open value × stage probability</p></div>
+              <div className="text-right"><p className="text-[20px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</p><p className="text-[11px] text-white/45 tabular-nums">{fmtK(totalVal)} unweighted</p></div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+              {fc_stageRows.map(r=>{const pct=totalVal>0?Math.round(r.val/totalVal*100):0;return(
+                <div key={r.stage.id} className="px-5 py-3.5 border-b border-white/[0.04] last:border-0">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 min-w-0"><span className="w-2 h-2 rounded-full shrink-0" style={{background:r.stage.color}}/><span className="text-[13px] font-medium text-white truncate">{r.stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{r.deals.length}</span><span className="text-[11px] text-white/35">{r.stage.prob}%</span></div>
+                    <div className="flex items-center gap-4 shrink-0"><span className="text-[12px] text-white/45 tabular-nums">{fmtK(r.val)}</span><span className="text-[13px] font-semibold text-white tabular-nums w-[64px] text-right">{fmtK(r.weighted)}</span></div>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:r.stage.color}}/></div>
+                </div>
+              );})}
+              <div className="px-5 py-3.5 flex items-center justify-between bg-white/[0.02]"><span className="text-[13px] font-semibold text-white">Weighted total</span><span className="text-[15px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</span></div>
+            </div>
+          </div>
+        </div>)}
+        <AppFooter note={boardView==='board'?"Drag deals between stages to move them":undefined}/>
       </div>
+      {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason)=>{applyMove(outcomePrompt.dd,outcomePrompt.toStage);window.__nrturToast&&window.__nrturToast('Deal marked '+(outcomePrompt.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setOutcomePrompt(null);}}/>);})()}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
       {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveDealView} onClose={()=>{setSaveOpen(false);setEditView(null);}}/>}
       {/* Edit-stages drawer (right side) */}
@@ -6267,7 +6418,7 @@ function DealDetailPage({goTo,nav}){
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-3">Linked Contact</p>{dealContact?(<button onClick={()=>goTo('contact-detail',dealContact.id)} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:dealContact.color}}>{dealContact.avatar}</div><div><p className="text-[13px] font-medium text-white">{dealContact.name}</p><p className="text-[11px] text-white/50">{d.company}</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button>):(<p className="text-[12px] text-white/40">No linked contact.</p>)}</div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5"><p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-3">Linked Company</p><button onClick={()=>goTo('company-detail',companyRec&&companyRec.id)} className="flex items-center gap-3 hover:bg-white/[0.03] rounded-xl p-2 -mx-2 transition-colors w-full text-left"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:(companyRec&&companyRec.color)||'#8b5cf6'}}>{(companyRec&&companyRec.avatar)||d.company.slice(0,2).toUpperCase()}</div><div><p className="text-[13px] font-medium text-white">{d.company}</p><p className="text-[11px] text-white/50">{companyRec?companyRec.industry+' · '+companyRec.size+' employees':'Company'}</p></div><I.ArrowRight size={12} className="text-white/25 ml-auto"/></button></div>
             </div>
-            <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addDealNote} notePlaceholder="Add a deal note..."/>
+            <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addDealNote} onSchedule={()=>setSchedOpen(true)} notePlaceholder="Add a deal note..."/>
           </div>
           <RecordMetaFooter record={drec} meta={dealMeta} max="1100px"/>
         </div>
@@ -6624,7 +6775,7 @@ function CompanyDetailPage({goTo,nav}){
                   ))}
                 </div>
               </div>
-              <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} notePlaceholder={'Add a note about '+co.name+'...'}/>
+              <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} onSchedule={()=>setSchedOpen(true)} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
           </div>
           <RecordMetaFooter record={co} meta={coMeta}/>
@@ -6662,20 +6813,6 @@ function AddCompanyPage({goTo}){
             </div>
           </div>
         </div>
-        <AppFooter/>
-      </div>
-    </div>
-  );
-}
-function EditCompanyPage({goTo,nav}){
-  const {companies}=React.useContext(CrmDataContext);
-  const co=companies.find(x=>x.id===nav)||companies[0];
-  return(
-    <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="contacts" goTo={goTo}/>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('company-detail')} className="text-white/45 hover:text-white transition-colors">{co.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">Edit</span></div><button onClick={()=>goTo('company-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
-        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-semibold mb-6">Edit company</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Company name',co.name],['Website',co.domain],['Industry',co.industry],['Type',co.type],['Employees',String(co.size)],['Phone',co.phone],['Annual revenue',co.revenue],['Headquarters',co.loc]].map(([l,v])=>(<div key={l}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('company-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
         <AppFooter/>
       </div>
     </div>
@@ -7096,7 +7233,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>
-              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} notePlaceholder={'Add a note about '+l.name+'...'}/>
+              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={addNote} onSchedule={()=>setSchedOpen(true)} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
           <RecordMetaFooter record={l} meta={leadMeta}/>
@@ -7140,20 +7277,6 @@ function AddLeadPage({goTo}){
             </div>
           </div>
         </div>
-        <AppFooter/>
-      </div>
-    </div>
-  );
-}
-function EditLeadPage({goTo,nav}){
-  const {leads}=React.useContext(CrmDataContext);
-  const l=leads.find(x=>x.id===nav)||leads[0];
-  return(
-    <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="contacts" goTo={goTo}/>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('lead-detail')} className="text-white/45 hover:text-white transition-colors">{l.name}</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">Edit</span></div><button onClick={()=>goTo('lead-detail')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
-        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-semibold mb-6">Edit lead</h2><div className="grid grid-cols-2 gap-4 mb-6">{[['Full name',l.name],['Company',l.company],['Email',l.email],['Phone',l.phone],['Title',l.title],['Source',l.source],['Status',l.status],['Estimated value',l.estValue]].map(([la,v])=>(<div key={la}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{la}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div><div className="flex gap-3"><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('lead-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div></div></div></div>
         <AppFooter/>
       </div>
     </div>
@@ -14675,15 +14798,12 @@ function App(){
       {page==='leads'             && <LeadsPage {...p}/>}
       {page==='lead-detail'       && <LeadDetailPage {...p}/>}
       {page==='add-lead'          && <AddLeadPage {...p}/>}
-      {page==='edit-lead'         && <EditLeadPage {...p}/>}
       {page==='contacts'          && <ContactsPage {...p}/>}
       {page==='contact-detail'    && <ContactDetailPage {...p}/>}
       {page==='add-contact'       && <AddContactPage {...p}/>}
-      {page==='edit-contact'      && <EditContactPage {...p}/>}
       {page==='companies'         && <CompaniesPage {...p}/>}
       {page==='company-detail'    && <CompanyDetailPage {...p}/>}
       {page==='add-company'       && <AddCompanyPage {...p}/>}
-      {page==='edit-company'      && <EditCompanyPage {...p}/>}
       {page==='pipeline'          && <PipelinePage {...p}/>}
       {page==='deal-detail'       && <DealDetailPage {...p}/>}
       {page==='add-deal'          && <AddDealPage {...p}/>}
