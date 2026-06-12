@@ -12809,12 +12809,14 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const [allDay,setAllDay]=React.useState(!!ed.allDay);
   const [startT,setStartT]=React.useState(ed.date?calToTimeInput(ed.date):(defaultDate?calToTimeInput(defaultDate):'09:00'));
   const [endT,setEndT]=React.useState(ed.end?calToTimeInput(ed.end):'10:00');
-  const [contact,setContact]=React.useState(ed.contact||'');
-  const [linkType,setLinkType]=React.useState(ed.linkType||'contact');
-  const [company,setCompany]=React.useState(ed.company||'');
+  // "Related to" — pick a type (company | contact | lead) then the specific record of that type.
+  const initRelType=(ed.company&&!ed.contact)?'company':(ed.linkType==='lead'?'lead':'contact');
+  const [relType,setRelType]=React.useState(initRelType);
+  const [relRecord,setRelRecord]=React.useState(ed.company&&!ed.contact?ed.company:(ed.contact||''));
   const [deal,setDeal]=React.useState(ed.deal||'');
-  const calPeople=calPeopleOptions();
-  const onPickContact=(name)=>{setContact(name);const p=calPeople.find(x=>x.name===name);setLinkType(p?p.kind:'contact');};
+  const REC_OPTS={company:calCompanyOptions(),contact:calContactOptions(),lead:calLeadOptions()};
+  const relOptions=REC_OPTS[relType]||[];
+  const onRelType=(tp)=>{setRelType(tp);setRelRecord('');};// switching type clears the previous selection
   const [reminder,setReminder]=React.useState(ed.reminder||'');
   const [repeat,setRepeat]=React.useState(ed.repeat||'Never');
   const titleRef=React.useRef(null);
@@ -12833,7 +12835,8 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const save=()=>{
     const [Y,M,D]=date.split('-').map(Number);
     const mk=(ts)=>{const [h,mi]=ts.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
-    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:contact||null,linkType:contact?linkType:null,company:company||null,deal:deal||null,reminder,repeat,notes,done:!!ed.done,priority};
+    const isCompany=relType==='company';
+    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,reminder,repeat,notes,done:!!ed.done,priority};
     onSave(ev);
   };
   return(<div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -12850,8 +12853,8 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
         </div>
         {!allDay&&<div className="grid grid-cols-2 gap-4"><div><label className={L}>Start</label><input type="time" value={startT} onChange={e=>setStartT(e.target.value)} className={INP} style={{colorScheme:'dark'}}/></div><div><label className={L}>End</label><input type="time" value={endT} onChange={e=>setEndT(e.target.value)} className={INP} style={{colorScheme:'dark'}}/></div></div>}
         <div className="grid grid-cols-2 gap-4">
-          <div><label className={L}>Contact / Lead</label><select value={contact} onChange={e=>onPickContact(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calPeople.map(c=>(<option key={c.name+c.kind} value={c.name}>{c.name}{c.kind==='lead'?' (lead)':''}</option>))}</select></div>
-          <div><label className={L}>Company</label><select value={company} onChange={e=>setCompany(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calCompanyOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
+          <div><label className={L}>Related to</label><div className="relative"><select value={relType} onChange={e=>onRelType(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="company">Company</option><option value="contact">Contact</option><option value="lead">Lead</option></select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div></div>
+          <div><label className={L}>{relType==='company'?'Company':relType==='lead'?'Lead':'Contact'}</label><TaskRecordPicker options={relOptions} value={relRecord} onChange={setRelRecord} placeholder={'Select a '+relType+'…'}/></div>
         </div>
         <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
         <div className="grid grid-cols-2 gap-4">
