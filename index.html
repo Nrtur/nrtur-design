@@ -5104,6 +5104,8 @@ function RecordEditDrawer({title,Icon,groups,record,onSave,onClose}){
 const ACT_CAT=[['all','All'],['emails','Emails'],['calls','Calls'],['notes','Notes'],['tasks','Tasks'],['deals','Deals'],['changes','Changes']];
 const ACT_META={
   email:   {cat:'emails', label:'EMAIL',     chip:'bg-blue-500/15 ring-blue-500/25 text-blue-300',     Icon:I.Mail,      ic:'#60a5fa'},
+  sms:     {cat:'emails', label:'SMS',       chip:'bg-teal-500/15 ring-teal-500/25 text-teal-300',     Icon:I.Hash,      ic:'#2dd4bf'},
+  mms:     {cat:'emails', label:'MMS',       chip:'bg-sky-500/15 ring-sky-500/25 text-sky-300',        Icon:I.Image,     ic:'#38bdf8'},
   call:    {cat:'calls',  label:'CALL',      chip:'bg-indigo-500/15 ring-indigo-500/25 text-indigo-300',Icon:I.Phone,     ic:'#818cf8'},
   note:    {cat:'notes',  label:'NOTE',      chip:'bg-amber-500/15 ring-amber-500/25 text-amber-300',  Icon:I.Note,      ic:'#fbbf24'},
   task:    {cat:'tasks',  label:'TASK',      chip:'bg-cyan-500/15 ring-cyan-500/25 text-cyan-300',     Icon:I.CheckSquare,ic:'#22d3ee'},
@@ -5126,37 +5128,69 @@ function actRel(min){min=Math.max(0,Math.round(min||0));if(min<1)return'Just now
 let _actSeq=0;
 function mkAct(type,o){o=o||{};const m=ACT_META[type]||ACT_META.note;const ts=o.ts==null?0:o.ts;return{id:o.id||('a'+(++_actSeq)),type,cat:m.cat,label:o.label||m.label,chip:m.chip,Icon:m.Icon,ic:m.ic,title:o.title||'',body:o.body||'',actor:o.actor||actActor(o.by||'AM'),ts,timeLabel:o.timeLabel||actRel(ts),payload:o.payload||null,source:o.source||null};}
 function actFromQual(q){if(!q)return mkAct('form',{ts:90,title:'Qualification form'});const ok=q.status==='qualified',bad=q.status==='disqualified';return mkAct('form',{ts:90,by:q.rep?actByName(q.rep):'AM',label:ok?'QUALIFIED':bad?'REVIEW':'FORM',title:'Qualification form'+(q.formName?' — '+q.formName:''),body:(q.answers||[]).filter(a=>a.a).map(a=>a.q+': '+a.a).join(' · ')||'Submitted during booking.'});}
+// ── Rich activity payload seeders (simulated demo data: transcript / recording / talk-ratio / threads) ──
+const ACT_CALL_OUTCOMES=['Discovery','Follow-up','Demo','Negotiation','Check-in','Deal nurturing','Support','Other'];
+const ACT_MEETING_OUTCOMES=['Discovery','Demo','Negotiation','Onboarding','Check-in','QBR','Support','Other'];
+const ACT_PLAYBOOKS=['Discovery','Demo','Follow-up','Negotiation','Onboarding','Check-in','Support'];
+const ACT_GUEST_STATES={accepted:{label:'Accepted',chip:'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25'},declined:{label:'Declined',chip:'bg-red-500/15 text-red-300 ring-red-500/25'},tentative:{label:'Tentative',chip:'bg-amber-500/15 text-amber-300 ring-amber-500/25'}};
+function seedCallPayload(rep,them,o){o=o||{};const repPct=o.repPct||58;return{dir:o.dir||'out',rec:true,recLen:o.recLen||'8:07',outcome:o.outcome||'Connected',reason:o.reason||'Discovery',playbook:o.playbook||'Discovery',
+  summary:o.summary||['Confirmed budget is approved for an annual plan.','Biggest pain: manual follow-up eating ~6 hrs/week per rep.','Needs SSO + a sandbox for IT to test before a company-wide rollout.','Champion is '+them+'; their VP signs off on the final number.','Next step: send proposal with annual pricing by Friday.'],
+  notes:o.notes||'',
+  talk:o.talk||[{name:rep,pct:repPct,color:'#818cf8'},{name:them,pct:100-repPct,color:'#34d399'}],
+  transcript:o.transcript||[
+    {by:'rep',who:rep,t:4,text:'Hey '+them+", thanks for hopping on — how's the rollout planning going on your side?"},
+    {by:'them',who:them,t:13,text:"Pretty good. Honestly most of our time still goes into manual follow-up — it's a lot of copy-paste between tools."},
+    {by:'rep',who:rep,t:28,text:'That tracks. Teams your size usually automate the first three touches — want me to show how that looks in the sequence builder?'},
+    {by:'them',who:them,t:42,text:'Yeah. And budget-wise the annual plan is already approved, so pricing is less of a blocker than process.'},
+    {by:'rep',who:rep,t:59,text:'Great. One thing to confirm — do you need SSO in place before you go company-wide?'},
+    {by:'them',who:them,t:72,text:'SSO is a must. Ideally a sandbox too, so IT can validate before we flip it on for everyone.'},
+    {by:'rep',who:rep,t:90,text:"Both are on the annual tier. I'll include a sandbox link in the proposal and walk your IT lead through SSO setup."},
+    {by:'them',who:them,t:104,text:"Perfect. Send it over by Friday and I'll loop in my VP for the sign-off."},
+  ]};}
+function seedMeetingPayload(rep,them,o){o=o||{};return{start:o.start||'Tue, May 12 · 2:00–2:45 PM',dur:o.dur||'45 min',location:o.location||'Google Meet',join:o.join||'meet.google.com/abc-defg-hij',outcome:o.outcome||'Demo',playbook:o.playbook||'Demo',notes:o.notes||'',
+  agenda:o.agenda||['Recap discovery goals + success criteria','Live walkthrough: pipeline, sequences & automations','Pricing, rollout timeline & security review','Q&A and agree next steps'],
+  guests:o.guests||[{name:them,status:'accepted'},{name:rep,status:'accepted'},{name:'Jordan Blake (VP Sales)',status:'tentative'},{name:'Priya Shah (IT)',status:'declined'}]};}
+function seedMsgThread(them,media){const t=[
+  {by:'them',who:them,t:1505,text:'Hey — are we still on for the demo Thursday?'},
+  {by:'rep',who:'You',t:1495,text:'Yes! 2pm PT — sending a calendar invite now.'},
+];if(media)t.push({by:'rep',who:'You',t:1488,text:"Here's the one-pager from our last call:",media:[{c:'#6366f1',c2:'#8b5cf6'},{c:'#0ea5e9',c2:'#22d3ee'}]});
+  t.push({by:'them',who:them,t:1480,text:media?'Got it, thanks! 🙏 Looks great.':'Perfect, talk then 👍'});return t;}
 // Per-record activity generators (deterministic, representative demo mix)
 function actContactOwn(c){
   if(!c)return[];
-  const own=c.owner||'AM';const A=actActor(own).name;
+  const own=c.owner||'AM';const A=actActor(own).name;const them=c.name||'Them';
   const out=[
-    mkAct('email',{ts:120,by:own,title:'Re: '+(c.co?(c.co+' — next steps'):'next steps'),body:'Thanks for the note — Thursday after 2pm works on my end.',payload:{dir:'in',subject:'Re: next steps',thread:[
-      {from:c.name||'Them',ts:120,snippet:'Thanks for the note — Thursday after 2pm works on my end.'},
+    mkAct('email',{ts:120,by:own,title:'Re: '+(c.co?(c.co+' — next steps'):'next steps'),body:'Thanks for the note — Thursday after 2pm works on my end. Could you also share the security overview ahead of time? Our IT lead will want to skim it before the call.',payload:{dir:'in',subject:'Re: '+(c.co?(c.co+' — next steps'):'next steps'),thread:[
+      {from:them,ts:120,snippet:'Thanks for the note — Thursday after 2pm works on my end.'},
       {from:A,ts:260,snippet:'Sharing a couple of times that work this week — does Thursday 2pm PT suit you?'},
-      {from:c.name||'Them',ts:1500,snippet:'Could we find time this week for a quick walkthrough?'},
+      {from:them,ts:1500,snippet:'Could we find time this week for a quick walkthrough?'},
     ]}}),
-    mkAct('call',{ts:1500,by:own,title:'Outbound call — Connected',body:'Walked through pricing on the annual plan; sending the proposal next.',payload:{dir:'out',rec:true,recLen:'8:07',outcome:'Connected',reason:'Discovery'}}),
-    mkAct('note',{ts:1560,by:own,title:'Very interested in annual plan',body:'Wants to move forward with the annual retainer. Budget confirmed.'}),
-    mkAct('task',{ts:300,by:own,label:'TASK DUE',title:'Prepare proposal draft',body:'Due tomorrow · assigned to '+A+'.'}),
-    mkAct('task',{ts:2400,by:own,label:'TASK DONE',title:'Send follow-up email ✓',body:'Completed — recap + next steps sent.'}),
-    mkAct('field',{ts:4320,by:own,title:'Status changed',body:'New → Qualified.'}),
-    mkAct('tag',{ts:4400,by:own,title:'Tag added',body:'Added "'+((c.tags&&c.tags[0])||'top-lead')+'".'}),
-    mkAct('sequence',{ts:5760,by:'nrtur',title:'Enrolled in sequence',body:'New Lead Nurture · step 1 of 4 sent.'}),
+    mkAct('call',{ts:1500,by:own,title:'Outbound call · Connected — '+them,body:'Walked through pricing on the annual plan; sending the proposal next.',payload:seedCallPayload(A,them,{recLen:'8:07',outcome:'Connected',reason:'Discovery',repPct:54})}),
+    mkAct('meeting',{ts:2880,by:own,title:'Discovery meeting · '+them,body:'45-min intro with the buying team.',payload:seedMeetingPayload(A,them,{outcome:'Discovery',playbook:'Discovery',start:'Thu, May 14 · 2:00–2:45 PM'})}),
+    mkAct('mms',{ts:900,by:own,title:'Text thread with '+them,body:'4 messages · 2 photos',payload:{thread:seedMsgThread(them,true)}}),
+    mkAct('note',{ts:1560,by:own,title:'Very interested in annual plan',body:'Wants to move forward with the annual retainer. Budget confirmed with finance; champion is '+them+'. Watch-out: needs SSO before a wider rollout.'}),
+    mkAct('task',{ts:300,by:own,label:'TASK DUE',title:'Prepare proposal draft',body:'Draft the annual proposal incl. sandbox + SSO notes.',payload:{due:'Tomorrow, 5:00 PM',priority:'High',assignee:A,related:them}}),
+    mkAct('task',{ts:2400,by:own,label:'TASK DONE',title:'Send follow-up email ✓',body:'Completed — recap + next steps sent.',payload:{due:'Yesterday',priority:'Medium',assignee:A,done:true}}),
+    mkAct('field',{ts:4320,by:own,title:'Status changed',body:'Moved forward after the discovery call.',payload:{field:'Status',from:'New',to:'Qualified'}}),
+    mkAct('field',{ts:8600,by:own,title:'Owner changed',body:'Reassigned for territory coverage.',payload:{field:'Owner',from:'Unassigned',to:A}}),
+    mkAct('tag',{ts:4400,by:own,title:'Tag added',body:'Added "'+((c.tags&&c.tags[0])||'top-lead')+'".',payload:{tag:(c.tags&&c.tags[0])||'top-lead'}}),
+    mkAct('sequence',{ts:5760,by:'nrtur',title:'Enrolled in sequence',body:'Auto-enrolled after qualifying.',payload:{seq:'New Lead Nurture',step:'1 of 4'}}),
     mkAct('created',{ts:20160,by:own,label:'CONTACT CREATED',title:'Contact created',body:'Source: '+(c.source||'Referral')+'.'}),
   ];
-  if(c.dnc)out.unshift(mkAct('dnc',{ts:55,by:own,title:'Marketing emails turned OFF',body:'Do-not-contact enabled for all channels by '+A+'.'}));
+  if(c.dnc)out.unshift(mkAct('dnc',{ts:55,by:own,title:'Marketing emails turned OFF',body:'Do-not-contact enabled by '+A+'.',payload:{channels:['Email','SMS','Calls'],from:'On',to:'Off'}}));
   if(c.qual)out.unshift(actFromQual(c.qual));
   return out;
 }
 function actDealOwn(d){
   if(!d)return[];
-  const own=d.owner||'AM';const A=actActor(own).name;const val=d.value||'';
+  const own=d.owner||'AM';const A=actActor(own).name;const val=d.value||'';const them=d.primaryContact||d.company||'the buyer';
   const out=[
-    mkAct('email',{ts:1440,by:own,title:'Proposal sent',body:'Attached the proposal PDF — scope, pricing & 90-day roadmap.',payload:{dir:'out',subject:'Proposal — '+(d.company||d.name||''),thread:[{from:A,ts:1440,snippet:'Attached the proposal PDF — scope, pricing & roadmap.'}]}}),
-    mkAct('meeting',{ts:2880,by:own,title:'Demo call held',body:'45-min product demo with the buying team. Strong interest in automations.'}),
-    mkAct('stage',{ts:7200,by:own,title:'Deal moved — Qualified → Proposal',body:'Advanced after the demo call.'}),
-    mkAct('deal',{ts:9000,by:own,label:'DEAL VALUE',title:'Deal value updated',body:(val?('Set to '+val+' '):'')+'after scoping the annual plan.'}),
+    mkAct('email',{ts:1440,by:own,title:'Proposal sent',body:'Attached the proposal PDF — scope, annual pricing & a 90-day rollout roadmap. Included a sandbox link and the SSO setup checklist your IT lead asked about.',payload:{dir:'out',subject:'Proposal — '+(d.company||d.name||''),thread:[{from:A,ts:1440,snippet:'Attached the proposal PDF — scope, pricing & roadmap.'},{from:them,ts:1200,snippet:'Got it — reviewing with the team, will revert by EOW.'}]}}),
+    mkAct('meeting',{ts:2880,by:own,title:'Demo call held · '+(d.company||them),body:'45-min product demo with the buying team. Strong interest in automations.',payload:seedMeetingPayload(A,them,{outcome:'Demo',playbook:'Demo',notes:'Buying team loved the sequence builder. Action: send ROI one-pager.'})}),
+    mkAct('call',{ts:5200,by:own,title:'Negotiation call · '+them,body:'Talked through annual pricing and procurement steps.',payload:seedCallPayload(A,them,{recLen:'6:42',outcome:'Connected',reason:'Negotiation',playbook:'Negotiation',repPct:46})}),
+    mkAct('sms',{ts:3600,by:own,title:'Text thread with '+them,body:'3 messages',payload:{thread:seedMsgThread(them,false)}}),
+    mkAct('stage',{ts:7200,by:own,title:'Deal moved — Qualified → Proposal',body:'Advanced after the demo call.',payload:{field:'Stage',from:'Qualified',to:'Proposal'}}),
+    mkAct('deal',{ts:9000,by:own,label:'DEAL VALUE',title:'Deal value updated',body:(val?('Set to '+val+' '):'')+'after scoping the annual plan.',payload:{field:'Value',from:'—',to:val||'—'}}),
     mkAct('deal',{ts:20160,by:own,label:'DEAL CREATED',title:'Deal created — '+(d.name||d.company||''),body:'Opened at '+(val||'—')+' · '+(d.stageName||'Qualified')+'.'}),
   ];
   if(d.stageName==='Won'||d.stageKey==='won')out.unshift(mkAct('deal',{ts:240,by:own,label:'WON',title:'Deal won 🎉',body:(val?val+' ':'')+'closed-won.'}));
@@ -5165,22 +5199,25 @@ function actDealOwn(d){
 }
 function actCompanyOwn(co){
   if(!co)return[];
-  const own=co.owner||'AM';const A=actActor(own).name;
+  const own=co.owner||'AM';const A=actActor(own).name;const them=(co.name||'the account')+' team';
   return [
-    mkAct('note',{ts:200,by:own,title:'Account review',body:(co.name||'Account')+' — '+(co.type||'Prospect')+(co.industry?(' · '+co.industry):'')+'. Strong expansion potential.'}),
-    mkAct('field',{ts:4320,by:own,title:'Company type changed',body:'Prospect → '+(co.type||'Customer')+'.'}),
-    mkAct('meeting',{ts:7000,by:own,title:'QBR scheduled',body:'Quarterly business review booked with the account team.'}),
+    mkAct('note',{ts:200,by:own,title:'Account review',body:(co.name||'Account')+' — '+(co.type||'Prospect')+(co.industry?(' · '+co.industry):'')+'. Strong expansion potential; multiple active stakeholders. Renewal is healthy and there\'s appetite for a second team.'}),
+    mkAct('meeting',{ts:7000,by:own,title:'QBR · '+(co.name||'Account'),body:'Quarterly business review with the account team.',payload:seedMeetingPayload(A,them,{outcome:'QBR',playbook:'Check-in',start:'Mon, May 5 · 11:00–11:45 AM',agenda:['Usage & adoption review','Wins since last quarter','Expansion opportunities','Roadmap & support check-in']})}),
+    mkAct('sms',{ts:5000,by:own,title:'Text thread with '+(co.name||'account'),body:'3 messages',payload:{thread:seedMsgThread(co.name||'Account',false)}}),
+    mkAct('field',{ts:4320,by:own,title:'Company type changed',body:'Upgraded after closing the first deal.',payload:{field:'Type',from:'Prospect',to:(co.type||'Customer')}}),
     mkAct('created',{ts:43200,by:own,label:'COMPANY CREATED',title:'Company created',body:'Added by '+A+(co.createdAt?(' · '+co.createdAt):'')+'.'}),
   ];
 }
 function actLeadOwn(l){
   if(!l)return[];
-  const own=l.owner||'AM';const sz=l.employeesSize||40;
+  const own=l.owner||'AM';const A=actActor(own).name;const sz=l.employeesSize||40;const them=l.name||'Lead';
   const out=[
-    mkAct('email',{ts:60,by:own,title:'Re: Pricing for your team',body:'What does onboarding look like for a '+sz+'-person team?',payload:{dir:'in',subject:'Re: Pricing',thread:[{from:l.name||'Lead',ts:60,snippet:'What does onboarding look like for a '+sz+'-person team?'}]}}),
-    mkAct('call',{ts:200,by:own,title:'Outbound call — Left voicemail',body:'Intro call attempt; left a voicemail with next steps.',payload:{dir:'out',rec:false,outcome:'Left voicemail',reason:'Discovery'}}),
+    mkAct('email',{ts:60,by:own,title:'Re: Pricing for your team',body:'What does onboarding look like for a '+sz+'-person team? And do you support SSO out of the box?',payload:{dir:'in',subject:'Re: Pricing',thread:[{from:them,ts:60,snippet:'What does onboarding look like for a '+sz+'-person team?'},{from:A,ts:40,snippet:'Happy to walk you through it — most teams are live in under a week. Grabbing some times now.'}]}}),
+    mkAct('call',{ts:200,by:own,title:'Discovery call · '+them,body:'Intro call — qualified the team size, timeline and budget.',payload:seedCallPayload(A,them,{recLen:'5:18',outcome:'Connected',reason:'Discovery',repPct:61})}),
+    mkAct('call',{ts:1800,by:own,title:'Outbound call · Left voicemail',body:'Earlier attempt; left a voicemail with next steps.',payload:{dir:'out',rec:false,outcome:'Left voicemail',reason:'Discovery'}}),
+    mkAct('sms',{ts:600,by:own,title:'Text thread with '+them,body:'3 messages',payload:{thread:seedMsgThread(them,false)}}),
     mkAct('form',{ts:120,by:'nrtur',title:'Submitted "Request a demo" form',body:'Team size: '+sz+' · Source: '+(l.source||'Web form')+'.'}),
-    mkAct('score',{ts:120,by:'nrtur',title:'Lead score reached '+(l.score!=null?l.score:82),body:'Visited pricing twice, opened 2 emails, submitted demo form.'}),
+    mkAct('score',{ts:120,by:'nrtur',title:'Lead score reached '+(l.score!=null?l.score:82),body:'Visited pricing twice, opened 2 emails, submitted demo form.',payload:{field:'Score',from:'—',to:String(l.score!=null?l.score:82)}}),
     mkAct('created',{ts:240,by:'nrtur',label:'LEAD CREATED',title:'Lead captured',body:'Source: '+(l.source||'Web form')+'.'}),
   ];
   if(l.qual)out.unshift(actFromQual(l.qual));
@@ -5223,35 +5260,249 @@ function ActivitySourceChip({src,goTo}){
   const go=()=>{if(goTo&&src.id!=null)goTo(ACT_SRC_PAGE[src.type],src.id);};
   return(<button onClick={go} title={'Open '+src.type} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125 max-w-[200px]" style={{background:col+'1f',color:col,boxShadow:'inset 0 0 0 1px '+col+'40'}}><SrcIcon size={9} className="shrink-0"/><span className="truncate">{src.label}</span></button>);
 }
-function ActivityRow({e,last,goTo,openThread,setOpenThread}){
-  const thread=e.payload&&e.payload.thread;const open=!!openThread[e.id];
-  return(<div className="relative pl-11 pb-5">
+// ── Importance: rich expandable cards vs compact one-line rows ──
+function actImportance(e){
+  const p=e.payload||{};
+  if(e.type==='call')return (p.summary||p.rec||(p.transcript&&p.transcript.length))?'important':'routine';
+  if(e.type==='meeting'||e.type==='sms'||e.type==='mms')return 'important';
+  if(e.type==='email')return (e.body||(p.thread&&p.thread.length))?'important':'routine';
+  if(e.type==='note')return 'important';
+  return 'routine';
+}
+// case-insensitive highlight → array of strings + <mark> nodes
+function actHl(text,ql){text=String(text||'');if(!ql)return text;const low=text.toLowerCase();const out=[];let i=0,idx;while((idx=low.indexOf(ql,i))>=0){if(idx>i)out.push(text.slice(i,idx));out.push(<mark key={idx} className="rounded px-0.5 bg-brand-500/35 text-white">{text.slice(idx,idx+ql.length)}</mark>);i=idx+ql.length;}out.push(text.slice(i));return out;}
+const _actStop=(fn)=>(ev)=>{ev.stopPropagation();fn&&fn(ev);};
+// ── shared little controls (theme-consistent) ──
+function ActSelect({value,options,onChange,Icon}){
+  return(<div className="relative inline-flex" onClick={_actStop()}>
+    {Icon&&<Icon size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"/>}
+    <select value={value} onChange={ev=>onChange(ev.target.value)} className={['appearance-none py-1 pr-7 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] font-medium text-white/85 outline-none focus:border-brand-500/40 cursor-pointer',Icon?'pl-7':'pl-2.5'].join(' ')} style={{colorScheme:'dark',background:'var(--s850)'}}>{options.map(o=><option key={o} value={o}>{o}</option>)}</select>
+    <I.ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/>
+  </div>);
+}
+function ActSeg({value,onChange,options}){
+  return(<div className="inline-flex p-0.5 rounded-lg bg-white/[0.05] border border-white/[0.06]" onClick={_actStop()}>{options.map(([k,l])=>(<button key={k} onClick={()=>onChange(k)} className={['px-3 py-1 rounded-md text-[12px] font-medium transition-all',value===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>);
+}
+function ActFromTo({from,to,className}){return(<span className={['inline-flex items-center gap-1.5',className||''].join(' ')}><span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.05] text-white/55 border border-white/[0.08] max-w-[120px] truncate">{from}</span><I.ArrowRight size={11} className="text-white/30 shrink-0"/><span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/12 text-brand-200 border border-brand-500/25 max-w-[140px] truncate">{to}</span></span>);}
+function ActGuestChip({status}){const g=ACT_GUEST_STATES[status]||ACT_GUEST_STATES.tentative;return(<span className={['inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full ring-1 shrink-0',g.chip].join(' ')}>{g.label}</span>);}
+function ActActorLine({e}){return(<div className="flex items-center gap-2 pt-2 mt-1 border-t border-white/[0.04]"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:e.actor.color}}>{e.actor.avatar}</span><span className="text-[11px] text-white/45">{e.actor.name}</span><span className="text-[11px] text-white/25">· {e.timeLabel}</span></div>);}
+// ── enhanced recording player: play/pause · draggable seek · speed (simulated, no audio) ──
+function ActCallRecorder({len}){
+  const total=parseDur(len)||1;
+  const [playing,setPlaying]=React.useState(false);
+  const [pos,setPos]=React.useState(0);
+  const [speed,setSpeed]=React.useState(1);
+  const ref=React.useRef(null);const trackRef=React.useRef(null);
+  React.useEffect(()=>{if(!playing)return;ref.current=setInterval(()=>setPos(p=>{const nx=p+1;if(nx>=total){clearInterval(ref.current);setPlaying(false);return total;}return nx;}),Math.max(45,Math.round(180/speed)));return()=>clearInterval(ref.current);},[playing,total,speed]);
+  const pct=Math.min(100,pos/total*100);
+  const seekTo=(clientX)=>{const el=trackRef.current;if(!el)return;const r=el.getBoundingClientRect();const x=(clientX-r.left)/r.width;setPos(Math.round(Math.max(0,Math.min(1,x))*total));};
+  const onDown=(ev)=>{ev.preventDefault();ev.stopPropagation();seekTo(ev.clientX);const mv=(e2)=>seekTo(e2.clientX);const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};
+  const onTouch=(ev)=>{const t=ev.touches[0];if(t)seekTo(t.clientX);};
+  return(<div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-center gap-3" onClick={_actStop()}>
+    <button onClick={()=>{if(pos>=total)setPos(0);setPlaying(p=>!p);}} className="w-9 h-9 rounded-full bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0 hover:bg-brand-500/25 transition-all">{playing?<I.Pause size={14}/>:<I.Play size={13}/>}</button>
+    <span className="text-[11px] font-mono text-white/55 tabular-nums shrink-0 w-9">{fmtDur(pos)}</span>
+    <div ref={trackRef} onMouseDown={onDown} onTouchStart={onTouch} onTouchMove={onTouch} className="flex-1 h-1.5 rounded-full bg-white/[0.10] relative cursor-pointer select-none touch-none">
+      <div className="h-full rounded-full bg-brand-500" style={{width:pct+'%',transition:playing?'width 0.15s linear':'none'}}/>
+      <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]" style={{left:'calc('+pct+'% - 6px)'}}/>
+    </div>
+    <span className="text-[11px] font-mono text-white/35 tabular-nums shrink-0">{len}</span>
+    <button onClick={()=>setSpeed(s=>s===1?1.5:s===1.5?2:1)} title="Playback speed" className="shrink-0 px-2 py-1 rounded-lg text-[11px] font-mono font-medium text-white/65 bg-white/[0.05] border border-white/[0.08] hover:text-white hover:bg-white/[0.08] transition-all">{speed}x</button>
+  </div>);
+}
+function ActTalkRatio({talk}){
+  if(!talk||!talk.length)return null;
+  return(<div onClick={_actStop()}>
+    <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap"><span className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em]">Talk ratio</span>
+      <span className="text-[11px] text-white/55 flex items-center gap-2 flex-wrap">{talk.map((s,i)=>(<span key={i} className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:s.color}}/>{s.name} {s.pct}%</span>))}</span></div>
+    <div className="flex h-2 rounded-full overflow-hidden bg-white/[0.06]">{talk.map((s,i)=>(<div key={i} style={{width:s.pct+'%',background:s.color}} title={s.name+' '+s.pct+'%'}/>))}</div>
+  </div>);
+}
+function ActTranscript({turns}){
+  const [open,setOpen]=React.useState(true);
+  const [q,setQ]=React.useState('');
+  const ql=q.trim().toLowerCase();
+  const shown=ql?turns.filter(t=>String(t.text).toLowerCase().includes(ql)):turns;
+  const col=(by)=>by==='rep'?'#818cf8':'#34d399';
+  return(<div className="rounded-xl bg-white/[0.02] border border-white/[0.05]" onClick={_actStop()}>
+    <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-white/[0.05]">
+      <span className="text-[10px] font-medium text-white/50 uppercase tracking-[0.12em] inline-flex items-center gap-1.5"><I.Mic size={11}/>Transcript</span>
+      <button onClick={()=>setOpen(o=>!o)} className="text-[11px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">{open?'Collapse transcript':'Show transcript'}<I.ChevronDown size={11} className={(open?'rotate-180 ':'')+'transition-transform'}/></button>
+    </div>
+    {open&&<div className="p-3">
+      <div className="relative mb-3"><I.Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/><input value={q} onChange={ev=>setQ(ev.target.value)} placeholder="Search transcript…" className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12.5px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>
+      <div className="flex flex-col gap-2.5 max-h-[280px] overflow-y-auto scroll-area pr-1">
+        {shown.length===0&&<p className="text-[12px] text-white/35 text-center py-5">No lines match “{q}”.</p>}
+        {shown.map((t,i)=>(<div key={i} className="flex gap-2.5">
+          <span className="text-[10px] font-mono text-white/30 shrink-0 mt-0.5 w-9 text-right tabular-nums">{fmtDur(t.t)}</span>
+          <div className="min-w-0 flex-1"><span className="text-[12px] font-semibold" style={{color:col(t.by)}}>{t.who}</span><p className="text-[12.5px] text-white/70 leading-relaxed">{actHl(t.text,ql)}</p></div>
+        </div>))}
+      </div>
+    </div>}
+  </div>);
+}
+// ── per-type expanded bodies ──
+function ActCallExpanded({e}){
+  const p=e.payload||{};
+  const [outcome,setOutcome]=React.useState(p.reason||'Discovery');
+  const [tab,setTab]=React.useState('summary');
+  const [notes,setNotes]=React.useState(p.notes||'');
+  const setOut=(v)=>{setOutcome(v);window.__nrturToast&&window.__nrturToast('Call outcome saved','success');};
+  const turns=p.transcript||[];
+  return(<div className="mt-1.5 flex flex-col gap-3.5">
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-500/20"><I.Phone size={10}/>{p.playbook||'Call'} playbook</span>
+      <ActSelect value={outcome} options={ACT_CALL_OUTCOMES} onChange={setOut} Icon={I.Target}/>
+      {p.recLen&&<span className="inline-flex items-center gap-1 text-[11px] font-mono text-white/45"><I.Clock size={10}/>{p.recLen}</span>}
+      {p.outcome&&<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.05] text-white/65 border border-white/[0.08]">{p.outcome}</span>}
+    </div>
+    <div>
+      <ActSeg value={tab} onChange={setTab} options={[['summary','Summary'],['notes','Notes']]}/>
+      {tab==='summary'
+        ? <ul className="mt-2.5 flex flex-col gap-1.5">{(p.summary||['No summary captured for this call.']).map((b,i)=>(<li key={i} className="flex gap-2 text-[13px] text-white/70 leading-relaxed"><span className="text-brand-300 mt-0.5 shrink-0">•</span><span>{b}</span></li>))}</ul>
+        : <textarea value={notes} onChange={ev=>setNotes(ev.target.value)} onClick={_actStop()} placeholder="Add call notes…" rows={3} className="mt-2.5 w-full rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none px-3 py-2.5 text-[13px] text-white placeholder:text-white/30 resize-y"/>}
+    </div>
+    {p.rec&&<ActCallRecorder len={p.recLen||'0:57'}/>}
+    {p.talk&&<ActTalkRatio talk={p.talk}/>}
+    {turns.length>0&&<ActTranscript turns={turns}/>}
+  </div>);
+}
+function ActMeetingExpanded({e}){
+  const p=e.payload||{};
+  const [outcome,setOutcome]=React.useState(p.outcome||'Demo');
+  const [playbook,setPlaybook]=React.useState(p.playbook||'Demo');
+  const [notes,setNotes]=React.useState(p.notes||'');
+  const [gOpen,setGOpen]=React.useState(false);
+  const guests=p.guests||[];
+  const setOut=(v)=>{setOutcome(v);window.__nrturToast&&window.__nrturToast('Meeting outcome saved','success');};
+  return(<div className="mt-1.5 flex flex-col gap-3.5">
+    <div className="flex flex-col gap-1.5 text-[12.5px] text-white/65">
+      {p.start&&<div className="flex items-center gap-2"><I.Clock size={12} className="text-white/40 shrink-0"/>{p.start}{p.dur&&<span className="text-white/35">· {p.dur}</span>}</div>}
+      {(p.location||p.join)&&<div className="flex items-center gap-2 flex-wrap"><I.MapPin size={12} className="text-white/40 shrink-0"/>{p.location||'Online'}{p.join&&<a href={'https://'+p.join} target="_blank" rel="noreferrer" onClick={_actStop()} className="inline-flex items-center gap-1 text-brand-300 hover:text-brand-200 transition-colors">Join<I.ArrowUpRight size={11}/></a>}</div>}
+    </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <ActSelect value={outcome} options={ACT_MEETING_OUTCOMES} onChange={setOut} Icon={I.Target}/>
+      <ActSelect value={playbook} options={ACT_PLAYBOOKS} onChange={setPlaybook} Icon={I.Calendar}/>
+    </div>
+    {guests.length>0&&<div className="rounded-xl bg-white/[0.02] border border-white/[0.05]">
+      <button onClick={()=>setGOpen(o=>!o)} className="w-full flex items-center justify-between gap-2 px-3 py-2">
+        <span className="text-[10px] font-medium text-white/50 uppercase tracking-[0.12em] inline-flex items-center gap-1.5"><I.Users size={11}/>{guests.length} guests</span>
+        <span className="flex items-center gap-1.5"><span className="flex -space-x-1.5">{guests.slice(0,4).map((g,i)=>(<span key={i} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-semibold text-white ring-1 ring-[var(--s900)]" style={{background:['#3b82f6','#8b5cf6','#10b981','#f59e0b'][i%4]}}>{(g.name[0]||'?').toUpperCase()}</span>))}</span><I.ChevronDown size={12} className={(gOpen?'rotate-180 ':'')+'text-white/35 transition-transform'}/></span>
+      </button>
+      {gOpen&&<div className="px-3 pb-2.5 flex flex-col gap-2">{guests.map((g,i)=>(<div key={i} className="flex items-center gap-2.5"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:['#3b82f6','#8b5cf6','#10b981','#f59e0b'][i%4]}}>{(g.name[0]||'?').toUpperCase()}</span><span className="text-[12.5px] text-white/75 flex-1 truncate">{g.name}</span><ActGuestChip status={g.status}/></div>))}</div>}
+    </div>}
+    {p.agenda&&p.agenda.length>0&&<div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] mb-1.5">Agenda</p><ul className="flex flex-col gap-1">{p.agenda.map((a,i)=>(<li key={i} className="flex gap-2 text-[12.5px] text-white/65 leading-relaxed"><span className="text-emerald-300 mt-0.5 shrink-0">•</span>{a}</li>))}</ul></div>}
+    <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><textarea value={notes} onChange={ev=>setNotes(ev.target.value)} onClick={_actStop()} placeholder="Add note…" rows={2} className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none px-3 py-2.5 text-[13px] text-white placeholder:text-white/30 resize-y"/></div>
+  </div>);
+}
+function ActEmailExpanded({e}){
+  const p=e.payload||{};const thread=p.thread||[];
+  const body=e.body||'';const long=body.length>220;
+  const [showAll,setShowAll]=React.useState(false);
+  return(<div className="mt-1.5 flex flex-col gap-3">
+    {p.subject&&<div className="flex items-center gap-2 text-[12.5px] min-w-0"><span className="text-white/40 shrink-0">Subject:</span><span className="text-white/80 font-medium truncate">{p.subject}</span>{p.dir&&<span className={['ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full ring-1 shrink-0',p.dir==='in'?'bg-blue-500/15 text-blue-300 ring-blue-500/25':'bg-emerald-500/15 text-emerald-300 ring-emerald-500/25'].join(' ')}>{p.dir==='in'?'Received':'Sent'}</span>}</div>}
+    {body&&<div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3"><p className="text-[13px] text-white/70 leading-relaxed whitespace-pre-line">{long&&!showAll?body.slice(0,220)+'…':body}</p>{long&&<button onClick={()=>setShowAll(s=>!s)} className="mt-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200">{showAll?'Show less':'Show more'}</button>}</div>}
+    {thread.length>0&&<div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] mb-1.5">{thread.length} message{thread.length!==1?'s':''} in thread</p><div className="flex flex-col gap-2 border-l-2 border-white/[0.08] pl-3">{thread.map((t,i)=>(<div key={i} className="rounded-lg bg-white/[0.025] border border-white/[0.05] px-3 py-2"><div className="flex items-center justify-between gap-2"><span className="text-[11.5px] font-medium text-white/80 truncate">{t.from}</span><span className="text-[10px] text-white/35 shrink-0">{actRel(t.ts)}</span></div><p className="text-[12px] text-white/55 mt-0.5 leading-relaxed">{t.snippet}</p></div>))}</div></div>}
+  </div>);
+}
+function ActMsgExpanded({e}){
+  const p=e.payload||{};const msgs=p.thread||[];
+  return(<div className="mt-1.5 flex flex-col gap-2">
+    {msgs.map((m,i)=>{const out=m.by==='rep';return(<div key={i} className={['flex',out?'justify-end':'justify-start'].join(' ')}>
+      <div className={['max-w-[80%] rounded-2xl px-3 py-2',out?'bg-brand-500/20 border border-brand-500/25':'bg-white/[0.05] border border-white/[0.08]'].join(' ')}>
+        {m.media&&<div className="grid grid-cols-2 gap-1.5 mb-1.5">{m.media.map((md,j)=>(<div key={j} className="rounded-lg flex items-center justify-center" style={{aspectRatio:'4/3',background:'linear-gradient(135deg,'+md.c+','+(md.c2||md.c)+')'}}><I.Image size={16} className="text-white/70"/></div>))}</div>}
+        {m.text&&<p className="text-[12.5px] text-white/85 leading-relaxed">{m.text}</p>}
+        <p className={['text-[9.5px] mt-1',out?'text-brand-200/70 text-right':'text-white/35'].join(' ')}>{m.who} · {actRel(m.t)}</p>
+      </div>
+    </div>);})}
+  </div>);
+}
+function ActNoteExpanded({e}){
+  const [edit,setEdit]=React.useState(false);
+  const [text,setText]=React.useState(e.body||'');
+  return(<div className="mt-1.5" onClick={_actStop()}>
+    {edit
+      ? <div><textarea value={text} onChange={ev=>setText(ev.target.value)} rows={4} className="w-full rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none px-3 py-2.5 text-[13px] text-white placeholder:text-white/30 resize-y"/><div className="flex justify-end gap-2 mt-2"><button onClick={()=>{setText(e.body||'');setEdit(false);}} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/60 hover:text-white bg-white/[0.05] border border-white/[0.08]">Cancel</button><button onClick={()=>{setEdit(false);window.__nrturToast&&window.__nrturToast('Note saved','success');}} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand">Save</button></div></div>
+      : <div><p className="text-[13px] text-white/70 leading-relaxed whitespace-pre-line">{text||'—'}</p><button onClick={()=>setEdit(true)} className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Edit size={11}/>Edit note</button></div>}
+  </div>);
+}
+function ActRoutineDetail({e}){
+  const p=e.payload||{};const rows=[];
+  if(e.type==='task'){if(p.due)rows.push(['Due',p.due]);if(p.priority)rows.push(['Priority',p.priority]);if(p.assignee)rows.push(['Assignee',p.assignee]);if(p.related)rows.push(['Related to',p.related]);}
+  if(e.type==='dnc'&&p.channels)rows.push(['Channels',p.channels.join(', ')]);
+  if(e.type==='sequence'){if(p.seq)rows.push(['Sequence',p.seq]);if(p.step)rows.push(['Step',p.step]);}
+  if(e.type==='tag'&&p.tag)rows.push(['Tag',p.tag]);
+  if(p.field)rows.push(['Field',p.field]);
+  return(<div className="flex flex-col gap-2 pt-2.5">
+    {p.from&&p.to&&<ActFromTo from={p.from} to={p.to}/>}
+    {e.body&&<p className="text-[12.5px] text-white/60 leading-relaxed">{e.body}</p>}
+    {rows.length>0&&<div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1">{rows.map(([k,v],i)=>(<React.Fragment key={i}><span className="text-[11px] text-white/35">{k}</span><span className="text-[12px] text-white/65 truncate">{v}</span></React.Fragment>))}</div>}
+    <ActActorLine e={e}/>
+  </div>);
+}
+function actExpandedBody(e){
+  switch(e.type){
+    case 'call':    return <ActCallExpanded e={e}/>;
+    case 'meeting': return <ActMeetingExpanded e={e}/>;
+    case 'email':   return <ActEmailExpanded e={e}/>;
+    case 'sms': case 'mms': return <ActMsgExpanded e={e}/>;
+    case 'note':    return <ActNoteExpanded e={e}/>;
+    default:        return <div className="mt-1.5 text-[13px] text-white/65 leading-relaxed whitespace-pre-line">{e.body}</div>;
+  }
+}
+function actPreview(e){
+  const p=e.payload||{};
+  if(e.type==='call')return (p.summary&&p.summary[0])||e.body;
+  if(e.type==='sms'||e.type==='mms'){const m=(p.thread||[]);const last=m[m.length-1]||m[0];return last?(last.media&&!last.text?'📷 Photo':last.text):e.body;}
+  return e.body;
+}
+// Rich expandable card (important activities)
+function ActivityCardRow({e,open,toggle,goTo}){
+  return(<div className="rounded-xl border border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10] transition-all overflow-hidden">
+    <div role="button" tabIndex={0} onClick={toggle} onKeyDown={ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggle();}}} className="w-full flex items-start gap-3 px-4 pt-3.5 pb-3 text-left cursor-pointer hover:bg-white/[0.015] transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium text-white leading-snug">{e.title}</p>
+        {!open&&actPreview(e)&&<p className="text-[12.5px] text-white/50 mt-1 truncate">{actPreview(e)}</p>}
+      </div>
+      <I.ChevronDown size={15} className={(open?'rotate-180 ':'')+'text-white/35 transition-transform shrink-0 mt-0.5'}/>
+    </div>
+    {open&&<div className="px-4 pb-3.5">{actExpandedBody(e)}</div>}
+    <div className="flex items-center gap-2 px-4 py-2 border-t border-white/[0.04]"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:e.actor.color}}>{e.actor.avatar}</span><span className="text-[11px] text-white/45">{e.actor.name}</span></div>
+  </div>);
+}
+// Compact one-line row (routine activities) — still fully expandable
+function ActivityCompactRow({e,open,toggle,goTo}){
+  const p=e.payload||{};
+  return(<div className="rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.035] hover:border-white/[0.08] transition-all">
+    <div role="button" tabIndex={0} onClick={toggle} onKeyDown={ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggle();}}} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left cursor-pointer">
+      <span className="text-[13px] text-white/75 truncate min-w-0 flex-1">{e.title}</span>
+      {p.from&&p.to&&<ActFromTo from={p.from} to={p.to} className="shrink-0"/>}
+      {e.source&&<span onClick={_actStop()} className="shrink-0 hidden sm:inline-flex"><ActivitySourceChip src={e.source} goTo={goTo}/></span>}
+      <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:e.actor.color}} title={e.actor.name}>{e.actor.avatar}</span>
+      <span className="text-[11px] text-white/35 shrink-0">{e.timeLabel}</span>
+      <I.ChevronDown size={13} className={(open?'rotate-180 ':'')+'text-white/30 transition-transform shrink-0'}/>
+    </div>
+    {open&&<div className="px-3.5 pb-3 border-t border-white/[0.04]"><ActRoutineDetail e={e}/></div>}
+  </div>);
+}
+function ActivityRow({e,last,goTo}){
+  const [open,setOpen]=React.useState(false);
+  const toggle=()=>setOpen(o=>!o);
+  const imp=actImportance(e);
+  return(<div className="relative pl-11 pb-4">
     {!last&&<div className="absolute left-[18px] top-9 bottom-0 w-px bg-white/[0.06]"/>}
     <div className="absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center" style={{background:'var(--chip85)',boxShadow:'0 0 0 1px rgba(255,255,255,0.06)'}}><span style={{color:e.ic}}><e.Icon size={14}/></span></div>
     <div className="flex items-center gap-2 mb-2 flex-wrap">
       <span className={['inline-flex items-center text-[9px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full ring-1',e.chip].join(' ')}>{e.label}</span>
       <span className="text-[11px] text-white/35">{e.timeLabel}</span>
-      <ActivitySourceChip src={e.source} goTo={goTo}/>
+      {imp==='important'&&<span onClick={_actStop()} className="inline-flex"><ActivitySourceChip src={e.source} goTo={goTo}/></span>}
     </div>
-    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 hover:border-white/[0.10] hover:bg-white/[0.04] transition-all">
-      <p className="text-[14px] font-medium text-white">{e.title}</p>
-      {e.body&&<p className="text-[13px] text-white/55 mt-1.5 leading-relaxed">{e.body}</p>}
-      {e.payload&&e.payload.rec&&<RecordingBar len={e.payload.recLen||e.payload.dur||'0:30'}/>}
-      {e.payload&&(e.payload.outcome||e.payload.reason)&&<div className="flex items-center gap-1.5 flex-wrap mt-2">{e.payload.outcome&&<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/[0.05] text-white/70 border border-white/[0.08]">{e.payload.outcome}</span>}{e.payload.reason&&<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-300 border border-brand-500/20">{e.payload.reason}</span>}</div>}
-      {thread&&thread.length>1&&(<div className="mt-2.5">
-        <button onClick={()=>setOpenThread(s=>({...s,[e.id]:!s[e.id]}))} className="inline-flex items-center gap-1 text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Reply size={11}/>{open?'Hide':'Show'} {thread.length} messages in thread<I.ChevronDown size={11} className={(open?'rotate-180 ':'')+'transition-transform'}/></button>
-        {open&&<div className="mt-2 flex flex-col gap-2 border-l-2 border-white/[0.08] pl-3">{thread.map((t,j)=>(<div key={j} className="rounded-lg bg-white/[0.025] border border-white/[0.05] px-3 py-2"><div className="flex items-center justify-between gap-2"><span className="text-[11.5px] font-medium text-white/80 truncate">{t.from}</span><span className="text-[10px] text-white/35 shrink-0">{actRel(t.ts)}</span></div><p className="text-[12px] text-white/55 mt-0.5 leading-relaxed">{t.snippet}</p></div>))}</div>}
-      </div>)}
-      <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-white/[0.04]">
-        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:e.actor.color}}>{e.actor.avatar}</span>
-        <span className="text-[11px] text-white/45">{e.actor.name}</span>
-      </div>
-    </div>
+    {imp==='important'
+      ? <ActivityCardRow e={e} open={open} toggle={toggle} goTo={goTo}/>
+      : <ActivityCompactRow e={e} open={open} toggle={toggle} goTo={goTo}/>}
   </div>);
 }
 function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,noteId,notePlaceholder,actorMe}){
   const [filter,setFilter]=React.useState('all');
-  const [openThread,setOpenThread]=React.useState({});
   const [note,setNote]=React.useState('');
   const recId=rec&&rec.id;
   const base=React.useMemo(()=>buildActivityFeed(kind,rec,ctx||{}),[kind,recId,ctx&&ctx.contacts,ctx&&ctx.companies,ctx&&ctx.deals,ctx&&ctx.leads,rec&&rec.dnc,rec&&rec.qual]);
@@ -5272,7 +5523,7 @@ function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,noteId,notePlacehol
     </div>
     <div className="p-5">
       {shown.length===0&&<p className="text-[12.5px] text-white/35 text-center py-8">No {filter==='all'?'':filter+' '}activity yet.</p>}
-      {visible.map((e,i)=>(<ActivityRow key={e.id} e={e} last={i===visible.length-1} goTo={goTo} openThread={openThread} setOpenThread={setOpenThread}/>))}
+      {visible.map((e,i)=>(<ActivityRow key={e.id} e={e} last={i===visible.length-1} goTo={goTo}/>))}
       {shown.length>COLLAPSE_LIMIT&&(<button onClick={()=>setExpanded(x=>!x)} className="w-full mt-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-medium text-white/55 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-all">{expanded?(<React.Fragment>Show less<I.ChevronUp size={14}/></React.Fragment>):(<React.Fragment>Show {hiddenCount} earlier event{hiddenCount!==1?'s':''}<I.ChevronDown size={14}/></React.Fragment>)}</button>)}
     </div>
     {onAddNote&&<div className="border-t border-white/[0.05] p-4">
