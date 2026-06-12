@@ -2413,10 +2413,13 @@ function OnboardingPage({step,goTo}){
   const [pipeline,setPipeline]=React.useState('sales');
   const [integ,setInteg]=React.useState({gmail:'connected',twilio:'idle',slack:'idle',calendar:'idle'});
   const [inviteEmail,setInviteEmail]=React.useState('');
+  const [inviteRole,setInviteRole]=React.useState('Sales Rep');
   const [sentInvites,setSentInvites]=React.useState([]);
   const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>setInteg(m=>({...m,[key]:'connected'})),1200);};
   const disconnectInteg=(key)=>setInteg(m=>({...m,[key]:'idle'}));
-  const sendInvite=()=>{const e=inviteEmail.trim();if(!e)return;setSentInvites(a=>a.includes(e)?a:[...a,e]);setInviteEmail('');};
+  // Add one or many invites at once — splits on commas, semicolons, spaces, and newlines.
+  const addInvites=(raw,role)=>{const parts=String(raw||'').split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return;setSentInvites(a=>{const next=[...a];parts.forEach(em=>{if(!next.some(x=>x.email.toLowerCase()===em.toLowerCase()))next.push({email:em,role:role||inviteRole});});return next;});};
+  const sendInvite=()=>{if(!inviteEmail.trim())return;addInvites(inviteEmail,inviteRole);setInviteEmail('');};
   const [invites,setInvites]=React.useState(['','']);
   const [csvOpen,setCsvOpen]=React.useState(false);
   const meta=ONB_STEPS[step-1];
@@ -2448,7 +2451,7 @@ function OnboardingPage({step,goTo}){
       </header>
       <main className="relative z-10 flex-1 px-4 sm:px-6 lg:px-10 pb-12 flex items-start justify-center">
         <div className="w-full max-w-[1140px]">
-          <div className="rounded-3xl border border-white/[0.06] overflow-hidden" style={{background:'rgba(255,255,255,0.025)',backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 100px rgba(0,0,0,0.6),0 0 140px rgba(99,102,241,0.08)'}}>
+          <div className="rounded-3xl border border-white/[0.06]" style={{background:'rgba(255,255,255,0.025)',backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 100px rgba(0,0,0,0.6),0 0 140px rgba(99,102,241,0.08)'}}>
             <div className="px-6 sm:px-9 pt-7 pb-6 border-b border-white/[0.05]">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">{ONB_STEPS.map((s,i)=>{const idx=i+1,done=idx<step,active=idx===step;return(<div key={idx} className="flex items-center gap-2"><div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium transition-all duration-300',done?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/40':active?'bg-brand-500 text-white shadow-brand':'bg-white/[0.04] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}>{done?<I.Check size={12} stroke={2.6}/>:idx}</div><span className={['hidden sm:inline text-[12px] font-medium',active?'text-white':done?'text-white/60':'text-white/30'].join(' ')}>{s.label}</span>{idx<6&&<div className="w-5 h-px bg-white/[0.06] ml-1"/>}</div>);})}</div>
@@ -2482,7 +2485,7 @@ function OnboardingPage({step,goTo}){
                       </div>
                       {csvOpen&&<CsvImportModal close={()=>setCsvOpen(false)} onToast={()=>{}}/>}
                     </div>)}
-                                        {step===5&&(<div className="flex flex-col gap-4"><div className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendInvite();}} placeholder="teammate@company.com" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><button onClick={sendInvite} disabled={!inviteEmail.trim()} className={['inline-flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all shrink-0',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Plus size={14} stroke={2.4}/>Send invite</button></div>{sentInvites.length>0&&<div className="flex flex-wrap gap-2">{sentInvites.map((em,i)=>(<span key={i} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-brand-500/12 border border-brand-500/25 text-[12px] text-brand-200"><span className="w-4 h-4 rounded-full bg-brand-500/30 text-brand-200 flex items-center justify-center text-[9px] font-semibold">{em[0].toUpperCase()}</span>{em}<button onClick={()=>setSentInvites(a=>a.filter((_,j)=>j!==i))} className="text-brand-300/60 hover:text-red-300 transition-colors"><I.X size={12}/></button></span>))}</div>}<div className="flex items-center gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><I.Mail size={13} className="text-white/40 shrink-0"/><span className="text-[12px] text-white/50">They'll get an email to join your workspace.</span></div></div>)}
+                                        {step===5&&(<div className="flex flex-col gap-4"><div className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all min-w-0"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendInvite();}} onPaste={e=>{const t=(e.clipboardData||window.clipboardData).getData('text');if(t&&/[\s,;]/.test(t.trim())){e.preventDefault();addInvites(t,inviteRole);setInviteEmail('');}}} placeholder="teammate@company.com — paste several at once" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><div className="w-[150px] shrink-0"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><button onClick={sendInvite} disabled={!inviteEmail.trim()} className={['inline-flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all shrink-0',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Plus size={14} stroke={2.4}/>Send invite</button></div>{sentInvites.length>0&&<div className="flex flex-col gap-2">{sentInvites.map((inv,i)=>(<div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.07]"><span className="w-7 h-7 rounded-full bg-brand-500/20 text-brand-200 flex items-center justify-center text-[11px] font-semibold shrink-0">{inv.email[0].toUpperCase()}</span><span className="text-[13px] text-white truncate flex-1 min-w-0">{inv.email}</span><RoleSelect compact value={inv.role} onChange={(r)=>setSentInvites(a=>a.map((x,j)=>j===i?{...x,role:r}:x))}/><button onClick={()=>setSentInvites(a=>a.filter((_,j)=>j!==i))} className="text-white/30 hover:text-red-300 transition-colors shrink-0"><I.X size={13}/></button></div>))}</div>}<div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><span className="flex items-center gap-2 min-w-0"><I.Mail size={13} className="text-white/40 shrink-0"/><span className="text-[12px] text-white/50 truncate">They'll get an email to join your workspace.</span></span>{sentInvites.length>0&&<span className="text-[12px] font-medium text-brand-300 shrink-0">{sentInvites.length} invite{sentInvites.length!==1?'s':''} queued</span>}</div></div>)}
                     {step===6&&(<div className="flex flex-col gap-5"><div className="flex justify-center"><span className="w-16 h-16 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/25 flex items-center justify-center"><I.Check size={30} stroke={2.4} className="text-emerald-300"/></span></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[{Icon:I.LayoutDash,label:'Go to Dashboard',sub:'See your workspace',go:'dashboard'},{Icon:I.Upload,label:'Import contacts',sub:'Bring in your list',go:'contacts'},{Icon:I.UserPlus,label:'Invite your team',sub:'Add teammates',go:'settings-team'}].map(c=>(<button key={c.label} onClick={()=>goTo(c.go)} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-white/[0.05] transition-all p-4 text-center flex flex-col items-center gap-2"><span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center"><c.Icon size={17}/></span><span className="text-[13px] font-medium text-white">{c.label}</span><span className="text-[11px] text-white/45">{c.sub}</span></button>))}</div></div>)}
                   </div>
                   <div className="mt-9 flex items-center justify-between gap-4">
@@ -2494,7 +2497,7 @@ function OnboardingPage({step,goTo}){
                   </div>
                 </div>
               </div>
-              <div className="hidden lg:block border-l border-white/[0.05] p-6" style={{background:'linear-gradient(180deg,rgba(11,11,24,0.6),rgba(7,7,15,0.6))'}}>
+              <div className="hidden lg:block border-l border-white/[0.05] p-6 rounded-br-3xl" style={{background:'linear-gradient(180deg,rgba(11,11,24,0.6),rgba(7,7,15,0.6))'}}>
                 <div className="relative h-full min-h-[440px] rounded-2xl overflow-hidden border border-white/[0.06]" style={{background:'linear-gradient(180deg,#0b0b18,#07070f)'}}>
                   <div className="px-4 py-3 flex items-center gap-3 border-b border-white/[0.05]" style={{background:'var(--s900)'}}><div className="flex gap-1.5"><span className="w-3 h-3 rounded-full bg-[#ff5f57]"/><span className="w-3 h-3 rounded-full bg-[#febc2e]"/><span className="w-3 h-3 rounded-full bg-[#28c840]"/></div><div className="flex-1 flex justify-center"><div className="bg-white/[0.04] border border-white/[0.06] rounded-md px-3 py-1 text-[11px] text-white/25 w-40 text-center">app.nrtur.com</div></div></div>
                   <div className="p-5 flex flex-col gap-4">
@@ -3477,19 +3480,17 @@ function contactHealth(d){if(d==null)return{c:'#f87171',l:'No contact logged'};i
 const HEALTH_FILTERS=[{k:'all',l:'All health'},{k:'green',l:'Healthy'},{k:'amber',l:'Cooling'},{k:'red',l:'At risk'}];
 function healthBucket(d){if(d==null||d>30)return'red';if(d<7)return'green';return'amber';}
 function ContactStatusDropdown({value,onChange}){
-  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  return(<div ref={ref} className="relative w-fit">
-    <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} className={['inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125',CSTATUS_CHIP[value]].join(' ')}><span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>{value}<I.ChevronDown size={9} className="opacity-60"/></button>
-    {open&&(<div className="absolute left-0 top-7 z-30 w-36 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{CONTACT_STATUSES.map(s=>(<button key={s} onClick={(e)=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:CSTATUS_DOT[s]}}/>{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
+  return(<div className="relative w-fit">
+    <button ref={btnRef} onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} className={['inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125',CSTATUS_CHIP[value]].join(' ')}><span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>{value}<I.ChevronDown size={9} className="opacity-60"/></button>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align="left" width={144} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{CONTACT_STATUSES.map(s=>(<button key={s} onClick={(e)=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:CSTATUS_DOT[s]}}/>{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</AnchoredMenu>
   </div>);
 }
 function ContactOwnerDropdown({owner,onChange}){
-  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  return(<div ref={ref} className="relative w-fit">
-    <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} title="Reassign owner" className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white ring-1 ring-white/[0.06] hover:ring-2 hover:ring-brand-500/50 transition-all" style={{background:owner.color}}>{owner.avatar}</button>
-    {open&&(<div className="absolute left-0 top-7 z-30 w-44 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}><p className="px-3 py-2 text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] border-b border-white/[0.06]">Reassign to</p>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={(e)=>{e.stopPropagation();onChange(m);setOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span>{m.name}{owner.avatar===m.avatar&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
+  return(<div className="relative w-fit">
+    <button ref={btnRef} onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} title="Reassign owner" className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white ring-1 ring-white/[0.06] hover:ring-2 hover:ring-brand-500/50 transition-all" style={{background:owner.color}}>{owner.avatar}</button>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align="left" width={176} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}><p className="px-3 py-2 text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] border-b border-white/[0.06]">Reassign to</p>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={(e)=>{e.stopPropagation();onChange(m);setOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span>{m.name}{owner.avatar===m.avatar&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</AnchoredMenu>
   </div>);
 }
 function ContactRow({c,COL,selected,onSelect,onStatus,onOwner,onArchive,onRestore,goTo,last}){
@@ -5527,6 +5528,7 @@ function PipelinePage({goTo,nav}){
   const [newStage,setNewStage]=React.useState('');
   const [editStages,setEditStages]=React.useState(false);
   const [focusStageId,setFocusStageId]=React.useState(null);
+  const [focusName,setFocusName]=React.useState(false);
   const [dragDeal,setDragDeal]=React.useState(null);
   const [dropStageId,setDropStageId]=React.useState(null);
   const dragRef=React.useRef(null);
@@ -5535,9 +5537,9 @@ function PipelinePage({goTo,nav}){
   const {confirmNode,openConfirm}=useConfirm();
   const setStages=(updater)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,stages:typeof updater==='function'?updater(p.stages):updater}:p));
   const renamePipeline=(name)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,name}:p));
-  const addPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setCfgOpen(true);};
+  const addPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
   const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:false,demo:[]}))}]);setActiveId(id);};
-  const delPipeline=()=>{if(pipelines.length<=1)return;openConfirm({title:'Delete "'+active.name+'" pipeline?',body:'All '+active.stages.length+' stages in this pipeline will be removed.',confirmLabel:'Delete pipeline',danger:true,onConfirm:()=>{const next=pipelines.find(p=>p.id!==active.id);setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
+  const delPipeline=()=>{if(pipelines.length<=1)return;openConfirm({title:'Delete "'+active.name+'" pipeline?',body:'All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.',confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{const next=pipelines.find(p=>p.id!==active.id);setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
   const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
@@ -5547,6 +5549,8 @@ function PipelinePage({goTo,nav}){
   const STAGE_PRESET6=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa'];
   const cycleColor=(id,cur)=>{const i=STAGE_PRESET6.indexOf(cur);setColor(id,STAGE_PRESET6[(i+1)%STAGE_PRESET6.length]);};
   const addStageInline=()=>{const id='st'+Date.now();setStages(s=>[...s,{id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setFocusStageId(id);setEditStages(true);};
+  // Insert a brand-new stage at a specific position (between existing stages).
+  const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd)return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
@@ -5570,6 +5574,12 @@ function PipelinePage({goTo,nav}){
         <AppTopbar goTo={goTo} subtitle={
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2.5">
+              {editStages?(
+              <div className="flex items-center gap-2.5 -ml-1.5 pl-1.5 pr-2 py-1">
+                <span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0"><I.GitBranch size={16}/></span>
+                <input autoFocus={focusName} onFocus={()=>{if(focusName)setFocusName(false);}} value={active.name} onChange={e=>renamePipeline(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renamePipeline('Untitled pipeline');}} placeholder="Pipeline name" title="Rename this pipeline" className="bg-transparent text-white text-[21px] font-semibold tracking-tight leading-none outline-none border-b border-white/15 focus:border-brand-500/60 pb-0.5 w-[220px] max-w-[40vw]"/>
+              </div>
+              ):(
               <div className="relative" data-pipe-menu>
                 <button onClick={()=>setPipeMenu(o=>!o)} className="group flex items-center gap-2.5 -ml-1.5 pl-1.5 pr-2.5 py-1 rounded-xl border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08] transition-all">
                   <span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0"><I.GitBranch size={16}/></span>
@@ -5581,10 +5591,14 @@ function PipelinePage({goTo,nav}){
                   {pipelines.map(p=>{const on=p.id===active.id;return(<button key={p.id} onClick={()=>{setActiveId(p.id);setPipeMenu(false);}} className={['w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-all',on?'bg-brand-500/12 text-white':'text-white/75 hover:bg-white/[0.05]'].join(' ')}><I.GitBranch size={13} className={on?'text-brand-300':'text-white/40'}/><span className="flex-1 text-left truncate">{p.name}</span><span className="text-[10px] font-semibold tabular-nums text-white/40">{p.stages.length}</span>{on&&<I.Check size={13} className="text-brand-300"/>}</button>);})}
                   <div className="h-px bg-white/[0.06] my-1.5 mx-1"/>
                   <button onClick={addPipeline} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-brand-300 hover:bg-brand-500/10 transition-all"><I.Plus size={13} stroke={2.4}/>New pipeline</button>
-                  <button onClick={()=>{setCfgOpen(true);setPipeMenu(false);}} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-white/75 hover:bg-white/[0.05] transition-all"><I.Settings size={13} className="text-white/40"/>Pipeline settings</button>
                 </div>)}
               </div>
-              <button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing':'Edit stages'} aria-label="Edit stages" className={['inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<React.Fragment><I.Check size={13} stroke={2.6}/>Done</React.Fragment>:<React.Fragment><I.Settings size={13}/>Edit stages</React.Fragment>}</button>
+              )}
+              <button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages & pipeline'} aria-label={editStages?'Done editing':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>
+              {editStages&&(<React.Fragment>
+                <button onClick={dupPipeline} title="Duplicate this pipeline" aria-label="Duplicate pipeline" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={14}/></button>
+                <button onClick={delPipeline} disabled={pipelines.length<=1} title={pipelines.length<=1?'Only pipeline — cannot delete':'Delete this pipeline'} aria-label="Delete pipeline" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',pipelines.length<=1?'text-white/20 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={14}/></button>
+              </React.Fragment>)}
             </div>
             <p className="text-white/45 text-[12.5px] pl-0.5">{allVisible.length} open deals · {fmtK(totalVal)} total</p>
           </div>
@@ -5603,10 +5617,12 @@ function PipelinePage({goTo,nav}){
         <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
           <div className="pipe-board h-full p-6 flex gap-4 min-w-max">
             {active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return(
-              <div key={stage.id} onDragOver={editStages?(e=>{e.preventDefault();if(dragOver!==si)setDragOver(si);}):undefined} onDrop={editStages?(e=>{e.preventDefault();onDropStage(si);}):undefined} onDragEnd={editStages?(()=>{dragRef.current=null;setDragOver(null);}):undefined} className={['pipe-col '+(si===Math.min(mobStage,active.stages.length-1)?'pipe-col-active ':'')+'w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}>
+              <React.Fragment key={stage.id}>
+                {editStages&&(<button onClick={()=>insertStageAt(si)} title="Insert a stage here" className="group/ins relative w-6 shrink-0 self-stretch flex items-center justify-center -mx-2"><span className="absolute inset-y-6 w-px bg-white/[0.07] group-hover/ins:bg-brand-500/50 transition-colors"/><span className="relative z-10 w-6 h-6 rounded-full border flex items-center justify-center transition-all text-white/40 group-hover/ins:text-brand-200 group-hover/ins:border-brand-500/50 group-hover/ins:bg-brand-500/15 group-hover/ins:scale-110" style={{background:'var(--s900)',borderColor:'rgba(255,255,255,0.12)'}}><I.Plus size={13} stroke={2.4}/></span></button>)}
+              <div onDragOver={editStages?(e=>{e.preventDefault();if(dragOver!==si)setDragOver(si);}):undefined} onDrop={editStages?(e=>{e.preventDefault();onDropStage(si);}):undefined} onDragEnd={editStages?(()=>{dragRef.current=null;setDragOver(null);}):undefined} className={['pipe-col '+(si===Math.min(mobStage,active.stages.length-1)?'pipe-col-active ':'')+'w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}>
                 <div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
-                  {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><button onClick={()=>cycleColor(stage.id,stage.color)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 shrink-0 hover:scale-110 transition-transform" style={{background:stage.color}}/><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
-                  <div className="flex items-center justify-between mt-1.5"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span><span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span></div>
+                  {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}</div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
+                  <div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span>{editStages?(<label className="flex items-center gap-1.5 shrink-0" title="Win probability at this stage"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:stage.color,width:64}}/><span className="text-[10px] text-white/55 tabular-nums w-8 text-right">{stage.prob}%</span></label>):(<span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span>)}</div>
                 </div>
                 <div onDragOver={e=>{if(dragDeal){e.preventDefault();if(dropStageId!==stage.id)setDropStageId(stage.id);}}} onDrop={e=>{if(dragDeal){e.preventDefault();moveDeal(stage);}}} className={['flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors',dragDeal&&dropStageId===stage.id?'bg-brand-500/[0.05]':''].join(' ')}>
                   {sd.map(d=>(<button key={d.id} draggable={!editStages} onDragStart={e=>{setDragDeal({id:d.id,fromStageId:stage.id});e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragDeal(null);setDropStageId(null);}} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] p-3.5 text-left group cursor-grab',dragDeal&&dragDeal.id===d.id?'opacity-50 scale-[0.97]':''].join(' ')}>
@@ -5619,6 +5635,7 @@ function PipelinePage({goTo,nav}){
                   {dragDeal&&dropStageId===stage.id&&<div className="h-10 rounded-xl border-2 border-dashed border-brand-500/50 bg-brand-500/[0.06] flex items-center justify-center text-[10.5px] text-brand-300/90 font-medium">Drop deal here</div>}<button onClick={()=>goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>
                 </div>
               </div>
+              </React.Fragment>
             );})}
             <button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>
           </div>
@@ -5635,7 +5652,7 @@ function PipelinePage({goTo,nav}){
           <div className="flex-1 overflow-y-auto scroll-area px-5 py-4">
             <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Pipeline name</label>
             <div className="flex items-center gap-2 mb-3">
-              <input value={active.name} onChange={e=>renamePipeline(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40"/>
+              <input value={active.name} onChange={e=>renamePipeline(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renamePipeline('Untitled pipeline');}} className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40"/>
             </div>
             <div className="flex items-center gap-2 mb-5">
               <button onClick={dupPipeline} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Duplicate</button>
@@ -5646,7 +5663,7 @@ function PipelinePage({goTo,nav}){
               {active.stages.map((stage,i)=>(
                 <div key={stage.id} draggable onDragStart={()=>{dragRef.current=i;}} onDragOver={e=>{e.preventDefault();if(dragOver!==i)setDragOver(i);}} onDrop={e=>{e.preventDefault();onDropStage(i);}} onDragEnd={()=>{dragRef.current=null;setDragOver(null);}} className={['grid items-center gap-2 px-2 py-2 rounded-xl border transition-colors',dragOver===i?'border-brand-500/40 bg-brand-500/[0.06]':'border-white/[0.07] bg-white/[0.02]'].join(' ')} style={{gridTemplateColumns:GC}}>
                   <div className="text-white/25 cursor-grab active:cursor-grabbing hover:text-white/50 transition-colors flex justify-center" title="Drag to reorder"><I.Grip size={14}/></div>
-                  <input value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} className="bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 w-full min-w-0"/>
+                  <input value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 w-full min-w-0"/>
                   <div className="flex items-center gap-1.5"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:'#6366f1',width:64}}/><span className="text-[10px] text-white/45 tabular-nums w-7">{stage.prob}%</span></div>
                   <div className="relative flex justify-center" data-color-pop>
                     <button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} className="w-5 h-5 rounded-full ring-1 ring-white/15 hover:scale-110 transition-transform" style={{background:stage.color}}/>
@@ -5787,21 +5804,19 @@ function makeViewEngine(evalRuleFn){
 }
 // Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
 function ChipSelect({value,options,chipMap,dotMap,onChange,width=148}){
-  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  return(<div ref={ref} className="relative w-fit">
-    <button onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} className={['inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125',chipMap[value]].join(' ')}><span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>{value}<I.ChevronDown size={9} className="opacity-60"/></button>
-    {open&&(<div className="absolute left-0 top-7 z-30 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)',width}}>{options.map(s=>(<button key={s} onClick={(e)=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[s]}}/>{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
+  return(<div className="relative w-fit">
+    <button ref={btnRef} onClick={(e)=>{e.stopPropagation();setOpen(v=>!v);}} className={['inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125',chipMap[value]].join(' ')}><span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>{value}<I.ChevronDown size={9} className="opacity-60"/></button>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align="left" width={width} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{options.map(s=>(<button key={s} onClick={(e)=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[s]}}/>{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</AnchoredMenu>
   </div>);
 }
 // Toolbar filter dropdown (All <noun> / value …) — mirrors the Contacts health dropdown
 function ToolbarFilter({value,options,allLabel,onChange,dotMap}){
-  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
   const label=value==='all'?allLabel:value;
-  return(<div ref={ref} className="relative">
-    <button onClick={()=>setOpen(v=>!v)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-all border',value!=='all'?'text-white border-brand-500/40 bg-brand-500/10':'text-white/55 hover:text-white border-white/[0.06] hover:border-brand-500/30'].join(' ')}>{value!=='all'&&dotMap&&<span className="w-2 h-2 rounded-full" style={{background:dotMap[value]}}/>}{label}<I.ChevronDown size={11}/></button>
-    {open&&(<div className="absolute right-0 top-9 z-30 w-44 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{[{k:'all',l:allLabel}].concat(options.map(o=>({k:o,l:o}))).map(o=>(<button key={o.k} onClick={()=>{onChange(o.k);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{o.k!=='all'&&dotMap?<span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[o.k]}}/>:<span className="w-2 h-2"/>}{o.l}{value===o.k&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</div>)}
+  return(<div className="relative">
+    <button ref={btnRef} onClick={()=>setOpen(v=>!v)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-all border',value!=='all'?'text-white border-brand-500/40 bg-brand-500/10':'text-white/55 hover:text-white border-white/[0.06] hover:border-brand-500/30'].join(' ')}>{value!=='all'&&dotMap&&<span className="w-2 h-2 rounded-full" style={{background:dotMap[value]}}/>}{label}<I.ChevronDown size={11}/></button>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align="right" width={176} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{[{k:'all',l:allLabel}].concat(options.map(o=>({k:o,l:o}))).map(o=>(<button key={o.k} onClick={()=>{onChange(o.k);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{o.k!=='all'&&dotMap?<span className="w-2 h-2 rounded-full shrink-0" style={{background:dotMap[o.k]}}/>:<span className="w-2 h-2"/>}{o.l}{value===o.k&&<I.Check size={11} className="ml-auto text-brand-400"/>}</button>))}</AnchoredMenu>
   </div>);
 }
 // ?? Companies data ????????????????????????????????????????????????????????????
@@ -9770,24 +9785,57 @@ const CRM_ROLES=[
   {key:'Sales Manager',desc:'Manage the full pipeline, reports, and sequences.',color:'#818cf8'},
   {key:'Admin',desc:'Complete control over the workspace.',color:'#fbbf24'},
 ];
+// ── AnchoredMenu ──────────────────────────────────────────────────────────────
+// Reusable dropdown surface that PORTALS into <body> with fixed positioning, so it
+// can never be clipped by an ancestor's overflow (cards, scroll areas, drawers).
+// Auto-flips above the trigger when there isn't room below, keeps within the
+// viewport, and closes on outside-click / scroll / resize / Escape.
+function AnchoredMenu({anchorRef,open,onClose,align='left',width,gap=6,zIndex=190,className,style,children}){
+  const menuRef=React.useRef(null);
+  const [pos,setPos]=React.useState(null);
+  const place=React.useCallback(()=>{
+    const a=anchorRef&&anchorRef.current;if(!a)return;
+    const r=a.getBoundingClientRect();
+    const w=width||r.width;
+    const vw=window.innerWidth,vh=window.innerHeight,pad=8;
+    let left=align==='right'?r.right-w:r.left;
+    left=Math.max(pad,Math.min(left,vw-pad-w));
+    const mh=menuRef.current?menuRef.current.offsetHeight:0;
+    let top=r.bottom+gap;
+    if(mh&&top+mh>vh-pad&&r.top-gap-mh>=pad)top=r.top-gap-mh; // flip up
+    if(mh)top=Math.max(pad,Math.min(top,vh-pad-mh));
+    setPos({left,top,width:w});
+  },[anchorRef,align,width,gap]);
+  React.useLayoutEffect(()=>{if(open)place();},[open,place]);
+  React.useEffect(()=>{
+    if(!open)return;
+    const onScroll=()=>place();
+    const onKey=(e)=>{if(e.key==='Escape')onClose&&onClose();};
+    const onDown=(e)=>{const a=anchorRef&&anchorRef.current,m=menuRef.current;if((a&&a.contains(e.target))||(m&&m.contains(e.target)))return;onClose&&onClose();};
+    window.addEventListener('scroll',onScroll,true);window.addEventListener('resize',place);
+    document.addEventListener('mousedown',onDown);document.addEventListener('keydown',onKey);
+    return()=>{window.removeEventListener('scroll',onScroll,true);window.removeEventListener('resize',place);document.removeEventListener('mousedown',onDown);document.removeEventListener('keydown',onKey);};
+  },[open,place,onClose,anchorRef]);
+  if(!open)return null;
+  return ReactDOM.createPortal(<div ref={menuRef} className={className} style={{position:'fixed',left:pos?pos.left:-9999,top:pos?pos.top:-9999,minWidth:pos?pos.width:undefined,zIndex,visibility:pos?'visible':'hidden',...style}}>{children}</div>,document.body);
+}
 function RoleSelect({value,onChange,compact}){
   const [open,setOpen]=React.useState(false);
-  const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
+  const btnRef=React.useRef(null);
   const cur=CRM_ROLES.find(r=>r.key===value)||CRM_ROLES[1];
-  return(<div ref={ref} className="relative">
+  return(<div className="relative">
     {compact?(
-      <button onClick={()=>setOpen(o=>!o)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium w-fit transition-all" style={{background:cur.color+'1f',color:cur.color,boxShadow:'inset 0 0 0 1px '+cur.color+'40'}}>{cur.key}<I.ChevronDown size={10}/></button>
+      <button ref={btnRef} onClick={()=>setOpen(o=>!o)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium w-fit transition-all" style={{background:cur.color+'1f',color:cur.color,boxShadow:'inset 0 0 0 1px '+cur.color+'40'}}>{cur.key}<I.ChevronDown size={10}/></button>
     ):(
-      <button onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 transition-all"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:cur.color}}/>{cur.key}</span><I.ChevronDown size={13} className="text-white/40"/></button>
+      <button ref={btnRef} onClick={()=>setOpen(o=>!o)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 transition-all"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:cur.color}}/>{cur.key}</span><I.ChevronDown size={13} className="text-white/40"/></button>
     )}
-    {open&&(<div className={['absolute z-40 mt-1.5 py-1 rounded-xl border border-white/[0.10]',compact?'right-0 w-[270px]':'left-0 w-full'].join(' ')} style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align={compact?'right':'left'} width={compact?270:undefined} className="py-1 rounded-xl border border-white/[0.10]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
       {CRM_ROLES.map(r=>(<button key={r.key} onClick={()=>{onChange(r.key);setOpen(false);}} className="w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors">
         <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{background:r.color}}/>
         <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold text-white/90 leading-tight">{r.key}</span><span className="block text-[11px] text-white/45 leading-snug mt-0.5">{r.desc}</span></span>
         {value===r.key&&<I.Check size={13} className="text-brand-300 shrink-0 mt-0.5"/>}
       </button>))}
-    </div>)}
+    </AnchoredMenu>
   </div>);
 }
 // ?? Role-based permissions (Settings → Permissions) ???????????????????????????
@@ -9827,11 +9875,10 @@ function permObjCount(role){let on=0;PERM_OBJECTS.forEach(ob=>PERM_ACTIONS.forEa
 function permSummary(role){const on=permObjCount(role);return on===32?'Full access':on+' of 32 permissions';}
 // scope dropdown — fixed dark option colors, matches ChipSelect styling
 function PermScopeSelect({value,onChange,disabled}){
-  const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  return(<div ref={ref} className="relative">
-    <button disabled={disabled} onClick={()=>!disabled&&setOpen(o=>!o)} className={['inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11.5px] font-medium ring-1 transition-all w-fit',disabled?'text-white/20 ring-white/[0.05] cursor-not-allowed':'text-white/70 ring-white/[0.10] hover:text-white hover:ring-white/20'].join(' ')}>{value}<I.ChevronDown size={10} className="opacity-60"/></button>
-    {open&&!disabled&&(<div className="absolute right-0 top-8 z-30 w-44 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{PERM_SCOPES.map(s=>(<button key={s} onClick={()=>{onChange(s);setOpen(false);}} className="w-full flex flex-col items-start px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="flex items-center w-full text-[12px] text-white/80">{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</span><span className="text-[10px] text-white/35">{PERM_SCOPE_HINT[s]}</span></button>))}</div>)}
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
+  return(<div className="relative">
+    <button ref={btnRef} disabled={disabled} onClick={()=>!disabled&&setOpen(o=>!o)} className={['inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11.5px] font-medium ring-1 transition-all w-fit',disabled?'text-white/20 ring-white/[0.05] cursor-not-allowed':'text-white/70 ring-white/[0.10] hover:text-white hover:ring-white/20'].join(' ')}>{value}<I.ChevronDown size={10} className="opacity-60"/></button>
+    <AnchoredMenu anchorRef={btnRef} open={open&&!disabled} onClose={()=>setOpen(false)} align="right" width={176} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{PERM_SCOPES.map(s=>(<button key={s} onClick={()=>{onChange(s);setOpen(false);}} className="w-full flex flex-col items-start px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="flex items-center w-full text-[12px] text-white/80">{s}{value===s&&<I.Check size={11} className="ml-auto text-brand-400"/>}</span><span className="text-[10px] text-white/35">{PERM_SCOPE_HINT[s]}</span></button>))}</AnchoredMenu>
   </div>);
 }
 // matrix toggle cell — reuses Toggle, with a disabled/locked variant
@@ -13580,9 +13627,11 @@ function SchedAutomationCard({automation,setAutomation,addToast}){
 
 const CAL_TAB_META={calendar:{t:'Calendar',s:'Schedule meetings, calls, and follow-ups'},meetings:{t:'Meetings',s:'Every booking tied to a real contact, deal, and timeline.'},bookings:{t:'Bookings',s:'Your booking links and public scheduling page.'},availability:{t:'Availability',s:'When people can book time with you.'}};
 function CalendarPage({goTo,nav}){
-  const [schedTab,setSchedTab]=React.useState((nav&&nav.tab)||'calendar');
+  const _initTab=(nav&&nav.tab)||'calendar';
+  const [schedTab,setSchedTab]=React.useState(_initTab==='availability'?'bookings':_initTab);
+  const [bookSub,setBookSub]=React.useState(_initTab==='availability'?'availability':'links'); // Bookings sub-view: links | availability
   const sched=React.useContext(SchedulingContext);const {meetings,setMeetings}=sched;const crm=React.useContext(CrmDataContext);
-  const SCHED_TABS=[{k:'calendar',l:'Calendar',Icon:I.Calendar},{k:'meetings',l:'Meetings',Icon:I.Users},{k:'bookings',l:'Bookings',Icon:I.Globe},{k:'availability',l:'Availability',Icon:I.Clock}];
+  const SCHED_TABS=[{k:'calendar',l:'Calendar',Icon:I.Calendar},{k:'meetings',l:'Meetings',Icon:I.Users},{k:'bookings',l:'Bookings',Icon:I.Globe}];
   const [view,setView]=React.useState('month');
   const [current,setCurrent]=React.useState(new Date());
   const {items:events,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
@@ -13610,10 +13659,11 @@ function CalendarPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="calendar" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title={(CAL_TAB_META[schedTab]||CAL_TAB_META.calendar).t} subtitle={(CAL_TAB_META[schedTab]||CAL_TAB_META.calendar).s} rightSlot={<React.Fragment>
-          <div className="cal-tab-group inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
+        <AppTopbar goTo={goTo} subtitle={(CAL_TAB_META[schedTab]||CAL_TAB_META.calendar).s}
+          tabs={<div className="cal-tab-group inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>}
+          rightSlot={<React.Fragment>
           {schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}
-          {schedTab==='bookings'&&bookingPreview===null&&<button onClick={()=>setEtDrawer('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New booking link</button>}
+          {schedTab==='bookings'&&bookingPreview===null&&bookSub==='links'&&<button onClick={()=>setEtDrawer('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New booking link</button>}
         </React.Fragment>}/>
         {schedTab==='meetings'&&<SchedMeetingsTab meetings={meetings} setMeetings={setMeetings} addToast={addToast} goTo={goTo}/>}
         {schedTab==='bookings'&&(bookingPreview!==null
@@ -13621,8 +13671,12 @@ function CalendarPage({goTo,nav}){
               <div className="shrink-0 px-6 py-2.5 border-b border-white/[0.05] flex items-center gap-3" style={{background:'var(--s925)'}}><button onClick={()=>setBookingPreview(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ChevronLeft size={14}/>Back to Bookings</button><span className="text-[12.5px] text-white/45">Public booking page preview</span></div>
               <SchedBookingPageTab eventTypes={sched.eventTypes} avail={sched.availability} initialSlug={bookingPreview} addToast={addToast} automation={sched.automation} crm={crm} addMeeting={sched.addMeeting} goTo={goTo}/>
             </div>)
-          :(<SchedBookingsTab eventTypes={sched.eventTypes} avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} goTo={goTo} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>setBookingPreview(et?et.slug:((sched.eventTypes[0]&&sched.eventTypes[0].slug)||''))} onGotoAvailability={()=>setSchedTab('availability')}/>))}
-        {schedTab==='availability'&&<SchedAvailabilityTab avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} automation={sched.automation} setAutomation={sched.setAutomation}/>}
+          :(<div className="flex-1 flex flex-col min-h-0">
+              <div className="shrink-0 px-6 pt-3.5 flex items-center gap-2" style={{background:'var(--s925)'}}>{[['links','Booking links',I.Globe],['availability','Availability',I.Clock]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBookSub(k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium border transition-all',bookSub===k?'bg-brand-500/12 text-brand-200 border-brand-500/30':'text-white/50 hover:text-white bg-white/[0.03] border-white/[0.08]'].join(' ')}><Ic size={13}/>{l}</button>))}</div>
+              {bookSub==='links'
+                ?(<SchedBookingsTab eventTypes={sched.eventTypes} avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} goTo={goTo} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>setBookingPreview(et?et.slug:((sched.eventTypes[0]&&sched.eventTypes[0].slug)||''))} onGotoAvailability={()=>setBookSub('availability')}/>)
+                :(<SchedAvailabilityTab avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} automation={sched.automation} setAutomation={sched.setAutomation}/>)}
+            </div>))}
         {schedTab==='calendar'&&(calConnected?(<React.Fragment>
         <div className="shrink-0 border-b border-white/[0.05] px-6 py-3 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-3">
