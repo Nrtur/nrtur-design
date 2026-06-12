@@ -44,9 +44,15 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
 @media (max-width:760px){.app-topbar{flex-wrap:wrap;row-gap:10px}}
 @media (max-width:560px){.notif-drawer{left:0 !important;width:100% !important}}
 
+/* hamburger (mobile full-nav trigger) — hidden on desktop, shown when the rail collapses */
+.mobile-hamburger{display:none}
+
 /* ===== Mobile responsive layer (max 768px) ===== */
 @media (max-width:768px){
   .app-shell{padding-bottom:60px}
+  /* --- hamburger button: fixed top-left, opens the full nav drawer --- */
+  .mobile-hamburger{display:inline-flex;align-items:center;justify-content:center;position:fixed;top:9px;left:10px;z-index:130;width:40px;height:40px;border-radius:12px;color:var(--o75);background:var(--chip85);border:1px solid var(--ob07);backdrop-filter:blur(10px);box-shadow:0 4px 18px rgba(0,0,0,0.35)}
+  .mobile-hamburger:active{transform:scale(0.94)}
   .app-footer{display:none !important}
   /* --- bottom tab bar: 5 destinations + floating + --- */
   .app-sidebar{
@@ -68,9 +74,9 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
   .app-sidebar .nav-add > button{width:52px !important;height:52px !important;border-radius:9999px !important;background:#6366f1 !important;color:#fff !important;box-shadow:0 10px 28px rgba(0,0,0,0.55) !important}
   .app-sidebar .nav-add .qam-root{position:fixed !important;left:10px !important;right:10px !important;top:auto !important;bottom:138px !important;width:auto !important;flex-direction:column !important;max-height:58vh;overflow-y:auto}
   .qam-root > div{width:100% !important;border-right:0 !important}
-  /* --- topbars: tighter, hide secondary controls --- */
-  .app-topbar{padding-left:14px !important;padding-right:14px !important;overflow:hidden}
-  .app-shell header{flex-wrap:wrap;row-gap:8px;padding-left:14px !important;padding-right:14px !important}
+  /* --- topbars: tighter, hide secondary controls; left pad clears the hamburger --- */
+  .app-topbar{padding-left:58px !important;padding-right:14px !important;overflow:hidden}
+  .app-shell header{flex-wrap:wrap;row-gap:8px;padding-left:58px !important;padding-right:14px !important}
   .app-shell header > *{min-width:0}
   .app-topbar .min-w-0{flex-wrap:wrap;row-gap:4px}
   .crm-hide-sm{display:none !important}
@@ -128,8 +134,24 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
   .dup-list-row{grid-template-columns:1fr !important;gap:8px !important;padding:12px !important;border:1px solid rgba(255,255,255,0.06) !important;border-radius:12px !important;margin:8px !important}
 }
 @media (max-width:520px){
-  .app-topbar{padding-left:12px !important;padding-right:12px !important}
+  .app-topbar{padding-left:56px !important;padding-right:12px !important}
+  .app-shell header{padding-left:56px !important;padding-right:12px !important}
   .app-shell .px-7{padding-left:12px !important;padding-right:12px !important}
+}
+/* ===== Generic overlay hardening: drawers full-width, modals capped + bottom-sheet feel on phones ===== */
+@media (max-width:640px){
+  /* right-side drawers (fixed inset-0 flex justify-end → single panel child) span full width
+     (exclude pointer-events-none toast hosts which share the justify-end pattern) */
+  div.fixed.inset-0.justify-end:not(.pointer-events-none) > *{width:100% !important;max-width:100% !important}
+  /* centered / top-anchored modals: never exceed viewport, always scrollable, never touch edges */
+  div.fixed.inset-0.justify-center:not(.pointer-events-none){padding-left:12px !important;padding-right:12px !important}
+  div.fixed.inset-0.justify-center:not(.pointer-events-none) > *{max-width:100% !important;max-height:92vh !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch}
+  /* lift the dev Tweaks FAB above the mobile bottom tab bar */
+  div.fixed.bottom-6.right-6.z-\[300\]{bottom:74px !important}
+}
+/* shrink oversized page-title headings on very small screens so they never crowd the hamburger */
+@media (max-width:400px){
+  .app-topbar h1,.app-shell header h1{font-size:18px !important;line-height:1.25 !important}
 }
 /* Tweaks: compact density */
 html.tw-compact .app-topbar{padding-top:8px !important;padding-bottom:8px !important}
@@ -665,6 +687,7 @@ const I = {
   ArrowDownLeft:(p)=><Ico {...p} d={<><line x1="17" x2="7" y1="7" y2="17"/><polyline points="17 17 7 17 7 7"/></>}/>,
   ArrowUpRight:(p)=><Ico {...p} d={<><line x1="7" x2="17" y1="17" y2="7"/><polyline points="7 7 17 7 17 17"/></>}/>,
   List:      (p)=><Ico {...p} d={<><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></>}/>,
+  Menu:      (p)=><Ico {...p} d={<><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></>}/>,
 };
 // ?? Skeleton + Confirm ???????????????????????????????????????????????????????
 function Skel({ w, h='11px', r='5px', s={} }) {
@@ -1696,6 +1719,84 @@ function MultiRecordModal({type,close,onToast}){
     </div>
   </div>);
 }
+// ?? MobileNavDrawer ?? full navigation overlay for mobile/tablet (hamburger menu). Covers EVERY destination, not just the bottom bar's 5.
+function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNotif,close}){
+  const go=(p)=>{goTo(p);close();};
+  const isActive=(k)=>active===k||(k==='settings-general'&&typeof active==='string'&&active.startsWith('settings'));
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const SECTIONS=[
+    {title:'CRM',items:[
+      {p:'dashboard',Icon:I.LayoutDash,l:'Dashboard'},
+      {p:'contacts', Icon:I.Users,     l:'Contacts'},
+      {p:'companies',Icon:I.Building,  l:'Companies'},
+      {p:'leads',    Icon:I.Target,    l:'Leads'},
+      {p:'pipeline', Icon:I.GitBranch, l:'Pipeline'},
+    ]},
+    {title:'Work',items:[
+      {p:'tasks',   Icon:I.CheckSquare,l:'Tasks'},
+      {p:'calendar',Icon:I.Calendar,   l:'Calendar'},
+      {p:'inbox',   Icon:I.Inbox,      l:'Inbox'},
+      {p:'reports', Icon:I.BarChart,   l:'Reports'},
+    ]},
+    {title:'Automation & templates',items:[
+      {p:'settings-automations',Icon:I.Zap,   l:'Automations'},
+      {p:'settings-sequences',  Icon:I.Layers,l:'Sequences'},
+      {p:'email-templates',     Icon:I.Mail,  l:'Email templates'},
+      {p:'settings-forms',      Icon:I.Note,  l:'Forms'},
+    ]},
+    {title:'Workspace',items:[
+      {p:'settings-general',     Icon:I.Settings,  l:'Settings'},
+      {p:'settings-integrations',Icon:I.Plug,      l:'Integrations'},
+      {p:'settings-team',        Icon:I.Users,     l:'Team'},
+      {p:'settings-billing',     Icon:I.CreditCard,l:'Billing'},
+    ]},
+  ];
+  return(
+    <div className="mobile-nav-wrap fixed inset-0 z-[160]" role="dialog" aria-modal="true" aria-label="Navigation menu">
+      <div className="absolute inset-0 bg-black/40" style={{backdropFilter:'blur(2px)'}} onClick={close}/>
+      <aside className="absolute top-0 left-0 bottom-0 w-[84%] max-w-[330px] flex flex-col border-r border-white/[0.08]" style={{background:'var(--s950)',animation:'drawerInL .24s ease both',boxShadow:'0 0 60px rgba(0,0,0,0.6)'}}>
+        <div className="shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
+          <button onClick={()=>go('dashboard')} className="flex items-center gap-2.5 min-w-0">
+            <span className="w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0 inline-flex"><NrturMark size={32}/></span>
+            <span className="brand-wordmark text-white text-[16px] font-semibold">nrtur</span>
+          </button>
+          <button onClick={close} aria-label="Close menu" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.05] transition-colors"><I.X size={18}/></button>
+        </div>
+        <div className="shrink-0 grid grid-cols-4 gap-1.5 px-3 py-3 border-b border-white/[0.06]">
+          {[
+            {Icon:I.Plus, l:'Add',   fn:()=>{close();onQuickAdd();}},
+            {Icon:I.Search,l:'Search',fn:()=>{close();onSearch();}},
+            {Icon:I.Bell, l:'Alerts',fn:()=>{close();onNotif();}},
+            {Icon:theme==='light'?I.Moon:I.Sun,l:'Theme',fn:()=>toggleTheme()},
+          ].map((a,i)=>(
+            <button key={i} onClick={a.fn} className="flex flex-col items-center gap-1 py-2 rounded-xl text-white/65 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-all"><a.Icon size={16}/><span className="text-[10.5px] font-medium">{a.l}</span></button>
+          ))}
+        </div>
+        <nav className="flex-1 overflow-y-auto scroll-area px-3 py-3">
+          {SECTIONS.map(s=>(
+            <div key={s.title} className="mb-4 last:mb-0">
+              <p className="px-2 mb-1 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">{s.title}</p>
+              <div className="flex flex-col gap-0.5">
+                {s.items.map(it=>{const a=isActive(it.p);return(
+                  <button key={it.p} onClick={()=>go(it.p)} aria-current={a?'page':undefined} className={['relative flex items-center gap-3 px-3 rounded-xl text-[14px] transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/65 hover:text-white hover:bg-white/[0.04]'].join(' ')} style={{minHeight:44}}>
+                    <it.Icon size={17} stroke={2}/><span className="font-medium">{it.l}</span>
+                  </button>
+                );})}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <button onClick={()=>go('profile')} className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors text-left">
+          <span className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{background:'#3b82f6'}}>AM</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-white text-[13.5px] font-semibold truncate">Alex Morgan</span>
+            <span className="block text-white/45 text-[11.5px] truncate">View profile &amp; account</span>
+          </span>
+        </button>
+      </aside>
+    </div>
+  );
+}
 function AppSidebar({active,goTo}){
   const items=[
     {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
@@ -1709,6 +1810,7 @@ function AppSidebar({active,goTo}){
   const settActive=active&&active.startsWith('settings');
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [addOpen,setAddOpen]=React.useState(false);
+  const [menuOpen,setMenuOpen]=React.useState(false);
   const [quickModal,setQuickModal]=React.useState(null);
   const [multiRecord,setMultiRecord]=React.useState(null);
   const addHoverT=React.useRef(null);
@@ -1724,6 +1826,9 @@ function AppSidebar({active,goTo}){
   const sideToastFn=(m)=>{setSideToast(m);setTimeout(()=>setSideToast(''),2200);};
   React.useEffect(()=>{const fn=(e)=>{if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
+    <React.Fragment>
+    <button onClick={()=>setMenuOpen(true)} className="mobile-hamburger" aria-label="Open navigation menu" aria-haspopup="menu" aria-expanded={menuOpen} title="Menu"><I.Menu size={20}/></button>
+    {menuOpen&&<MobileNavDrawer active={active} goTo={goTo} theme={theme} toggleTheme={toggleTheme} onSearch={()=>window.__nrturOpenSearch&&window.__nrturOpenSearch()} onQuickAdd={()=>setAddOpen(true)} onNotif={()=>setNotifOpen(true)} close={()=>setMenuOpen(false)}/>}
     <aside role="navigation" aria-label="Primary" className="app-sidebar w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'var(--s950)'}}>
       <button onClick={()=>goTo('dashboard')} aria-label="nrtur — go to dashboard" className="nav-logo mb-4 w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></button>
       <div ref={addRef} className="nav-add relative w-9 mb-2" onMouseEnter={openAddHover} onMouseLeave={closeAddHover}>
@@ -1752,6 +1857,7 @@ function AppSidebar({active,goTo}){
       {/* bulk entry now consolidated into AddRecordDrawer (initialMode='multiple') */}
       {sideToast&&(<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{sideToast}</div>)}
     </aside>
+    </React.Fragment>
   );
 }
 // ?? AppTopbar ?????????????????????????????????????????????????????????????????
