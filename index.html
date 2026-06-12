@@ -688,6 +688,7 @@ const I = {
   ArrowUpRight:(p)=><Ico {...p} d={<><line x1="7" x2="17" y1="17" y2="7"/><polyline points="7 7 17 7 17 17"/></>}/>,
   List:      (p)=><Ico {...p} d={<><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></>}/>,
   Menu:      (p)=><Ico {...p} d={<><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></>}/>,
+  Grid:      (p)=><Ico {...p} d={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>}/>,
 };
 // ?? Skeleton + Confirm ???????????????????????????????????????????????????????
 function Skel({ w, h='11px', r='5px', s={} }) {
@@ -1720,43 +1721,192 @@ function MultiRecordModal({type,close,onToast}){
   </div>);
 }
 // ?? MobileNavDrawer ?? full navigation overlay for mobile/tablet (hamburger menu). Covers EVERY destination, not just the bottom bar's 5.
-function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNotif,close}){
-  const go=(p)=>{goTo(p);close();};
-  const isActive=(k)=>active===k||(k==='settings-general'&&typeof active==='string'&&active.startsWith('settings'));
+// ════════ Customizable left navigation ════════
+// Built-in navigable pages. icon = string key into I (so a nav config serializes to localStorage).
+const NAV_CATALOG=[
+  {id:'dashboard',   page:'dashboard',             label:'Dashboard',       icon:'LayoutDash'},
+  {id:'contacts',    page:'contacts',              label:'Contacts',        icon:'Users'},
+  {id:'companies',   page:'companies',             label:'Companies',       icon:'Building'},
+  {id:'leads',       page:'leads',                 label:'Leads',           icon:'Target'},
+  {id:'pipeline',    page:'pipeline',              label:'Pipeline',        icon:'GitBranch'},
+  {id:'tasks',       page:'tasks',                 label:'Tasks',           icon:'CheckSquare'},
+  {id:'calendar',    page:'calendar',              label:'Calendar',        icon:'Calendar'},
+  {id:'inbox',       page:'inbox',                 label:'Inbox',           icon:'Inbox'},
+  {id:'reports',     page:'reports',               label:'Reports',         icon:'BarChart'},
+  {id:'automations', page:'settings-automations',  label:'Automations',     icon:'Zap'},
+  {id:'sequences',   page:'settings-sequences',    label:'Sequences',       icon:'Layers'},
+  {id:'emailtpl',    page:'email-templates',       label:'Email templates', icon:'Mail'},
+  {id:'forms',       page:'settings-forms',        label:'Forms',           icon:'Note'},
+  {id:'settings',    page:'settings-general',      label:'Settings',        icon:'Settings'},
+  {id:'integrations',page:'settings-integrations', label:'Integrations',    icon:'Plug'},
+  {id:'team',        page:'settings-team',         label:'Team',            icon:'Users'},
+  {id:'billing',     page:'settings-billing',      label:'Billing',         icon:'CreditCard'},
+];
+// Saved views that can be pinned (navigate to a list page with the view's filter applied).
+const NAV_VIEW_CATALOG=[
+  {id:'view-mine',  type:'view',label:'My Contacts',      icon:'UserCog',    target:'contacts',viewKey:'mine'},
+  {id:'view-hot',   type:'view',label:'Hot Prospects',    icon:'Zap',        target:'contacts',viewKey:'hot'},
+  {id:'view-uncont',type:'view',label:'Uncontacted',      icon:'Clock',      target:'contacts',viewKey:'uncontacted'},
+  {id:'view-overdue',type:'view',label:'My overdue tasks',icon:'CheckSquare',target:'tasks',   viewKey:'overdue'},
+];
+const NAV_ICON_CHOICES=['Star','Flag','Tag','Zap','Target','Bell','Globe','Home','Filter','Layers','Grid','Link'];
+const NAV_ADMIN_ROLES=['Owner','Admin'];
+const CURRENT_USER_ROLE='Owner'; // prototype: the signed-in user is the workspace Owner
+function navIco(name){return (name&&I[name])||I.Globe;}
+function navKey(it){return it.type==='view'?('view:'+it.target+':'+it.viewKey):it.type==='link'?('link:'+(it.url||it.id)):('page:'+it.page);}
+function navCatItem(id){const c=NAV_CATALOG.find(x=>x.id===id);return c?{...c,type:'page',pinned:true}:null;}
+const NAV_BUILTIN_DEFAULT=['dashboard','contacts','pipeline','calendar','tasks','inbox','reports'].map(navCatItem).filter(Boolean);
+function navAllDestinations(){return [...NAV_CATALOG.map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG];}
+function navPinnedList(cfg){return (cfg||[]).filter(i=>i&&i.pinned!==false);}
+function navMoreList(cfg){
+  cfg=cfg||[];const inList=new Set(cfg.map(navKey));
+  const unpinned=cfg.filter(i=>i&&i.pinned===false);
+  const fromCatalog=navAllDestinations().filter(d=>!inList.has(navKey(d)));
+  const seen=new Set();const out=[];
+  [...unpinned,...fromCatalog].forEach(i=>{const k=navKey(i);if(!seen.has(k)){seen.add(k);out.push(i);}});
+  return out;
+}
+function navNormalize(arr){return [...arr.filter(i=>i.pinned!==false),...arr.filter(i=>i.pinned===false)];}
+function navGo(it,goTo){
+  if(!it)return;
+  if(it.type==='link'){try{window.open(it.url,'_blank','noopener');}catch(e){}return;}
+  if(it.type==='view'){goTo(it.target,{view:it.viewKey});return;}
+  goTo(it.page);
+}
+function navIsActive(it,active){
+  if(!it||it.type!=='page')return false;
+  if(it.page==='settings-general')return typeof active==='string'&&active.startsWith('settings');
+  return active===it.page;
+}
+function navLoad(key){try{const s=localStorage.getItem(key);if(!s)return null;const a=JSON.parse(s);return Array.isArray(a)&&a.length?a:null;}catch(e){return null;}}
+function navSave(key,items){try{localStorage.setItem(key,JSON.stringify(items));}catch(e){}}
+const NavConfigContext=React.createContext({resolved:NAV_BUILTIN_DEFAULT,userNav:null,adminNav:NAV_BUILTIN_DEFAULT,setUserNav:()=>{},setAdminNav:()=>{},resetUser:()=>{},isCustomized:false,role:CURRENT_USER_ROLE,isAdmin:true});
+function NavConfigProvider({children}){
+  const [adminNav,setAdminNavS]=React.useState(()=>navLoad('nrtur-nav-admin')||NAV_BUILTIN_DEFAULT);
+  const [userNav,setUserNavS]=React.useState(()=>navLoad('nrtur-nav-user'));
+  const setAdminNav=React.useCallback((items)=>{setAdminNavS(items);navSave('nrtur-nav-admin',items);},[]);
+  const setUserNav=React.useCallback((items)=>{setUserNavS(items);navSave('nrtur-nav-user',items);},[]);
+  const resetUser=React.useCallback(()=>{setUserNavS(null);try{localStorage.removeItem('nrtur-nav-user');}catch(e){}},[]);
+  const resolved=userNav||adminNav||NAV_BUILTIN_DEFAULT;
+  const isAdmin=NAV_ADMIN_ROLES.indexOf(CURRENT_USER_ROLE)>=0;
+  const val=React.useMemo(()=>({resolved,userNav,adminNav,setUserNav,setAdminNav,resetUser,isCustomized:!!userNav,role:CURRENT_USER_ROLE,isAdmin}),[resolved,userNav,adminNav,setUserNav,setAdminNav,resetUser,isAdmin]);
+  return(<NavConfigContext.Provider value={val}>{children}</NavConfigContext.Provider>);
+}
+// "More" app-launcher popover — every destination not currently pinned (guarantees reachability).
+function NavMorePopover({goTo,close,onCustomize}){
+  const {resolved}=React.useContext(NavConfigContext);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))close();};const esc=(e)=>{if(e.key==='Escape')close();};document.addEventListener('mousedown',fn);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('mousedown',fn);document.removeEventListener('keydown',esc);};},[close]);
+  const more=navMoreList(resolved);
+  return(<div ref={ref} role="menu" aria-label="All destinations" className="absolute left-[42px] bottom-0 z-50 w-64 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+    <div className="px-3.5 py-2.5 border-b border-white/[0.07] flex items-center justify-between gap-2">
+      <p className="text-[12px] font-semibold text-white">All destinations</p>
+      {onCustomize&&<button onClick={()=>{close();onCustomize();}} className="text-[11px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors"><I.Edit size={11}/>Customize</button>}
+    </div>
+    <div className="max-h-[58vh] overflow-y-auto scroll-area p-1.5 flex flex-col gap-0.5">
+      {more.length===0&&<p className="text-[12px] text-white/40 text-center py-6">Everything is pinned.</p>}
+      {more.map(it=>{const Ic=navIco(it.icon);return(
+        <button key={navKey(it)} role="menuitem" onClick={()=>{navGo(it,goTo);close();}} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-white/70 hover:text-white hover:bg-white/[0.05] transition-all">
+          <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.04] text-white/60 shrink-0"><Ic size={14}/></span>
+          <span className="text-[13px] font-medium truncate flex-1">{it.label}</span>
+          {it.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
+        </button>
+      );})}
+    </div>
+  </div>);
+}
+// Customize-navigation drawer (right side / bottom sheet on mobile). mode='user'|'admin'.
+function NavCustomizeDrawer({mode,close,onToast}){
+  const ctx=React.useContext(NavConfigContext);
+  const source=mode==='admin'?(ctx.adminNav||NAV_BUILTIN_DEFAULT):ctx.resolved;
+  const [items,setItems]=React.useState(()=>navNormalize(source.map(x=>({...x}))));
+  const [picker,setPicker]=React.useState(false);
+  const [linkLabel,setLinkLabel]=React.useState('');
+  const [linkUrl,setLinkUrl]=React.useState('');
+  const [linkIcon,setLinkIcon]=React.useState('Link');
+  const dragIdx=React.useRef(null);
+  const [dragOver,setDragOver]=React.useState(null);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
-  const SECTIONS=[
-    {title:'CRM',items:[
-      {p:'dashboard',Icon:I.LayoutDash,l:'Dashboard'},
-      {p:'contacts', Icon:I.Users,     l:'Contacts'},
-      {p:'companies',Icon:I.Building,  l:'Companies'},
-      {p:'leads',    Icon:I.Target,    l:'Leads'},
-      {p:'pipeline', Icon:I.GitBranch, l:'Pipeline'},
-    ]},
-    {title:'Work',items:[
-      {p:'tasks',   Icon:I.CheckSquare,l:'Tasks'},
-      {p:'calendar',Icon:I.Calendar,   l:'Calendar'},
-      {p:'inbox',   Icon:I.Inbox,      l:'Inbox'},
-      {p:'reports', Icon:I.BarChart,   l:'Reports'},
-    ]},
-    {title:'Automation & templates',items:[
-      {p:'settings-automations',Icon:I.Zap,   l:'Automations'},
-      {p:'settings-sequences',  Icon:I.Layers,l:'Sequences'},
-      {p:'email-templates',     Icon:I.Mail,  l:'Email templates'},
-      {p:'settings-forms',      Icon:I.Note,  l:'Forms'},
-    ]},
-    {title:'Workspace',items:[
-      {p:'settings-general',     Icon:I.Settings,  l:'Settings'},
-      {p:'settings-integrations',Icon:I.Plug,      l:'Integrations'},
-      {p:'settings-team',        Icon:I.Users,     l:'Team'},
-      {p:'settings-billing',     Icon:I.CreditCard,l:'Billing'},
-    ]},
-  ];
+  const pinned=items.filter(i=>i.pinned!==false);
+  const available=navMoreList(items);
+  const reorder=(from,to)=>{if(from==null||to==null||from===to)return;setItems(arr=>{const p=arr.filter(i=>i.pinned!==false);const u=arr.filter(i=>i.pinned===false);const x=p.splice(from,1)[0];p.splice(to,0,x);return [...p,...u];});};
+  const removeItem=(k)=>{if(pinned.length<=1){onToast&&onToast('Keep at least one item in the nav','warning');return;}setItems(arr=>navNormalize(arr.map(i=>navKey(i)===k?{...i,pinned:false}:i)));};
+  const addDest=(d)=>{setItems(arr=>{const k=navKey(d);const exists=arr.find(i=>navKey(i)===k);return navNormalize(exists?arr.map(i=>navKey(i)===k?{...i,pinned:true}:i):[...arr,{...d,pinned:true}]);});};
+  const addLink=()=>{let u=linkUrl.trim();if(!u){onToast&&onToast('Enter a URL','warning');return;}if(!/^https?:\/\//i.test(u))u='https://'+u;const item={id:'link-'+Date.now(),type:'link',label:(linkLabel.trim()||u.replace(/^https?:\/\//,'')),url:u,icon:linkIcon,pinned:true};setItems(arr=>navNormalize([...arr,item]));setLinkLabel('');setLinkUrl('');setPicker(false);};
+  const done=()=>{if(mode==='admin')ctx.setAdminNav(items);else ctx.setUserNav(items);onToast&&onToast('Navigation updated');close();};
+  const reset=()=>{if(mode==='admin'){const d=NAV_BUILTIN_DEFAULT.map(x=>({...x}));ctx.setAdminNav(d);setItems(d);onToast&&onToast('Reset to built-in default');}else{ctx.resetUser();setItems(navNormalize((ctx.adminNav||NAV_BUILTIN_DEFAULT).map(x=>({...x})));onToast&&onToast('Reset to workspace default');}};
+  return(<div className="fixed inset-0 z-[170] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div style={{width:420,maxWidth:'100%',background:'var(--s900)'}} className="h-full w-full flex flex-col sm:border-l border-white/[0.10] animate-[arIn_.22s_ease]" role="dialog" aria-modal="true" aria-label="Customize navigation">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="min-w-0"><p className="text-white text-[15px] font-semibold">{mode==='admin'?'Workspace default navigation':'Customize navigation'}</p><p className="text-white/45 text-[12px] mt-0.5 truncate">{mode==='admin'?'Sets the default for everyone who hasn’t customized their nav.':'Pin, reorder, and add destinations to your sidebar.'}</p></div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area p-4" style={{background:'var(--s850)'}}>
+        {!picker?(<React.Fragment>
+          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Pinned · {pinned.length}</p>
+          <div className="flex flex-col gap-1.5">
+            {pinned.map((it,i)=>{const Ic=navIco(it.icon);const over=dragOver===i;return(
+              <div key={navKey(it)} draggable onDragStart={()=>{dragIdx.current=i;}} onDragOver={e=>{e.preventDefault();setDragOver(i);}} onDragEnd={()=>{setDragOver(null);}} onDrop={e=>{e.preventDefault();reorder(dragIdx.current,i);dragIdx.current=null;setDragOver(null);}}
+                className={['group flex items-center gap-2.5 px-2.5 py-2 rounded-xl border transition-all',over?'border-brand-500/40 bg-brand-500/10':'border-white/[0.06] bg-white/[0.03]'].join(' ')}>
+                <span className="cursor-grab active:cursor-grabbing text-white/30 hover:text-white/60 shrink-0 select-none" title="Drag to reorder" style={{fontSize:'14px',lineHeight:1,letterSpacing:'-1px'}}>⠿</span>
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.05] text-white/65 shrink-0"><Ic size={14}/></span>
+                <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white truncate">{it.label}</span>{it.type!=='page'&&<span className="block text-[10.5px] text-white/40 truncate">{it.type==='view'?'Saved view':it.url}</span>}</span>
+                <button onClick={()=>removeItem(navKey(it))} title="Remove from nav" className="opacity-60 group-hover:opacity-100 text-white/40 hover:text-red-400 transition-all shrink-0"><I.X size={15}/></button>
+              </div>
+            );})}
+          </div>
+          <button onClick={()=>setPicker(true)} className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Plus size={14} stroke={2.4}/>Add to nav</button>
+        </React.Fragment>):(<React.Fragment>
+          <button onClick={()=>setPicker(false)} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-white/55 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={13}/>Back</button>
+          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Add a destination</p>
+          <div className="flex flex-col gap-1.5">
+            {available.length===0&&<p className="text-[12px] text-white/40 py-2">Everything is already pinned.</p>}
+            {available.map(d=>{const Ic=navIco(d.icon);return(
+              <button key={navKey(d)} onClick={()=>addDest(d)} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.05] text-white/65 shrink-0"><Ic size={14}/></span>
+                <span className="text-[13px] font-medium text-white truncate flex-1">{d.label}</span>
+                {d.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
+                <I.Plus size={14} className="text-white/40 shrink-0"/>
+              </button>
+            );})}
+          </div>
+          <div className="mt-4 pt-4 border-t border-white/[0.06]">
+            <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Add custom link</p>
+            <div className="flex flex-col gap-2">
+              <input value={linkLabel} onChange={e=>setLinkLabel(e.target.value)} placeholder="Label (e.g. Help center)" className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none text-[13px] text-white placeholder:text-white/30"/>
+              <input value={linkUrl} onChange={e=>setLinkUrl(e.target.value)} placeholder="https://example.com" className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-brand-500/40 outline-none text-[13px] text-white placeholder:text-white/30"/>
+              <div className="flex items-center gap-1.5 flex-wrap">{NAV_ICON_CHOICES.map(nm=>{const Ic=navIco(nm);const a=linkIcon===nm;return(<button key={nm} onClick={()=>setLinkIcon(nm)} title={nm} className={['w-8 h-8 rounded-lg flex items-center justify-center transition-all',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.04] text-white/50 hover:text-white/80'].join(' ')}><Ic size={14}/></button>);})}</div>
+              <button onClick={addLink} className="w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>Add link</button>
+            </div>
+          </div>
+        </React.Fragment>)}
+      </div>
+      <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={reset} className="text-[12.5px] font-medium text-white/55 hover:text-white transition-colors">{mode==='admin'?'Reset to default':'Reset to workspace default'}</button>
+        <button onClick={done} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={14} stroke={2.4}/>Done</button>
+      </div>
+    </div>
+  </div>);
+}
+function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNotif,onCustomize,close}){
+  const {resolved}=React.useContext(NavConfigContext);
+  const goItem=(it)=>{navGo(it,goTo);if(it&&it.type!=='link')close();};
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const pinned=navPinnedList(resolved);
+  const more=navMoreList(resolved);
+  const SECTIONS=[{title:'Pinned',items:pinned},{title:'More',items:more}];
+  const renderItem=(it)=>{const Ic=navIco(it.icon);const a=navIsActive(it,active);return(
+    <button key={navKey(it)} onClick={()=>goItem(it)} aria-current={a?'page':undefined} className={['relative flex items-center gap-3 px-3 rounded-xl text-[14px] transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/65 hover:text-white hover:bg-white/[0.04]'].join(' ')} style={{minHeight:44}}>
+      <Ic size={17} stroke={2}/><span className="font-medium flex-1 truncate text-left">{it.label}</span>
+      {it.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
+      {it.type==='link'&&<I.ExternalLink size={12} className="text-white/35 shrink-0"/>}
+    </button>);};
   return(
     <div className="mobile-nav-wrap fixed inset-0 z-[160]" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <div className="absolute inset-0 bg-black/40" style={{backdropFilter:'blur(2px)'}} onClick={close}/>
       <aside className="absolute top-0 left-0 bottom-0 w-[84%] max-w-[330px] flex flex-col border-r border-white/[0.08]" style={{background:'var(--s950)',animation:'drawerInL .24s ease both',boxShadow:'0 0 60px rgba(0,0,0,0.6)'}}>
         <div className="shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
-          <button onClick={()=>go('dashboard')} className="flex items-center gap-2.5 min-w-0">
+          <button onClick={()=>{goTo('dashboard');close();}} className="flex items-center gap-2.5 min-w-0">
             <span className="w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0 inline-flex"><NrturMark size={32}/></span>
             <span className="brand-wordmark text-white text-[16px] font-semibold">nrtur</span>
           </button>
@@ -1773,18 +1923,15 @@ function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNo
           ))}
         </div>
         <nav className="flex-1 overflow-y-auto scroll-area px-3 py-3">
-          {SECTIONS.map(s=>(
+          {SECTIONS.map(s=>s.items.length===0?null:(
             <div key={s.title} className="mb-4 last:mb-0">
               <p className="px-2 mb-1 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">{s.title}</p>
               <div className="flex flex-col gap-0.5">
-                {s.items.map(it=>{const a=isActive(it.p);return(
-                  <button key={it.p} onClick={()=>go(it.p)} aria-current={a?'page':undefined} className={['relative flex items-center gap-3 px-3 rounded-xl text-[14px] transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/65 hover:text-white hover:bg-white/[0.04]'].join(' ')} style={{minHeight:44}}>
-                    <it.Icon size={17} stroke={2}/><span className="font-medium">{it.l}</span>
-                  </button>
-                );})}
+                {s.items.map(renderItem)}
               </div>
             </div>
           ))}
+          {onCustomize&&<button onClick={()=>{close();onCustomize();}} className="mt-1 w-full flex items-center gap-3 px-3 rounded-xl text-[13.5px] font-medium text-brand-200 hover:bg-brand-500/10 transition-all" style={{minHeight:44}}><I.Edit size={16}/>Customize navigation</button>}
         </nav>
         <button onClick={()=>go('profile')} className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors text-left">
           <span className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{background:'#3b82f6'}}>AM</span>
@@ -1798,19 +1945,15 @@ function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNo
   );
 }
 function AppSidebar({active,goTo}){
-  const items=[
-    {key:'dashboard',Icon:I.LayoutDash,label:'Dashboard'},
-    {key:'contacts', Icon:I.Users,     label:'Contacts'},
-    {key:'pipeline', Icon:I.GitBranch, label:'Pipeline'},
-    {key:'calendar', Icon:I.Calendar,  label:'Calendar'},
-    {key:'tasks',    Icon:I.CheckSquare,label:'Tasks'},
-    {key:'inbox',    Icon:I.Inbox,     label:'Inbox'},
-    {key:'reports',  Icon:I.BarChart,  label:'Reports'},
-  ];
+  const navCfg=React.useContext(NavConfigContext);
+  const pinned=navPinnedList(navCfg.resolved);
   const settActive=active&&active.startsWith('settings');
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [addOpen,setAddOpen]=React.useState(false);
   const [menuOpen,setMenuOpen]=React.useState(false);
+  const [moreOpen,setMoreOpen]=React.useState(false);
+  const [customizeOpen,setCustomizeOpen]=React.useState(false);
+  const moreRef=React.useRef(null);
   const [quickModal,setQuickModal]=React.useState(null);
   const [multiRecord,setMultiRecord]=React.useState(null);
   const addHoverT=React.useRef(null);
@@ -1828,7 +1971,8 @@ function AppSidebar({active,goTo}){
   return(
     <React.Fragment>
     <button onClick={()=>setMenuOpen(true)} className="mobile-hamburger" aria-label="Open navigation menu" aria-haspopup="menu" aria-expanded={menuOpen} title="Menu"><I.Menu size={20}/></button>
-    {menuOpen&&<MobileNavDrawer active={active} goTo={goTo} theme={theme} toggleTheme={toggleTheme} onSearch={()=>window.__nrturOpenSearch&&window.__nrturOpenSearch()} onQuickAdd={()=>setAddOpen(true)} onNotif={()=>setNotifOpen(true)} close={()=>setMenuOpen(false)}/>}
+    {menuOpen&&<MobileNavDrawer active={active} goTo={goTo} theme={theme} toggleTheme={toggleTheme} onSearch={()=>window.__nrturOpenSearch&&window.__nrturOpenSearch()} onQuickAdd={()=>setAddOpen(true)} onNotif={()=>setNotifOpen(true)} onCustomize={()=>setCustomizeOpen(true)} close={()=>setMenuOpen(false)}/>}
+    {customizeOpen&&<NavCustomizeDrawer mode="user" close={()=>setCustomizeOpen(false)} onToast={sideToastFn}/>}
     <aside role="navigation" aria-label="Primary" className="app-sidebar w-14 shrink-0 flex flex-col items-center py-5 gap-1.5 border-r border-white/[0.05]" style={{background:'var(--s950)'}}>
       <button onClick={()=>goTo('dashboard')} aria-label="nrtur — go to dashboard" className="nav-logo mb-4 w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></button>
       <div ref={addRef} className="nav-add relative w-9 mb-2" onMouseEnter={openAddHover} onMouseLeave={closeAddHover}>
@@ -1837,10 +1981,15 @@ function AppSidebar({active,goTo}){
       </div>
       <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" className="nav-search w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150"><I.Search size={16}/></button>
       <div className="w-6 h-px bg-white/[0.06] my-1.5"/>
-      {items.map(({key,Icon,label})=>{
-        const a=active===key;
-        return(<button key={key} data-nav={key} onClick={()=>goTo(key)} title={label} aria-label={label} aria-current={a?'page':undefined} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Icon size={16}/></button>);
+      {pinned.map((it,idx)=>{
+        const a=navIsActive(it,active);const Ic=navIco(it.icon);
+        return(<button key={navKey(it)} data-nav={it.type==='page'?it.page:it.id} onClick={()=>navGo(it,goTo)} title={it.label+(it.type==='link'?' (opens in new tab)':'')} aria-label={it.label} aria-current={a?'page':undefined} className={['nav-pin w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0',idx>=4?'nav-overflow':'',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Ic size={16}/></button>);
       })}
+      <div ref={moreRef} className="nav-more relative w-9 shrink-0">
+        <button onClick={()=>setMoreOpen(v=>!v)} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',moreOpen?'bg-white/[0.08] text-white/80':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Grid size={16}/></button>
+        {moreOpen&&<NavMorePopover goTo={goTo} close={()=>setMoreOpen(false)} onCustomize={()=>setCustomizeOpen(true)}/>}
+      </div>
+      <button onClick={()=>setCustomizeOpen(true)} title="Customize navigation" aria-label="Customize navigation" className="nav-edit w-9 h-9 rounded-xl flex items-center justify-center text-white/25 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150 shrink-0"><I.Edit size={15}/></button>
       <div className="mt-auto flex flex-col items-center gap-3">
         <div ref={notifRef} className="nav-notif relative">
           <button onClick={()=>setNotifOpen(v=>!v)} title="Notifications" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 relative',notifOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Bell size={16}/><span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand-400"/></button>
@@ -5318,7 +5467,7 @@ function ActTalkRatio({talk}){
   </div>);
 }
 function ActTranscript({turns}){
-  const [open,setOpen]=React.useState(true);
+  const [open,setOpen]=React.useState(false);
   const [q,setQ]=React.useState('');
   const ql=q.trim().toLowerCase();
   const shown=ql?turns.filter(t=>String(t.text).toLowerCase().includes(ql)):turns;
