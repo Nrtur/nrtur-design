@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500;1,6..72,600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18',850:'#0d0d1a'}},fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['ui-monospace','SFMono-Regular','Menlo','monospace']},boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)','brand-lg':'0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)'},keyframes:{fadeUp:{'0%':{opacity:0,transform:'translateY(8px)'},'100%':{opacity:1,transform:'translateY(0)'}},glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},animation:{'fade-up':'fadeUp 400ms ease-out both','glow-pulse':'glowPulse 3s ease-in-out infinite'}}}}
@@ -17,8 +16,9 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#
 html,body,#root{height:100%;margin:0}
 body{background:#07070f;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
 .brand-wordmark{font-family:'Inter',system-ui,sans-serif;font-style:normal;font-weight:600;letter-spacing:-0.01em}
-.page-title{font-family:'Newsreader',Georgia,serif;font-style:italic;font-weight:500;letter-spacing:-0.005em}
 ::selection{background:rgba(99,102,241,0.35)}
+.app-shell input[type="date"],.app-shell input[type="time"]{color-scheme:dark}
+[data-theme="light"] .app-shell input[type="date"],[data-theme="light"] .app-shell input[type="time"]{color-scheme:light}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes glowPulse{0%,100%{opacity:.5}50%{opacity:1}}
 @keyframes nrturShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
@@ -30,6 +30,8 @@ body{background:#07070f;color:#fff;font-family:'Inter',system-ui,sans-serif;-web
 .scroll-area::-webkit-scrollbar-track{background:transparent}
 .scroll-area::-webkit-scrollbar-thumb{background:rgba(99,102,241,.3);border-radius:9999px}
 .scroll-area::-webkit-scrollbar-thumb:hover{background:rgba(99,102,241,.45)}
+.cal-tab-group{scrollbar-width:none;-ms-overflow-style:none}
+.cal-tab-group::-webkit-scrollbar{display:none;width:0;height:0}
 .deal-card{transition:all 200ms ease}.deal-card:hover{transform:translateY(-1px)}
 .eyebrow{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#818cf8}
 /* a11y: show a clear focus ring for keyboard users, but keep mouse clicks clean */
@@ -4347,6 +4349,15 @@ function detectDuplicates(object,records){
     collect(r=>dupNormEmail(r.email),'high','Email');
     collect(r=>dupNormPhone(r.phone),'high','Phone');
     collect(r=>{const n=dupNormName(r.name);const c=dupNormCompany(dupCompanyOf(object,r));return(n&&c)?n+'|'+c:'';},'medium','Name + Company');
+    // Enrich each group: report every matching signal, not just the first detector that fired.
+    groups.forEach(g=>{
+      const same=(fn)=>{const v=fn(g.records[0]);return v&&g.records.every(r=>fn(r)===v);};
+      const keys=[];
+      if(same(r=>dupNormEmail(r.email)))keys.push('Email');
+      if(same(r=>dupNormPhone(r.phone)))keys.push('Phone');
+      if(same(r=>{const n=dupNormName(r.name);const c=dupNormCompany(dupCompanyOf(object,r));return(n&&c)?n+'|'+c:'';}))keys.push('Name + Company');
+      if(keys.length){g.matchedOn=keys.join(' · ');g.confidence=(keys.indexOf('Email')>=0||keys.indexOf('Phone')>=0)?'high':'medium';}
+    });
   }
   return groups;
 }
@@ -5673,6 +5684,8 @@ function DealDetailPage({goTo,nav}){
   const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency'},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'dStage',label:'Stage',type:'pill',options:['Qualified','Proposal','Negotiation','Won','Lost']},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail')},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail')},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
+  const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
+  React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   const onEditSave=(patch)=>{const out={...patch};if('dStage'in patch){const mp={Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};out.stageKey=mp[patch.dStage]||d.stageKey;setStage(patch.dStage);}updateDeal(d.id,out);};
   const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
@@ -5680,9 +5693,22 @@ function DealDetailPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="pipeline" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}>
-          <div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors flex items-center gap-1.5"><I.ChevronLeft size={12}/>Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">{d.company}</span></div>
-          <div className="flex items-center gap-2"><RecordSwitcher obj="deal" page="deal-detail" currentId={d.id} goTo={goTo} items={_deals} railTitle="Deals"/>{nextStage&&<button onClick={()=>{setStage(nextStage);const k=(STAGES_DATA.find(s=>s.name===nextStage)||{}).key;if(k)updateDeal(d.id,{stageKey:k});}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button><button onClick={()=>setEditOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={13}/> Edit</button><button onClick={doDelete} title="Delete deal" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={13}/> Delete</button></div>
+        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3 flex items-center justify-between gap-x-6 gap-y-2.5 flex-wrap" style={{background:'var(--s925)'}}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors flex items-center gap-1.5 shrink-0"><I.ChevronLeft size={12}/>Pipeline</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white font-medium truncate">{d.company}</span></div>
+            <RecordSwitcher obj="deal" page="deal-detail" currentId={d.id} goTo={goTo} items={_deals} railTitle="Deals"/>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {nextStage&&<button onClick={()=>{setStage(nextStage);const k=(STAGES_DATA.find(s=>s.name===nextStage)||{}).key;if(k)updateDeal(d.id,{stageKey:k});}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}
+            <button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>
+            <div className="relative" ref={moreRef}>
+              <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
+              {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+                <button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit deal</button>
+                <button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete deal</button>
+              </div>}
+            </div>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-5 items-start">
@@ -5714,7 +5740,24 @@ function AddDealPage({goTo}){
       <AppSidebar active="pipeline" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors">Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">New deal</span></div><button onClick={()=>goTo('pipeline')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
-        <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-lg mx-auto"><div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7"><h2 className="text-white text-[22px] font-semibold mb-6">New deal</h2><div className="flex flex-col gap-4 mb-6">{[['Deal name','text','e.g. Q3 Retainer'],['Company','text','Search or add...'],['Deal value','number','$0'],['Close date','date','']].map(([l,t,pl])=>(<div key={l}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type={t} placeholder={pl} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/></div>))}<div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Stage</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none">{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div></div><div className="flex gap-3"><button onClick={()=>goTo('pipeline')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('deal-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create deal</button></div></div></div></div>
+        <div className="flex-1 overflow-y-auto scroll-area">
+          <div className="px-7 py-6 max-w-4xl mx-auto">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.GitBranch size={18}/></span>
+              <div><h2 className="text-white text-[22px] font-semibold leading-tight">Add a deal</h2><p className="text-white/45 text-[13px] mt-0.5">Start tracking a new opportunity in your pipeline.</p></div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Deal name</label><input placeholder="e.g. Q3 Retainer" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Company</label><input placeholder="Search or add..." className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
+                <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Deal value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
+                <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Close date</label><input type="date" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}/></div>
+                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Stage</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark'}}>{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div>
+              </div>
+              <div className="flex gap-3"><button onClick={()=>goTo('pipeline')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('deal-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create deal</button></div>
+            </div>
+          </div>
+        </div>
         <AppFooter/>
       </div>
     </div>
@@ -6057,9 +6100,12 @@ function AddCompanyPage({goTo}){
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('companies')} className="text-white/45 hover:text-white transition-colors">Companies</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">New company</span></div><button onClick={()=>goTo('companies')} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></header>
         <div className="flex-1 overflow-y-auto scroll-area">
-          <div className="px-7 py-6 max-w-2xl mx-auto">
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-7">
-              <h2 className="text-white text-[22px] font-semibold mb-6">Add new company</h2>
+          <div className="px-7 py-6 max-w-4xl mx-auto">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.Building size={18}/></span>
+              <div><h2 className="text-white text-[22px] font-semibold leading-tight">Add a company</h2><p className="text-white/45 text-[13px] mt-0.5">Create an account to group its contacts and deals in one place.</p></div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Company name</label><input placeholder="e.g. Meridian Agency" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
                 <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Website</label><input placeholder="company.com" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
@@ -10372,8 +10418,8 @@ function SettingsTagsPage({goTo}){
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium shrink-0" style={{background:t.color+'1f',color:t.color,boxShadow:'inset 0 0 0 1px '+t.color+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:t.color}}/>{t.name}</span>
         <span className="flex-1"/>
         <span className="text-[12px] text-white/45 tabular-nums shrink-0">{t.uses} record{t.uses===1?'':'s'}</span>
-        <button onClick={()=>setEdit(t)} title="Edit tag" className="shrink-0 text-white/30 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-all"><I.Edit size={14}/></button>
-        <button onClick={()=>delTag(t)} title="Delete tag" className="shrink-0 text-white/30 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all"><I.Trash size={14}/></button>
+        <button onClick={()=>setEdit(t)} title="Edit tag" className="shrink-0 text-white/35 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all"><I.Edit size={14}/></button>
+        <button onClick={()=>delTag(t)} title="Delete tag" className="shrink-0 text-white/35 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all"><I.Trash size={14}/></button>
       </div>))}
     </div>
     {edit&&<TagEditModal initial={edit.id?edit:null} existing={allTags} onClose={()=>setEdit(null)} onSave={saveTag}/>}
@@ -10385,7 +10431,7 @@ function SettingsTagsPage({goTo}){
 // ?? Settings · Statuses ???????????????????????????????????????????????????????
 // Per-object status lists with reorder (drag), recolor, rename, add, delete.
 // Renaming or deleting a status migrates the matching field on every record so the data stays consistent.
-function StatusRow({item,index,onRename,onColor,onDelete,canDelete,onDragStart,onDragOver,onDrop,onDragEnd,dragging}){
+function StatusRow({item,index,uses,onRename,onColor,onDelete,canDelete,onDragStart,onDragOver,onDrop,onDragEnd,dragging}){
   const [draft,setDraft]=React.useState(item.name);
   React.useEffect(()=>setDraft(item.name),[item.name]);
   const commit=()=>{const v=draft.trim();if(v&&v!==item.name)onRename(item,v);else setDraft(item.name);};
@@ -10393,6 +10439,7 @@ function StatusRow({item,index,onRename,onColor,onDelete,canDelete,onDragStart,o
     <span className="text-white/25 cursor-grab active:cursor-grabbing hover:text-white/50 transition-colors shrink-0" title="Drag to reorder"><I.Grip size={14}/></span>
     <ColorPopover color={item.color} onChange={c=>onColor(item,c)}/>
     <input value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();if(e.key==='Escape'){setDraft(item.name);e.currentTarget.blur();}}} className="flex-1 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 min-w-0"/>
+    {uses!=null&&<span className="shrink-0 text-[11px] text-white/35 tabular-nums">{uses} record{uses===1?'':'s'}</span>}
     <button onClick={()=>onDelete(item)} disabled={!canDelete} title={canDelete?'Delete status':'Keep at least one status'} className={['shrink-0 p-1 transition-colors',canDelete?'text-white/25 hover:text-red-400':'text-white/10 cursor-not-allowed'].join(' ')}><I.Trash size={13}/></button>
   </div>);
 }
@@ -10409,7 +10456,7 @@ function StatusCard({title,Icon,items,setItems,field,records,setRecords,openConf
   return(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.02]">
     <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.05]"><span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><Icon size={15}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">{title}</p><p className="text-[11px] text-white/40">{items.length} status{items.length===1?'':'es'} · drag to reorder</p></div></div>
     <div className="px-3 py-3 flex flex-col gap-1.5">
-      {items.map((s,i)=>(<StatusRow key={s.id} item={s} index={i} dragging={dragOver===i} onRename={rename} onColor={recolor} onDelete={del} canDelete={items.length>1} onDragStart={(idx)=>{dragRef.current=idx;}} onDragOver={(idx)=>{if(dragOver!==idx)setDragOver(idx);}} onDrop={onDrop} onDragEnd={()=>{dragRef.current=null;setDragOver(null);}}/>))}
+      {items.map((s,i)=>(<StatusRow key={s.id} item={s} index={i} uses={usedBy(s.name)} dragging={dragOver===i} onRename={rename} onColor={recolor} onDelete={del} canDelete={items.length>1} onDragStart={(idx)=>{dragRef.current=idx;}} onDragOver={(idx)=>{if(dragOver!==idx)setDragOver(idx);}} onDrop={onDrop} onDragEnd={()=>{dragRef.current=null;setDragOver(null);}}/>))}
       <div className="flex items-center gap-2 mt-1"><input value={adding} onChange={e=>setAdding(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')add();}} placeholder="New status name…" className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/><button onClick={add} disabled={!adding.trim()} className={['inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border transition-all',adding.trim()?'text-brand-300 bg-brand-500/10 border-brand-500/25 hover:bg-brand-500/15':'text-white/25 bg-white/[0.03] border-white/[0.06] cursor-not-allowed'].join(' ')}><I.Plus size={13} stroke={2.4}/>Add</button></div>
     </div>
   </div>);
@@ -12411,6 +12458,7 @@ const CAL_PRIORITY_C={Low:'#64748b',Medium:'#60a5fa',High:'#f87171'};
 const CAL_REMIND=[{v:'',l:'None'},{v:'15',l:'15 min before'},{v:'30',l:'30 min before'},{v:'60',l:'1 hour before'},{v:'1440',l:'1 day before'}];
 const CAL_REPEAT=['Never','Daily','Weekly','Monthly','Custom'];
 const calFmtTime=(d)=>{const h=d.getHours(),m=d.getMinutes();return h+':'+String(m).padStart(2,'0');};
+const calFmtTimeShort=(d)=>{let h=d.getHours();const m=d.getMinutes();const ap=h>=12?'p':'a';h=h%12;if(h===0)h=12;return m?(h+':'+String(m).padStart(2,'0')+ap):(h+ap);};
 const calSameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
 const calIsToday=(d)=>calSameDay(d,new Date());
 const calAddDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
@@ -12446,8 +12494,8 @@ function CalMiniCalendar({current,setCurrent,events}){
 }
 function CalEventPill({e,onClick,block}){
   const ty=EVENT_TYPES[e.type];
-  return(<div onClick={onClick} title={e.title} style={{background:ty.bg,border:'1px solid '+ty.border,borderLeft:'3px solid '+ty.color,borderRadius:5,color:'var(--cal-pill)'}} className={['cursor-pointer overflow-hidden',block?'px-2 py-1':'px-1.5 py-0.5 text-[11px] font-medium truncate whitespace-nowrap'].join(' ')}>
-    {block?(<><p className="text-[11px] font-medium truncate">{e.title}</p><p className="text-[10px] opacity-70 truncate">{calFmtTime(e.date)}{e.end?'–'+calFmtTime(e.end):''}{e.contact?' · '+e.contact:''}</p></>):(<>{!e.allDay&&<span className="opacity-70">{calFmtTime(e.date)} </span>}{e.title}</>)}
+  return(<div onClick={onClick} title={e.title+(e.allDay?'':' · '+calFmtTime(e.date))} style={{background:ty.bg,border:'1px solid '+ty.border,borderLeft:(block?'3px':'2px')+' solid '+ty.color,borderRadius:5,color:'var(--cal-pill)'}} className={['cursor-pointer overflow-hidden',block?'px-2 py-1':'px-1 py-0.5 text-[11px] font-medium flex items-center gap-1'].join(' ')}>
+    {block?(<><p className="text-[11px] font-medium truncate">{e.title}</p><p className="text-[10px] opacity-70 truncate">{calFmtTime(e.date)}{e.end?'–'+calFmtTime(e.end):''}{e.contact?' · '+e.contact:''}</p></>):(<>{!e.allDay&&<span className="opacity-60 shrink-0 tabular-nums">{calFmtTimeShort(e.date)}</span>}<span className="flex-1 min-w-0 truncate">{e.title}</span></>)}
   </div>);
 }
 function CalMonthView({current,events,onDayClick,onEventClick}){
@@ -12926,7 +12974,8 @@ function SchedEventTypeCard({et,onEdit,onPreview,addToast}){
 function SchedBookingsTab({eventTypes,avail,setAvail,addToast,goTo,onNew,onEdit,onPreview,onGotoAvailability}){
   const [pageTitle,setPageTitle]=React.useState('Alex Morgan');
   const baseUrl='nrtur.app/book/alex';
-  const copyBase=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://'+baseUrl);}catch(e){}addToast('Booking link copied \u2713');};
+  const [copied,setCopied]=React.useState(false);
+  const copyBase=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://'+baseUrl);}catch(e){}setCopied(true);setTimeout(()=>setCopied(false),1800);addToast('Booking link copied \u2713');};
   const onDays=SCHED_DAYS.filter(d=>avail.days[d]&&avail.days[d].on);
   const availSummary=(()=>{
     if(onDays.length===0)return 'No days enabled';
@@ -12943,14 +12992,15 @@ function SchedBookingsTab({eventTypes,avail,setAvail,addToast,goTo,onNew,onEdit,
   return(<div className="flex-1 overflow-y-auto scroll-area">
     <div className="max-w-[1200px] mx-auto px-6 py-6 flex flex-col gap-6">
       <div className="rounded-2xl border border-brand-500/25 p-6 relative overflow-hidden" style={{background:'radial-gradient(circle at top left,rgba(99,102,241,0.14),transparent 60%)'}}>
-        <div className="flex items-start justify-between gap-5 flex-col md:flex-row">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2.5 mb-2"><span className="w-9 h-9 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Globe size={17}/></span><div><p className="text-white text-[17px] font-semibold leading-tight">Your booking page</p><p className="text-[12.5px] text-white/50">Share one link \u2014 invitees pick a time from your real availability.</p></div></div>
-            <div className="flex items-center gap-2 mt-4 rounded-xl bg-white/[0.04] border border-white/[0.10] px-3 py-2.5 max-w-[460px]"><I.Globe size={13} className="text-white/40 shrink-0"/><span className="font-mono text-[12.5px] text-white/80 truncate flex-1">{baseUrl}</span></div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={copyBase} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Copy size={13}/>Copy link</button>
-            <button onClick={()=>onPreview(null)} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all"><I.ArrowUpRight size={13}/>Open preview</button>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Globe size={17}/></span><div><p className="text-white text-[17px] font-semibold leading-tight">Your booking page</p><p className="text-[12.5px] text-white/50">Share one link — invitees pick a time from your real availability.</p></div></div>
+          <div className="flex items-center gap-2 mt-4 flex-wrap">
+            <div className="flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.10] pl-3 pr-1.5 py-1.5 w-full sm:w-[440px] max-w-full min-w-0">
+              <I.Globe size={13} className="text-white/40 shrink-0"/>
+              <span className="font-mono text-[12.5px] text-white/80 truncate flex-1">{baseUrl}</span>
+              <button onClick={copyBase} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all shrink-0',copied?'text-emerald-300 bg-emerald-500/12 ring-1 ring-emerald-500/30':'text-white bg-brand-500 hover:bg-brand-400 shadow-brand'].join(' ')}>{copied?<React.Fragment><I.Check size={12} stroke={2.6}/>Copied</React.Fragment>:<React.Fragment><I.Copy size={12}/>Copy link</React.Fragment>}</button>
+            </div>
+            <button onClick={()=>onPreview(null)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all"><I.ArrowUpRight size={13}/>Open preview</button>
           </div>
         </div>
       </div>
@@ -12976,7 +13026,7 @@ function SchedBookingsTab({eventTypes,avail,setAvail,addToast,goTo,onNew,onEdit,
       <div>
         <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
           <div><h2 className="text-white text-[16px] font-semibold">Booking links</h2><p className="text-[12.5px] text-white/45 mt-0.5">Each event type is its own shareable link.</p></div>
-          <button onClick={onNew} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all shrink-0"><I.Plus size={14} stroke={2.4}/>New booking link</button>
+          <button onClick={onNew} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all shrink-0"><I.Plus size={14} stroke={2.4}/>New booking link</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {eventTypes.map(et=>(<SchedEventTypeCard key={et.id} et={et} onEdit={onEdit} onPreview={onPreview} addToast={addToast}/>))}
@@ -13238,32 +13288,28 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   };
   if(!et)return(<div className="flex-1 flex items-center justify-center text-white/40 text-[13px]">Create an event type first.</div>);
   return(<div className="flex-1 overflow-y-auto scroll-area">
-    <div className="max-w-[1100px] mx-auto px-6 py-6">
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="inline-flex items-center gap-2 text-[12px] text-white/45"><I.Globe size={13}/><span className="font-mono text-white/60">nrtur.app/book/alex/{et.slug}</span></div>
-        <div className="flex items-center gap-2">
-          <button onClick={copy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Copy booking link</button>
-          <button onClick={()=>addToast('Preview only — booking page is a demo')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ExternalLink size={12}/>Open in new tab</button>
-        </div>
-      </div>
-      <div className="rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:'var(--s850)'}}>
-        <div className="flex flex-col md:flex-row">
-          <div className="md:w-[320px] shrink-0 border-b md:border-b-0 md:border-r border-white/[0.07] p-6" style={{background:'var(--s900)'}}>
-            <p className="text-[10px] font-medium text-white/35 uppercase tracking-[0.14em] mb-2">Previewing</p>
-            <div className="flex flex-col gap-1.5 mb-5">
-              {eventTypes.map(e=>(<button key={e.id} onClick={()=>setSlug(e.slug)} className={['flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all',e.slug===slug?'bg-brand-500/12 ring-1 ring-brand-500/25':'hover:bg-white/[0.04]'].join(' ')}><span className="w-2 h-2 rounded-full shrink-0" style={{background:e.color}}/><span className={['text-[12.5px] truncate',e.slug===slug?'text-white font-medium':'text-white/60'].join(' ')}>{e.name}</span></button>))}
-            </div>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[15px] font-semibold mb-3" style={{background:'#3b82f6'}}>AM</div>
+    <div className="max-w-[720px] mx-auto px-6 py-6">
+      {eventTypes.length>1&&(<div className="flex items-center gap-1.5 mb-4 flex-wrap">
+        <span className="text-[10px] font-medium text-white/35 uppercase tracking-[0.14em] mr-1.5">Previewing</span>
+        {eventTypes.map(e=>(<button key={e.id} onClick={()=>setSlug(e.slug)} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium ring-1 transition-all',e.slug===slug?'bg-brand-500/12 text-white ring-brand-500/30':'text-white/50 ring-white/[0.08] hover:text-white hover:bg-white/[0.04]'].join(' ')}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:e.color}}/>{e.name}</button>))}
+      </div>)}
+      <div className="rounded-2xl border border-white/[0.08] p-6 mb-4" style={{background:'var(--s850)'}}>
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[15px] font-semibold shrink-0" style={{background:'#3b82f6'}}>AM</div>
+          <div className="min-w-0 flex-1">
             <p className="text-[12px] text-white/45">Alex Morgan</p>
             <p className="text-white text-[18px] font-semibold mt-0.5">{et.name}</p>
-            <div className="flex flex-col gap-1.5 mt-3 text-[12.5px] text-white/55">
-              <span className="inline-flex items-center gap-2"><I.Clock size={13} className="text-white/40"/>{et.duration} min</span>
-              <span className="inline-flex items-center gap-2"><Loc size={13} className="text-white/40"/>{et.location}</span>
+            <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/70"><I.Clock size={10}/>{et.duration} min</span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/55"><Loc size={10}/>{et.location}</span>
             </div>
-            <p className="text-[12.5px] text-white/50 mt-3 leading-relaxed">{et.desc}</p>
+            {et.desc&&<p className="text-[12.5px] text-white/50 mt-2.5 leading-relaxed">{et.desc}</p>}
           </div>
-          <div className="flex-1 min-w-0 p-6">
-            {step==='date'&&(<div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/[0.08] p-6" style={{background:'var(--s850)'}}>
+            {step==='date'&&(<div className="max-w-[360px] mx-auto">
+              <p className="text-[10px] font-medium text-white/35 uppercase tracking-[0.16em] mb-1">Step 1 of 3</p>
               <p className="text-[14px] font-semibold text-white mb-4">Select a date</p>
               <div className="max-w-[340px]">
                 <div className="flex items-center justify-between mb-3">
@@ -13279,16 +13325,18 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <div className="flex items-center gap-4 mt-4 text-[11px] text-white/40"><span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-brand-500/20 ring-1 ring-brand-500/30"/>Available</span><span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/[0.04]"/>Unavailable</span></div>
               </div>
             </div>)}
-            {step==='time'&&(<div>
+            {step==='time'&&(<div className="max-w-[360px] mx-auto">
               <button onClick={()=>setStep('date')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
+              <p className="text-[10px] font-medium text-white/35 uppercase tracking-[0.16em] mb-1">Step 2 of 3</p>
               <p className="text-[14px] font-semibold text-white">{dateLabel}</p>
               <p className="text-[12px] text-white/45 mb-4">{et.duration} min · {avail.tz}</p>
               {slots.length===0?(<p className="text-[12.5px] text-white/40">No times available this day.</p>):(
-                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto scroll-area pr-1 max-w-[280px]">{slots.map(s=>(<button key={s} onClick={()=>{setSlot(s);setStep('confirm');}} className="py-2.5 rounded-lg border border-white/[0.10] text-[13px] font-medium text-white hover:border-brand-500/40 hover:bg-brand-500/[0.06] transition-all">{s}</button>))}</div>
+                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto scroll-area pr-1">{slots.map(s=>(<button key={s} onClick={()=>{setSlot(s);setStep('confirm');}} className="py-2.5 rounded-lg border border-white/[0.10] text-[13px] font-medium text-white hover:border-brand-500/40 hover:bg-brand-500/[0.06] transition-all">{s}</button>))}</div>
               )}
             </div>)}
-            {step==='confirm'&&(<div className="max-w-[400px]">
+            {step==='confirm'&&(<div className="max-w-[400px] mx-auto">
               <button onClick={()=>setStep('time')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
+              <p className="text-[10px] font-medium text-white/35 uppercase tracking-[0.16em] mb-1">Step 3 of 3</p>
               <p className="text-[14px] font-semibold text-white">Confirm your details</p>
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 my-3 text-[12.5px] text-white/70 flex items-center gap-2"><I.Calendar size={14} className="text-brand-300"/>{dateLabel} at {slot}</div>
               <div className="flex flex-col gap-3">
@@ -13311,18 +13359,10 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 {qMissing&&<p className="text-[11px] text-amber-300/80 flex items-center gap-1 -mt-0.5"><I.AlertTriangle size={10}/>Answer the required questions to confirm.</p>}
               </div>
             </div>)}
-            {step==='done'&&(<div className="max-w-[420px] flex flex-col items-center text-center py-6">
+            {step==='done'&&(<div className="max-w-[420px] mx-auto flex flex-col items-center text-center py-6">
               <div className="w-14 h-14 rounded-full bg-emerald-500/12 ring-1 ring-emerald-500/25 flex items-center justify-center text-emerald-300 mb-4"><I.Check size={26} stroke={2.4}/></div>
               <p className="text-white text-[18px] font-semibold">You're booked! 🎉</p>
               <p className="text-[12.5px] text-white/50 mt-1">A calendar invite is on its way{form.email?(' to '+form.email):''}.</p>
-              {bookResult&&(<div className="flex items-center gap-1.5 flex-wrap justify-center mt-3">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75">Booked with {bookResult.name}</span>
-                {bookResult.recordCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.UserPlus size={11}/>{bookResult.recordKind==='lead'?'Lead captured':'Contact created'}</span>}
-                {bookResult.dealCreated&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-500/12 border border-brand-500/25 text-[11.5px] font-medium text-brand-200"><I.Target size={11}/>Added to your pipeline</span>}
-                {bookResult.qualStatus==='qualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[11.5px] font-medium text-emerald-300"><I.Check size={11}/>Qualified lead</span>}
-                {bookResult.qualStatus==='disqualified'&&<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/12 border border-amber-500/25 text-[11.5px] font-medium text-amber-300"><I.AlertTriangle size={11}/>Flagged for review</span>}
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-[11.5px] font-medium text-white/75"><I.Users size={11}/>Assigned to {bookResult.rep.avatar}</span>
-              </div>)}
               <div className="w-full rounded-xl bg-white/[0.03] border border-white/[0.07] p-4 mt-4 text-left flex flex-col gap-2">
                 <p className="text-white text-[14px] font-semibold">{et.name}</p>
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Calendar size={13} className="text-white/40"/>{dateLabel} at {slot}</span>
@@ -13330,14 +13370,10 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><Loc size={13} className="text-white/40"/>{et.location}</span>
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Users size={13} className="text-white/40"/>Alex Morgan{form.name?(' & '+form.name):''}</span>
               </div>
-              <p className="text-[11px] text-white/40 mt-3 inline-flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>This booking landed on a real CRM record, the meeting & timeline — not just a calendar.</p>
               <div className="flex items-center gap-3 mt-3">
-                {bookResult&&bookResult.recordId!=null&&goTo&&<button onClick={()=>goTo(bookResult.recordKind==='lead'?'lead-detail':'contact-detail',bookResult.recordId)} className="text-[12.5px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors">View {bookResult.recordKind==='lead'?'lead':'contact'} record<I.ArrowRight size={12}/></button>}
                 <button onClick={()=>{setStep('date');setDate(null);setSlot(null);setBookResult(null);}} className="text-[12.5px] font-medium text-white/45 hover:text-white/70 transition-colors">Schedule another</button>
               </div>
             </div>)}
-          </div>
-        </div>
       </div>
     </div>
   </div>);
@@ -13546,7 +13582,7 @@ function CalendarPage({goTo,nav}){
       <AppSidebar active="calendar" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <AppTopbar goTo={goTo} title={(CAL_TAB_META[schedTab]||CAL_TAB_META.calendar).t} subtitle={(CAL_TAB_META[schedTab]||CAL_TAB_META.calendar).s} rightSlot={<React.Fragment>
-          <div className="inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
+          <div className="cal-tab-group inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto">{SCHED_TABS.map(t=>(<button key={t.k} onClick={()=>setSchedTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium whitespace-nowrap transition-all',schedTab===t.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.l}</button>))}</div>
           {schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}
           {schedTab==='bookings'&&bookingPreview===null&&<button onClick={()=>setEtDrawer('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New booking link</button>}
         </React.Fragment>}/>
