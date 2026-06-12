@@ -66,7 +66,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
     background:var(--s950) !important;
   }
   .app-sidebar .nav-logo,.app-sidebar .nav-search,.app-sidebar .nav-theme,.app-sidebar .nav-notif,.app-sidebar .nav-profile,
-  .app-sidebar [data-nav="calendar"],.app-sidebar [data-nav="tasks"],.app-sidebar [data-nav="reports"],
+  .app-sidebar .nav-overflow,.app-sidebar .nav-more,.app-sidebar .nav-edit,
   .app-sidebar > .w-6{display:none !important}
   .app-sidebar [data-nav],.app-sidebar .nav-settings{width:44px !important;height:44px !important}
   .app-sidebar > .mt-auto{margin-top:0 !important;flex-direction:row !important;gap:0 !important;align-items:center !important}
@@ -689,6 +689,7 @@ const I = {
   List:      (p)=><Ico {...p} d={<><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></>}/>,
   Menu:      (p)=><Ico {...p} d={<><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></>}/>,
   Grid:      (p)=><Ico {...p} d={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>}/>,
+  Apps:      (p)=><Ico {...p} d={<><circle cx="6" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.6" fill="currentColor" stroke="none"/></>}/>,
 };
 // ?? Skeleton + Confirm ???????????????????????????????????????????????????????
 function Skel({ w, h='11px', r='5px', s={} }) {
@@ -1749,7 +1750,7 @@ const NAV_VIEW_CATALOG=[
   {id:'view-uncont',type:'view',label:'Uncontacted',      icon:'Clock',      target:'contacts',viewKey:'uncontacted'},
   {id:'view-overdue',type:'view',label:'My overdue tasks',icon:'CheckSquare',target:'tasks',   viewKey:'overdue'},
 ];
-const NAV_ICON_CHOICES=['Star','Flag','Tag','Zap','Target','Bell','Globe','Home','Filter','Layers','Grid','Link'];
+const NAV_ICON_CHOICES=['ExternalLink','Globe','Star','Flag','Tag','Zap','Target','Bell','Home','Filter','Layers','Grid'];
 const NAV_ADMIN_ROLES=['Owner','Admin'];
 const CURRENT_USER_ROLE='Owner'; // prototype: the signed-in user is the workspace Owner
 function navIco(name){return (name&&I[name])||I.Globe;}
@@ -1792,28 +1793,39 @@ function NavConfigProvider({children}){
   const val=React.useMemo(()=>({resolved,userNav,adminNav,setUserNav,setAdminNav,resetUser,isCustomized:!!userNav,role:CURRENT_USER_ROLE,isAdmin}),[resolved,userNav,adminNav,setUserNav,setAdminNav,resetUser,isAdmin]);
   return(<NavConfigContext.Provider value={val}>{children}</NavConfigContext.Provider>);
 }
-// "More" app-launcher popover — every destination not currently pinned (guarantees reachability).
-function NavMorePopover({goTo,close,onCustomize}){
+// "More" app-launcher — full-height left drawer (slides in next to the rail). Lists every destination.
+function NavMoreDrawer({active,goTo,close,onCustomize}){
   const {resolved}=React.useContext(NavConfigContext);
-  const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))close();};const esc=(e)=>{if(e.key==='Escape')close();};document.addEventListener('mousedown',fn);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('mousedown',fn);document.removeEventListener('keydown',esc);};},[close]);
+  React.useEffect(()=>{const esc=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',esc);return()=>document.removeEventListener('keydown',esc);},[close]);
+  const pinned=navPinnedList(resolved);
   const more=navMoreList(resolved);
-  return(<div ref={ref} role="menu" aria-label="All destinations" className="absolute left-[42px] bottom-0 z-50 w-64 rounded-2xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-    <div className="px-3.5 py-2.5 border-b border-white/[0.07] flex items-center justify-between gap-2">
-      <p className="text-[12px] font-semibold text-white">All destinations</p>
-      {onCustomize&&<button onClick={()=>{close();onCustomize();}} className="text-[11px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 transition-colors"><I.Edit size={11}/>Customize</button>}
+  const go=(it)=>{navGo(it,goTo);if(!it||it.type!=='link')close();};
+  const row=(it)=>{const Ic=navIco(it.icon);const a=navIsActive(it,active);return(
+    <button key={navKey(it)} onClick={()=>go(it)} aria-current={a?'page':undefined} className={['flex items-center gap-3 px-3 rounded-xl text-left transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/70 hover:text-white hover:bg-white/[0.05]'].join(' ')} style={{minHeight:42}}>
+      <span className={['w-7 h-7 rounded-lg flex items-center justify-center shrink-0',a?'bg-brand-500/15 text-brand-300':'bg-white/[0.04] text-white/60'].join(' ')}><Ic size={15}/></span>
+      <span className="text-[13.5px] font-medium truncate flex-1">{it.label}</span>
+      {it.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
+      {it.type==='link'&&<I.ExternalLink size={12} className="text-white/35 shrink-0"/>}
+    </button>);};
+  const section=(title,items)=>items.length===0?null:(
+    <div className="mb-4 last:mb-0">
+      <p className="px-2 mb-1.5 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">{title}</p>
+      <div className="flex flex-col gap-0.5">{items.map(row)}</div>
+    </div>);
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[179] bg-black/40" style={{backdropFilter:'blur(2px)'}} onClick={close}/>
+    <div className="nav-more-drawer fixed top-0 bottom-0 z-[180] flex flex-col border-r border-white/[0.10]" style={{left:56,width:312,maxWidth:'calc(100vw - 56px)',background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'8px 0 40px rgba(0,0,0,0.5)',animation:'drawerInL .24s ease both'}} role="dialog" aria-modal="true" aria-label="All destinations">
+      <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3.5 border-b border-white/[0.07]">
+        <div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-xl bg-brand-500/12 text-brand-300 flex items-center justify-center shrink-0"><I.Apps size={17}/></span><p className="text-[14px] font-semibold text-white truncate">All destinations</p></div>
+        <button onClick={close} aria-label="Close" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-3 py-3">
+        {section('Pinned',pinned)}
+        {section('More',more)}
+      </div>
+      {onCustomize&&<div className="shrink-0 p-3 border-t border-white/[0.07]"><button onClick={()=>{close();onCustomize();}} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Edit size={14}/>Customize navigation</button></div>}
     </div>
-    <div className="max-h-[58vh] overflow-y-auto scroll-area p-1.5 flex flex-col gap-0.5">
-      {more.length===0&&<p className="text-[12px] text-white/40 text-center py-6">Everything is pinned.</p>}
-      {more.map(it=>{const Ic=navIco(it.icon);return(
-        <button key={navKey(it)} role="menuitem" onClick={()=>{navGo(it,goTo);close();}} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-white/70 hover:text-white hover:bg-white/[0.05] transition-all">
-          <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.04] text-white/60 shrink-0"><Ic size={14}/></span>
-          <span className="text-[13px] font-medium truncate flex-1">{it.label}</span>
-          {it.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
-        </button>
-      );})}
-    </div>
-  </div>);
+  </React.Fragment>);
 }
 // Customize-navigation drawer (right side / bottom sheet on mobile). mode='user'|'admin'.
 function NavCustomizeDrawer({mode,close,onToast}){
@@ -1823,7 +1835,7 @@ function NavCustomizeDrawer({mode,close,onToast}){
   const [picker,setPicker]=React.useState(false);
   const [linkLabel,setLinkLabel]=React.useState('');
   const [linkUrl,setLinkUrl]=React.useState('');
-  const [linkIcon,setLinkIcon]=React.useState('Link');
+  const [linkIcon,setLinkIcon]=React.useState('ExternalLink');
   const dragIdx=React.useRef(null);
   const [dragOver,setDragOver]=React.useState(null);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
@@ -1834,7 +1846,10 @@ function NavCustomizeDrawer({mode,close,onToast}){
   const addDest=(d)=>{setItems(arr=>{const k=navKey(d);const exists=arr.find(i=>navKey(i)===k);return navNormalize(exists?arr.map(i=>navKey(i)===k?{...i,pinned:true}:i):[...arr,{...d,pinned:true}]);});};
   const addLink=()=>{let u=linkUrl.trim();if(!u){onToast&&onToast('Enter a URL','warning');return;}if(!/^https?:\/\//i.test(u))u='https://'+u;const item={id:'link-'+Date.now(),type:'link',label:(linkLabel.trim()||u.replace(/^https?:\/\//,'')),url:u,icon:linkIcon,pinned:true};setItems(arr=>navNormalize([...arr,item]));setLinkLabel('');setLinkUrl('');setPicker(false);};
   const done=()=>{if(mode==='admin')ctx.setAdminNav(items);else ctx.setUserNav(items);onToast&&onToast('Navigation updated');close();};
-  const reset=()=>{if(mode==='admin'){const d=NAV_BUILTIN_DEFAULT.map(x=>({...x}));ctx.setAdminNav(d);setItems(d);onToast&&onToast('Reset to built-in default');}else{ctx.resetUser();setItems(navNormalize((ctx.adminNav||NAV_BUILTIN_DEFAULT).map(x=>({...x})));onToast&&onToast('Reset to workspace default');}};
+  const reset=()=>{
+    if(mode==='admin'){const d=NAV_BUILTIN_DEFAULT.map(x=>({...x}));ctx.setAdminNav(d);setItems(d);onToast&&onToast('Reset to built-in default');}
+    else{ctx.resetUser();const base=(ctx.adminNav||NAV_BUILTIN_DEFAULT).map(x=>({...x}));setItems(navNormalize(base));onToast&&onToast('Reset to workspace default');}
+  };
   return(<div className="fixed inset-0 z-[170] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
     <div style={{width:420,maxWidth:'100%',background:'var(--s900)'}} className="h-full w-full flex flex-col sm:border-l border-white/[0.10] animate-[arIn_.22s_ease]" role="dialog" aria-modal="true" aria-label="Customize navigation">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
@@ -1933,7 +1948,7 @@ function MobileNavDrawer({active,goTo,theme,toggleTheme,onSearch,onQuickAdd,onNo
           ))}
           {onCustomize&&<button onClick={()=>{close();onCustomize();}} className="mt-1 w-full flex items-center gap-3 px-3 rounded-xl text-[13.5px] font-medium text-brand-200 hover:bg-brand-500/10 transition-all" style={{minHeight:44}}><I.Edit size={16}/>Customize navigation</button>}
         </nav>
-        <button onClick={()=>go('profile')} className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors text-left">
+        <button onClick={()=>{goTo('profile');close();}} className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors text-left">
           <span className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0" style={{background:'#3b82f6'}}>AM</span>
           <span className="min-w-0 flex-1">
             <span className="block text-white text-[13.5px] font-semibold truncate">Alex Morgan</span>
@@ -1986,8 +2001,8 @@ function AppSidebar({active,goTo}){
         return(<button key={navKey(it)} data-nav={it.type==='page'?it.page:it.id} onClick={()=>navGo(it,goTo)} title={it.label+(it.type==='link'?' (opens in new tab)':'')} aria-label={it.label} aria-current={a?'page':undefined} className={['nav-pin w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0',idx>=4?'nav-overflow':'',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Ic size={16}/></button>);
       })}
       <div ref={moreRef} className="nav-more relative w-9 shrink-0">
-        <button onClick={()=>setMoreOpen(v=>!v)} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',moreOpen?'bg-white/[0.08] text-white/80':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Grid size={16}/></button>
-        {moreOpen&&<NavMorePopover goTo={goTo} close={()=>setMoreOpen(false)} onCustomize={()=>setCustomizeOpen(true)}/>}
+        <button onClick={()=>setMoreOpen(v=>!v)} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',moreOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Apps size={18}/></button>
+        {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={()=>setMoreOpen(false)} onCustomize={()=>setCustomizeOpen(true)}/>}
       </div>
       <button onClick={()=>setCustomizeOpen(true)} title="Customize navigation" aria-label="Customize navigation" className="nav-edit w-9 h-9 rounded-xl flex items-center justify-center text-white/25 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-150 shrink-0"><I.Edit size={15}/></button>
       <div className="mt-auto flex flex-col items-center gap-3">
@@ -4928,6 +4943,7 @@ function ContactsPage({goTo,nav}){
   const [toast,setToast]=React.useState('');
   const fields=React.useMemo(()=>omFieldSchema('contact',_propsCtx,rows),[_propsCtx,rows]);
   useDashNavFilter(nav,setActiveKey,setWorkFilter);
+  React.useEffect(()=>{if(nav&&nav.view&&views.find(v=>v.key===nav.view)){setActiveKey(nav.view);setSelected([]);}/* eslint-disable-next-line */},[nav&&nav.view]);
   const activeViewObj=views.find(v=>v.key===activeKey);
   React.useEffect(()=>{const v=views.find(x=>x.key===activeKey);setWorkFilter(v&&v.filter?JSON.parse(JSON.stringify(v.filter)):{match:'AND',conds:[]});setWorkSort(v&&v.sort?{...v.sort}:{key:null,dir:null});setCols(v&&v.columns?v.columns.slice():DEFCOLS);/* eslint-disable-next-line */},[activeKey]);
   const {confirmNode,openConfirm}=useConfirm();
@@ -10574,6 +10590,8 @@ function PermRoleModal({mode,sourceRole,roles,onClose,onCreate}){
 }
 function SettingsPermissionsPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
+  const navPermCtx=React.useContext(NavConfigContext);
+  const [navAdminOpen,setNavAdminOpen]=React.useState(false);
   const [roles,setRoles]=React.useState(()=>PERM_ROLE_SEED.map(r=>({...r,perms:permClone(r.perms)})));
   const [selKey,setSelKey]=React.useState('Owner');
   const [dirty,setDirty]=React.useState(false);
@@ -10616,6 +10634,18 @@ function SettingsPermissionsPage({goTo}){
   return(
     <SettingsShell active="settings-permissions" goTo={goTo} subtitle="Define exactly what each role can see and do — customize any role, or create your own."
       actions={<button onClick={save} disabled={!dirty} className={['inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all',dirty?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/35 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Check size={14} stroke={2.4}/>Save changes</button>}>
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden mb-5">
+        <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 flex items-center justify-center shrink-0"><I.LayoutDash size={18}/></span>
+            <div className="min-w-0"><p className="text-[13.5px] font-semibold text-white">Default navigation</p><p className="text-[11.5px] text-white/45 mt-0.5">The sidebar layout new members start with. A user’s personal customization overrides it.</p></div>
+          </div>
+          {navPermCtx.isAdmin
+            ? <button onClick={()=>setNavAdminOpen(true)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all shrink-0"><I.Edit size={13}/>Customize default</button>
+            : <span className="text-[11.5px] text-white/40 inline-flex items-center gap-1.5 shrink-0"><I.Lock size={12}/>Owner / Admin only</span>}
+        </div>
+      </div>
+      {navAdminOpen&&<NavCustomizeDrawer mode="admin" close={()=>setNavAdminOpen(false)} onToast={(m,t)=>showToast(m,t)}/>}
       <div className="perm-stack flex gap-5 items-start">
         {/* Role selector */}
         <div className="perm-rail w-[248px] shrink-0 flex flex-col gap-2">
@@ -14395,10 +14425,11 @@ function CalendarPage({goTo,nav}){
   );
 }
 // ?? TasksPage (dedicated view over the shared CalendarContext task store) ?????
-function TasksPage({goTo}){
+function TasksPage({goTo,nav}){
   const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
   const [view,setView]=React.useState('list');
-  const [filter,setFilter]=React.useState('open');
+  const [filter,setFilter]=React.useState((nav&&nav.view&&['all','open','overdue','today','done'].indexOf(nav.view)>=0)?nav.view:'open');
+  React.useEffect(()=>{if(nav&&nav.view&&['all','open','overdue','today','done'].indexOf(nav.view)>=0)setFilter(nav.view);},[nav&&nav.view]);
   const [search,setSearch]=React.useState('');
   const [modal,setModal]=React.useState(null);
   const {confirmNode,openConfirm}=useConfirm();
@@ -14616,6 +14647,7 @@ function App(){
   const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5'];
   const isApp=!MARKETING_PAGES.includes(page);
   return(
+    <NavConfigProvider>
     <BillingContext.Provider value={{billingState,setBillingState}}>
      <MailAccountsContext.Provider value={{accounts:mailAccounts,connect:connectMail,disconnect:disconnectMail}}>
      <CrmDataContext.Provider value={crm}>
@@ -14695,6 +14727,7 @@ function App(){
      </CrmDataContext.Provider>
      </MailAccountsContext.Provider>
     </BillingContext.Provider>
+    </NavConfigProvider>
   );
 }
 // ── TweaksLayer ── in-design tweak controls (accent / appearance / density). Hidden until Tweaks mode is on. ──
