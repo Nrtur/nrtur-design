@@ -9359,7 +9359,8 @@ const TEMPLATES_A=[
   {name:'Weekly Pipeline Report',desc:'Auto-generate Monday digest for your team.',Icon:I.BarChart,iconBg:'rgba(124,58,237,0.12)',iconFg:'#a78bfa',steps:3},
 ];
 function AutomationsSubNav({active,goTo}){
-  const tabs=[{label:'Workflows',page:'automations'},{label:'Email Seq',page:'email-sequences'},{label:'SMS Seq',page:'sms-sequences'}];
+  // Point at the LIVE routed pages — the old 'automations'/'email-sequences'/'sms-sequences' targets are dead routes (black screen).
+  const tabs=[{label:'Automations',page:'settings-automations'},{label:'Sequences',page:'settings-sequences'},{label:'Email Templates',page:'email-templates'},{label:'SMS Templates',page:'sms-templates'}];
   return(<div className="shrink-0 border-b border-white/[0.05] px-7" style={{background:'var(--s925)'}}><div className="flex items-center gap-1">{tabs.map(t=>{const a=active===t.page;return(<button key={t.label} onClick={()=>goTo(t.page)} className={['relative px-4 py-3 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.label}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#818cf8,transparent)',boxShadow:'0 0 12px rgba(129,140,248,0.7)'}}/>}</button>);})}</div></div>);
 }
 function MiniSparkA({data,color='#818cf8'}){
