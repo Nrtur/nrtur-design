@@ -708,6 +708,11 @@ const I = {
   Menu:      (p)=><Ico {...p} d={<><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></>}/>,
   Grid:      (p)=><Ico {...p} d={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>}/>,
   Apps:      (p)=><Ico {...p} d={<><circle cx="6" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.6" fill="currentColor" stroke="none"/></>}/>,
+  Video:     (p)=><Ico {...p} d={<><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></>}/>,
+  Megaphone: (p)=><Ico {...p} d={<><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></>}/>,
+  Webhook:   (p)=><Ico {...p} d={<><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/></>}/>,
+  Cloud:     (p)=><Ico {...p} d={<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>}/>,
+  MessageSquare:(p)=><Ico {...p} d={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>}/>,
 };
 // ?? Skeleton + Confirm ???????????????????????????????????????????????????????
 function Skel({ w, h='11px', r='5px', s={} }) {
@@ -4745,7 +4750,7 @@ function customColsFor(props,object){
   secs.flatMap(s=>s.fields).forEach(f=>{if(f.id&&f.id.indexOf('np_')===0){out.push({key:f.id,label:f.label,w:'150px',def:false,custom:true,cell:(rec)=>{const v=rec&&rec.custom&&rec.custom['custom_'+f.id];return(<p className="text-[12.5px] text-white/70 truncate">{v||'—'}</p>);}});}});
   return out;
 }
-function ColumnsControl({allCols,shown,onChange,label,object='contact'}){
+function ColumnsControl({allCols,shown,onChange,label,object='contact',freeze,onFreeze}){
   const [open,setOpen]=React.useState(false);
   const [dragK,setDragK]=React.useState(null);
   const [fieldDrawer,setFieldDrawer]=React.useState(false);
@@ -4771,6 +4776,7 @@ function ColumnsControl({allCols,shown,onChange,label,object='contact'}){
     {open&&<div className="absolute right-0 top-9 z-40 w-[280px] rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
       <div className="px-3.5 py-2.5 border-b border-white/[0.06] flex items-center justify-between gap-2"><div><p className="text-[12px] font-semibold text-white">Edit columns</p><p className="text-[10.5px] text-white/40 mt-0.5">Drag to reorder · respects your Properties</p></div><button onClick={()=>setFieldDrawer(true)} title="Create a custom field" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] ring-1 ring-white/[0.08] transition-all shrink-0"><I.Settings size={13}/></button></div>
       <div className="max-h-[420px] overflow-y-auto scroll-area p-2.5">
+        {onFreeze&&<button onClick={()=>onFreeze(!freeze)} className="w-full flex items-center justify-between gap-2 px-2 py-2 mb-2.5 rounded-lg bg-white/[0.03] ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-all"><span className="flex items-center gap-2 text-[12px] text-white/80"><I.Lock size={12} className="text-white/45"/>Freeze first column</span><span className={['relative w-8 h-[18px] rounded-full transition-colors shrink-0',freeze?'bg-brand-500':'bg-white/[0.14]'].join(' ')}><span className={['absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all',freeze?'left-[16px]':'left-[2px]'].join(' ')}/></span></button>}
         <p className="px-1 pb-1.5 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">Shown ({shownCols.length})</p>
         <div className="flex flex-col gap-1 mb-3">
           {shownCols.map((c,idx)=>(<div key={c.key} draggable onDragStart={()=>setDragK(idx)} onDragOver={(e)=>{e.preventDefault();}} onDrop={()=>{if(dragK!=null)move(dragK,idx);setDragK(null);}} className="group flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.03] ring-1 ring-white/[0.06] hover:ring-white/[0.12] cursor-grab active:cursor-grabbing transition-all">
@@ -5401,13 +5407,13 @@ function PCompanyLookup({value,onCommit,onOpen}){
     {value&&onOpen&&<button type="button" onClick={onOpen} title="Open company" className="shrink-0 text-white/30 hover:text-brand-300 p-1"><I.ExternalLink size={12}/></button>}
   </div>);
 }
-function BulkBar({object,selected,setSelected,setRows,showToast,openConfirm}){
+function BulkBar({object,selected,setSelected,setRows,showToast,openConfirm,stageOptions,onStageMove}){
   const crm=React.useContext(CrmDataContext);
-  const [menu,setMenu]=React.useState(null); // 'owner' | 'tag' | 'status' | 'company'
+  const [menu,setMenu]=React.useState(null); // 'owner' | 'tag' | 'status' | 'company' | 'stage'
   const ref=React.useRef(null);
   React.useEffect(()=>{if(!menu)return;const fn=(e)=>{if(ref.current&&!ref.current.contains(e.target))setMenu(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[menu]);
   const n=selected.length;
-  const word=object==='company'?(n>1?'companies':'company'):object==='lead'?(n>1?'leads':'lead'):(n>1?'contacts':'contact');
+  const word=object==='company'?(n>1?'companies':'company'):object==='lead'?(n>1?'leads':'lead'):object==='deal'?(n>1?'deals':'deal'):(n>1?'contacts':'contact');
   const patchSel=(patch)=>setRows(r=>r.map(x=>selected.includes(x.id)?{...x,...patch}:x));
   const close=()=>setMenu(null);
   const assignOwner=(m)=>{patchSel({owner:m.avatar,ownerColor:m.color});close();showToast('Owner set to '+m.name+' on '+n+' '+word);};
@@ -5421,7 +5427,7 @@ function BulkBar({object,selected,setSelected,setRows,showToast,openConfirm}){
   const tagOpts=(crm.tagDefs||[]).map(t=>t.name);
   const coOpts=(crm.companies||[]).filter(c=>!c.archived).map(c=>c.name);
   // Gate bulk actions by the effective role's perms for this object.
-  const OBJ={contact:'Contacts',company:'Companies',lead:'Leads'}[object]||'Contacts';
+  const OBJ={contact:'Contacts',company:'Companies',lead:'Leads',deal:'Deals'}[object]||'Contacts';
   const canEdit=effCanObject(OBJ,'edit');
   const canDel=effCanObject(OBJ,'delete')&&effCanBulkDelete();
   return(<div ref={ref} className="sticky top-0 z-20 px-7 py-2.5 flex items-center gap-x-3 gap-y-2 flex-wrap border-b border-brand-500/25" style={{background:'rgba(99,102,241,0.10)',backdropFilter:'blur(12px)'}}>
@@ -5437,11 +5443,14 @@ function BulkBar({object,selected,setSelected,setRows,showToast,openConfirm}){
       {canEdit&&object==='contact'&&<div className="relative"><button title="Set company" onClick={()=>setMenu(menu==='company'?null:'company')} className={BTN}><I.Building size={12}/><span className="hidden sm:inline">Set company</span></button>
         {menu==='company'&&<BulkPanel><BulkPickCreate options={coOpts} onPick={setCompanyVal} onCreate={setCompanyVal} placeholder="Search or create company…" emptyText="No companies yet — type to create."/></BulkPanel>}
       </div>}
-      {canEdit&&<div className="relative"><button title={object==='company'?'Change type':'Change status'} onClick={()=>setMenu(menu==='status'?null:'status')} className={BTN}><I.CheckSquare size={12}/><span className="hidden sm:inline">{object==='company'?'Change type':'Change status'}</span></button>
+      {canEdit&&object==='deal'&&stageOptions&&<div className="relative"><button title="Move stage" onClick={()=>setMenu(menu==='stage'?null:'stage')} className={BTN}><I.GitBranch size={12}/><span className="hidden sm:inline">Move stage</span></button>
+        {menu==='stage'&&<BulkPanel><div className="py-1 max-h-[240px] overflow-y-auto scroll-area">{stageOptions.map(s=>(<button key={s.id} onClick={()=>{onStageMove&&onStageMove(s);close();}} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:s.color}}/><span className="flex-1 text-[12.5px] text-white/85 truncate">{s.name}</span></button>))}</div></BulkPanel>}
+      </div>}
+      {canEdit&&object!=='deal'&&<div className="relative"><button title={object==='company'?'Change type':'Change status'} onClick={()=>setMenu(menu==='status'?null:'status')} className={BTN}><I.CheckSquare size={12}/><span className="hidden sm:inline">{object==='company'?'Change type':'Change status'}</span></button>
         {menu==='status'&&<BulkPanel><div className="py-1 max-h-[240px] overflow-y-auto scroll-area">{statusList.map(s=>(<button key={s.name} onClick={()=>setStatusVal(s.name)} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:s.color}}/><span className="flex-1 text-[12.5px] text-white/85 truncate">{s.name}</span></button>))}{statusList.length===0&&<p className="px-3 py-2 text-[12px] text-white/30">No statuses defined.</p>}</div></BulkPanel>}
       </div>}
       {canEdit&&object==='lead'&&<button title="Convert" onClick={()=>{close();showToast(n+' '+word+' queued for conversion');}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-emerald-300 hover:text-emerald-200 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 transition-all"><I.ArrowRight size={12}/><span className="hidden sm:inline">Convert</span></button>}
-      {canEdit&&<button title="Archive" onClick={()=>{close();openConfirm({title:'Archive '+n+' '+word+'?',body:'Selected '+word+' will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(n+' '+word+' archived');}});}} className={BTN}><I.Archive size={12}/><span className="hidden sm:inline">Archive</span></button>}
+      {canEdit&&object!=='deal'&&<button title="Archive" onClick={()=>{close();openConfirm({title:'Archive '+n+' '+word+'?',body:'Selected '+word+' will be archived and kept for 30 days.',confirmLabel:'Archive selected',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>selected.includes(x.id)?{...x,archived:true}:x));setSelected([]);showToast(n+' '+word+' archived');}});}} className={BTN}><I.Archive size={12}/><span className="hidden sm:inline">Archive</span></button>}
       {canDel&&<span className="w-px h-5 bg-white/[0.12] mx-0.5"/>}
       {canDel&&<button title="Delete" onClick={()=>{close();openConfirm({title:'Delete '+n+' record'+(n>1?'s':'')+'?',body:'This permanently deletes '+n+' '+word+". This can't be undone.",confirmLabel:'Delete '+n+' record'+(n>1?'s':''),danger:true,requireText:'DELETE',caseSensitive:true,onConfirm:()=>{setRows(r=>r.filter(x=>!selected.includes(x.id)));setSelected([]);showToast(n+' record'+(n>1?'s':'')+' deleted');}});}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 hover:text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all"><I.Trash size={12}/><span className="hidden sm:inline">Delete</span></button>}
     </div>
@@ -5818,7 +5827,7 @@ function actByName(name){const m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS
 function actRel(min){min=Math.max(0,Math.round(min||0));if(min<1)return'Just now';if(min<60)return min+'m ago';const h=Math.floor(min/60);if(h<24)return h+'h ago';const d=Math.floor(h/24);if(d===1)return'Yesterday';if(d<7)return d+'d ago';const w=Math.floor(d/7);return w+'w ago';}
 let _actSeq=0;
 function mkAct(type,o){o=o||{};const m=ACT_META[type]||ACT_META.note;const ts=o.ts==null?0:o.ts;return{id:o.id||('a'+(++_actSeq)),type,cat:m.cat,label:o.label||m.label,chip:m.chip,Icon:m.Icon,ic:m.ic,title:o.title||'',body:o.body||'',actor:o.actor||actActor(o.by||'AM'),ts,timeLabel:o.timeLabel||actRel(ts),payload:o.payload||null,source:o.source||null};}
-function actFromQual(q){if(!q)return mkAct('form',{ts:90,title:'Qualification form'});const ok=q.status==='qualified',bad=q.status==='disqualified';return mkAct('form',{ts:90,by:q.rep?actByName(q.rep):'AM',label:ok?'QUALIFIED':bad?'REVIEW':'FORM',title:'Qualification form'+(q.formName?' — '+q.formName:''),body:(q.answers||[]).filter(a=>a.a).map(a=>a.q+': '+a.a).join(' · ')||'Submitted during booking.'});}
+function actFromQual(q){if(!q)return mkAct('form',{ts:90,title:'Qualification form'});const ok=q.status==='qualified',bad=q.status==='disqualified';return mkAct('form',{ts:90,by:q.rep?actByName(q.rep):'AM',label:ok?'QUALIFIED':bad?'REVIEW':'FORM',title:q.formName?('Form submitted: '+q.formName):'Form submitted',body:((q.answers||[]).filter(a=>a.a).map(a=>a.q+': '+a.a).join(' · ')||'Submitted the form.')+(q.source?(' · Source: '+q.source):'')});}
 // ── Rich activity payload seeders (simulated demo data: transcript / recording / talk-ratio / threads) ──
 const ACT_CALL_OUTCOMES=['Discovery','Follow-up','Demo','Negotiation','Check-in','Deal nurturing','Support','Other'];
 const ACT_MEETING_OUTCOMES=['Discovery','Demo','Negotiation','Onboarding','Check-in','QBR','Support','Other'];
@@ -6578,6 +6587,45 @@ function DealOutcomeModal({kind,dealName,stageName,onConfirm,onClose}){
     </div>
   </div>);
 }
+// ── Pipeline LIST view ── reuses the Contacts/Companies list infra (cols, sort, bulk, column-manager) ──
+// Inline stage dropdown for the list (stages are dynamic per pipeline, so colors come from the stage object).
+function DealStageDropdown({stage,stages,onChange,disabled}){
+  const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
+  const color=(stage&&stage.color)||'#818cf8';const name=(stage&&stage.name)||'—';
+  if(disabled)return(<span className="inline-flex items-center gap-1.5 pl-2 pr-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:color+'1f',color,boxShadow:'inset 0 0 0 1px '+color+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:color}}/>{name}</span>);
+  return(<div className="relative w-fit">
+    <button ref={btnRef} onClick={e=>{e.stopPropagation();setOpen(v=>!v);}} className="inline-flex items-center gap-1.5 pl-2 pr-1.5 py-0.5 rounded-full text-[10px] font-medium transition-all hover:brightness-125" style={{background:color+'1f',color,boxShadow:'inset 0 0 0 1px '+color+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:color}}/>{name}<I.ChevronDown size={9} className="opacity-60"/></button>
+    <AnchoredMenu anchorRef={btnRef} open={open} onClose={()=>setOpen(false)} align="left" width={184} className="rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>{(stages||[]).map(s=>(<button key={s.id} onClick={e=>{e.stopPropagation();onChange(s);setOpen(false);}} className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><span className="w-2 h-2 rounded-full shrink-0" style={{background:s.color}}/><span className="flex-1 text-left truncate">{s.name}</span>{stage&&stage.id===s.id&&<I.Check size={11} className="text-brand-400"/>}</button>))}</AnchoredMenu>
+  </div>);
+}
+// Deal column definitions — the one source of truth the column-manager + list rows both read.
+const DEAL_COLS=[
+  {key:'name',label:'Opportunity',w:'minmax(220px,1.7fr)',def:true,cell:(d,x)=>(<button onClick={()=>x.onOpen(d)} className="flex flex-col items-start min-w-0 text-left w-full group/op"><span className="text-[13px] font-medium text-white leading-tight truncate max-w-full group-hover/op:text-brand-200 transition-colors">{d.name||d.company}</span>{d.name&&d.company&&<span className="text-[11px] text-white/40 truncate max-w-full">{d.company}</span>}</button>)},
+  {key:'company',label:'Company / Contact',w:'150px',def:true,cell:(d)=>(<div className="min-w-0"><p className="text-[12.5px] text-white/75 truncate">{d.company||'—'}</p>{d.primaryContact?<p className="text-[11px] text-white/40 truncate">{d.primaryContact}</p>:null}</div>)},
+  {key:'stageName',label:'Stage',w:'132px',def:true,cell:(d,x)=>(<DealStageDropdown stage={d._stage} stages={x.stages} onChange={s=>x.onStage(d,s)} disabled={x.readOnly}/>)},
+  {key:'amount',label:'Amount',w:'104px',def:true,cell:(d)=>(<p className="text-[13px] font-semibold text-white tabular-nums">{d.value||'—'}</p>)},
+  {key:'owner',label:'Owner',w:'80px',def:true,cell:(d,x)=>(<ContactOwnerDropdown owner={{avatar:d.owner,color:d.ownerColor}} onChange={m=>x.onOwner(d,m)} disabled={x.readOnly}/>)},
+  {key:'closeDate',label:'Close date',w:'112px',def:true,cell:(d)=>(<span className="text-[12px] text-white/55">{d.closeDate?fmtShortDate(d.closeDate):'—'}</span>)},
+  {key:'age',label:'Age',w:'80px',def:true,cell:(d)=>{const sc=d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8';return(<div className="flex items-center gap-1.5" title={'Age '+(d.age||'—')}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:sc}}/><span className="text-[11px] text-white/45">{d.age||'—'}</span></div>);}},
+  {key:'pipeline',label:'Pipeline',w:'130px',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.pipeline||'Sales Pipeline'}</p>)},
+  {key:'score',label:'Heat',w:'84px',def:false,cell:(d)=>{const m={hot:['#f87171','Hot'],warm:['#fbbf24','Warm'],cold:['#94a3b8','Cold'],won:['#34d399','Won']}[d.score]||['#94a3b8','—'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:m[0]+'1f',color:m[0],boxShadow:'inset 0 0 0 1px '+m[0]+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:m[0]}}/>{m[1]}</span>);}},
+  {key:'source',label:'Source',w:'120px',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.source||'—'}</p>)},
+  {key:'nextAction',label:'Next action',w:'1.2fr',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.nextAction||'—'}</p>)},
+  {key:'tags',label:'Tags',w:'1.2fr',def:false,cell:(d)=>{const t=d.dealTags||d.tags||[];return(<div className="flex flex-wrap gap-1 min-w-0">{t.length?t.slice(0,3).map(x=>(<TagChip key={x} name={x} sm/>)):<span className="text-white/25 text-[12px]">—</span>}</div>);}},
+];
+function DealRowDyn({d,COL,shownCols,selected,onSelect,ctx,freeze}){
+  const showSelect=ctx.canEdit||ctx.canDelete;
+  const first=shownCols[0];const rest=shownCols.slice(1);
+  const frozen=freeze?{position:'sticky',left:0,zIndex:1,background:'var(--s925)'}:undefined;
+  return(<div className={['w-full grid items-center gap-4 px-7 py-3 border-b border-white/[0.03] hover:bg-white/[0.025] transition-colors group',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+    <div className="flex items-center gap-3 min-w-0 pr-2" style={frozen}>
+      {showSelect?<button onClick={e=>{e.stopPropagation();onSelect(d.id);}} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>:<span className="w-4 shrink-0"/>}
+      <div className="min-w-0 flex-1">{first?first.cell(d,ctx):null}</div>
+    </div>
+    {rest.map(col=>(<div key={col.key} className="min-w-0">{col.cell(d,ctx)}</div>))}
+    <div className="flex justify-end">{(d._stage&&d._stage.real)?<button onClick={()=>ctx.onOpen(d)} title="Open deal" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.ArrowRight size={13}/></button>:<span/>}</div>
+  </div>);
+}
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
   const {deals:_deals,setDeals}=React.useContext(CrmDataContext);
@@ -6600,7 +6648,12 @@ function PipelinePage({goTo,nav}){
   const onSaveDealView=(name,scope)=>{if(editView){setDealViews(vs=>vs.map(v=>v.key===editView.key?{...v,label:name,scope}:v));}else{const key='v'+Date.now();setDealViews(vs=>[...vs,{key,label:name,scope,color:VIEW_COLORS[Math.floor(Math.random()*VIEW_COLORS.length)],filter:JSON.parse(JSON.stringify(workFilter)),sort:{...workSort}}]);setActiveViewKey(key);}setSaveOpen(false);setEditView(null);};
   const saveDealChanges=()=>setDealViews(vs=>vs.map(v=>v.key===activeViewKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),sort:{...workSort}}:v));
   const [cardF,setCardF]=React.useState({name:true,amount:true,contact:false,close:false,tags:true,rot:true});
-  const [boardView,setBoardView]=React.useState('board');
+  const [boardView,_setBoardView]=React.useState(()=>{try{return sessionStorage.getItem('nrtur-pipe-view')||'board';}catch(e){return 'board';}});
+  const setBoardView=(v)=>{_setBoardView(v);try{sessionStorage.setItem('nrtur-pipe-view',v);}catch(e){}};
+  // List-view state: per-pipeline columns, multi-select, frozen first column.
+  const [selected,setSelected]=React.useState([]);
+  const [colsMap,setColsMap]=React.useState({});
+  const [freezeFirst,setFreezeFirst]=React.useState(true);
   const [importDeals,setImportDeals]=React.useState(false);
   const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100,lost:0};
   const STAGE_COLORS=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
@@ -6650,6 +6703,7 @@ function PipelinePage({goTo,nav}){
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
+  React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
   React.useEffect(()=>{const fn=e=>{if(e.key==='Escape')setCfgOpen(false);};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   if(loading)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="pipeline" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Pipeline"/><div className="flex-1 p-6 flex gap-4">{[...Array(5)].map((_,col)=>(<div key={col} className="flex-1 rounded-2xl bg-white/[0.025] border border-white/[0.05] p-3 flex flex-col gap-3"><Skel w="70px" h="11px"/>{[...Array(3)].map((_,card)=>(<div key={card} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col gap-2.5"><Skel w="80%" h="12px"/><Skel w="55%" h="10px"/></div>))}</div>))}</div><AppFooter/></div></div>);
@@ -6667,6 +6721,29 @@ function PipelinePage({goTo,nav}){
   const fc_stageRows=active.stages.map(s=>{const sd=dealsFor(s);const val=sd.reduce((a,d)=>a+parseMoney(d.value),0);return{stage:s,deals:sd,val,weighted:val*((s.prob||0)/100)};});
   const fc_weightedTotal=fc_stageRows.reduce((a,r)=>a+r.weighted,0);
   const LIST_GC='1fr 150px 120px 110px 64px 70px';
+  // ── List view wiring: columns (per pipeline), sort, inline edits, bulk, selection ──
+  const _dEdit=effCanObject('Deals','edit');const _dDel=effCanObject('Deals','delete');
+  const lvToast=(m)=>window.__nrturToast&&window.__nrturToast(m);
+  const allDealCols=[...DEAL_COLS,...customColsFor(_propsCtx,'deal')];
+  const DEAL_DEFCOLS=DEAL_COLS.filter(c=>c.def).map(c=>c.key);
+  const dealColKeys=colsMap[activeId]||DEAL_DEFCOLS;
+  const setDealCols=(next)=>setColsMap(m=>({...m,[activeId]:Array.isArray(next)?next:next(dealColKeys)}));
+  const shownDealCols=dealColKeys.map(k=>allDealCols.find(c=>c.key===k)).filter(Boolean);
+  const LIST_COL=(shownDealCols.length?shownDealCols.map(c=>c.w).join(' '):'1fr')+' 56px';
+  const listMinW=Math.max(900,240+(shownDealCols.length-1)*150+56);
+  const onSort=(k)=>setWorkSort(st=>omNextSort(st,k));
+  // Flat, globally-sorted rows (each deal annotated with its stage object for the inline dropdown).
+  const listFlat=fc_stageRows.flatMap(r=>r.deals.map(d=>({...d,_stage:r.stage,stageName:r.stage.name,stageColor:r.stage.color})));
+  const listRows=omSortRows(listFlat,workSort&&workSort.dir?workSort:{key:'closeDate',dir:'asc'},'deal',dealFields);
+  const listIds=listRows.map(d=>d.id);
+  const allChecked=listIds.length>0&&listIds.every(id=>selected.includes(id));
+  const toggleAll=()=>setSelected(allChecked?[]:listIds.slice());
+  const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const lvStage=(d,toStage)=>{if(!_dEdit||!d._stage||d._stage.id===toStage.id)return;applyMove({id:d.id,fromStageId:d._stage.id},toStage);lvToast('Moved “'+(d.name||d.company)+'” to '+toStage.name);};
+  const lvOwner=(d,m)=>{if(!_dEdit)return;const patch={owner:m.avatar,ownerColor:m.color};if(_deals.some(x=>x.id===d.id))setDeals(ds=>ds.map(x=>x.id===d.id?{...x,...patch}:x));else setStages(ss=>ss.map(s=>s.demo?{...s,demo:s.demo.map(x=>x.id===d.id?{...x,...patch}:x)}:s));lvToast('Owner set to '+m.name);};
+  const lvOpen=(d)=>{if(d._stage&&d._stage.real)goTo('deal-detail',d.id);};
+  const onBulkStage=(toStage)=>{const ids=selected.slice();ids.forEach(id=>{const d=listFlat.find(x=>x.id===id);if(d&&d._stage&&d._stage.id!==toStage.id)applyMove({id,fromStageId:d._stage.id},toStage);});lvToast(ids.length+' deal'+(ids.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
+  const dealColCtx={goTo,onOpen:lvOpen,onStage:lvStage,onOwner:lvOwner,stages:active.stages,readOnly:!_dEdit,canEdit:_dEdit,canDelete:_dDel};
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="pipeline" goTo={goTo}/>
@@ -6704,8 +6781,8 @@ function PipelinePage({goTo,nav}){
           </div>
         }
           rightSlot={<>
-            <div className="hidden md:inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List],['forecast','Forecast',I.Target]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBoardView(k)} title={l+' view'} aria-pressed={boardView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',boardView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/>{l}</button>))}</div>
-            <div className="crm-hide-sm flex items-center gap-2.5"><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges}/><OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/><OmBoardSort fields={dealFields} sort={workSort} onChange={setWorkSort}/><CardFieldsControl value={cardF} onChange={setCardF}/><button onClick={()=>setImportDeals(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button></div>
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List],['forecast','Forecast',I.Target]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBoardView(k)} title={l+' view'} aria-pressed={boardView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',boardView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/><span className="hidden sm:inline">{l}</span></button>))}</div>
+            <div className="crm-hide-sm flex items-center gap-2.5"><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges}/><OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/><OmBoardSort fields={dealFields} sort={workSort} onChange={setWorkSort}/>{boardView==='list'?<ColumnsControl allCols={allDealCols} object='deal' shown={dealColKeys} onChange={setDealCols} freeze={freezeFirst} onFreeze={setFreezeFirst}/>:<CardFieldsControl value={cardF} onChange={setCardF}/>}<button onClick={()=>setImportDeals(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Upload size={13}/>Import</button></div>
             {effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal'):goTo('add-deal')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Deal</button>}
           </>}/>
         <div className="shrink-0 border-b border-white/[0.05] px-7 py-2 flex items-center gap-x-6 gap-y-1 flex-wrap overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
@@ -6743,20 +6820,20 @@ function PipelinePage({goTo,nav}){
           </div>
         </div>}
         {boardView==='list'&&(
-        <div className="flex-1 overflow-auto scroll-area">
-          <div className="min-w-[780px]">
-            <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LIST_GC,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}><span>Deal</span><span>Stage</span><span>Amount</span><span>Close date</span><span>Owner</span><span>Age</span></div>
-            {fc_stageRows.flatMap(r=>r.deals.map(d=>(
-              <button key={r.stage.id+'-'+d.id} onClick={()=>r.stage.real&&goTo('deal-detail',d.id)} className="w-full grid items-center gap-4 px-7 py-3 border-b border-white/[0.03] hover:bg-white/[0.03] text-left transition-colors" style={{gridTemplateColumns:LIST_GC}}>
-                <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p>{d.name&&<p className="text-[11px] text-white/40 truncate">{d.company}</p>}</div>
-                <span className="inline-flex items-center gap-1.5 text-[12px] text-white/70 min-w-0"><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:r.stage.color}}/><span className="truncate">{r.stage.name}</span></span>
-                <span className="text-[13px] font-semibold text-white tabular-nums">{d.value}</span>
-                <span className="text-[12px] text-white/55">{d.closeDate?fmtShortDate(d.closeDate):'—'}</span>
-                <span className="inline-flex items-center"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:d.ownerColor}}>{d.owner}</span></span>
-                <span className="text-[11px] text-white/45">{d.age||'—'}</span>
-              </button>
-            )))}
-            {allVisible.length===0&&<div className="py-20 text-center text-white/40 text-[13px]">No deals match this view.</div>}
+        <div className="flex-1 flex flex-col min-h-0">
+          {selected.length>0&&(<BulkBar object="deal" selected={selected} setSelected={setSelected} setRows={setDeals} showToast={lvToast} openConfirm={openConfirm} stageOptions={active.stages} onStageMove={onBulkStage}/>)}
+          <div className="flex-1 overflow-auto scroll-area">
+            <div style={{minWidth:listMinW}}>
+              <div className="sticky top-0 z-10 grid items-center gap-4 px-7 py-3 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:LIST_COL,background:'var(--hdr90)',backdropFilter:'blur(12px)'}}>
+                <div className="flex items-center gap-3 min-w-0 pr-2" style={freezeFirst?{position:'sticky',left:0,zIndex:3,background:'var(--s925)'}:undefined}>
+                  {(_dEdit||_dDel)?<button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>:<span className="w-4 shrink-0"/>}
+                  {shownDealCols[0]&&<OmSortHeader colKey={shownDealCols[0].key} label={shownDealCols[0].label} sort={workSort} onSort={onSort}/>}
+                </div>
+                {shownDealCols.slice(1).map(c=>(<OmSortHeader key={c.key} colKey={c.key} label={c.label} sort={workSort} onSort={onSort}/>))}<span/>
+              </div>
+              {listRows.map((d)=>(<DealRowDyn key={(d._stage?d._stage.id:'')+'-'+d.id} d={d} COL={LIST_COL} shownCols={shownDealCols} selected={selected.includes(d.id)} onSelect={toggleSelect} ctx={dealColCtx} freeze={freezeFirst}/>))}
+              {listRows.length===0&&(<div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.GitBranch size={26}/></div><p className="text-[15px] font-semibold text-white">No deals match this view</p><p className="text-[13px] text-white/45 mt-1.5">Adjust your filters, or add a deal to get started.</p>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal'):goTo('add-deal')} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New Deal</button>}</div></div>)}
+            </div>
           </div>
         </div>)}
         {boardView==='forecast'&&(
@@ -9645,6 +9722,14 @@ const TRIGGER_CATS=[
     {name:'Meeting booked',hint:'a contact schedules time'},
     {name:'Call logged',hint:'a rep records a call'},
     {name:'Form submitted',hint:'a web form is filled out'}]},
+  {cat:'Scheduling',Icon:I.Calendar,color:'#a78bfa',triggers:[
+    {name:'Appointment booked',hint:'someone books a meeting on your scheduling page'},
+    {name:'Appointment status changed',hint:'a booking moves to confirmed / cancelled / rescheduled / no-show / completed'},
+    {name:'Appointment confirmed',hint:'a booking is confirmed'},
+    {name:'Appointment rescheduled',hint:'an invitee moves their meeting'},
+    {name:'Appointment cancelled',hint:'a booking is cancelled'},
+    {name:'Appointment no-show',hint:'the invitee misses the meeting'},
+    {name:'Appointment completed',hint:'a meeting finishes'}]},
   {cat:'Time & System',Icon:I.Clock,color:'#fbbf24',triggers:[
     {name:'Scheduled',hint:'on a recurring cron-like schedule'},
     {name:'Date field reached',hint:'a custom date arrives'},
@@ -9658,7 +9743,8 @@ const TRIGGER_META=(name)=>{for(const g of TRIGGER_CATS){const t=g.triggers.find
   if(/company|account/.test(s))return TRIGGER_BY_CAT('Company');
   if(/deal|invoice|proposal|won|lost/.test(s))return TRIGGER_BY_CAT('Deal');
   if(/email|sms|reply|message|open|click/.test(s))return TRIGGER_BY_CAT('Messaging');
-  if(/task|meeting|call|form|booked/.test(s))return TRIGGER_BY_CAT('Activity');
+  if(/appointment|booking|booked|reschedul|no-show|no show/.test(s))return TRIGGER_BY_CAT('Scheduling');
+  if(/task|meeting|call|form/.test(s))return TRIGGER_BY_CAT('Activity');
   if(/monday|every|schedule|date|overdue|day|week|webhook/.test(s))return TRIGGER_BY_CAT('Time & System');
   return TRIGGER_BY_CAT('Contact');};
 // Node factory — builds a flow node (with defaults) from an action or logic preset
@@ -13137,16 +13223,43 @@ function GenericConnectModal({intg,close,onConnected}){
 // THE RULE: "Is this MY connection or the company's connection?"
 // `cat` slots each one into a shared taxonomy (see INTG_CATS) so a growing list stays organised.
 // `meta` = the one key setting shown inline once connected (number, domain, what's syncing…).
+// `comingSoon:true` → the backend module isn't built yet. The card shows an honest "Coming soon"
+// badge and a disabled connect button, so the catalog reads complete & future-ready without
+// faking a working connection. `scopes` doubles as the "permissions needed" list in the detail
+// drawer. `configPage` deep-links to a richer settings page (e.g. calendar 2-way sync) when one exists.
 const INTG_DEFS=[
-  // ── Workspace-level: one connection shared by the whole org, managed by an admin ──
-  {key:'slack',scope:'workspace',name:'Slack',desc:'Shared workspace app — post deal alerts and tasks to your team channels.',iconColor:'#4a154b',method:'oauth',scopes:['Post deal & task notifications','Read channel names'],successMsg:'Deal alerts will post to your chosen channel.',cat:'Notifications',meta:'Posting to #deals'},
-  {key:'zapier',scope:'workspace',name:'Zapier',desc:'Connect nrtur to 3,000+ apps and webhooks through Zapier.',iconColor:'#ff4a00',method:'key',fields:[{k:'key',l:'Zapier API Key',ph:'zap_live_...',req:true}],successMsg:'Build Zaps that create or update records.',cat:'Automation',meta:'API key active'},
-  {key:'stripe',scope:'workspace',name:'Stripe',desc:'See Stripe payments alongside your CRM contacts.',iconColor:'#635bff',method:'key',fields:[{k:'sk',l:'Secret key',ph:'sk_live_...',req:true},{k:'whsec',l:'Webhook signing secret',ph:'whsec_...'}],successMsg:'Payments now appear on matching contacts.',cat:'Payments',meta:'Live key ····4242'},
-  {key:'sending-domain',scope:'workspace',name:'Sending domain',desc:"The domain your team's marketing & sequence emails send from. Verify DNS (DKIM / SPF) once for everyone — the org's outbound domain, not anyone's personal inbox.",iconColor:'#0ea5e9',method:'key',fields:[{k:'domain',l:'Sending domain',ph:'mail.yourcompany.com',req:true},{k:'from',l:'Default from address',ph:'hello@yourcompany.com'}],connectHint:"Add the domain you'll send from, then publish the DKIM & SPF records we generate at your DNS provider.",successMsg:'Domain verified — sequences and campaigns now send from it.',cat:'Communication',meta:'mail.yourcompany.com · DKIM verified'},
+  // ══ Workspace-level: one connection shared by the whole org, managed by an admin ══
+  // Communication
+  {key:'slack',scope:'workspace',name:'Slack',desc:'Post deal alerts, task reminders, and @mentions to your team channels.',iconColor:'#4a154b',method:'oauth',scopes:['Post deal & task notifications','Read channel names'],successMsg:'Deal alerts will post to your chosen channel.',cat:'Communication',meta:'Posting to #deals'},
+  {key:'whatsapp',scope:'workspace',name:'WhatsApp Business',desc:'Send and receive WhatsApp messages with contacts from a shared business number.',iconColor:'#25d366',method:'oauth',comingSoon:true,scopes:['Send & receive WhatsApp messages','Read delivery & read status','Use your WhatsApp Business number'],cat:'Communication'},
+  {key:'sending-domain',scope:'workspace',name:'Sending domain',desc:"The domain your team's marketing & sequence emails send from. Verify DNS (DKIM / SPF) once for everyone — the org's outbound domain, not anyone's personal inbox.",iconColor:'#0ea5e9',Icon:I.Globe,method:'key',fields:[{k:'domain',l:'Sending domain',ph:'mail.yourcompany.com',req:true},{k:'from',l:'Default from address',ph:'hello@yourcompany.com'}],connectHint:"Add the domain you'll send from, then publish the DKIM & SPF records we generate at your DNS provider.",scopes:['Verify domain ownership (DKIM / SPF)','Send sequence & campaign email from it'],successMsg:'Domain verified — sequences and campaigns now send from it.',cat:'Communication',meta:'mail.yourcompany.com · DKIM verified'},
+  // Ads & Leads
+  {key:'meta-ads',scope:'workspace',name:'Meta Lead Ads',desc:'Pull leads from Facebook & Instagram Lead Ad forms straight into your CRM as they come in.',iconColor:'#1877f2',method:'oauth',scopes:['Read Lead Ads forms & submissions','Read connected ad accounts'],successMsg:'New Lead Ad submissions will create leads automatically.',cat:'Ads & Leads',meta:'Syncing 2 lead forms'},
+  {key:'google-ads',scope:'workspace',name:'Google Ads Lead Forms',desc:'Capture Google Ads Lead Form extensions as leads, with campaign attribution.',iconColor:'#fbbc04',method:'oauth',scopes:['Read Lead Form submissions','Read campaign & ad group names'],successMsg:'Lead Form submissions will create leads automatically.',cat:'Ads & Leads',meta:'Attributing to campaigns'},
+  {key:'linkedin-leads',scope:'workspace',name:'LinkedIn Lead Gen',desc:'Sync LinkedIn Lead Gen Form responses into the CRM for B2B campaigns.',iconColor:'#0a66c2',method:'oauth',comingSoon:true,scopes:['Read Lead Gen Form responses','Read your ad accounts'],cat:'Ads & Leads'},
+  // Payments
+  {key:'stripe',scope:'workspace',name:'Stripe',desc:'See Stripe payments, subscriptions, and invoices alongside your CRM contacts and deals.',iconColor:'#635bff',method:'key',fields:[{k:'sk',l:'Secret key',ph:'sk_live_...',req:true},{k:'whsec',l:'Webhook signing secret',ph:'whsec_...'}],scopes:['Read payments, customers & invoices','Receive webhook events'],successMsg:'Payments now appear on matching contacts.',cat:'Payments',meta:'Live key ····4242'},
+  {key:'paypal',scope:'workspace',name:'PayPal',desc:'Match PayPal transactions to contacts and surface payment history on deals.',iconColor:'#0070ba',method:'oauth',comingSoon:true,scopes:['Read transactions','Read customer info'],cat:'Payments'},
+  {key:'quickbooks',scope:'workspace',name:'QuickBooks',desc:'Sync invoices and payment status to deals so revenue stays in lockstep with your books.',iconColor:'#2ca01c',method:'oauth',scopes:['Read invoices','Read customers'],successMsg:'Invoices will sync to matching deals.',cat:'Payments',meta:'Syncing invoices to deals'},
+  // Automation
+  {key:'zapier',scope:'workspace',name:'Zapier',desc:'Connect nrtur to 6,000+ apps — trigger Zaps on record changes or create records from anywhere.',iconColor:'#ff4a00',method:'key',fields:[{k:'key',l:'Zapier API Key',ph:'zap_live_...',req:true}],scopes:['Create & update records','Trigger Zaps from CRM events'],successMsg:'Build Zaps that create or update records.',cat:'Automation',meta:'API key active'},
+  {key:'webhooks',scope:'workspace',name:'Webhooks',desc:'Send outbound events to your own endpoints and accept inbound updates — wire nrtur into any custom system.',iconColor:'#6366f1',Icon:I.Webhook,method:'key',fields:[{k:'url',l:'Outbound endpoint URL',ph:'https://api.yourapp.com/nrtur',req:true},{k:'secret',l:'Signing secret',ph:'whsec_...'}],connectHint:'Point us at the URL that should receive events; we sign every payload with your secret.',scopes:['Send outbound events to your URLs','Accept inbound record create / update','Sign payloads with your secret'],successMsg:'Outbound + inbound webhooks are live.',cat:'Automation',meta:'Outbound + inbound active'},
+  {key:'make',scope:'workspace',name:'Make',desc:'Build visual multi-step scenarios (formerly Integromat) on top of your CRM data.',iconColor:'#6d00cc',method:'key',comingSoon:true,scopes:['Create & update records','Trigger scenarios from events'],cat:'Automation'},
+  // Data
+  {key:'data-export',scope:'workspace',name:'Data export & warehouse',desc:'Scheduled CSV exports and a sync to BigQuery / Snowflake / Redshift for BI and analytics.',iconColor:'#38bdf8',Icon:I.Cloud,method:'key',fields:[{k:'dest',l:'Warehouse / destination',ph:'bigquery://project.dataset'}],scopes:['Read all CRM objects','Write to your warehouse / storage'],successMsg:'Nightly export scheduled to your warehouse.',cat:'Data',meta:'Nightly export · BigQuery'},
+  {key:'segment',scope:'workspace',name:'Segment',desc:'Pipe product events into nrtur as contact activity for a full customer timeline.',iconColor:'#52bd95',method:'key',fields:[{k:'write',l:'Write key',ph:'...',req:true}],scopes:['Receive product events as activity'],successMsg:'Events will log as contact activity.',cat:'Data',meta:'Events logging as activity'},
   {key:'hubspot',scope:'workspace',name:'HubSpot',desc:'One-way import contacts and companies from HubSpot into the workspace.',iconColor:'#ff7a59',method:'oauth',scopes:['Read contacts & companies','Read deals'],successMsg:'Your HubSpot records are importing now.',cat:'Data',meta:'Importing contacts & companies'},
-  {key:'quickbooks',scope:'workspace',name:'QuickBooks',desc:'Sync invoices and payment status to deals.',iconColor:'#2ca01c',method:'oauth',scopes:['Read invoices','Read customers'],successMsg:'Invoices will sync to matching deals.',cat:'Payments',meta:'Syncing invoices to deals'},
-  {key:'segment',scope:'workspace',name:'Segment',desc:'Pipe product events into nrtur as activity (data warehouse / analytics).',iconColor:'#52bd95',method:'key',fields:[{k:'write',l:'Write key',ph:'...',req:true}],successMsg:'Events will log as contact activity.',cat:'Data',meta:'Events logging as activity'},
-  // ── User-level: every teammate connects their own, lives under My account ──
+
+  // ══ User-level: every teammate connects their OWN — lives under My account → My integrations ══
+  // Calendar (personal — each user syncs their own calendar; richer 2-way sync on the calendar page)
+  {key:'google-calendar',scope:'user',name:'Google Calendar',desc:'Two-way sync your Google Calendar so bookings and meetings stay current on both sides.',iconColor:'#4285f4',Icon:I.Calendar,method:'oauth',scopes:['Read & write calendar events','Read your free / busy times'],successMsg:'Your Google Calendar is syncing both ways.',cat:'Calendar',configPage:'settings-calendar-personal',meta:'2-way sync on'},
+  {key:'outlook-calendar',scope:'user',name:'Outlook / Microsoft 365',desc:'Two-way sync your Outlook or Microsoft 365 calendar with availability and bookings.',iconColor:'#0078d4',Icon:I.Calendar,method:'oauth',scopes:['Read & write calendar events','Read your free / busy times'],successMsg:'Your Outlook calendar is syncing both ways.',cat:'Calendar',configPage:'settings-calendar-personal'},
+  {key:'apple-calendar',scope:'user',name:'Apple / iCloud Calendar',desc:'Sync iCloud Calendar via a CalDAV connection so Apple events show up in nrtur.',iconColor:'#9ca3af',Icon:I.Calendar,method:'key',fields:[{k:'applepw',l:'App-specific password',ph:'xxxx-xxxx-xxxx-xxxx',req:true}],connectHint:'Generate an app-specific password at appleid.apple.com, then paste it here.',scopes:['Read & write calendar events','Read your free / busy times'],successMsg:'iCloud Calendar is now syncing.',cat:'Calendar',configPage:'settings-calendar-personal'},
+  // Video (personal — your own meeting links auto-added to events you host)
+  {key:'zoom',scope:'user',name:'Zoom',desc:'Auto-create Zoom meetings and drop join links into the events you schedule.',iconColor:'#2d8cff',Icon:I.Video,method:'oauth',scopes:['Create Zoom meetings on your behalf','Add join links to your events'],successMsg:'New meetings will include a Zoom link.',cat:'Video',meta:'Adding links to meetings'},
+  {key:'google-meet',scope:'user',name:'Google Meet',desc:'Attach Google Meet links to meetings you host straight from your Google account.',iconColor:'#00ac47',Icon:I.Video,method:'oauth',scopes:['Create Meet links on your behalf','Add join links to your events'],successMsg:'New meetings will include a Meet link.',cat:'Video'},
+  {key:'ms-teams',scope:'user',name:'Microsoft Teams',desc:'Generate Microsoft Teams meeting links for the calls and demos you schedule.',iconColor:'#6264a7',Icon:I.Video,method:'oauth',scopes:['Create Teams meetings on your behalf','Add join links to your events'],successMsg:'New meetings will include a Teams link.',cat:'Video'},
+  // Notifications (personal)
   {key:'slackdm',scope:'user',name:'Slack (personal DM)',desc:'Get your own task reminders and @mentions as Slack direct messages — just for you.',iconColor:'#4a154b',method:'oauth',scopes:['Send you direct messages','Read your Slack identity'],successMsg:'Your reminders will arrive as Slack DMs.',cat:'Notifications',meta:'Reminders arrive as DMs'},
 ];
 // Shared category taxonomy — one icon per category, in display order. Reused by every card,
@@ -13155,12 +13268,14 @@ const INTG_DEFS=[
 const INTG_CATS={
   Communication:{Icon:I.Phone},
   Calendar:{Icon:I.Calendar},
+  Video:{Icon:I.Video},
+  'Ads & Leads':{Icon:I.Megaphone},
   Payments:{Icon:I.CreditCard},
   Automation:{Icon:I.Zap},
   Data:{Icon:I.Layers},
   Notifications:{Icon:I.Bell},
 };
-const CAT_ORDER=['Communication','Calendar','Payments','Automation','Data','Notifications'];
+const CAT_ORDER=['Communication','Calendar','Video','Ads & Leads','Payments','Automation','Data','Notifications'];
 const integMatch=(text,q)=>!q||(text||'').toLowerCase().includes(q.trim().toLowerCase());
 // Scope badge: makes "personal vs workspace" obvious at a glance, even in a mixed list.
 // Personal = neutral chip; Workspace = brand tint. Reuses the existing chip language.
@@ -13176,25 +13291,66 @@ function CatChip({cat}){
 // Polished, consistent integration card: icon, name, category chip + scope badge, description,
 // an inline "key setting" line once connected, and a clear state — Connect (outlined) vs
 // Connected ✓ (emerald) with Configure / Disconnect. Connected cards get a subtle emerald frame.
-function IntegCard({intg,on,onConnect,onConfigure,onDisconnect}){
+function IntegCard({intg,on,comingSoon,onOpen,onConnect,onConfigure,onDisconnect}){
   const Icon=intg.Icon;
-  return(<div className={['rounded-2xl border p-5 flex flex-col transition-all',on?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
+  return(<div onClick={onOpen} role="button" tabIndex={0} onKeyDown={e=>{if(onOpen&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onOpen();}}} className={['group/intg rounded-2xl border p-5 flex flex-col cursor-pointer transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-500/40',on?'border-emerald-500/25 bg-emerald-500/[0.04]':comingSoon?'border-white/[0.05] bg-white/[0.02] hover:border-white/[0.09]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
     <div className="flex items-start gap-3 mb-3">
       <div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-[14px] shrink-0" style={{background:intg.iconColor+'20',color:intg.iconColor,border:'1px solid '+intg.iconColor+'30'}}>{Icon?<Icon size={17}/>:intg.name.slice(0,1)}</div>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold text-white truncate">{intg.name}</p>
         <div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat={intg.cat}/>{intg.scope&&<ScopeBadge scope={intg.scope}/>}</div>
       </div>
-      {on&&<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0"><I.Check size={11} stroke={2.5}/>Connected</span>}
+      {on?<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0"><I.Check size={11} stroke={2.5}/>Connected</span>:comingSoon?<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-white/[0.05] text-white/45 ring-1 ring-white/[0.10] shrink-0"><I.Clock size={10}/>Soon</span>:null}
     </div>
     <p className="text-[12px] text-white/50 leading-relaxed flex-1">{intg.desc}</p>
     {on&&intg.meta&&<div className="mt-3 pt-3 border-t border-white/[0.05] flex items-center gap-2 text-[11.5px] text-white/55"><I.Check size={12} className="text-emerald-300/70 shrink-0"/><span className="truncate">{intg.meta}</span></div>}
     <div className="mt-4 flex items-center gap-2">
-      {on?(<><button onClick={onConfigure} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Settings size={11}/>Configure</button><button onClick={onDisconnect} className="ml-auto text-[12px] font-medium text-red-300 hover:text-red-200 px-2 py-1.5">Disconnect</button></>):(<button onClick={onConnect} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plug size={12}/>Connect</button>)}
+      <div className="flex items-center gap-2 flex-1 min-w-0" onClick={e=>e.stopPropagation()}>
+        {comingSoon?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/40 bg-white/[0.03] border border-white/[0.07] cursor-default"><I.Clock size={11}/>Coming soon</span>):on?(<><button onClick={onConfigure} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Settings size={11}/>Configure</button><button onClick={onDisconnect} className="text-[12px] font-medium text-red-300 hover:text-red-200 px-2 py-1.5">Disconnect</button></>):(<button onClick={onConnect} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plug size={12}/>Connect</button>)}
+      </div>
+      <span className="ml-auto shrink-0 text-[11px] text-white/30 inline-flex items-center gap-0.5 opacity-0 group-hover/intg:opacity-100 transition-opacity">Details<I.ChevronRight size={12}/></span>
     </div>
   </div>);
 }
-// Category section: header (icon + name + count) over a responsive cards grid (3→2→1 col on mobile).
+// Detail drawer — opens when a card is clicked. Right-side drawer on desktop, bottom sheet on
+// mobile (sheetUp / arIn). Consistent across every integration & both scopes: what it does, the
+// scope, the permissions it needs, and a single Connect / Configure / Disconnect action. `readOnly`
+// (workspace integration + non-admin) shows the managed-by-admin note and disables connect.
+function IntegDetailDrawer({intg,on,comingSoon,readOnly,onConnect,onConfigure,onDisconnect,onNavigate,close}){
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[close]);
+  const Icon=intg.Icon;
+  const ws=intg.scope==='workspace';
+  const perms=intg.scopes||['Read & write access','Sync data both ways'];
+  const EY='text-[10px] font-medium text-white/40 uppercase tracking-[0.16em] mb-2';
+  const act=(fn)=>{fn&&fn();close();};
+  return(<div className="fixed inset-0 z-[180] flex items-end sm:items-stretch sm:justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div className="w-full sm:w-[460px] sm:max-w-full max-h-[90vh] sm:max-h-none sm:h-full flex flex-col border-t sm:border-t-0 sm:border-l border-white/[0.10] rounded-t-2xl sm:rounded-none animate-[sheetUp_.24s_ease] sm:animate-[arIn_.22s_ease]" style={{background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-[16px] shrink-0" style={{background:intg.iconColor+'22',color:intg.iconColor,border:'1px solid '+intg.iconColor+'40'}}>{Icon?<Icon size={18}/>:intg.name[0]}</div>
+          <div className="min-w-0"><p className="text-white text-[15px] font-semibold truncate">{intg.name}</p><div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat={intg.cat}/>{intg.scope&&<ScopeBadge scope={intg.scope}/>}</div></div>
+        </div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-5">
+        {on&&<div className="rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-emerald-200"><I.Check size={13} stroke={2.5} className="shrink-0"/><span className="min-w-0"><span className="font-semibold">Connected.</span>{intg.meta?<span className="text-emerald-200/80"> {intg.meta}</span>:null}</span></div>}
+        {comingSoon&&<div className="rounded-xl bg-white/[0.03] border border-white/[0.08] px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-white/70"><I.Clock size={13} className="shrink-0 text-white/45"/><span><span className="font-semibold text-white">Coming soon.</span> The backend for this is not live yet — it will be connectable in an upcoming release.</span></div>}
+        {readOnly&&!comingSoon&&<div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-amber-200"><I.Lock size={13} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> Workspace connections are set up once for everyone — ask an admin to connect this.</span></div>}
+        <div><p className={EY}>What it does</p><p className="text-[13px] text-white/70 leading-relaxed">{intg.longDesc||intg.desc}</p></div>
+        <div><p className={EY}>Permissions needed</p><div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-3.5 flex flex-col gap-2">{perms.map(sc=>(<div key={sc} className="flex items-center gap-2 text-[12px] text-white/70"><I.Check size={12} className="text-emerald-300 shrink-0"/>{sc}</div>))}</div></div>
+        <div><p className={EY}>Scope</p><div className="flex items-start gap-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] px-3.5 py-3">{ws?<I.Building size={15} className="shrink-0 mt-0.5 text-brand-300"/>:<I.UserCog size={15} className="shrink-0 mt-0.5 text-white/55"/>}<p className="text-[12px] text-white/60 leading-relaxed">{ws?'Workspace connection — an admin connects it once and the whole team shares it.':'Personal connection — every teammate connects their own; it is never shared with the workspace.'}</p></div></div>
+        {intg.configPage&&<button onClick={()=>{onNavigate&&onNavigate(intg.configPage);close();}} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Settings size={13}/>Manage sync &amp; availability<I.ChevronRight size={13}/></button>}
+      </div>
+      <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
+        <div className="ml-auto flex items-center gap-2">
+          {comingSoon?(<span className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/40 bg-white/[0.04] border border-white/[0.08] cursor-default"><I.Clock size={13}/>Coming soon</span>):on?(<><button onClick={()=>act(onConfigure)} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Settings size={13}/>Configure</button><button onClick={()=>act(onDisconnect)} className="px-3 py-2.5 rounded-xl text-[13px] font-medium text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-all">Disconnect</button></>):(<button onClick={()=>act(onConnect)} disabled={readOnly} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',readOnly?'text-white/30 bg-white/[0.06] cursor-not-allowed':'text-white bg-brand-500 hover:bg-brand-400 shadow-brand'].join(' ')}><I.Plug size={13}/>Connect</button>)}
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+// Category section: header (icon + name + count) over a responsive cards grid (3/2/1 columns).
 function CatSection({cat,count,children}){
   const Ic=(INTG_CATS[cat]||{}).Icon||I.Plug;
   return(<div>
@@ -13256,13 +13412,15 @@ function SettingsIntegrationsPage({goTo}){
   const [revealKey,setRevealKey]=React.useState(false);
   const [copied,setCopied]=React.useState(false);
   const apiKey='nrtur_sk_live_8Kd2mP9xQ7vR4nL6wY3tB1cF';
+  const [detail,setDetail]=React.useState(null);
+  const wsReadOnly=!settingsIsAdmin();
   const smsConnected=conns.twilio||conns.vonage;
   // Workspace page shows ONLY workspace-scoped integrations — an admin connects these once for everyone.
   const wsIntgs=INTG_DEFS.filter(i=>i.scope==='workspace');
   // One unified card list (apps + SMS providers) — each a descriptor the browser searches, filters & groups.
   const cards=[];
-  wsIntgs.forEach(intg=>{const on=!!conns[intg.key];cards.push({key:intg.key,cat:intg.cat,on,q:intg.name+' '+intg.desc+' '+intg.cat,node:<IntegCard key={intg.key} intg={intg} on={on} onConnect={()=>setGenModal(intg)} onConfigure={()=>setGenModal(intg)} onDisconnect={()=>{disconnect(intg.key);custToast(intg.name+' disconnected');}}/>});});
-  [{key:'twilio',name:'Twilio',desc:'Send and receive SMS via Twilio. Powers SMS Inbox and SMS Sequences.',iconColor:'#e13128',cat:'Communication',scope:'workspace',meta:'+1 415-555-0100',open:()=>setTwilioModal(true)},{key:'vonage',name:'Vonage',desc:'Send and receive SMS via Vonage (formerly Nexmo).',iconColor:'#6a55fa',cat:'Communication',scope:'workspace',meta:'+1 415-555-0100',open:()=>setVonageModal(true)}].forEach(p=>{const on=!!conns[p.key];cards.push({key:p.key,cat:p.cat,on,q:p.name+' '+p.desc+' SMS text messaging '+p.cat,node:<IntegCard key={p.key} intg={p} on={on} onConnect={p.open} onConfigure={p.open} onDisconnect={()=>{disconnect(p.key);custToast(p.name+' disconnected');}}/>});});
+  wsIntgs.forEach(intg=>{const on=!!conns[intg.key];const cs=!!intg.comingSoon;const open=()=>{if(cs){custToast(intg.name+' — coming soon');return;}setGenModal(intg);};const h={onConnect:open,onConfigure:open,onDisconnect:()=>{disconnect(intg.key);custToast(intg.name+' disconnected');}};cards.push({key:intg.key,cat:intg.cat,on,q:intg.name+' '+intg.desc+' '+intg.cat,node:<IntegCard key={intg.key} intg={intg} on={on} comingSoon={cs} onOpen={()=>setDetail({intg,on,comingSoon:cs,...h})} {...h}/>});});
+  [{key:'twilio',name:'Twilio',desc:'Send and receive SMS via Twilio. Powers SMS Inbox and SMS Sequences.',iconColor:'#e13128',cat:'Communication',scope:'workspace',meta:'+1 415-555-0100',scopes:['Send & receive SMS / MMS','Use your Twilio number'],open:()=>setTwilioModal(true)},{key:'vonage',name:'Vonage',desc:'Send and receive SMS via Vonage (formerly Nexmo).',iconColor:'#6a55fa',cat:'Communication',scope:'workspace',meta:'+1 415-555-0100',scopes:['Send & receive SMS','Use your Vonage number'],open:()=>setVonageModal(true)}].forEach(p=>{const on=!!conns[p.key];const h={onConnect:p.open,onConfigure:p.open,onDisconnect:()=>{disconnect(p.key);custToast(p.name+' disconnected');}};cards.push({key:p.key,cat:p.cat,on,q:p.name+' '+p.desc+' SMS text messaging '+p.cat,node:<IntegCard key={p.key} intg={p} on={on} onOpen={()=>setDetail({intg:p,on,...h})} {...h}/>});});
   const connectedCount=cards.filter(c=>c.on).length;
   return(
     <SettingsShell active="settings-integrations" goTo={goTo} subtitle={'Connections your whole workspace shares. '+connectedCount+' active.'}>
@@ -13286,6 +13444,7 @@ function SettingsIntegrationsPage({goTo}){
           <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/[0.05]"><div className="flex items-center gap-4 text-[11px] text-white/40"><span>Created Jan 4, 2026</span><span>·</span><span>Last used 2h ago</span><span>·</span><span>Rate limit 1,000 req/min</span></div><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-all"><I.History size={12}/>Rotate key</button></div>
         </div>
       </div>
+      {detail&&<IntegDetailDrawer {...detail} readOnly={wsReadOnly} onNavigate={goTo} close={()=>setDetail(null)}/>}
       {twilioModal&&<TwilioSetupModal close={()=>setTwilioModal(false)} onConnected={()=>connect('twilio')}/>}
       {vonageModal&&<VonageSetupModal close={()=>setVonageModal(false)} onConnected={()=>connect('vonage')}/>}
       {genModal&&<GenericConnectModal intg={genModal} close={()=>setGenModal(null)} onConnected={()=>connect(genModal.key)}/>}
@@ -13303,36 +13462,29 @@ function SettingsMyIntegrationsPage({goTo}){
   const [mailboxModal,setMailboxModal]=React.useState(false);
   const [genModal,setGenModal]=React.useState(null);
   const [myConns,setMyConns]=React.useState({}); // personal app connections — per user, not shared
+  const [detail,setDetail]=React.useState(null);
+  const mailboxIntg={name:'My inbox sync',desc:"Connect your own Gmail, Outlook / Microsoft 365, or IMAP mailbox so the email you send & receive logs to the CRM automatically — your personal inbox, not the org's sending domain.",cat:'Communication',scope:'user',iconColor:'#6366f1',Icon:I.Mail,scopes:['Read & send email from your mailbox','Log sent & received mail to contacts']};
   const userIntgs=INTG_DEFS.filter(i=>i.scope==='user');
   const mailboxOn=ma.accounts.length>0;
   // Personal mailbox uses the shared multi-account MailAccountsContext — rendered as a bespoke card
   // but slotted into the same category browser as everything else.
-  const mailboxNode=(<div key="mailbox" className={['rounded-2xl border p-5 flex flex-col transition-all',mailboxOn?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
+  const mailboxNode=(<div key="mailbox" onClick={()=>setDetail({intg:mailboxIntg,on:mailboxOn,onConnect:()=>setMailboxModal(true),onConfigure:()=>setMailboxModal(true)})} role="button" tabIndex={0} className={['group/intg rounded-2xl border p-5 flex flex-col cursor-pointer transition-all',mailboxOn?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
     <div className="flex items-start gap-3 mb-3">
       <div className="w-10 h-10 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.Mail size={17}/></div>
       <div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white truncate">My inbox sync</p><div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat="Communication"/><ScopeBadge scope="user"/></div></div>
       {mailboxOn&&<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0"><I.Check size={11} stroke={2.5}/>Connected</span>}
     </div>
     <p className="text-[12px] text-white/50 leading-relaxed flex-1">Connect your own Gmail, Outlook / Microsoft 365, or IMAP mailbox so the email you send &amp; receive logs to the CRM automatically — your personal inbox, not the org's sending domain.</p>
-    {mailboxOn&&<div className="mt-3 pt-3 border-t border-white/[0.05] flex flex-col gap-1.5">{ma.accounts.map(a=>(
+    {mailboxOn&&<div onClick={e=>e.stopPropagation()} className="mt-3 pt-3 border-t border-white/[0.05] flex flex-col gap-1.5">{ma.accounts.map(a=>(
       <div key={a.addr} className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:a.color}}>{a.initials}</span><span className="min-w-0 flex-1"><span className="block text-[12px] text-white/85 truncate">{a.addr}</span><span className="text-[10px] text-emerald-400 inline-flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-emerald-400"/>Synced</span></span>{a.provider&&<ProviderBadge provider={a.provider}/>}<button onClick={()=>ma.disconnect(a.addr)} className="text-[11px] font-medium text-red-300 hover:text-red-200 shrink-0">Remove</button></div>
     ))}</div>}
-    <div className="mt-4"><button onClick={()=>setMailboxModal(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12} stroke={2.4}/>{mailboxOn?'Add another inbox':'Connect inbox'}</button></div>
+    <div className="mt-4" onClick={e=>e.stopPropagation()}><button onClick={()=>setMailboxModal(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12} stroke={2.4}/>{mailboxOn?'Add another inbox':'Connect inbox'}</button></div>
   </div>);
-  // Personal calendar connects on its own page (alongside availability) — surfaced here for discovery.
-  const calNode=(<div key="calendar" className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10] transition-all p-5 flex flex-col">
-    <div className="flex items-start gap-3 mb-3">
-      <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/55 flex items-center justify-center shrink-0"><I.Calendar size={17}/></div>
-      <div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white truncate">My calendar</p><div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat="Calendar"/><ScopeBadge scope="user"/></div></div>
-    </div>
-    <p className="text-[12px] text-white/50 leading-relaxed flex-1">Connect Google, Outlook, or Apple calendar so your bookings and meetings stay in sync, with a 2-way sync toggle. Managed alongside your availability.</p>
-    <div className="mt-4"><button onClick={()=>goTo('settings-calendar-personal')} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Calendar size={12}/>Set up calendar</button></div>
-  </div>);
+  // Calendar providers are now individual catalog cards (google/outlook/apple-calendar in INTG_DEFS); each detail drawer deep-links to settings-calendar-personal for 2-way sync & availability.
   const cards=[
     {key:'mailbox',cat:'Communication',on:mailboxOn,q:'my inbox sync mailbox email gmail outlook microsoft 365 imap',node:mailboxNode},
-    {key:'calendar',cat:'Calendar',on:false,q:'my calendar google outlook apple sync availability bookings',node:calNode},
   ];
-  userIntgs.forEach(intg=>{const on=!!myConns[intg.key];cards.push({key:intg.key,cat:intg.cat,on,q:intg.name+' '+intg.desc+' '+intg.cat,node:<IntegCard key={intg.key} intg={intg} on={on} onConnect={()=>setGenModal(intg)} onConfigure={()=>setGenModal(intg)} onDisconnect={()=>{setMyConns(m=>{const n={...m};delete n[intg.key];return n;});custToast(intg.name+' disconnected');}}/>});});
+  userIntgs.forEach(intg=>{const on=!!myConns[intg.key];const cs=!!intg.comingSoon;const open=()=>{if(cs){custToast(intg.name+' — coming soon');return;}setGenModal(intg);};const h={onConnect:open,onConfigure:open,onDisconnect:()=>{setMyConns(m=>{const n={...m};delete n[intg.key];return n;});custToast(intg.name+' disconnected');}};cards.push({key:intg.key,cat:intg.cat,on,q:intg.name+' '+intg.desc+' '+intg.cat,node:<IntegCard key={intg.key} intg={intg} on={on} comingSoon={cs} onOpen={()=>setDetail({intg,on,comingSoon:cs,...h})} {...h}/>});});
   return(
     <SettingsShell active="settings-my-integrations" goTo={goTo} subtitle="Your personal connections — each teammate connects their own.">
       {/* Personal scope note */}
@@ -13341,6 +13493,7 @@ function SettingsMyIntegrationsPage({goTo}){
       </div>
       {/* Categorised, searchable, filterable browser */}
       <IntegBrowser cards={cards}/>
+      {detail&&<IntegDetailDrawer {...detail} readOnly={false} onNavigate={goTo} close={()=>setDetail(null)}/>}
       {mailboxModal&&<MailboxConnectModal close={()=>setMailboxModal(false)} onConnected={(acct)=>ma.connect(acct)}/>}
       {genModal&&<GenericConnectModal intg={genModal} close={()=>setGenModal(null)} onConnected={()=>setMyConns(m=>({...m,[genModal.key]:true}))}/>}
     </SettingsShell>
@@ -14605,6 +14758,8 @@ function EngagementModal({flow,close}){
   );
 }
 const AUTO_TEMPLATES=[
+  {name:'No-show recovery',cat:'Scheduling',trigger:'Appointment no-show',steps:['Send a reschedule SMS with your booking link','Notify the deal owner','Move the deal back a stage']},
+  {name:'Reminder cadence',cat:'Scheduling',trigger:'Appointment booked',steps:['Send a confirmation email','Send a 24h-before email reminder','Send a 2h-before SMS reminder']},
   {name:'New Lead Welcome',cat:'Lead Management',trigger:'Contact created',steps:['Assign to a sales rep','Send welcome email','Create a follow-up task']},
   {name:'Deal Won Celebration',cat:'Pipeline',trigger:'Deal moved to Won',steps:['Notify the team in Slack','Send a thank-you email','Create onboarding task']},
   {name:'Follow-up Sequence',cat:'Communication',trigger:'No reply in 3 days',steps:['Wait 3 days','Send a follow-up email','Notify the deal owner']},
@@ -14802,7 +14957,7 @@ let _blkId=1;const newBlockId=()=>'b'+(_blkId++)+'_'+Math.random().toString(36).
 function toBlocks(form){
   if(form&&form.blocks)return JSON.parse(JSON.stringify(form.blocks));
   const fs=(form&&form.fields)||[];
-  return fs.map(f=>({id:newBlockId(),kind:'field',type:f.type,label:f.label,map:f.map,required:!!f.required,options:f.options,placeholder:'',width:'full'}));
+  return fs.map(f=>({id:newBlockId(),kind:'field',type:f.type,label:f.label,map:f.map,required:!!f.required,options:f.options,capture:f.capture,placeholder:f.placeholder||'',width:f.width||'full'}));
 }
 // Build a fresh block from a palette key
 function makeBlock(key,isLayout){
@@ -14820,12 +14975,16 @@ function makeBlock(key,isLayout){
   return{id,kind:'field',type:key,label:FORM_TYPE_LABEL[key]||'Field',map:'Do not map',required:false,options:hasOpts?['Option 1','Option 2']:undefined,placeholder:key==='url'?'https://…':'',width:'full'};
 }
 const CONTACT_MAP_FIELDS=['First name','Last name','Email','Phone','Company','Job title','Website','Status','Lead source','Consent (opt-in)','Tag','Do not map'];
+// Form on-submit wiring options (one source of truth, reused by builder + list chain)
+const FORM_TAGS=['lead','demo-requested','newsletter','vip-prospect','trial-user','contact-us','pricing-inquiry','event-attendee'];
+const FORM_DEAL_STAGES=STAGES_DATA.map(s=>s.name);
+const FORM_TASK_ASSIGNEES=['Contact owner','Deal owner',...TEAM_MEMBERS.map(m=>m.name)];
 const ALL_SEQ_NAMES=['None',...EMAIL_SEQ_DATA.map(s=>s.name),...SEQ_DATA.map(s=>s.name)];
 const FORM_NOTIFY_OPTS=['None','Deal owner','#sales','#leads',...TEAM_MEMBERS.map(m=>m.name)];
 const FORMS_DATA=[
   {id:1,name:'Request a Demo',status:'active',submissions:184,conversion:42,created:'Apr 2',spark:[5,7,6,9,11,8,12,10,14,13,16,15,18,21],
-   fields:[{id:1,label:'Full name',type:'text',map:'First name',required:true},{id:2,label:'Work email',type:'email',map:'Email',required:true},{id:3,label:'Company',type:'company',map:'Company',required:true},{id:4,label:'Company size',type:'dropdown',map:'Do not map',required:false,options:['1-10','11-50','51-200','200+']}],
-   onSubmit:{automations:['New Lead Welcome Sequence','Proposal Follow-Up','Deal Won Celebration'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! Our team will reach out within one business day.',redirect:''}},
+   fields:[{id:1,label:'Full name',type:'text',map:'First name',required:true},{id:2,label:'Work email',type:'email',map:'Email',required:true},{id:3,label:'Company',type:'company',map:'Company',required:true},{id:4,label:'Company size',type:'dropdown',map:'Do not map',required:false,options:['1-10','11-50','51-200','200+']},{id:5,label:'utm_source',type:'hidden',map:'Lead source',capture:'utm_source',required:false},{id:6,label:'Marketing consent',type:'consent',map:'Consent (opt-in)',required:true}],
+   onSubmit:{recordType:'contact',applyTag:'demo-requested',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Qualified',createTask:true,taskTitle:'Follow up on demo request',taskAssignee:'Deal owner',automations:['New Lead Welcome Sequence','Proposal Follow-Up','Deal Won Celebration'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! Our team will reach out within one business day.',redirect:''}},
   {id:2,name:'Contact Us',status:'active',submissions:97,conversion:100,created:'Mar 18',spark:[3,4,3,5,4,6,5,7,6,5,7,8,6,9],
    fields:[{id:1,label:'Name',type:'text',map:'First name',required:true},{id:2,label:'Email',type:'email',map:'Email',required:true},{id:3,label:'How can we help?',type:'textarea',map:'Do not map',required:true}],
    onSubmit:{automations:['New Lead Welcome Sequence'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Got it — we will be in touch shortly.',redirect:''}},
@@ -14834,7 +14993,7 @@ const FORMS_DATA=[
    onSubmit:{automations:['Cold Lead Nurture'],after:'thankyou',thankHeading:'You are subscribed!',thankyou:'You are subscribed. Watch your inbox!',redirect:''}},
   {id:4,name:'Pricing Inquiry',status:'paused',submissions:63,conversion:55,created:'Mar 30',spark:[4,5,6,5,7,6,5,4,3,2,2,1,1,0],
    fields:[{id:1,label:'Full name',type:'text',map:'First name',required:true},{id:2,label:'Work email',type:'email',map:'Email',required:true},{id:3,label:'Budget range',type:'dropdown',map:'Do not map',required:false,options:['Under $5k','$5k-$20k','$20k-$50k','$50k+']}],
-   onSubmit:{automations:['Proposal Follow-Up'],after:'redirect',thankyou:'',redirect:'https://nrtur.com/thank-you'}},
+   onSubmit:{recordType:'lead',applyTag:'pricing-inquiry',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Qualified',automations:['Proposal Follow-Up'],after:'redirect',thankyou:'',redirect:'https://nrtur.com/thank-you'}},
   {id:5,name:'Event Registration',status:'draft',submissions:0,conversion:0,created:'May 24',spark:[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
    fields:[{id:1,label:'Name',type:'text',map:'First name',required:true},{id:2,label:'Email',type:'email',map:'Email',required:true},{id:3,label:'Will you attend in person?',type:'checkbox',map:'Do not map',required:false}],
    onSubmit:{automations:[],after:'thankyou',thankHeading:'You are registered!',thankyou:'You are registered — see you there!',redirect:''}},
@@ -14871,11 +15030,11 @@ const FORM_TEMPLATES=[
 ];
 let _formSeed=null;const setFormSeed=(s)=>{_formSeed=s;};
 const FORM_SUBMISSIONS=[
-  {form:'Request a Demo',contact:'Olivia Park',avatar:'OP',color:'#3b82f6',time:'12m ago',summary:'Acme Inc · 51-200',fired:'Enrolled in New Lead Nurture · assigned to Alex'},
-  {form:'Request a Demo',contact:'Daniel Cho',avatar:'DC',color:'#8b5cf6',time:'1h ago',summary:'Cho Studio · 11-50',fired:'Started New Lead Welcome automation'},
-  {form:'Newsletter Signup',contact:'Mia Russo',avatar:'MR',color:'#10b981',time:'3h ago',summary:'mia@russo.co',fired:'Tagged newsletter · enrolled in nurture'},
-  {form:'Contact Us',contact:'Noah Kim',avatar:'NK',color:'#f59e0b',time:'Yesterday',summary:'Question about API',fired:'Task created for Deal owner'},
-  {form:'Pricing Inquiry',contact:'Ava Nguyen',avatar:'AN',color:'#ec4899',time:'Yesterday',summary:'$20k-$50k',fired:'Assigned to Sarah · Slack #sales'},
+  {form:'Request a Demo',contact:'Olivia Park',avatar:'OP',color:'#3b82f6',time:'12m ago',summary:'Acme Inc · 51-200',src:'google / cpc · brand-search',fired:'Contact updated · tag demo-requested · deal created · enrolled in New Lead Welcome'},
+  {form:'Request a Demo',contact:'Daniel Cho',avatar:'DC',color:'#8b5cf6',time:'1h ago',summary:'Cho Studio · 11-50',src:'linkedin / social',fired:'Contact created · tag demo-requested · Started New Lead Welcome'},
+  {form:'Newsletter Signup',contact:'Mia Russo',avatar:'MR',color:'#10b981',time:'3h ago',summary:'mia@russo.co',src:'newsletter-footer / referral',fired:'Contact created · tagged newsletter · enrolled in nurture'},
+  {form:'Contact Us',contact:'Noah Kim',avatar:'NK',color:'#f59e0b',time:'Yesterday',summary:'Question about API',src:'direct / none',fired:'Contact updated · Task created for Deal owner'},
+  {form:'Pricing Inquiry',contact:'Ava Nguyen',avatar:'AN',color:'#ec4899',time:'Yesterday',summary:'$20k-$50k',src:'google / cpc · pricing',fired:'Lead created · deal created · Assigned to Sarah'},
 ];
 // Post-submit CRM logic now lives entirely in automations. A form's onSubmit
 // only carries the visitor confirmation (after/thankyou/redirect) + the list of
@@ -14887,7 +15046,15 @@ function formAutoNames(o){
   return [];
 }
 function onSubmitChips(o){
-  return ['Create / update contact',(o&&o.after==='redirect')?'Redirect visitor':'Show thank-you message'];
+  o=o||{};
+  const chips=[o.recordType==='lead'?'Create / update lead':'Create / update contact'];
+  if(o.applyTag&&o.applyTag!=='none'&&o.applyTag!=='')chips.push('Tag: '+o.applyTag);
+  if(o.createDeal)chips.push('Create deal');
+  if(o.createTask)chips.push('Create task');
+  const autos=formAutoNames(o);
+  if(autos.length)chips.push(autos.length+' automation'+(autos.length!==1?'s':''));
+  chips.push(o.after==='redirect'?'Redirect visitor':'Thank-you message');
+  return chips;
 }
 // Backlink view: how many + which automations a form triggers on submit.
 // Reused on the form builder (open) and the Forms list (compact/collapsible).
@@ -14943,6 +15110,7 @@ function FormSubmissionsModal({form,close}){
           {rows.length===0?(<div className="text-center py-10"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/25"><I.Note size={20}/></div><p className="text-[13px] font-medium text-white/55">No submissions yet</p><p className="text-[12px] text-white/35 mt-1">Embed this form to start collecting leads.</p></div>):rows.map((s,i)=>(
             <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
               <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:s.color}}>{s.avatar}</span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{s.contact}</p><p className="text-[11px] text-white/45 truncate">{s.summary}</p></div><span className="text-[11px] text-white/35 shrink-0">{s.time}</span></div>
+              {s.src&&<div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sky-300/90"><I.Globe size={11} className="shrink-0"/><span className="truncate">Source: {s.src}</span></div>}
               <div className="mt-2 pt-2 border-t border-white/[0.05] flex items-center gap-1.5 text-[11px] text-emerald-300/90"><I.Zap size={11} className="shrink-0"/><span className="truncate">{s.fired}</span></div>
             </div>
           ))}
@@ -15095,17 +15263,85 @@ function AfterPrimaryTile({active,onClick,Icon,label}){
   </button>);
 }
 // The full "After submit" configuration panel for the form builder.
-// Two parts only: (1) what the visitor sees, (2) which automations run.
-function AfterSubmitConfig({onSub,setOS,goTo,onCreateAuto}){
+// Native on-submit wiring: create/update contact|lead (dedupe by email) -> tag -> deal -> task ->
+// automations, plus source/UTM attribution and the visitor confirmation. Renders a live chain summary.
+function AfterSubmitConfig({onSub,setOS,goTo,onCreateAuto,blocks}){
   const after=onSub.after||'thankyou';
   const INP='w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 placeholder:text-white/25';
+  const SEL=FSEL+' w-full';
   const L='text-[11px] text-white/45 block mb-1';
   const sel=Array.isArray(onSub.automations)?onSub.automations:[];
   const addAuto=(name)=>{if(name&&!sel.includes(name))setOS({automations:[...sel,name]});};
   const removeAuto=(name)=>setOS({automations:sel.filter(x=>x!==name)});
   const createAuto=()=>{if(onCreateAuto)onCreateAuto();else if(goTo)goTo('automation-builder');};
+  const recordType=onSub.recordType||'contact';
+  const applyTag=onSub.applyTag||'';
+  const hiddenFields=(blocks||[]).filter(b=>b.kind==='field'&&b.type==='hidden');
+  const mappedFields=(blocks||[]).filter(b=>b.kind==='field'&&b.map&&b.map!=='Do not map');
+  // "What happens on submit" — live chain built from the current config
+  const chain=[{Icon:I.UserPlus,c:'#34d399',t:recordType==='lead'?'Lead':'Contact',d:'created / updated'}];
+  if(applyTag&&applyTag!=='none')chain.push({Icon:I.Tag,c:'#818cf8',t:'Tag',d:applyTag});
+  if(onSub.createDeal)chain.push({Icon:I.Briefcase,c:'#22d3ee',t:'Deal',d:onSub.dealStage||FORM_DEAL_STAGES[0]});
+  if(onSub.createTask)chain.push({Icon:I.CheckSquare,c:'#a78bfa',t:'Task',d:'assigned'});
+  if(sel.length)chain.push({Icon:I.Zap,c:'#fbbf24',t:'Automation',d:sel.length+' run'+(sel.length!==1?'s':'')});
+  chain.push({Icon:after==='redirect'?I.ArrowRight:I.Check,c:'#94a3b8',t:'Visitor',d:after==='redirect'?'redirected':'thank-you'});
+  const ToggleRow=({label,desc,on,onChange,children})=>(<div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">{label}</p>{desc&&<p className="text-[11px] text-white/45 mt-0.5">{desc}</p>}</div><Toggle on={on} onChange={onChange}/></div>
+    {on&&children&&<div className="mt-3 flex flex-col gap-2.5">{children}</div>}
+  </div>);
   return(<div className="flex flex-col gap-4">
-    <div className="flex items-center gap-2.5 text-[12px] text-white/70"><span className="w-7 h-7 rounded-lg bg-emerald-500/12 text-emerald-300 flex items-center justify-center shrink-0"><I.Check size={13}/></span>Create or update the contact</div>
+    {/* live chain summary */}
+    <div className="rounded-xl bg-black/20 border border-white/[0.06] p-3">
+      <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2.5">What happens on submit</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {chain.map((s,i)=>(<React.Fragment key={i}><div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"><span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={12} stroke={2.2}/></span><div className="min-w-0"><p className="text-[11.5px] font-semibold text-white leading-none">{s.t}</p><p className="text-[10px] text-white/45 mt-0.5 truncate max-w-[120px]">{s.d}</p></div></div>{i!==chain.length-1&&<I.ArrowRight size={12} className="text-white/25 shrink-0"/>}</React.Fragment>))}
+      </div>
+    </div>
+    {/* 1 — record */}
+    <div>
+      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Create or update a record</p>
+      <div className="flex items-stretch gap-2">
+        <AfterPrimaryTile active={recordType==='contact'} onClick={()=>setOS({recordType:'contact'})} Icon={I.UserPlus} label="Contact"/>
+        <AfterPrimaryTile active={recordType==='lead'} onClick={()=>setOS({recordType:'lead'})} Icon={I.Target} label="Lead"/>
+      </div>
+      <div className="mt-2 flex items-start gap-2 rounded-lg bg-emerald-500/[0.07] border border-emerald-500/20 px-2.5 py-2"><I.Check size={11} className="text-emerald-300 shrink-0 mt-0.5"/><p className="text-[11px] text-white/55 leading-relaxed">Deduped by <span className="text-white/80 font-medium">email</span> — a matching {recordType} is updated in place, never duplicated. Mapped fields ({mappedFields.length}) write straight onto the record.</p></div>
+    </div>
+    {/* 2 — tag */}
+    <div>
+      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Apply a tag</p>
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-300/70 pointer-events-none"><I.Tag size={12}/></span>
+          <select value={applyTag} onChange={e=>setOS({applyTag:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full pl-8'}>
+            <option value="">No tag</option>{FORM_TAGS.map(t=>(<option key={t}>{t}</option>))}
+          </select>
+        </div>
+      </div>
+    </div>
+    {/* 3 — deal + task */}
+    <div className="flex flex-col gap-2.5">
+      <ToggleRow label="Create a deal" desc="Open an opportunity in your pipeline." on={!!onSub.createDeal} onChange={v=>setOS({createDeal:v})}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div><label className={L}>Pipeline</label><select value={onSub.dealPipeline||PROP_PIPELINES[0]} onChange={e=>setOS({dealPipeline:e.target.value})} style={FSEL_STYLE} className={SEL}>{PROP_PIPELINES.map(p=>(<option key={p}>{p}</option>))}</select></div>
+          <div><label className={L}>Stage</label><select value={onSub.dealStage||FORM_DEAL_STAGES[0]} onChange={e=>setOS({dealStage:e.target.value})} style={FSEL_STYLE} className={SEL}>{FORM_DEAL_STAGES.map(st=>(<option key={st}>{st}</option>))}</select></div>
+        </div>
+        <div><label className={L}>Deal name</label><input value={onSub.dealName||''} onChange={e=>setOS({dealName:e.target.value})} placeholder="{{company}} — inbound" className={INP}/></div>
+      </ToggleRow>
+      <ToggleRow label="Create a task" desc="Give a rep a follow-up to-do." on={!!onSub.createTask} onChange={v=>setOS({createTask:v})}>
+        <div><label className={L}>Task title</label><input value={onSub.taskTitle||''} onChange={e=>setOS({taskTitle:e.target.value})} placeholder="Follow up on {{form}} submission" className={INP}/></div>
+        <div><label className={L}>Assign to</label><select value={onSub.taskAssignee||FORM_TASK_ASSIGNEES[0]} onChange={e=>setOS({taskAssignee:e.target.value})} style={FSEL_STYLE} className={SEL}>{FORM_TASK_ASSIGNEES.map(a=>(<option key={a}>{a}</option>))}</select></div>
+      </ToggleRow>
+    </div>
+    {/* 4 — attribution / hidden capture */}
+    <div>
+      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Source &amp; attribution</p>
+      <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+        <div className="flex items-start gap-2"><span className="w-7 h-7 rounded-lg bg-sky-500/12 text-sky-300 flex items-center justify-center shrink-0"><I.Globe size={13}/></span><p className="text-[11.5px] text-white/55 leading-relaxed">This form is recorded as the contact's <span className="text-white/80 font-medium">source</span>, and the submission lands on their timeline as <span className="text-white/80 font-medium">“Form submitted”</span>.</p></div>
+        {hiddenFields.length>0?(<div className="mt-2.5 flex flex-col gap-1.5">{hiddenFields.map(h=>(<div key={h.id} className="flex items-center gap-2 text-[11px] flex-wrap"><span className="font-mono text-sky-300 bg-sky-500/10 ring-1 ring-sky-500/20 px-1.5 py-0.5 rounded">{h.capture||'utm_source'}</span><I.ArrowRight size={10} className="text-white/30 shrink-0"/><span className="text-white/60">{h.map&&h.map!=='Do not map'?h.map:'Lead source'}</span></div>))}</div>):(
+          <p className="text-[11px] text-white/35 mt-2.5">Add a <span className="text-white/55 font-medium">Hidden</span> field to capture UTM params, gclid or referrer for attribution.</p>
+        )}
+      </div>
+    </div>
+    {/* 5 — visitor confirmation */}
     <div>
       <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">What the visitor sees</p>
       <div className="flex items-stretch gap-2">
@@ -15123,6 +15359,7 @@ function AfterSubmitConfig({onSub,setOS,goTo,onCreateAuto}){
       </div>}
       {after==='redirect'&&<div className="mt-3"><label className={L}>Redirect URL</label><input value={onSub.redirect||''} onChange={e=>setOS({redirect:e.target.value})} placeholder="https://…" className={INP}/></div>}
     </div>
+    {/* 6 — automations */}
     <div>
       <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Run an automation on submit</p>
       <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3 flex flex-col gap-2.5">
@@ -15140,7 +15377,7 @@ function AfterSubmitConfig({onSub,setOS,goTo,onCreateAuto}){
         </select>
         <button type="button" onClick={createAuto} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-brand-200 bg-brand-500/10 hover:bg-brand-500/15 border border-brand-500/25 transition-all"><I.Plus size={12}/>Create new automation</button>
       </div>
-      <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 px-2.5 py-2"><I.Zap size={11} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-white/55 leading-relaxed">Automations handle everything that happens after submit — create deals, tasks, tags, notifications, sequences, and more.</p></div>
+      <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 px-2.5 py-2"><I.Zap size={11} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-white/55 leading-relaxed">Everything above runs natively on submit — no glue needed. Automations add anything extra: notifications, sequences, Slack, and more.</p></div>
     </div>
   </div>);
 }
@@ -15161,7 +15398,7 @@ function FormBuilderPage({goTo,initial}){
   const [headerLayout,setHeaderLayout]=React.useState(seed&&seed.headerLayout||'none');
   const [btn,setBtn]=React.useState(seed&&seed.btn||'Submit');
   const [blocks,setBlocks]=React.useState(()=>seed?toBlocks(seed):[{id:newBlockId(),kind:'field',type:'text',label:'Full name',map:'First name',required:true,width:'full'},{id:newBlockId(),kind:'field',type:'email',label:'Work email',map:'Email',required:true,width:'full'}]);
-  const OS_DEFAULTS={automations:[],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! We will be in touch soon.',thankBtn:'',thankBtnUrl:'',redirect:''};
+  const OS_DEFAULTS={recordType:'contact',applyTag:'lead',createDeal:false,dealPipeline:PROP_PIPELINES[0],dealStage:FORM_DEAL_STAGES[0],dealName:'{{company}} — inbound',createTask:false,taskTitle:'Follow up on {{form}} submission',taskAssignee:'Contact owner',automations:[],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! We will be in touch soon.',thankBtn:'',thankBtnUrl:'',redirect:''};
   const [onSub,setOnSub]=React.useState(()=>{
     const s=seed&&seed.onSubmit;
     if(!s)return {...OS_DEFAULTS};
@@ -15262,13 +15499,20 @@ function FormBuilderPage({goTo,initial}){
                           <button type="button" onClick={()=>removeBlock(b.id)} title="Remove" className="w-6 h-6 rounded-md flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 opacity-0 group-hover:opacity-100"><I.X size={13}/></button>
                         </div>
                         {b.kind==='field'&&(<React.Fragment>
-                          <input value={b.label} onChange={e=>setBlock(b.id,{label:e.target.value})} className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40" placeholder="Field label"/>
+                          <input value={b.label} onChange={e=>setBlock(b.id,{label:e.target.value})} className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40" placeholder={b.type==='consent'?'Consent statement (shown beside the checkbox)':b.type==='hidden'?'Internal field name':'Field label'}/>
                           <div className="flex flex-wrap gap-2 mt-2">
                             <select value={b.type} onChange={e=>setBlock(b.id,{type:e.target.value})} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[100px]'}>{FORM_FIELD_TYPES.map(t=>(<option key={t.key} value={t.key}>{t.label}</option>))}</select>
                             <select value={b.map} onChange={e=>setBlock(b.id,{map:e.target.value})} style={FSEL_STYLE} className={FSEL+' flex-1 min-w-[100px]'}>{CONTACT_MAP_FIELDS.map(m=>(<option key={m}>{m}</option>))}</select>
                           </div>
-                          {b.type==='dropdown'&&(<input value={(b.options||[]).join(', ')} onChange={e=>setBlock(b.id,{options:e.target.value.split(',').map(x=>x.trim()).filter(Boolean)})} placeholder="Option 1, Option 2" className="mt-2 w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
-                          <label className="mt-2 flex items-center gap-2 text-[12px] text-white/60"><Toggle on={b.required} onChange={v=>setBlock(b.id,{required:v})}/>Required</label>
+                          {(b.type==='dropdown'||b.type==='multiselect'||b.type==='radio')&&(<input value={(b.options||[]).join(', ')} onChange={e=>setBlock(b.id,{options:e.target.value.split(',').map(x=>x.trim()).filter(Boolean)})} placeholder="Option 1, Option 2, Option 3" className="mt-2 w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
+                          {['text','email','phone','number','url','textarea'].includes(b.type)&&(<input value={b.placeholder||''} onChange={e=>setBlock(b.id,{placeholder:e.target.value})} placeholder="Placeholder text (optional)" className="mt-2 w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>)}
+                          {b.type==='file'&&(<p className="mt-2 text-[11px] text-white/40 flex items-center gap-1.5"><I.Paperclip size={11}/>Visitors can attach a file (PDF, image, doc) — stored on the contact.</p>)}
+                          {b.type==='hidden'&&(<div className="mt-2">
+                            <div className="flex items-center gap-2"><span className="text-[11px] text-white/45 shrink-0">Capture from</span><input value={b.capture||''} onChange={e=>setBlock(b.id,{capture:e.target.value})} placeholder="utm_source" className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] font-mono text-white outline-none focus:border-brand-500/40"/></div>
+                            <div className="flex flex-wrap gap-1 mt-1.5">{['utm_source','utm_medium','utm_campaign','utm_term','gclid','fbclid','referrer'].map(k=>(<button key={k} type="button" onClick={()=>setBlock(b.id,{capture:k})} className={'px-1.5 py-0.5 rounded text-[10px] font-mono border transition-all '+((b.capture||'')===k?'text-brand-100 bg-brand-500/20 border-brand-500/40':'text-brand-200/80 bg-brand-500/10 border-brand-500/20 hover:bg-brand-500/18')}>{k}</button>))}</div>
+                            <p className="text-[10.5px] text-white/35 mt-1.5">Hidden from visitors — pulled from the page URL / referrer and saved to the mapped field for attribution.</p>
+                          </div>)}
+                          {b.type!=='hidden'&&<label className="mt-2 flex items-center gap-2 text-[12px] text-white/60"><Toggle on={b.required} onChange={v=>setBlock(b.id,{required:v})}/>{b.type==='consent'?'Required to submit':'Required'}</label>}
                         </React.Fragment>)}
                         {(b.kind==='paragraph'||b.kind==='section')&&<input value={b.text} onChange={e=>setBlock(b.id,{text:e.target.value})} className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40" placeholder={b.kind==='section'?'Section label':'Paragraph text'}/>}
                         {b.kind==='heading'&&(<React.Fragment>
@@ -15303,7 +15547,7 @@ function FormBuilderPage({goTo,initial}){
                     <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em]">After submit</p>
                     <button onClick={()=>showToast('Form actions saved')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0"><I.Check size={12}/>Save actions</button>
                   </div>
-                  <AfterSubmitConfig onSub={onSub} setOS={setOS} goTo={goTo} onCreateAuto={createAuto}/>
+                  <AfterSubmitConfig onSub={onSub} setOS={setOS} goTo={goTo} onCreateAuto={createAuto} blocks={blocks}/>
                 </div>
                 <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
                   <ConnectedAutomations names={formAutoNames(onSub)} goTo={goTo} onCreate={createAuto}/>
@@ -15407,7 +15651,7 @@ function SettingsFormsPage({goTo}){
               <div key={f.id} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',f.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Note size={17} stroke={2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{f.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><p className="text-[12px] text-white/55 mt-1">{f.fields.length} fields · {f.submissions} submissions · {f.conversion}% conversion</p></div></div>
-                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/>Submissions</button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/>Edit</button>
+                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>{const link='https://forms.nrtur.com/f/'+f.id;if(navigator.clipboard)navigator.clipboard.writeText(link);showToast('Share link copied — forms.nrtur.com/f/'+f.id);}} className={EDIT} title="Copy share / embed link"><I.ExternalLink size={12}/><span className="crm-hide-sm">Share</span></button><button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/><span className="crm-hide-sm">Submissions</span></button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/><span className="crm-hide-sm">Edit</span></button>
                     <div data-formmenu className="relative"><button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                       {menu===f.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}><button onClick={()=>dupForm(f)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button><button onClick={()=>{setMenu(null);openConfirm({title:'Delete this form?',body:`"${f.name}" and its embed will stop collecting submissions.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{delForm(f.id);showToast('Form deleted');}});}} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete</button></div>)}
                     </div>
@@ -15922,6 +16166,22 @@ const SCHED_INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-whi
 const SCHED_SEL=SCHED_INP+' appearance-none';
 const SCHED_LBL='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5';
 const SCHED_SELSTYLE={colorScheme:'dark',background:'var(--s850)'};
+// ── Per-event-type notifications: confirmation, multi-interval reminders, lifecycle messages.
+// Channels reuse the app-wide email/SMS split. Opinionated defaults (LACRM-style) so every event
+// type notifies out of the box: confirmation on booking + 24h email reminder + 2h SMS reminder.
+const SCHED_NOTIF_CHANNELS=[['email','Email',I.Mail],['sms','SMS',I.Phone]];
+const SCHED_REMINDER_INTERVALS=['1 week before','3 days before','1 day before','24 hours before','2 hours before','1 hour before','30 min before','15 min before'];
+function schedDefaultNotif(){return {
+  confirmation:{on:true,channel:'email',template:'Hi {{contact.first}} — your {{event.name}} is confirmed for {{event.time}}. We look forward to it!'},
+  reminders:[
+    {id:'rm1',channel:'email',interval:'24 hours before',message:'Reminder: your {{event.name}} is coming up tomorrow at {{event.time}}.'},
+    {id:'rm2',channel:'sms',interval:'2 hours before',message:'See you soon! Your {{event.name}} starts at {{event.time}}.'},
+  ],
+  reschedule:{on:true,channel:'email',template:'Your {{event.name}} has been moved to {{event.time}}. See you then!'},
+  cancellation:{on:true,channel:'email',template:'Your {{event.name}} on {{event.time}} has been cancelled. Rebook any time: {{booking.link}}'},
+  followup:{on:false,channel:'email',template:'Thanks for meeting with us! Here are the next steps we discussed…'},
+  recipients:{contact:true,host:false,guests:false,extra:''},
+};}
 // ── Qualification forms: bridge the custom forms system into the scheduling engine ──
 const QUAL_OPS=['is','contains','greater than'];
 const QUAL_ACTIONS=[['qualify','Qualify'],['disqualify','Disqualify'],['route','Route to rep']];
@@ -15982,10 +16242,52 @@ function QualificationCard({qual,goTo}){
     </div>
   </div>);
 }
+// ── Calendar/booking TYPES that layer on the ONE availability source of truth ──
+// Each type only changes booking behavior; none forks the SchedulingContext store.
+const SCHED_CAL_TYPES=[
+  {key:'individual',label:'Individual',sub:'1:1',Icon:I.UserPlus,desc:'One host meets one invitee — the classic booking link.'},
+  {key:'roundrobin',label:'Round-robin',sub:'Distribute',Icon:I.GitBranch,desc:'Spread bookings across a team of hosts.'},
+  {key:'collective',label:'Collective',sub:'Co-host',Icon:I.Users,desc:'Several hosts attend together; only mutually-free times show.'},
+  {key:'class',label:'Class / Group',sub:'Seats',Icon:I.Grid,desc:'One session, many attendees up to a seat cap.'},
+];
+function schedCalType(et){return (et&&et.calType)||'individual';}
+function schedCalTypeMeta(k){return SCHED_CAL_TYPES.find(t=>t.key===k)||SCHED_CAL_TYPES[0];}
+const SCHED_RR_DIST=[['availability','Optimize for availability'],['equal','Equal distribution'],['priority','Priority order']];
+function schedRrDistLabel(k){const f=SCHED_RR_DIST.find(d=>d[0]===k);return f?f[1]:SCHED_RR_DIST[0][1];}
+function schedMember(av){return TEAM_MEMBERS.find(t=>t.avatar===av)||TEAM_MEMBERS[0];}
+function schedHostNames(hosts){return (hosts||[]).map(av=>schedMember(av).name);}
+function schedHostsLabel(hosts){const ns=schedHostNames(hosts);if(ns.length===0)return '—';if(ns.length===1)return ns[0];if(ns.length===2)return ns[0]+' & '+ns[1];return ns.slice(0,-1).join(', ')+' & '+ns[ns.length-1];}
+// Mock: which team members have personally connected a calendar. Conflict-checking a host needs
+// their own calendar connected, so the editor warns when a chosen host hasn't connected one.
+const SCHED_HOST_CALENDARS={AM:true,SC:true,JK:true,RL:false,MR:false};
+function schedHostConnected(av){return SCHED_HOST_CALENDARS[av]!==false;}
+function schedHostsUnconnected(hosts){return (hosts||[]).filter(av=>!schedHostConnected(av));}
+// Deterministic per-host "busy" simulation, layered on the ONE real availability window so we can
+// demo round-robin distribution + collective intersection without a second availability store.
+function schedHostFreeAt(avatar,date,slot){
+  if(avatar==='AM')return true; // the page owner — their real availability IS the base store
+  const mins=schedParseTime(slot);const h=(avatar.charCodeAt(0)*7+(avatar.charCodeAt(1)||0)*13+date.getDate()*3+mins)%10;
+  return h>=3; // ~30% of a host's own slots read as busy on their connected calendar
+}
+// Round-robin: choose the host for a slot per the distribution method.
+//  availability -> first host free at that slot · priority -> hosts in listed order, first free
+//  equal -> rotate by slot index so per-day counts stay within ~1 (well inside the ~3 rule)
+function schedRrAssign(hosts,date,slot,method,slotIndex){
+  const pool=(hosts&&hosts.length?hosts:['AM']);
+  if(method==='equal'){const start=((slotIndex||0)%pool.length);for(let i=0;i<pool.length;i++){const av=pool[(start+i)%pool.length];if(schedHostFreeAt(av,date,slot))return av;}return pool[start];}
+  for(const av of pool){if(schedHostFreeAt(av,date,slot))return av;}
+  return pool[0];
+}
+// Collective: a slot is bookable only when EVERY required host is free (the intersection).
+function schedCollectiveFree(hosts,date,slot){return (hosts&&hosts.length?hosts:['AM']).every(av=>schedHostFreeAt(av,date,slot));}
+// Class: deterministic seats already taken for a slot, so "X of N left" reads consistently.
+function schedSeatsTaken(date,slot,cap){const mins=schedParseTime(slot);return Math.min(cap,(date.getDate()*17+mins)%(cap+1));}
 const SCHED_DEFAULT_EVENT_TYPES=[
   {id:'et1',name:'30 Min Intro Call',duration:30,location:'Google Meet',slug:'intro-call',color:'#6366f1',desc:"A quick intro to see if we're a fit.",questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'4 hours'},
   {id:'et2',name:'Product Demo',duration:45,location:'Zoom',slug:'demo',color:'#10b981',desc:'Walkthrough of the platform.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day',qualFormId:1,qualRequired:true,qualRules:[{id:'qr1',q:'Company size',op:'contains',value:'200',action:'qualify',rep:'SC'},{id:'qr2',q:'Company size',op:'contains',value:'1-10',action:'disqualify',rep:'AM'}]},
   {id:'et3',name:'Onboarding Session',duration:60,location:'Phone call',slug:'onboarding',color:'#f59e0b',desc:'Get set up and running.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day'},
+  {id:'et4',name:'Sales Round-Robin',duration:30,location:'Google Meet',slug:'sales',color:'#8b5cf6',desc:'Get matched with the next available account exec.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'4 hours',calType:'roundrobin',hosts:['AM','SC','JK'],distribution:'availability',letBookerChoose:false},
+  {id:'et5',name:'Group Onboarding Webinar',duration:60,location:'Zoom',slug:'webinar',color:'#ec4899',desc:'Live group onboarding — bring your questions.',questions:[],bufferBefore:'None',bufferAfter:'None',minNotice:'1 day',calType:'class',capacity:20,collectPayment:false},
 ];
 const SCHED_DEFAULT_AVAIL={
   tz:'(GMT-08:00) Pacific Time',
@@ -16028,6 +16330,7 @@ function SchedEventTypesTab({eventTypes,onNew,onEdit,onPreview,addToast}){
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:et.color}}/>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/70"><I.Clock size={10}/>{et.duration} min</span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/55"><Loc size={10}/>{et.location}</span>
+              {schedCalType(et)!=='individual'&&(()=>{const ct=schedCalTypeMeta(schedCalType(et));return(<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/12 border border-brand-500/25 text-[11px] font-medium text-brand-200"><ct.Icon size={10}/>{ct.label}</span>);})()}
             </div>
             <p className="text-[15px] font-semibold text-white">{et.name}</p>
             <p className="text-[12px] text-white/50 mt-1 leading-relaxed flex-1">{et.desc}</p>
@@ -16054,6 +16357,7 @@ function SchedEventTypeCard({et,onEdit,onPreview,addToast}){
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:et.color}}/>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/70"><I.Clock size={10}/>{et.duration} min</span>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-medium text-white/55"><Loc size={10}/>{et.location}</span>
+        {schedCalType(et)!=='individual'&&(()=>{const ct=schedCalTypeMeta(schedCalType(et));return(<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/12 border border-brand-500/25 text-[11px] font-medium text-brand-200"><ct.Icon size={10}/>{ct.label}</span>);})()}
       </div>
       <p className="text-[15px] font-semibold text-white">{et.name}</p>
       <p className="text-[12px] text-white/50 mt-1 leading-relaxed flex-1">{et.desc}</p>
@@ -16132,12 +16436,71 @@ function SchedBookingsTab({eventTypes,avail,setAvail,addToast,goTo,onNew,onEdit,
     </div>
   </div>);
 }
+// First-class notification config for an event type (Part A). Confirmation, multiple reminder
+// intervals (each with its own channel + message), reschedule / cancellation / follow-up
+// messages, and recipients. Helpers are called (not rendered as <Components/>) so textarea
+// focus is preserved across edits. Layout stacks cleanly on mobile (flex-wrap).
+function EventTypeNotifications({notif,setNotif}){
+  const taCls='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 transition-all placeholder:text-white/30 resize-none';
+  const setMsg=(key,patch)=>setNotif(n=>({...n,[key]:{...n[key],...patch}}));
+  const addReminder=()=>setNotif(n=>({...n,reminders:[...n.reminders,{id:'rm'+Date.now(),channel:'email',interval:'1 hour before',message:''}]}));
+  const setReminder=(id,patch)=>setNotif(n=>({...n,reminders:n.reminders.map(r=>r.id===id?{...r,...patch}:r)}));
+  const rmReminder=(id)=>setNotif(n=>({...n,reminders:n.reminders.filter(r=>r.id!==id)}));
+  const setRecip=(patch)=>setNotif(n=>({...n,recipients:{...n.recipients,...patch}}));
+  const channelToggle=(value,onChange)=>(<div className="inline-flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.10] shrink-0">{SCHED_NOTIF_CHANNELS.map(([k,l,Ic])=>(<button key={k} type="button" onClick={()=>onChange(k)} className={['inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-all',value===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={11}/>{l}</button>))}</div>);
+  const msgBlock=(k,title,desc)=>{const m=notif[k];return(<div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+    <div className="flex items-start justify-between gap-2 flex-wrap">
+      <div className="min-w-0"><p className="text-[12.5px] font-medium text-white">{title}</p><p className="text-[11px] text-white/45 mt-0.5">{desc}</p></div>
+      <div className="flex items-center gap-2 shrink-0">{m.on&&channelToggle(m.channel,v=>setMsg(k,{channel:v}))}<Toggle on={m.on} onChange={v=>setMsg(k,{on:v})}/></div>
+    </div>
+    {m.on&&<textarea value={m.template} onChange={e=>setMsg(k,{template:e.target.value})} rows={2} className={taCls+' mt-2.5'} placeholder="Message…"/>}
+  </div>);};
+  return(<div className="rounded-2xl border border-brand-500/20 p-4" style={{background:'var(--s900)'}}>
+    <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Bell size={14}/></span><p className="text-[13.5px] font-semibold text-white">Notifications</p></div>
+    <p className="text-[11.5px] text-white/45 mb-3">Confirmation, reminders, and follow-ups for this event type — sensible defaults are pre-filled, so it works out of the box.</p>
+    <div className="flex flex-col gap-3">
+      {msgBlock('confirmation','Confirmation','Sent the moment someone books.')}
+      <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+        <div className="mb-2"><p className="text-[12.5px] font-medium text-white">Reminders</p><p className="text-[11px] text-white/45 mt-0.5">Nudge before the meeting — add as many intervals as you like.</p></div>
+        <div className="flex flex-col gap-2">{notif.reminders.map(r=>(<div key={r.id} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {channelToggle(r.channel,v=>setReminder(r.id,{channel:v}))}
+            <select value={r.interval} onChange={e=>setReminder(r.id,{interval:e.target.value})} className={SCHED_MINI} style={SCHED_SELSTYLE}>{SCHED_REMINDER_INTERVALS.map(o=>(<option key={o}>{o}</option>))}</select>
+            <button type="button" onClick={()=>rmReminder(r.id)} className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-white/[0.05] transition-all shrink-0"><I.X size={13}/></button>
+          </div>
+          <textarea value={r.message} onChange={e=>setReminder(r.id,{message:e.target.value})} rows={2} className={taCls+' mt-2'} placeholder="Reminder message…"/>
+        </div>))}{notif.reminders.length===0&&<p className="text-[11.5px] text-white/35">No reminders yet — add one to nudge invitees before the meeting.</p>}</div>
+        <button type="button" onClick={addReminder} className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={12} stroke={2.4}/>Add reminder</button>
+      </div>
+      {msgBlock('reschedule','Reschedule notification','Sent when an invitee moves the meeting.')}
+      {msgBlock('cancellation','Cancellation notification','Sent when a booking is cancelled.')}
+      {msgBlock('followup','Follow-up','Sent after the meeting ends.')}
+      <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+        <p className="text-[12.5px] font-medium text-white mb-0.5">Recipients</p>
+        <p className="text-[11px] text-white/45 mb-2">Who receives these messages.</p>
+        <div className="flex flex-col gap-2">
+          {[['contact','Contact (invitee)',true],['host','Host / you',false],['guests','Additional guests',false]].map(([k,l,locked])=>(<label key={k} className="flex items-center gap-2.5 text-[12.5px] text-white/80 cursor-pointer"><input type="checkbox" checked={!!notif.recipients[k]} disabled={locked} onChange={e=>setRecip({[k]:e.target.checked})} className="accent-brand-500 w-4 h-4"/>{l}{locked&&<span className="text-[10px] text-white/35 px-1.5 py-0.5 rounded-full bg-white/[0.05]">default</span>}</label>))}
+        </div>
+        <input value={notif.recipients.extra} onChange={e=>setRecip({extra:e.target.value})} placeholder="Extra emails or phone numbers, comma-separated" className={taCls.replace('resize-none','')+' mt-2.5'}/>
+      </div>
+    </div>
+  </div>);
+}
 function EventTypeDrawer({initial,onClose,onSave,goTo}){
   const [name,setName]=React.useState(initial?initial.name:'');
   const [duration,setDuration]=React.useState(initial?initial.duration:30);
   const [location,setLocation]=React.useState(initial?initial.location:'Google Meet');
   const [desc,setDesc]=React.useState(initial?initial.desc:'');
   const [color,setColor]=React.useState(initial?initial.color:SCHED_COLORS[0]);
+  const [calType,setCalType]=React.useState(initial?(initial.calType||'individual'):'individual');
+  const [hosts,setHosts]=React.useState(initial&&initial.hosts&&initial.hosts.length?initial.hosts.slice():['AM']);
+  const [distribution,setDistribution]=React.useState(initial?(initial.distribution||'availability'):'availability');
+  const [letBookerChoose,setLetBookerChoose]=React.useState(initial?!!initial.letBookerChoose:false);
+  const [capacity,setCapacity]=React.useState(initial?(initial.capacity||20):20);
+  const [collectPayment,setCollectPayment]=React.useState(initial?!!initial.collectPayment:false);
+  const [seatPrice,setSeatPrice]=React.useState(initial?(initial.seatPrice||''):'');
+  const toggleHost=(av)=>setHosts(hs=>hs.includes(av)?(hs.length<=1?hs:hs.filter(x=>x!==av)):[...hs,av]);
+  const moveHost=(av,dir)=>setHosts(hs=>{const i=hs.indexOf(av);const j=i+dir;if(i<0||j<0||j>=hs.length)return hs;const n=hs.slice();const[m]=n.splice(i,1);n.splice(j,0,m);return n;});
   const [slug,setSlug]=React.useState(initial?initial.slug:'');
   const [slugEdited,setSlugEdited]=React.useState(!!initial);
   const [questions,setQuestions]=React.useState(initial&&initial.questions?initial.questions.slice():[]);
@@ -16147,6 +16510,7 @@ function EventTypeDrawer({initial,onClose,onSave,goTo}){
   const [qualFormId,setQualFormId]=React.useState(initial&&initial.qualFormId!=null?String(initial.qualFormId):'none');
   const [qualRequired,setQualRequired]=React.useState(initial?(initial.qualRequired!==false):true);
   const [qualRules,setQualRules]=React.useState(initial&&initial.qualRules?initial.qualRules.map(r=>({...r})):[]);
+  const [notif,setNotif]=React.useState(initial&&initial.notif?JSON.parse(JSON.stringify(initial.notif)):schedDefaultNotif());
   const qualForm=qualFormById(qualFormId);
   const qualQs=qualQuestions(qualForm);
   React.useEffect(()=>{if(!slugEdited)setSlug(schedSlug(name));},[name,slugEdited]);
@@ -16155,13 +16519,52 @@ function EventTypeDrawer({initial,onClose,onSave,goTo}){
   const addQualRule=()=>setQualRules(rs=>[...rs,{id:'qr'+Date.now(),q:(qualQs[0]&&qualQs[0].label)||'',op:'is',value:'',action:'qualify',rep:'AM'}]);
   const setQualRule=(id,patch)=>setQualRules(rs=>rs.map(r=>r.id===id?{...r,...patch}:r));
   const rmQualRule=(id)=>setQualRules(rs=>rs.filter(r=>r.id!==id));
-  const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'et'+Date.now(),name:name.trim(),duration:+duration,location,desc:desc.trim(),color,slug:(slug.trim()||schedSlug(name)),questions:questions.filter(q=>q.trim()),bufferBefore,bufferAfter,minNotice,qualFormId:qualFormId==='none'?null:qualFormId,qualRequired,qualRules:qualRules.filter(r=>r.q)});};
+  const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'et'+Date.now(),name:name.trim(),duration:+duration,location,desc:desc.trim(),color,slug:(slug.trim()||schedSlug(name)),questions:questions.filter(q=>q.trim()),bufferBefore,bufferAfter,minNotice,qualFormId:qualFormId==='none'?null:qualFormId,qualRequired,qualRules:qualRules.filter(r=>r.q),calType,hosts:(calType==='roundrobin'||calType==='collective')?(hosts.length?hosts:['AM']):undefined,distribution:calType==='roundrobin'?distribution:undefined,letBookerChoose:calType==='roundrobin'?letBookerChoose:undefined,capacity:calType==='class'?Math.max(1,parseInt(capacity,10)||1):undefined,collectPayment:calType==='class'?collectPayment:undefined,seatPrice:(calType==='class'&&collectPayment)?String(seatPrice).trim():undefined,notif});};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[160] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed right-0 top-0 bottom-0 z-[170] w-[420px] max-w-full flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Calendar size={15} className="text-brand-300"/>{initial?'Edit event type':'New event type'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-4 flex flex-col gap-4">
         <div><label className={SCHED_LBL}>Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. 30 Min Intro Call" className={SCHED_INP}/></div>
+        <div>
+          <label className={SCHED_LBL}>Calendar type</label>
+          <div className="grid grid-cols-2 gap-2">{SCHED_CAL_TYPES.map(ct=>{const on=calType===ct.key;return(
+            <button key={ct.key} onClick={()=>setCalType(ct.key)} className={['text-left rounded-xl border p-2.5 transition-all',on?'border-brand-500/45 bg-brand-500/[0.10]':'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.18]'].join(' ')}>
+              <span className="flex items-center gap-1.5"><span className={['w-6 h-6 rounded-lg flex items-center justify-center shrink-0',on?'bg-brand-500/20 text-brand-200':'bg-white/[0.05] text-white/55'].join(' ')}><ct.Icon size={13}/></span><span className="text-[12.5px] font-semibold text-white truncate">{ct.label}</span></span>
+              <span className="block text-[10.5px] text-white/45 mt-1 leading-snug">{ct.desc}</span>
+            </button>);})}</div>
+        </div>
+        {(calType==='roundrobin'||calType==='collective')&&(<div className="rounded-2xl border border-brand-500/20 p-4" style={{background:'var(--s900)'}}>
+          <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0">{calType==='collective'?<I.Users size={14}/>:<I.GitBranch size={14}/>}</span><p className="text-[13.5px] font-semibold text-white">{calType==='collective'?'Required hosts':'Round-robin hosts'}</p></div>
+          <p className="text-[11.5px] text-white/45 mb-3">{calType==='collective'?'All of these hosts attend every meeting; a slot shows only when everyone is free.':'Bookings are distributed across these hosts.'}</p>
+          <div className="flex flex-col gap-1.5">{TEAM_MEMBERS.map(t=>{const on=hosts.includes(t.avatar);const conn=schedHostConnected(t.avatar);const idx=hosts.indexOf(t.avatar);const showPri=on&&calType==='roundrobin'&&distribution==='priority';return(
+            <div key={t.avatar} className={['flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-all',on?'border-brand-500/25 bg-brand-500/[0.06]':'border-white/[0.06] bg-white/[0.03]'].join(' ')}>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:t.color}}>{t.avatar}</span>
+              <div className="min-w-0 flex-1"><span className="text-[12.5px] text-white/85 truncate block">{t.name}</span>{!conn&&<span className="inline-flex items-center gap-1 text-[10px] text-amber-300/90"><I.AlertTriangle size={9}/>No calendar connected</span>}</div>
+              {showPri&&<span className="text-[10px] font-semibold text-brand-200 px-1.5 py-0.5 rounded bg-brand-500/12 shrink-0">{idx===0?'1st':idx===1?'2nd':idx===2?'3rd':(idx+1)+'th'}</span>}
+              {showPri&&(<span className="flex items-center gap-0.5 shrink-0"><button onClick={()=>moveHost(t.avatar,-1)} disabled={idx<=0} className={['w-6 h-6 rounded-md flex items-center justify-center transition-all',idx<=0?'text-white/15 cursor-not-allowed':'text-white/45 hover:text-white hover:bg-white/[0.06]'].join(' ')}><I.ChevronUp size={13}/></button><button onClick={()=>moveHost(t.avatar,1)} disabled={idx>=hosts.length-1} className={['w-6 h-6 rounded-md flex items-center justify-center transition-all',idx>=hosts.length-1?'text-white/15 cursor-not-allowed':'text-white/45 hover:text-white hover:bg-white/[0.06]'].join(' ')}><I.ChevronDown size={13}/></button></span>)}
+              <Toggle on={on} onChange={()=>toggleHost(t.avatar)}/>
+            </div>);})}</div>
+          {schedHostsUnconnected(hosts).length>0&&(<div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 flex items-start gap-2 text-[11.5px] text-amber-200"><I.AlertTriangle size={13} className="shrink-0 mt-0.5"/><span>{schedHostsLabel(schedHostsUnconnected(hosts))} {schedHostsUnconnected(hosts).length>1?"haven't":"hasn't"} connected a calendar — we can't conflict-check {schedHostsUnconnected(hosts).length>1?'them':'them'} until they do.</span></div>)}
+          {calType==='roundrobin'&&(<React.Fragment>
+            <div className="mt-3"><label className={SCHED_LBL}>Distribution method</label><select value={distribution} onChange={e=>setDistribution(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_RR_DIST.map(([k,l])=>(<option key={k} value={k}>{l}</option>))}</select>{distribution==='equal'&&<p className="text-[11px] text-white/40 mt-1.5">No host gets more than ~3 bookings ahead of the others.</p>}{distribution==='priority'&&<p className="text-[11px] text-white/40 mt-1.5">Order the hosts above — earlier hosts are offered first.</p>}</div>
+            <div className="mt-3 flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">Let booker choose a host</p><p className="text-[11px] text-white/45 mt-0.5">Invitees can pick a specific host instead of being matched.</p></div><Toggle on={letBookerChoose} onChange={setLetBookerChoose}/></div>
+          </React.Fragment>)}
+          {calType==='collective'&&<p className="text-[11px] text-brand-300/80 mt-3 flex items-center gap-1"><I.Zap size={10}/>Availability is the intersection of every host's calendar.</p>}
+        </div>)}
+        {calType==='class'&&(<div className="rounded-2xl border border-brand-500/20 p-4" style={{background:'var(--s900)'}}>
+          <div className="flex items-center gap-2 mb-1"><span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Grid size={14}/></span><p className="text-[13.5px] font-semibold text-white">Group / class seats</p></div>
+          <p className="text-[11.5px] text-white/45 mb-3">One session, many attendees. The booking page shows seats remaining.</p>
+          <label className={SCHED_LBL}>Seat capacity</label>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>setCapacity(c=>Math.max(1,(parseInt(c,10)||1)-1))} className="w-9 h-9 rounded-lg flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all shrink-0"><I.X size={13} className="rotate-45"/></button>
+            <input value={capacity} onChange={e=>setCapacity(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" className="w-20 text-center px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[14px] font-semibold text-white outline-none focus:border-brand-500/40"/>
+            <button onClick={()=>setCapacity(c=>Math.min(999,(parseInt(c,10)||0)+1))} className="w-9 h-9 rounded-lg flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.07] transition-all shrink-0"><I.Plus size={14}/></button>
+            <span className="text-[12px] text-white/45">seats per session</span>
+          </div>
+          <div className="mt-4 flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white flex items-center gap-1.5"><I.CreditCard size={13} className="text-brand-300"/>Collect payment to hold a seat</p><p className="text-[11px] text-white/45 mt-0.5">Require payment at booking to reserve a seat.</p></div><Toggle on={collectPayment} onChange={setCollectPayment}/></div>
+          {collectPayment&&(<div className="mt-3"><label className={SCHED_LBL}>Price per seat</label><div className="flex items-center gap-0 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all overflow-hidden max-w-[180px]"><span className="pl-3 pr-1 text-[13px] text-white/45 shrink-0">$</span><input value={seatPrice} onChange={e=>setSeatPrice(e.target.value.replace(/[^0-9.]/g,''))} inputMode="decimal" placeholder="0.00" className="flex-1 min-w-0 pr-3 py-2.5 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30"/></div><p className="text-[11px] text-brand-300/80 mt-1.5 flex items-center gap-1"><I.Zap size={10}/>Uses your connected payment provider; until one is set this is held as a flag.</p></div>)}
+        </div>)}
         <div className="grid grid-cols-2 gap-3">
           <div><label className={SCHED_LBL}>Duration</label><select value={duration} onChange={e=>setDuration(+e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_DURATIONS.map(d=>(<option key={d} value={d}>{d} min</option>))}</select></div>
           <div><label className={SCHED_LBL}>Location</label><select value={location} onChange={e=>setLocation(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_LOCATIONS.map(l=>(<option key={l}>{l}</option>))}</select></div>
@@ -16211,6 +16614,7 @@ function EventTypeDrawer({initial,onClose,onSave,goTo}){
             </div>
           </React.Fragment>)}
         </div>
+        <EventTypeNotifications notif={notif} setNotif={setNotif}/>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={SCHED_LBL}>Buffer before</label><select value={bufferBefore} onChange={e=>setBufferBefore(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(b=>(<option key={b}>{b}</option>))}</select></div>
           <div><label className={SCHED_LBL}>Buffer after</label><select value={bufferAfter} onChange={e=>setBufferAfter(e.target.value)} className={SCHED_SEL} style={SCHED_SELSTYLE}>{SCHED_BUFFERS.map(b=>(<option key={b}>{b}</option>))}</select></div>
@@ -16307,7 +16711,11 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   const [form,setForm]=React.useState({name:'',email:''});
   const [answers,setAnswers]=React.useState({});
   const [qualAns,setQualAns]=React.useState({});
-  React.useEffect(()=>{setStep('date');setDate(null);setSlot(null);setForm({name:'',email:''});setAnswers({});setQualAns({});setBookResult(null);},[slug]);
+  const [chosenHost,setChosenHost]=React.useState(null);
+  const calType=schedCalType(et);
+  const etHosts=(et&&et.hosts&&et.hosts.length)?et.hosts:['AM'];
+  const seatCap=(et&&et.capacity)||20;
+  React.useEffect(()=>{setStep('date');setDate(null);setSlot(null);setForm({name:'',email:''});setAnswers({});setQualAns({});setBookResult(null);setChosenHost(null);},[slug]);
   const qForm=qualFormById(et&&et.qualFormId);
   const qQs=qualQuestions(qForm);
   const qRequired=!!qForm&&(et&&et.qualRequired!==false);
@@ -16318,7 +16726,14 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   const daysInMonth=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
   const firstDow=new Date(month.getFullYear(),month.getMonth(),1).getDay();
   const cells=[];for(let i=0;i<firstDow;i++)cells.push(null);for(let dn=1;dn<=daysInMonth;dn++)cells.push(new Date(month.getFullYear(),month.getMonth(),dn));
-  const slots=date?schedSlotsFor(avail,date,et.duration):[];
+  const baseSlots=date?schedSlotsFor(avail,date,et.duration):[];
+  // Types layer on top of the base availability without a second store:
+  //  collective -> intersection of all hosts · round-robin (booker-choice) -> chosen host's free slots
+  const slots=(()=>{if(!date)return [];
+    if(calType==='collective')return baseSlots.filter(s=>schedCollectiveFree(etHosts,date,s));
+    if(calType==='roundrobin'&&et.letBookerChoose&&chosenHost)return baseSlots.filter(s=>schedHostFreeAt(chosenHost,date,s));
+    return baseSlots;})();
+  const rrAssignFor=(s)=>(et.letBookerChoose&&chosenHost)?chosenHost:schedRrAssign(etHosts,date,s,et.distribution,baseSlots.indexOf(s));
   const goMonth=(dir)=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()+dir,1));
   const copy=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://nrtur.app/book/alex/'+(et?et.slug:''));}catch(e){}addToast('Link copied ✓');};
   const dateLabel=date?(CAL_DAYS[date.getDay()]+', '+CAL_MONTHS[date.getMonth()]+' '+date.getDate()):'';
@@ -16326,7 +16741,11 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     const auto=automation||{};
     // 1) Assignment (round-robin / specific / me) + routing-rule overrides
     let rep=TEAM_MEMBERS[0];
-    if(auto.assign==='specific'){rep=TEAM_MEMBERS.find(t=>t.avatar===auto.specificRep)||rep;}
+    // Calendar TYPE drives host assignment first; round-robin records which host was assigned.
+    const rrHost=(calType==='roundrobin'&&date&&slot)?rrAssignFor(slot):null;
+    if(calType==='roundrobin'&&rrHost){rep=schedMember(rrHost);}
+    else if(calType==='collective'){rep=schedMember(etHosts[0]);}
+    else if(auto.assign==='specific'){rep=TEAM_MEMBERS.find(t=>t.avatar===auto.specificRep)||rep;}
     else if(auto.assign==='roundrobin'){const pool=TEAM_MEMBERS.filter(t=>auto.rotation&&auto.rotation[t.avatar]);if(pool.length)rep=pool[Math.floor(Math.random()*pool.length)];}
     if(auto.rules&&auto.rules.length){const hay=(form.email+' '+form.name+' '+Object.values(answers).join(' ')).toLowerCase();const hit=auto.rules.find(r=>r.value&&hay.includes(String(r.value).toLowerCase()));if(hit){const rr=TEAM_MEMBERS.find(t=>t.avatar===hit.rep);if(rr)rep=rr;}}
     // Qualification: evaluate the attached form's rules and let routing override the rep
@@ -16374,13 +16793,16 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
     if(addMeeting&&date){
       const mins=schedParseTime(slot);
       const start=new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(mins/60),mins%60);
-      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',recordKind,recordId,contactId,leadId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:'Alex Morgan',join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
+      addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',recordKind,recordId,contactId,leadId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:(calType==='collective'?schedHostsLabel(etHosts):calType==='roundrobin'?rep.name:'Alex Morgan'),hosts:calType==='collective'?schedHostNames(etHosts):undefined,calType,assignedHost:calType==='roundrobin'?rep.name:undefined,seatTotal:calType==='class'?seatCap:undefined,join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
     }
-    setBookResult({name:nm,recordKind,recordId,recordCreated,dealCreated,rep,qualStatus:qEval.status});
+    setBookResult({name:nm,recordKind,recordId,recordCreated,dealCreated,rep,qualStatus:qEval.status,calType,assignedName:rep.name,hostsLabel:schedHostsLabel(etHosts),seatLine:calType==='class'?(Math.max(0,seatCap-schedSeatsTaken(date,slot,seatCap)-1)+' of '+seatCap+' seats left'):null});
     setStep('done');
     if(qEval.status==='qualified')addToast('Qualified lead booked — assigned to '+rep.name+' ✓');
     else if(qEval.status==='disqualified')addToast('Lead booked — flagged for review');
     else if(qEval.routeRep)addToast('Lead booked — routed to '+rep.name+' ✓');
+    else if(calType==='roundrobin')addToast('Matched with '+rep.name+' — meeting booked ✓');
+    else if(calType==='collective')addToast('Co-hosted meeting booked ✓');
+    else if(calType==='class')addToast('Seat reserved ✓');
     else addToast('Meeting booked ✓');
   };
   if(!et)return(<div className="flex-1 flex items-center justify-center text-white/40 text-[13px]">Create an event type first.</div>);
@@ -16412,22 +16834,47 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
           {/* ── LEFT: host + event details ───────────────────────────── */}
           <div className="border-b md:border-b-0 md:border-r border-white/[0.07] flex flex-col">
             <div className="px-6 pt-6 pb-5 relative" style={{background:'linear-gradient(180deg, rgba(99,102,241,0.14), transparent)'}}>
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[19px] font-semibold ring-4 ring-[var(--s850)] shadow-lg mb-3" style={{background:'#3b82f6'}}>AM</div>
-              <p className="text-white text-[17px] font-semibold leading-tight">Alex Morgan</p>
-              <p className="text-[12.5px] text-white/45 mt-1">Your Best Support</p>
+              {calType==='collective'?(<React.Fragment>
+                <div className="flex items-center mb-3">{etHosts.slice(0,4).map((av,i)=>{const m=schedMember(av);return(<span key={av} className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[14px] font-semibold ring-4 ring-[var(--s850)] shadow-lg" style={{background:m.color,marginLeft:i?-14:0,zIndex:10-i}}>{av}</span>);})}</div>
+                <p className="text-white text-[17px] font-semibold leading-tight">{schedHostsLabel(etHosts)}</p>
+                <p className="text-[12.5px] text-white/45 mt-1">Co-hosted meeting · all hosts attend</p>
+              </React.Fragment>):calType==='roundrobin'?(<React.Fragment>
+                <div className="flex items-center mb-3">{etHosts.slice(0,4).map((av,i)=>{const m=schedMember(av);return(<span key={av} className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[13px] font-semibold ring-4 ring-[var(--s850)] shadow-lg" style={{background:m.color,marginLeft:i?-12:0,zIndex:10-i}}>{av}</span>);})}</div>
+                <p className="text-white text-[17px] font-semibold leading-tight">{et.letBookerChoose&&chosenHost?schedMember(chosenHost).name:'Round-robin team'}</p>
+                <p className="text-[12.5px] text-white/45 mt-1">{et.letBookerChoose?'Choose your host below':'Matched with the next available host'}</p>
+              </React.Fragment>):calType==='class'?(<React.Fragment>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white ring-4 ring-[var(--s850)] shadow-lg mb-3" style={{background:et.color}}><I.Grid size={26}/></div>
+                <p className="text-white text-[17px] font-semibold leading-tight">{et.name}</p>
+                <p className="text-[12.5px] text-white/45 mt-1">Group session · up to {seatCap} seats</p>
+              </React.Fragment>):(<React.Fragment>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[19px] font-semibold ring-4 ring-[var(--s850)] shadow-lg mb-3" style={{background:'#3b82f6'}}>AM</div>
+                <p className="text-white text-[17px] font-semibold leading-tight">Alex Morgan</p>
+                <p className="text-[12.5px] text-white/45 mt-1">Your Best Support</p>
+              </React.Fragment>)}
             </div>
             <div className="h-px bg-white/[0.07] mx-6"/>
             <div className="px-6 py-5 flex-1">
               <p className="text-white text-[15px] font-semibold leading-tight">{et.name}</p>
+              {calType!=='individual'&&(()=>{const ct=schedCalTypeMeta(calType);return(<div className="mt-2"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-500/12 border border-brand-500/25 text-[10.5px] font-medium text-brand-200"><ct.Icon size={10}/>{ct.label}</span></div>);})()}
               <div className="flex flex-col gap-2 mt-3">
                 <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-white/65"><I.Clock size={14} className="text-brand-300 shrink-0"/>{et.duration} minutes</span>
                 <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-white/55"><Loc size={14} className="text-white/40 shrink-0"/>{et.location}</span>
+                {calType==='collective'&&<span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-white/55"><I.Users size={14} className="text-white/40 shrink-0"/>{schedHostsLabel(etHosts)}</span>}
+                {calType==='roundrobin'&&<span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-white/55"><I.GitBranch size={14} className="text-white/40 shrink-0"/>{schedHostNames(etHosts).length} hosts · {schedRrDistLabel(et.distribution).toLowerCase()}</span>}
+                {calType==='class'&&<span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-white/55"><I.Grid size={14} className="text-white/40 shrink-0"/>Up to {seatCap} attendees{et.collectPayment?' · paid seat':''}</span>}
               </div>
               {et.desc&&(<React.Fragment><div className="h-px bg-white/[0.06] my-4"/><p className="text-[12.5px] text-white/55 leading-relaxed">{et.desc}</p></React.Fragment>)}
             </div>
           </div>
           {/* ── RIGHT: scheduling steps ──────────────────────────────── */}
           <div className="p-6">
+            {calType==='roundrobin'&&et.letBookerChoose&&step!=='done'&&(<div className="mb-5">
+              <p className={SCHED_LBL}>Choose your host</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button onClick={()=>setChosenHost(null)} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[12px] font-medium ring-1 transition-all',!chosenHost?'bg-brand-500/12 text-white ring-brand-500/30':'text-white/55 ring-white/[0.10] hover:text-white hover:bg-white/[0.04]'].join(' ')}><I.GitBranch size={12}/>Any available</button>
+                {etHosts.map(av=>{const m=schedMember(av);const on=chosenHost===av;return(<button key={av} onClick={()=>{setChosenHost(av);if(step==='time')setStep('date');}} className={['inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full text-[12px] font-medium ring-1 transition-all',on?'bg-brand-500/12 text-white ring-brand-500/30':'text-white/55 ring-white/[0.10] hover:text-white hover:bg-white/[0.04]'].join(' ')}><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:m.color}}>{av}</span>{m.name.split(' ')[0]}</button>);})}
+              </div>
+            </div>)}
             {step==='date'&&(<div>
               <p className="text-[15px] font-semibold text-white mb-5">Select a Date</p>
               <div className="max-w-[380px]">
@@ -16448,14 +16895,29 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
               <button onClick={()=>setStep('date')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
               <p className="text-[15px] font-semibold text-white">{dateLabel}</p>
               <p className="text-[12px] text-white/45 mb-4">{et.duration} min · {avail.tz}</p>
-              {slots.length===0?(<p className="text-[12.5px] text-white/40">No times available this day.</p>):(
-                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto scroll-area pr-1">{slots.map(s=>(<button key={s} onClick={()=>{setSlot(s);setStep('confirm');}} className="py-2.5 rounded-lg border border-white/[0.10] text-[13px] font-medium text-white hover:border-brand-500/40 hover:bg-brand-500/[0.06] transition-all">{s}</button>))}</div>
+              {slots.length===0?(<p className="text-[12.5px] text-white/40">{calType==='collective'?'No times when all hosts are free this day.':'No times available this day.'}</p>):(
+                <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto scroll-area pr-1">{slots.map(s=>{
+                  const left=calType==='class'?Math.max(0,seatCap-schedSeatsTaken(date,s,seatCap)):null;
+                  const full=calType==='class'&&left<=0;
+                  const host=(calType==='roundrobin'&&!(et.letBookerChoose&&chosenHost))?rrAssignFor(s):null;
+                  return(<button key={s} disabled={full} onClick={()=>{if(full)return;setSlot(s);setStep('confirm');}} className={['py-2.5 px-3 rounded-lg border text-[13px] font-medium transition-all flex items-center justify-between gap-2',full?'border-white/[0.06] text-white/30 cursor-not-allowed':'border-white/[0.10] text-white hover:border-brand-500/40 hover:bg-brand-500/[0.06]'].join(' ')}>
+                    <span>{s}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {host&&(()=>{const m=schedMember(host);return(<span className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-semibold text-white" style={{background:m.color}} title={m.name}>{host}</span>);})()}
+                      {calType==='class'&&<span className={['text-[11px] font-medium',full?'text-white/30':left<=5?'text-amber-300/90':'text-emerald-300/90'].join(' ')}>{full?'Full':left+' of '+seatCap+' left'}</span>}
+                      {calType==='collective'&&<span className="inline-flex items-center gap-1 text-[10.5px] text-emerald-300/80"><I.Check size={10}/>All free</span>}
+                    </span>
+                  </button>);
+                })}</div>
               )}
             </div>)}
             {step==='confirm'&&(<div className="max-w-[420px]">
               <button onClick={()=>setStep('time')} className="inline-flex items-center gap-1 text-[12px] text-white/50 hover:text-white mb-3 transition-colors"><I.ChevronLeft size={14}/>Back</button>
               <p className="text-[15px] font-semibold text-white">Confirm your details</p>
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 my-3 text-[12.5px] text-white/70 flex items-center gap-2"><I.Calendar size={14} className="text-brand-300"/>{dateLabel} at {slot}</div>
+              {calType==='roundrobin'&&slot&&(()=>{const m=schedMember(rrAssignFor(slot));return(<div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 mb-3 text-[12.5px] text-white/70 flex items-center gap-2"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span>You'll meet with <span className="text-white font-medium">{m.name}</span></div>);})()}
+              {calType==='collective'&&<div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 mb-3 text-[12.5px] text-white/70 flex items-center gap-2"><I.Users size={14} className="text-brand-300 shrink-0"/>With {schedHostsLabel(etHosts)}</div>}
+              {calType==='class'&&slot&&<div className="rounded-xl bg-white/[0.03] border border-white/[0.07] px-3 py-2.5 mb-3 text-[12.5px] text-white/70 flex items-center gap-2"><I.Grid size={14} className="text-brand-300 shrink-0"/>{Math.max(0,seatCap-schedSeatsTaken(date,slot,seatCap))} of {seatCap} seats left{et.collectPayment?' · payment required to hold your seat':''}</div>}
               <div className="flex flex-col gap-3">
                 <div><label className={SCHED_LBL}>Name</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Your name" className={SCHED_INP}/></div>
                 <div><label className={SCHED_LBL}>Email</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="you@company.com" className={SCHED_INP}/></div>
@@ -16485,7 +16947,8 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Calendar size={13} className="text-white/40"/>{dateLabel} at {slot}</span>
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Clock size={13} className="text-white/40"/>{et.duration} min</span>
                 <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><Loc size={13} className="text-white/40"/>{et.location}</span>
-                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Users size={13} className="text-white/40"/>Alex Morgan{form.name?(' & '+form.name):''}</span>
+                <span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Users size={13} className="text-white/40"/>{bookResult?(bookResult.calType==='collective'?bookResult.hostsLabel:bookResult.calType==='roundrobin'?bookResult.assignedName:bookResult.calType==='class'?et.name:'Alex Morgan'):'Alex Morgan'}{form.name?(' & '+form.name):''}</span>
+                {bookResult&&bookResult.seatLine&&<span className="inline-flex items-center gap-2 text-[12.5px] text-white/60"><I.Grid size={13} className="text-white/40"/>{bookResult.seatLine}</span>}
               </div>
               <div className="flex items-center gap-3 mt-3">
                 <button onClick={()=>{setStep('date');setDate(null);setSlot(null);setBookResult(null);}} className="text-[12.5px] font-medium text-white/45 hover:text-white/70 transition-colors">Schedule another</button>
