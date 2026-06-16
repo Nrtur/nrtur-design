@@ -1074,19 +1074,24 @@ function NotifDrawer({close,goTo}){
   const {items:calItems}=React.useContext(CalendarContext);
   const _now=new Date();const _end=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate(),23,59,59);
   const calNotifs=(calItems||[]).filter(e=>e.type!=='task'&&!e.done&&e.date>=_now&&e.date<=_end).sort((a,b)=>a.date-b.date).slice(0,3).map((e,i)=>({id:'cal'+i,type:'meeting',text:e.title,sub:((typeof EVENT_TYPES!=='undefined'&&EVENT_TYPES[e.type]&&EVENT_TYPES[e.type].label)||'Event')+' at '+calFmtTime(e.date)+(e.reminder?' · reminder '+e.reminder+'m before':''),time:'Today',group:'today',unread:true,mention:false,assigned:false,avatar:'⚡',color:'#818cf8',page:'calendar'}));
-  // Representative seed: mentions, assignments, deal changes, task due, new lead
+  // Live task reminders derived from the shared task store — overdue + due-today, assigned to me.
+  const _sod=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
+  const _myTasks=(calItems||[]).filter(e=>e.type==='task'&&!e.done&&(e.assignee||e.owner||'AM')==='AM');
+  const _odN=_myTasks.filter(t=>t.date<_sod).sort((a,b)=>a.date-b.date).slice(0,4).map((t,i)=>({id:'tod'+i,type:'task',text:'Task overdue',sub:t.title+((t.contact||t.company)?' · '+(t.contact||t.company):''),time:'Overdue',group:'today',unread:true,mention:false,assigned:true,avatar:'AM',color:'#f87171',page:'tasks'}));
+  const _tdN=_myTasks.filter(t=>calSameDay(t.date,_now)).sort((a,b)=>a.date-b.date).slice(0,4).map((t,i)=>({id:'ttd'+i,type:'task',text:t.reminder?'Task reminder':'Task due today',sub:t.title+((t.contact||t.company)?' · '+(t.contact||t.company):''),time:'Today',group:'today',unread:true,mention:false,assigned:true,avatar:'AM',color:'#fbbf24',page:'tasks'}));
+  const taskNotifs=[..._odN,..._tdN];
+  // Representative seed: mentions, assignments, deal changes, new lead
   const seed=[
     {id:'n1',type:'mention',text:'Jamie Kim mentioned you',sub:'“@Alex can you review the Q3 proposal before the call?”',time:'8m ago',group:'today',unread:true,mention:true,assigned:false,avatar:'JK',color:'#8b5cf6',page:'inbox'},
     {id:'n2',type:'assignment',text:'Sarah Chen assigned you a task',sub:'Follow up on Meridian renewal · due today',time:'25m ago',group:'today',unread:true,mention:false,assigned:true,avatar:'SC',color:'#3b82f6',page:'tasks'},
     {id:'n3',type:'deal',text:'Deal moved to Negotiation',sub:'Summit — Renewal · $31k',time:'1h ago',group:'today',unread:true,mention:false,assigned:false,avatar:'JK',color:'#a78bfa',page:'pipeline'},
     {id:'n4',type:'lead',text:'New lead assigned to you',sub:'Olivia Bennett · Brightwave Studio',time:'3h ago',group:'today',unread:true,mention:false,assigned:true,avatar:'OB',color:'#10b981',page:'leads'},
-    {id:'n5',type:'task',text:'Task due soon',sub:'Send proposal draft · in 2 hours',time:'4h ago',group:'today',unread:false,mention:false,assigned:true,avatar:'AM',color:'#fbbf24',page:'tasks'},
     {id:'n6',type:'mention',text:'Ravi Lee mentioned you in a note',sub:'“@Alex flagged this account as a top expansion target.”',time:'Yesterday',group:'earlier',unread:false,mention:true,assigned:false,avatar:'RL',color:'#10b981',page:'contacts'},
     {id:'n7',type:'deal',text:'Sarah Chen accepted your proposal',sub:'Q3 Engagement · $24k',time:'Yesterday',group:'earlier',unread:false,mention:false,assigned:false,avatar:'SC',color:'#3b82f6',page:'pipeline'},
     {id:'n8',type:'system',text:'Automation enrolled 284 contacts',sub:'Welcome Sequence',time:'2d ago',group:'earlier',unread:false,mention:false,assigned:false,avatar:'⚡',color:'#f59e0b',page:'settings-automations'},
     {id:'n9',type:'assignment',text:'Jamie Kim reassigned a deal to you',sub:'Nova Growth · Proposal review',time:'3d ago',group:'earlier',unread:false,mention:false,assigned:true,avatar:'JK',color:'#8b5cf6',page:'pipeline'},
   ];
-  const [notifs,setNotifs]=React.useState([...calNotifs,...seed]);
+  const [notifs,setNotifs]=React.useState([...taskNotifs,...calNotifs,...seed]);
   const markAll=()=>setNotifs(a=>a.map(n=>({...n,unread:false})));
   const open=(n)=>{setNotifs(a=>a.map(x=>x.id===n.id?{...x,unread:false}:x));if(n.page&&goTo)goTo(n.page);close();};
   const TABS=[{k:'all',l:'All'},{k:'unread',l:'Unread'},{k:'mentions',l:'Mentions'},{k:'assigned',l:'Assigned to me'}];
@@ -5577,6 +5582,16 @@ function ContactsPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='contact' close={()=>setImportModal(false)} onToast={showToast}/>}
+        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
+          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
+          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
+        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}}/>}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
         {confirmNode}
@@ -6266,6 +6281,36 @@ function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,onEmail,onLogCall,o
 // the default order of the records passed in. Reused by Lead/Contact/Company/Deal.
 const _recordCtx={lead:[],contact:[],company:[],deal:[]};
 function publishRecordCtx(obj,ids){_recordCtx[obj]=ids;}
+// RecordTasks — the "Tasks" section shared by Contact / Company / Lead / Deal detail pages.
+// One source of truth: reads the shared CalendarContext task store, filtered to this record via
+// `match`. "Add task" opens the same TaskFormModal drawer (prefilled with the record link).
+// Creating/completing logs to the record activity timeline through onLog.
+function RecordTasks({match,prefill,goTo,onLog,canEdit}){
+  const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
+  const [modal,setModal]=React.useState(null);
+  const [showDone,setShowDone]=React.useState(false);
+  const now=new Date();const sod=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const all=items.filter(e=>e.type==='task'&&match(e));
+  const open=all.filter(t=>!t.done).sort((a,b)=>a.date-b.date);
+  const done=all.filter(t=>t.done).sort((a,b)=>b.date-a.date);
+  const due=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(!t.done&&t.date<sod)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
+  const save=(ev)=>{const isNew=!ev.id;if(isNew)addItem(ev);else updateItem(ev);setModal(null);if(window.__nrturToast)window.__nrturToast(isNew?'Task created':'Task saved','success');if(isNew&&onLog)onLog('Task created',ev.title);};
+  const complete=(t)=>{const becomingDone=!t.done;toggleDone(t.id);if(window.__nrturToast)window.__nrturToast(becomingDone?'Task completed':'Task reopened','success');if(becomingDone&&onLog)onLog('Task completed',t.title);};
+  const TaskRow=({t})=>{const d=due(t);const u=userByCode(t.assignee||t.owner||'AM');return(
+    <div className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors group">
+      <button onClick={()=>complete(t)} title={t.done?'Reopen':'Complete'} className={['w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'#fff'}}/>}</button>
+      <button onClick={()=>setModal({task:t})} className="min-w-0 flex-1 text-left"><p className={['text-[13px] font-medium truncate',t.done?'text-white/40 line-through':'text-white'].join(' ')}>{t.title}</p><div className="flex items-center gap-2 mt-0.5">{d.c?<span className="text-[11px]" style={{color:d.c}}>{d.txt}</span>:<span className="text-[11px] text-white/40">{d.txt}</span>}{t.priority&&<span className="inline-flex items-center gap-1 text-[10px] text-white/45"><span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[t.priority]||'#64748b'}}/>{t.priority}</span>}{(t.subtasks||[]).length>0&&<span className="inline-flex items-center gap-1 text-[10px] text-white/40"><I.CheckSquare size={9}/>{t.subtasks.filter(x=>x.done).length}/{t.subtasks.length}</span>}</div></button>
+      {u&&<span title={u.name} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:u.color}}>{t.assignee||t.owner||'AM'}</span>}
+    </div>);};
+  return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
+    <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.CheckSquare size={14}/></span><div><p className="text-white font-medium leading-tight">Tasks</p><p className="text-[11px] text-white/45 mt-0.5">{open.length} open{done.length?' · '+done.length+' done':''}</p></div></div>{canEdit&&<button onClick={()=>setModal({task:{type:'task',allDay:true,priority:'Medium',assignee:'AM',...prefill}})} className="inline-flex items-center gap-1 text-[11px] text-white/45 hover:text-brand-300 transition-colors"><I.Plus size={11} stroke={2.4}/>Add task</button>}</div>
+    <div className="p-3">
+      {open.length===0?<p className="text-[12px] text-white/40 px-2 py-6 text-center">No open tasks{canEdit?' — add one to stay on track.':'.'}</p>:open.map(t=><TaskRow key={t.id} t={t}/>)}
+      {done.length>0&&<div className="mt-1 pt-2 border-t border-white/[0.05]"><button onClick={()=>setShowDone(s=>!s)} className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-white/45 hover:text-white/70 transition-colors"><span>Completed ({done.length})</span><I.ChevronDown size={13} style={{transform:showDone?'rotate(180deg)':'none',transition:'transform .15s'}}/></button>{showDone&&done.map(t=><TaskRow key={t.id} t={t}/>)}</div>}
+    </div>
+    {modal&&<TaskFormModal initial={modal.task} onClose={()=>setModal(null)} onSave={save} onDelete={(t)=>{deleteItem(t.id);setModal(null);if(window.__nrturToast)window.__nrturToast('Task deleted','success');}}/>}
+  </div>);
+}
 function RecordSwitcher({obj,page,currentId,goTo,items,railTitle}){
   const [railOpen,setRailOpen]=React.useState(false);
   const byId=React.useMemo(()=>{const m=new Map();(items||[]).forEach(r=>m.set(r.id,r));return m;},[items]);
@@ -6435,6 +6480,7 @@ function ContactDetailPage({goTo,nav}){
                 </div>
               </div>
             </div>
+            <RecordTasks match={(t)=>t.contact===c.name&&t.linkType!=='lead'} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
@@ -6962,6 +7008,7 @@ function DealDetailPage({goTo,nav}){
               </div>
               <RecordProperties record={drec} primary={dealPrimary} secondary={dealSecondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
             </div>
+            <RecordTasks match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
             <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
           </div>
           <RecordMetaFooter record={drec} meta={dealMeta} max="1100px"/>
@@ -7246,6 +7293,16 @@ function CompaniesPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='company' close={()=>setImportModal(false)} onToast={showToast}/>}
+        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
+          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
+          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
+        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}}/>}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
         {confirmNode}
@@ -7331,6 +7388,7 @@ function CompanyDetailPage({goTo,nav}){
                   ))}
                 </div>
               </div>
+              <RecordTasks match={(t)=>t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Companies','edit')?addNote:undefined} onSchedule={effCanObject('Companies','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
           </div>
@@ -7717,6 +7775,16 @@ function LeadsPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='lead' close={()=>setImportModal(false)} onToast={showToast}/>}
+        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
+          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
+          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
+        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}}/>}
         {convertLead&&<ConvertLeadModal lead={convertLead} close={()=>setConvertLead(null)} onConfirm={doConvert}/>}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
@@ -7800,6 +7868,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>
+              <RecordTasks match={(t)=>t.contact===l.name&&t.linkType==='lead'} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Leads','edit')?addNote:undefined} onSchedule={effCanObject('Leads','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
@@ -9645,6 +9714,13 @@ const AUTO_FIELD_VALUES={'Lead status':LEAD_STATUSES,'Lead source':LEAD_SOURCES,
 const autoOps=(f)=>AUTO_FIELD_OPS[f]||FIELD_OPS[f]||['is'];
 const autoVals=(f)=>AUTO_FIELD_VALUES[f]!==undefined?AUTO_FIELD_VALUES[f]:FIELD_VALUES[f];
 const DUR_OPTS=['1 hour','4 hours','1 day','2 days','5 days','1 week','2 weeks','30 days'];
+// ── Shared delay model {n, unit} — used by every WAIT/delay surface (automation + sequences) ──
+const DELAY_UNITS=['minutes','hours','days','weeks'];
+function delayText(d){if(!d)return 'no delay';let n=parseInt(d.n,10);if(isNaN(n))n=d.n||0;const u=d.unit||'days';const sing=u.replace(/s$/,'');return n+' '+(Math.abs(n)===1?sing:u);}
+// Parse a legacy duration string ("2 days", "1 hour", "30 days") into the {n, unit} model.
+function parseDelay(str){if(!str)return null;const m=String(str).match(/(\d+)\s*(min|hour|day|week|month)/i);if(!m)return null;const map={min:'minutes',hour:'hours',day:'days',week:'weeks',month:'days'};return {n:parseInt(m[1],10),unit:map[m[2].toLowerCase()]||'days'};}
+function nodeDelay(node){return node.delay||parseDelay(node.dur)||{n:2,unit:'days'};}
+function nodeTimeout(node){return node.timeoutDelay||parseDelay(node.timeout)||{n:7,unit:'days'};}
 // Option lists for action-node configuration dropdowns
 const REP_OPTS=['Round-robin','Deal owner','Least busy rep',...TEAM_MEMBERS.map(m=>m.name)];
 const SLACK_CHANNELS=['#sales','#leads','#wins','#alerts','#support'];
@@ -9717,7 +9793,9 @@ const TRIGGER_CATS=[
     {name:'SMS reply received',hint:'a contact texts back'},
     {name:'No reply in 3 days',hint:'an outbound message goes unanswered'}]},
   {cat:'Activity',Icon:I.Calendar,color:'#34d399',triggers:[
+    {name:'Task created',hint:'a new task is added or generated'},
     {name:'Task completed',hint:'a to-do is checked off'},
+    {name:'Task due soon',hint:'a task is approaching its due time'},
     {name:'Task overdue',hint:'a task passes its due date'},
     {name:'Meeting booked',hint:'a contact schedules time'},
     {name:'Call logged',hint:'a rep records a call'},
@@ -9753,8 +9831,8 @@ function makeNode(preset){
   const base={...preset,id:newNodeId()};
   if(preset.kind==='condition')return{...base,field:'Deal value',op:'greater than',value:'5',yes:[],no:[]};
   if(preset.kind==='branch')return{...base,lanes:[{id:newNodeId(),label:'Path A',nodes:[]},{id:newNodeId(),label:'Path B',nodes:[]}]};
-  if(preset.kind==='wait')return{...base,dur:'2 days'};
-  if(preset.kind==='waitUntil')return{...base,field:'Status',op:'is',value:'Customer',timeout:'7 days'};
+  if(preset.kind==='wait')return{...base,delay:{n:2,unit:'days'}};
+  if(preset.kind==='waitUntil')return{...base,field:'Status',op:'is',value:'Customer',timeoutDelay:{n:7,unit:'days'}};
   if(preset.kind==='goal')return{...base,field:'Status',op:'is',value:'Customer'};
   if(preset.kind==='mapFields')return{...base,form:FORMS_DATA[0].name,rows:[{from:'',to:''}]};
   if(preset.kind==='action')return{...base,...(ACTION_DEFAULTS[preset.key]||{})};
@@ -9768,6 +9846,7 @@ const AUTOMATIONS_DATA=[
   {name:'Re-engagement Campaign',trigger:'Deal inactive 7 days',active:false,runs:47,pausedSince:'Apr 12',lastRun:'3 weeks ago',spark:[3,5,4,6,7,5,4,3,2,1,1,0,0,0],steps:[STEP_PRESETS_A.reengage,STEP_PRESETS_A.flag],cond:'No reply in 7d'},
 ];
 const TEMPLATES_A=[
+  {name:'Stage Change Follow-Up Task',desc:'Deal stage changes → create a follow-up task for the deal owner, due in 2 days.',Icon:I.CheckSquare,iconBg:'rgba(245,158,11,0.12)',iconFg:'#fbbf24',steps:2},
   {name:'Lead Nurture Sequence',desc:'Drip educational content over 14 days.',Icon:I.Users,iconBg:'rgba(59,130,246,0.12)',iconFg:'#60a5fa',steps:4},
   {name:'Deal Won Celebration',desc:'Notify team and send thank-you on close.',Icon:I.Trophy,iconBg:'rgba(245,158,11,0.12)',iconFg:'#fbbf24',steps:3},
   {name:'Weekly Pipeline Report',desc:'Auto-generate Monday digest for your team.',Icon:I.BarChart,iconBg:'rgba(124,58,237,0.12)',iconFg:'#a78bfa',steps:3},
@@ -9845,6 +9924,14 @@ function AutomationsPage({goTo}){
 // Shared dark <select> styling for builder dropdowns
 const FSEL_STYLE={colorScheme:'dark',background:'var(--s850)'};
 const FSEL='px-2.5 py-1.5 rounded-lg border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40 appearance-none';
+// Reusable delay control: number input + full unit dropdown (minutes/hours/days/weeks). Reads/writes {n, unit}.
+function DelayPicker({value,onChange,units=DELAY_UNITS,selStyle,selClass,inputClass}){
+  const v=value||{n:2,unit:'days'};
+  return(<div className="flex items-center gap-2">
+    <input value={v.n} inputMode="numeric" onChange={e=>onChange({...v,n:e.target.value.replace(/\D/g,'')||'0'})} className={inputClass||'w-16 px-2.5 py-2 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[13px] text-white text-center font-mono outline-none focus:border-brand-500/45'}/>
+    <div className="relative flex-1 min-w-0"><select value={v.unit} onChange={e=>onChange({...v,unit:e.target.value})} style={selStyle||FSEL_STYLE} className={selClass||(FSEL+' w-full pr-8')}>{units.map(u=>(<option key={u} value={u}>{u}</option>))}</select><span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={13}/></span></div>
+  </div>);
+}
 // A reusable field / operator / value condition row — reuses FIELD_OPS, FIELD_VALUES, evalRule
 function CondRow({node,onChange}){
   const ops=autoOps(node.field);
@@ -10110,8 +10197,8 @@ const FlowCfgCtx=React.createContext(null);
 function FlowCfgProvider({children}){const [selId,setSelId]=React.useState(null);return <FlowCfgCtx.Provider value={{selId,setSelId}}>{children}</FlowCfgCtx.Provider>;}
 function flowNodeSummary(node){
   if(node.kind==='action')return actionSummary(node)||'Configure this step';
-  if(node.kind==='wait')return 'Wait '+(node.dur||'1 day');
-  if(node.kind==='waitUntil')return 'Until '+(node.field||'…')+' '+(node.op||'')+' '+(node.value||'')+' · timeout '+(node.timeout||'');
+  if(node.kind==='wait')return 'Wait '+delayText(nodeDelay(node));
+  if(node.kind==='waitUntil')return 'Until '+(node.field||'…')+' '+(node.op||'')+' '+(node.value||'')+' · timeout '+delayText(nodeTimeout(node));
   if(node.kind==='goal')return 'Exit when '+(node.field||'…')+' '+(node.op||'')+' '+(node.value||'');
   if(node.kind==='mapFields')return 'Map payload → '+(node.form||'a form');
   if(node.kind==='condition')return (node.field||'…')+' '+(node.op||'')+' '+(node.value||'');
@@ -10121,8 +10208,8 @@ function flowNodeSummary(node){
 function FlowNodeConfigBody({node,onChange,goTo}){
   return(<div className="flex flex-col gap-4">
     {node.kind==='action'&&(node.seq?(<div><div className="flex items-center justify-between mb-1"><label className="text-[11px] text-white/45">{node.seq==='sms'?'SMS sequence to enroll in':'Email sequence to enroll in'}</label><button onClick={()=>goTo(node.seq==='sms'?'sms-sequence-builder':'email-sequence-builder')} className="text-[11px] text-brand-300 hover:text-brand-200">Manage →</button></div><select value={node.seqName||(node.seq==='sms'?SEQ_DATA[0].name:EMAIL_SEQ_DATA[0].name)} onChange={e=>onChange({seqName:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{(node.seq==='sms'?SEQ_DATA:EMAIL_SEQ_DATA).map(q=>(<option key={q.id}>{q.name}</option>))}</select><div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 px-2.5 py-2"><I.Zap size={11} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-white/55 leading-relaxed">Enrolls the contact even if the sequence's own trigger doesn't match. Respects the sequence's re-enrollment rule (no duplicates).</p></div></div>):(<ActionConfig node={node} onChange={onChange} goTo={goTo}/>))}
-    {node.kind==='wait'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Pause the flow for</label><select value={node.dur} onChange={e=>onChange({dur:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{DUR_OPTS.map(d=>(<option key={d}>{d}</option>))}</select></div>)}
-    {node.kind==='waitUntil'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Hold here until</label><CondRow node={node} onChange={onChange}/><div className="mt-2 flex items-center gap-2"><span className="text-[11px] text-white/45">Time out after</span><select value={node.timeout} onChange={e=>onChange({timeout:e.target.value})} style={FSEL_STYLE} className={FSEL}>{DUR_OPTS.map(d=>(<option key={d}>{d}</option>))}</select></div></div>)}
+    {node.kind==='wait'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Pause the flow for</label><DelayPicker value={nodeDelay(node)} onChange={d=>onChange({delay:d})}/></div>)}
+    {node.kind==='waitUntil'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Hold here until</label><CondRow node={node} onChange={onChange}/><div className="mt-2.5"><label className="text-[11px] text-white/45 block mb-1.5">Time out after</label><DelayPicker value={nodeTimeout(node)} onChange={d=>onChange({timeoutDelay:d})}/></div></div>)}
     {node.kind==='goal'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Exit the automation early once this is met</label><CondRow node={node} onChange={onChange}/></div>)}
     {node.kind==='condition'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Split the flow on</label><CondRow node={node} onChange={onChange}/><p className="mt-2 text-[11px] text-white/40 leading-relaxed">The Yes / No paths are edited directly on the canvas below the step.</p></div>)}
     {node.kind==='branch'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Path names</label><div className="flex flex-col gap-1.5">{(node.lanes||[]).map((l,li)=>(<input key={l.id} value={l.label} onChange={e=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,label:e.target.value}:x)})} className="px-2.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>))}</div><p className="mt-2 text-[11px] text-white/40 leading-relaxed">Steps inside each path are edited on the canvas.</p></div>)}
@@ -10244,8 +10331,8 @@ function simulateFlow(nodes,c,out,depth){
   depth=depth||0;
   for(const n of (nodes||[])){
     if(n.kind==='action'){out.push({label:n.label,detail:actionSummary(n)||'completed',status:'ok',Icon:n.Icon,depth});}
-    else if(n.kind==='wait'){out.push({label:'Wait '+n.dur,detail:'flow paused here (simulated)',status:'wait',Icon:I.Clock,depth});}
-    else if(n.kind==='waitUntil'){const met=evalRule(c,n);out.push({label:'Wait until '+n.field+' '+n.op+' '+n.value,detail:met?'already true — continue immediately':'would wait up to '+n.timeout,status:met?'ok':'wait',Icon:I.Clock,depth});}
+    else if(n.kind==='wait'){out.push({label:'Wait '+delayText(nodeDelay(n)),detail:'flow paused here (simulated)',status:'wait',Icon:I.Clock,depth});}
+    else if(n.kind==='waitUntil'){const met=evalRule(c,n);out.push({label:'Wait until '+n.field+' '+n.op+' '+n.value,detail:met?'already true — continue immediately':'would wait up to '+delayText(nodeTimeout(n)),status:met?'ok':'wait',Icon:I.Clock,depth});}
     else if(n.kind==='goal'){const met=evalRule(c,n);out.push({label:'Goal: '+n.field+' '+n.op+' '+n.value,detail:met?'goal met — exit automation':'not met — keep going',status:met?'exit':'skip',Icon:I.Target,depth});if(met)return true;}
     else if(n.kind==='mapFields'){const mapped=(n.rows||[]).filter(r=>r.from&&r.to).length;out.push({label:'Map webhook → '+(n.form||'form'),detail:'mapped '+mapped+' field'+(mapped===1?'':'s')+' · lead created',status:'ok',Icon:I.Plug,depth});}
     else if(n.kind==='condition'){const met=evalRule(c,n);out.push({label:'If '+n.field+' '+n.op+' '+n.value,detail:met?'condition true → Yes path':'condition false → No path',status:met?'yes':'no',Icon:I.GitBranch,depth});const exited=simulateFlow(met?n.yes:n.no,c,out,depth+1);if(exited)return true;}
@@ -14162,7 +14249,7 @@ function SequenceBuilderPage({goTo,channel}){
   const [activated,setActivated]=React.useState(false);
   const [dirty,setDirty]=React.useState(false);
   const [testOpen,setTestOpen]=React.useState(false);
-  // Stop rules (exit conditions) — list of cards + the inline builder draft (null when closed).
+  // Exit conditions — list of cards + the inline builder draft (null when closed).
   const [stopRules,setStopRules]=React.useState(isSms
     ?[{id:1,cond:'replyKeyword',actions:['complete','suppress','tag'],keywords:['STOP','UNSUBSCRIBE','CANCEL','QUIT','END'],stage:'Won',field:'Status',value:'',goal:'Meeting booked',moveSeq:'',status:'Customer',tag:'opted-out'},
        {id:2,cond:'replies',actions:['complete'],keywords:[],stage:'Won',field:'Status',value:'',goal:'Meeting booked',moveSeq:'',status:'Customer',tag:'lead'}]
@@ -14197,7 +14284,7 @@ function SequenceBuilderPage({goTo,channel}){
   const openWait=(s)=>{setDraft({...s});setActiveNodeId(WAIT_PREFIX+s.id);};
   const saveWait=()=>{const rid=String(activeNodeId).slice(WAIT_PREFIX.length);setSteps(arr=>arr.map(x=>String(x.id)===rid?{...x,delay:draft.delay,sendTime:draft.sendTime}:x));mark();setActiveNodeId(null);showToast('Delay updated.');};
   const isWaitDrawer=typeof activeNodeId==='string'&&activeNodeId.startsWith(WAIT_PREFIX);
-  const waitSummary=(s)=>(s.delay?.n??2)+' '+(s.delay?.unit||'days')+(isSms?'':' · '+(s.sendTime||'9:00 AM'));
+  const waitSummary=(s)=>delayText(s.delay||{n:2,unit:'days'})+(isSms?'':' · '+(s.sendTime||'9:00 AM'));
   const stepSummary=(s)=>{if(isSms){const b=(s.body||'').trim().replace(/\s+/g,' ');return b||'Empty message — tap to write';}const subj=(s.subject||'').trim();return subj||'No subject — tap to edit';};
   const activeIdx=steps.findIndex(x=>x.id===activeNodeId);
   // Small spine "+" used to insert a message at a given gap.
@@ -14233,7 +14320,7 @@ function SequenceBuilderPage({goTo,channel}){
   const saveTrigger=()=>{setTrig({...draft});mark();setActiveNodeId(null);showToast('Trigger updated.');};
   // Styled select used in the trigger drawer (value === label).
   const DSel=({value,onChange,opts})=>(<div className="relative"><select value={value} onChange={e=>onChange(e.target.value)} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{opts.map(o=>(<option key={o} value={o}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>);
-  // ── Stop rules: STOP-WHEN conditions + on-stop actions (shared by email & SMS) ──
+  // ── Exit conditions: EXIT-WHEN conditions + on-exit actions (shared by email & SMS) ──
   const GOAL_OPTS=['Meeting booked','Demo completed','Replied to a message','Deal created','Became a customer'];
   // Common SMS opt-out keywords — pre-seeded but editable. STOP/UNSUBSCRIBE are compliance-mandated.
   const DEFAULT_OPTOUT_KEYWORDS=['STOP','UNSUBSCRIBE','CANCEL','QUIT','END'];
@@ -14264,6 +14351,9 @@ function SequenceBuilderPage({goTo,channel}){
   ];
   const stopCond=(k)=>STOP_CONDS.find(c=>c.k===k)||STOP_CONDS[0];
   const ruleSentence=(r)=>{const acts=(r.actions||[]).map(a=>{const m=STOP_ACTIONS.find(x=>x.k===a);return m?m.short(r):a;});return{cond:stopCond(r.cond).phrase(r),actions:acts.length?acts.join(' + '):'no action yet'};};
+  // Automatic exits = the safe defaults (reply / unsubscribe / meeting booked); everything else is a custom exit.
+  const AUTO_EXIT_CONDS=['replies','replyKeyword','unsub','books'];
+  const isAutoCond=(k)=>AUTO_EXIT_CONDS.includes(k);
   const sset=(patch)=>setStopEdit(d=>({...d,...patch}));
   const blankStopRule=()=>({id:null,cond:'replies',actions:['complete'],stage:STAGE_OPTS[2],field:AUD_FIELD_OPTS[0],value:'',goal:GOAL_OPTS[0],moveSeq:(ALL_SEQ_NAMES.find(n=>n!=='None')||''),status:CONTACT_STATUSES[0],tag:TAG_OPTS[0],keywords:DEFAULT_OPTOUT_KEYWORDS.slice()});
   const toggleStopAct=(k)=>setStopEdit(d=>{const has=(d.actions||[]).includes(k);return{...d,actions:has?d.actions.filter(a=>a!==k):[...(d.actions||[]),k]};});
@@ -14271,8 +14361,8 @@ function SequenceBuilderPage({goTo,channel}){
   const addKeyword=()=>{const v=kwDraft.trim().toUpperCase();if(!v){return;}setStopEdit(d=>{const cur=(d.keywords||[]);if(cur.some(k=>k.toUpperCase()===v))return d;return{...d,keywords:[...cur,v]};});setKwDraft('');};
   const removeKeyword=(k)=>setStopEdit(d=>({...d,keywords:(d.keywords||[]).filter(x=>x!==k)}));
   const isComplianceKw=(k)=>COMPLIANCE_KEYWORDS.includes(String(k).toUpperCase());
-  const saveStopRule=()=>{if(!stopEdit)return;if(!(stopEdit.actions||[]).length){showToast('Pick at least one action.');return;}setStopRules(list=>stopEdit.id==null?[...list,{...stopEdit,id:Date.now()}]:list.map(r=>r.id===stopEdit.id?{...stopEdit}:r));mark();setStopEdit(null);showToast('Stop rule saved.');};
-  const removeStopRule=(id)=>{setStopRules(list=>list.filter(r=>r.id!==id));mark();showToast('Stop rule removed.');};
+  const saveStopRule=()=>{if(!stopEdit)return;if(!(stopEdit.actions||[]).length){showToast('Pick at least one action.');return;}setStopRules(list=>stopEdit.id==null?[...list,{...stopEdit,id:Date.now()}]:list.map(r=>r.id===stopEdit.id?{...stopEdit}:r));mark();setStopEdit(null);showToast('Exit condition saved.');};
+  const removeStopRule=(id)=>{setStopRules(list=>list.filter(r=>r.id!==id));mark();showToast('Exit condition removed.');};
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="settings-automations" goTo={goTo}/>
@@ -14319,36 +14409,40 @@ function SequenceBuilderPage({goTo,channel}){
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 mt-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium text-white/50 uppercase tracking-[0.14em] mb-1.5">Stop rules</p>
-                  <p className="text-[12px] text-white/50">Automatically exit contacts when these happen.</p>
+                  <p className="text-[10px] font-medium text-white/50 uppercase tracking-[0.14em] mb-1.5">Exit conditions</p>
+                  <p className="text-[12px] text-white/50">Automatically remove a contact from this sequence when…</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium bg-white/[0.05] text-white/55 border border-white/[0.08] shrink-0"><I.Pause size={11}/>{stopRules.length} rule{stopRules.length!==1?'s':''}</span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium bg-white/[0.05] text-white/55 border border-white/[0.08] shrink-0"><I.Forward size={11}/>{stopRules.length} condition{stopRules.length!==1?'s':''}</span>
               </div>
-              <div className="flex flex-col gap-2.5 mt-4">
-                {stopRules.length===0&&(
-                  <div className="rounded-xl border border-dashed border-white/[0.12] px-4 py-5 text-center">
-                    <p className="text-[12.5px] text-white/45">No stop rules yet — contacts run until the sequence ends.</p>
+              {stopRules.length===0&&(
+                <div className="rounded-xl border border-dashed border-white/[0.12] px-4 py-5 text-center mt-4">
+                  <p className="text-[12.5px] text-white/45">No exit conditions yet — contacts run until the sequence ends.</p>
+                </div>
+              )}
+              {[{key:'auto',label:'Automatic exits',hint:'Safe defaults',rules:stopRules.filter(r=>isAutoCond(r.cond))},{key:'custom',label:'Custom exits',hint:'Tag · field · stage',rules:stopRules.filter(r=>!isAutoCond(r.cond))}].map(group=>group.rules.length===0?null:(
+                <div key={group.key} className="mt-4">
+                  <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.14em] shrink-0">{group.label}</span><span className="h-px flex-1 bg-white/[0.06]"/><span className="text-[10px] text-white/30 shrink-0">{group.hint}</span></div>
+                  <div className="flex flex-col gap-2">
+                    {group.rules.map(r=>{const c=stopCond(r.cond);const s=ruleSentence(r);const kw=(r.cond==='replyKeyword'?(r.keywords||[]):[]);return(
+                      <div key={r.id} className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 hover:border-white/[0.16] transition-colors">
+                        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:c.color+'1f',color:c.color}}><c.Icon size={15}/></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13px] text-white leading-snug truncate"><span className="text-white/45 font-normal">Exit when </span><span className="font-medium">{s.cond}</span></p>
+                          <p className="text-[11px] text-white/45 leading-snug truncate mt-0.5">Then {s.actions}{kw.length>0?' · '+kw.length+' keyword'+(kw.length!==1?'s':''):''}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button onClick={()=>setStopEdit({...r})} title="Edit exit condition" className="w-7 h-7 rounded-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"><I.Edit size={13}/></button>
+                          <button onClick={()=>removeStopRule(r.id)} title="Remove exit condition" className="w-7 h-7 rounded-md flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={14}/></button>
+                        </div>
+                      </div>
+                    );})}
                   </div>
-                )}
-                {stopRules.map(r=>{const c=stopCond(r.cond);const s=ruleSentence(r);return(
-                  <div key={r.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5 flex items-start gap-3">
-                    <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{background:c.color+'1f',color:c.color}}><c.Icon size={16}/></span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] leading-snug"><span className="text-white/45">If </span><span className="font-medium text-white">{s.cond}</span><span className="text-white/35"> → </span><span className="font-medium text-brand-200">{s.actions}</span></p>
-                      <div className="flex flex-wrap gap-1.5 mt-2">{(r.actions||[]).map(a=>{const m=STOP_ACTIONS.find(x=>x.k===a);if(!m)return null;return(<span key={a} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium" style={{background:m.color+'18',color:m.color,boxShadow:`0 0 0 1px ${m.color}33`}}><m.Icon size={10}/>{m.label}</span>);})}</div>
-                      {r.cond==='replyKeyword'&&(r.keywords||[]).length>0&&(<div className="flex flex-wrap gap-1 mt-2">{(r.keywords||[]).map(k=>(<span key={k} className={['inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium',isComplianceKw(k)?'bg-red-500/12 text-red-200 ring-1 ring-red-500/25':'bg-white/[0.06] text-white/55 ring-1 ring-white/[0.08]'].join(' ')}>{isComplianceKw(k)&&<I.Ban size={8.5}/>}{k}</span>))}</div>)}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={()=>setStopEdit({...r})} title="Edit rule" className="w-7 h-7 rounded-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"><I.Edit size={13}/></button>
-                      <button onClick={()=>removeStopRule(r.id)} title="Remove rule" className="w-7 h-7 rounded-md flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.X size={14}/></button>
-                    </div>
-                  </div>
-                );})}
-              </div>
+                </div>
+              ))}
               {stopEdit?(
                 <div className="rounded-xl border border-brand-500/30 bg-brand-500/[0.05] p-3.5 mt-2.5">
-                  <p className="text-[11px] font-medium text-white/55 uppercase tracking-[0.12em] mb-3">{stopEdit.id==null?'New stop rule':'Edit stop rule'}</p>
-                  <label className={DLBL}>Stop when</label>
+                  <p className="text-[11px] font-medium text-white/55 uppercase tracking-[0.12em] mb-3">{stopEdit.id==null?'New exit condition':'Edit exit condition'}</p>
+                  <label className={DLBL}>Exit when</label>
                   <DSel value={stopCond(stopEdit.cond).label} onChange={v=>{const c=STOP_CONDS.find(x=>x.label===v)||STOP_CONDS[0];const patch={cond:c.k};if(c.k==='replyKeyword'){if(!(stopEdit.keywords||[]).length)patch.keywords=DEFAULT_OPTOUT_KEYWORDS.slice();patch.actions=['complete','suppress','tag'];patch.tag='opted-out';}sset(patch);}} opts={STOP_CONDS.map(c=>c.label)}/>
                   {stopCond(stopEdit.cond).need==='stage'&&(<div className="mt-3"><label className={DLBL}>Moves to stage</label><DSel value={stopEdit.stage} onChange={v=>sset({stage:v})} opts={STAGE_OPTS}/></div>)}
                   {stopCond(stopEdit.cond).need==='field'&&(<div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className={DLBL}>Field</label><DSel value={stopEdit.field} onChange={v=>sset({field:v})} opts={AUD_FIELD_OPTS}/></div><div><label className={DLBL}>New value</label><input value={stopEdit.value} onChange={e=>sset({value:e.target.value})} placeholder="value" className="w-full px-3 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[13px] text-white outline-none focus:border-brand-500/45"/></div></div>)}
@@ -14386,12 +14480,12 @@ function SequenceBuilderPage({goTo,channel}){
                     );})}
                   </div>
                   <div className="flex items-center gap-2 mt-4">
-                    <button onClick={saveStopRule} className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">{stopEdit.id==null?'Add rule':'Save rule'}</button>
+                    <button onClick={saveStopRule} className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">{stopEdit.id==null?'Add condition':'Save condition'}</button>
                     <button onClick={()=>setStopEdit(null)} className="px-4 py-2 rounded-lg text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
                   </div>
                 </div>
               ):(
-                <button onClick={()=>setStopEdit(blankStopRule())} className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all"><I.Plus size={14} stroke={2.4}/>Add stop rule</button>
+                <button onClick={()=>setStopEdit(blankStopRule())} className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all"><I.Plus size={14} stroke={2.4}/>Add exit condition</button>
               )}
             </div>
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 mt-5">
@@ -14415,7 +14509,7 @@ function SequenceBuilderPage({goTo,channel}){
                   </div>
                   <div className="px-3 py-4 flex flex-col gap-2 min-h-[300px]">
                     {(steps||[]).map((s,i)=>(<React.Fragment key={s.id}>
-                      {i>0&&<p className="text-center text-[9px] text-white/30 mt-1.5">{(s.delay?.n??2)+' '+(s.delay?.unit||'days')+' later'}</p>}
+                      {i>0&&<p className="text-center text-[9px] text-white/30 mt-1.5">{delayText(s.delay||{n:2,unit:'days'})+' later'}</p>}
                       <div className="self-end max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-[11.5px] leading-relaxed text-white" style={{background:'#34c759'}}>{((s.body||'Your message…').replace(/\{\{first_name\}\}/g,'Sarah').replace(/\{\{company\}\}/g,'Meridian').replace(/\{\{rep_name\}\}/g,'Alex').replace(/\{\{booking_link\}\}/g,'nrtur.app/book/alex')).slice(0,220)}</div>
                     </React.Fragment>))}
                   </div>
@@ -14481,7 +14575,7 @@ function SequenceBuilderPage({goTo,channel}){
               <label className={DLBL}>Wait before sending</label>
               <div className="flex items-center gap-2">
                 <input value={draft.delay?.n??2} onChange={e=>dset({delay:{...(draft.delay||{unit:'days'}),n:e.target.value.replace(/\D/g,'')||'0'}})} className="w-16 px-2.5 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.12] text-[14px] text-white text-center font-mono outline-none focus:border-brand-500/45"/>
-                <div className="relative flex-1"><select value={draft.delay?.unit||'days'} onChange={e=>dset({delay:{...(draft.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{['hours','days','weeks'].map(u=>(<option key={u}>{u}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
+                <div className="relative flex-1"><select value={draft.delay?.unit||'days'} onChange={e=>dset({delay:{...(draft.delay||{n:2}),unit:e.target.value}})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{DELAY_UNITS.map(u=>(<option key={u}>{u}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
               </div>
               {!isSms&&(<div className="mt-5"><label className={DLBL}>Send time</label><div className="relative"><select value={draft.sendTime||'9:00 AM'} onChange={e=>dset({sendTime:e.target.value})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
             </div>
@@ -15793,7 +15887,7 @@ const CAL_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const CAL_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const CAL_TASK_PRIORITY=['Low','Medium','High'];
 const CAL_PRIORITY_C={Low:'#64748b',Medium:'#60a5fa',High:'#f87171'};
-const CAL_REMIND=[{v:'',l:'None'},{v:'15',l:'15 min before'},{v:'30',l:'30 min before'},{v:'60',l:'1 hour before'},{v:'1440',l:'1 day before'}];
+const CAL_REMIND=[{v:'',l:'None'},{v:'0',l:'At due time'},{v:'10',l:'10 min before'},{v:'15',l:'15 min before'},{v:'30',l:'30 min before'},{v:'60',l:'1 hour before'},{v:'1440',l:'1 day before'}];
 const CAL_REPEAT=['Never','Daily','Weekly','Monthly','Custom'];
 const calFmtTime=(d)=>{const h=d.getHours(),m=d.getMinutes();return h+':'+String(m).padStart(2,'0');};
 const calFmtTimeShort=(d)=>{let h=d.getHours();const m=d.getMinutes();const ap=h>=12?'p':'a';h=h%12;if(h===0)h=12;return m?(h+':'+String(m).padStart(2,'0')+ap):(h+ap);};
@@ -15813,9 +15907,14 @@ function calSeedEvents(){
     E({id:'cs3',title:'Qualify lead — Olivia Bennett',type:'call',date:at(d+1,9,0),end:at(d+1,9,30),contact:'Olivia Bennett',linkType:'lead',company:'Brightwave Studio',reminder:'15'}),
     E({id:'cs4',title:'Team pipeline review',type:'meeting',date:at(d+1,11,0),end:at(d+1,12,0),repeat:'Weekly',reminder:'30'}),
     E({id:'cs5',title:'Proposal review — Atlas Consult',type:'proposal',date:at(d+2,15,0),end:at(d+2,16,0),contact:'Priya Nair',linkType:'contact',company:'Atlas Consult',deal:'Atlas Consult · $18,000',reminder:'60'}),
-    E({id:'ct1',title:'Send contract to Forge & Co',type:'task',date:at(d,0,0),end:null,contact:'Emily Tran',linkType:'contact',company:'Forge & Co',deal:'Forge & Co · $44,000',allDay:true,priority:'High',subtasks:[{id:'ct1s1',title:'Draft from contract template',done:true},{id:'ct1s2',title:'Internal legal review',done:false},{id:'ct1s3',title:'Send for e-signature',done:false}]}),
-    E({id:'ct2',title:'Follow up with Marcus Rios',type:'task',date:at(d+1,0,0),end:null,contact:'Marcus Rios',linkType:'contact',company:'Kapoor & Assoc',allDay:true,priority:'Medium'}),
-    E({id:'ct3',title:'Prep Q3 proposal deck',type:'task',date:at(d+3,0,0),end:null,allDay:true,priority:'Low',subtasks:[{id:'ct3s1',title:'Pull Q2 metrics',done:false},{id:'ct3s2',title:'Outline narrative',done:false}]}),
+    E({id:'ct1',title:'Send contract to Forge & Co',type:'task',date:at(d,0,0),end:null,contact:'Emily Tran',linkType:'contact',company:'Forge & Co',deal:'Forge & Co · $44,000',allDay:true,priority:'High',assignee:'AM',reminder:'0',subtasks:[{id:'ct1s1',title:'Draft from contract template',done:true},{id:'ct1s2',title:'Internal legal review',done:false},{id:'ct1s3',title:'Send for e-signature',done:false}]}),
+    E({id:'ct2',title:'Follow up with Marcus Rios',type:'task',date:at(d+1,0,0),end:null,contact:'Marcus Rios',linkType:'contact',company:'Kapoor & Assoc',allDay:true,priority:'Medium',assignee:'SC'}),
+    E({id:'ct3',title:'Prep Q3 proposal deck',type:'task',date:at(d+3,0,0),end:null,allDay:true,priority:'Low',assignee:'AM',subtasks:[{id:'ct3s1',title:'Pull Q2 metrics',done:false},{id:'ct3s2',title:'Outline narrative',done:false}]}),
+    E({id:'ct4',title:'Send proposal draft — Summit Digital',type:'task',date:at(d,0,0),end:null,contact:'James Rivera',linkType:'contact',company:'Summit Digital',deal:'Summit Digital · $31,000',allDay:true,priority:'High',assignee:'AM',reminder:'60'}),
+    E({id:'ct5',title:'Email signed SOW to Sarah Chen',type:'task',date:at(d-2,0,0),end:null,contact:'Sarah Chen',linkType:'contact',company:'Meridian Agency',deal:'Meridian Agency · $24k',allDay:true,priority:'High',assignee:'AM',reminder:'0'}),
+    E({id:'ct6',title:'Call back Olivia Bennett',type:'task',date:at(d-1,0,0),end:null,contact:'Olivia Bennett',linkType:'lead',company:'Brightwave Studio',allDay:true,priority:'Medium',assignee:'AM'}),
+    E({id:'ct7',title:'Confirm renewal terms — Atlas Consult',type:'task',date:at(d-3,0,0),end:null,contact:'Priya Nair',linkType:'contact',company:'Atlas Consult',deal:'Atlas Consult · $18,000',allDay:true,priority:'Medium',assignee:'JK'}),
+    E({id:'ct8',title:'Log notes from kickoff call',type:'task',date:at(d-1,0,0),end:null,contact:'Marcus Rios',linkType:'contact',company:'Kapoor & Assoc',allDay:true,priority:'Low',assignee:'AM',done:true}),
     E({id:'cs6',title:'Quarterly check-in — Meridian',type:'meeting',date:at(d+5,10,0),end:at(d+5,11,0),contact:'Sarah Chen',linkType:'contact',company:'Meridian Agency',reminder:'30'}),
   ];
 }
@@ -15968,6 +16067,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
   const [hasTime,setHasTime]=React.useState(!!(ed.id&&!ed.allDay));
   const [time,setTime]=React.useState(ed.date&&!ed.allDay?calToTimeInput(ed.date):'09:00');
   const [reminder,setReminder]=React.useState(ed.reminder||'');
+  const [assignee,setAssignee]=React.useState(ed.assignee||'AM'); // who owns this to-do (team avatar code); defaults to me
   // "Related to" — link the task to ONE record of a chosen type (lead | contact | company).
   const initRelType=(ed.company&&!ed.contact)?'company':(ed.linkType==='lead'?'lead':'contact');
   const [relType,setRelType]=React.useState(initRelType);
@@ -16009,7 +16109,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
     const [Y,M,D]=date.split('-').map(Number);
     const mk=()=>{const [h,mi]=time.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
     const isCompany=relType==='company';
-    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,reminder,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
+    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,reminder,assignee,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
     onSave(ev);
   };
   const PRIOS=[
@@ -16044,9 +16144,15 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
             </div>
           </div>
         </div>
-        <div>
-          <label className={L}>Reminder</label>
-          <select value={reminder} onChange={e=>setReminder(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REMIND.map(r=>(<option key={r.l} value={r.v}>{r.l}</option>))}</select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={L}>Reminder</label>
+            <div className="relative"><select value={reminder} onChange={e=>setReminder(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REMIND.map(r=>(<option key={r.l} value={r.v}>{r.l}</option>))}</select><I.Bell size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
+          </div>
+          <div>
+            <label className={L}>Assignee</label>
+            <div className="relative"><select value={assignee} onChange={e=>setAssignee(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{TEAM_MEMBERS.map(mm=>(<option key={mm.avatar} value={mm.avatar}>{mm.name}{mm.avatar==='AM'?' (me)':''}</option>))}</select><I.UserCog size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
+          </div>
         </div>
         {!showLink?(
           <button onClick={()=>setShowLink(true)} className="inline-flex items-center gap-2 text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors w-fit"><I.Plus size={13}/>Link to a lead, contact, company or deal</button>
@@ -16102,6 +16208,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const relOptions=REC_OPTS[relType]||[];
   const onRelType=(tp)=>{setRelType(tp);setRelRecord('');};// switching type clears the previous selection
   const [reminder,setReminder]=React.useState(ed.reminder||'');
+  const [assignee,setAssignee]=React.useState(ed.assignee||'AM'); // who owns this to-do (team avatar code); defaults to me
   const [repeat,setRepeat]=React.useState(ed.repeat||'Never');
   const titleRef=React.useRef(null);
   React.useEffect(()=>{const t=setTimeout(()=>titleRef.current&&titleRef.current.focus(),60);return()=>clearTimeout(t);},[]);
@@ -17232,10 +17339,15 @@ function CalendarPage({goTo,nav}){
 function TasksPage({goTo,nav}){
   const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
   const [view,setView]=React.useState('list');
-  const [filter,setFilter]=React.useState((nav&&nav.view&&['all','open','overdue','today','done'].indexOf(nav.view)>=0)?nav.view:'open');
-  React.useEffect(()=>{if(nav&&nav.view&&['all','open','overdue','today','done'].indexOf(nav.view)>=0)setFilter(nav.view);},[nav&&nav.view]);
+  const [filter,setFilter]=React.useState((nav&&nav.view&&['all','upcoming','overdue','today','done'].indexOf(nav.view)>=0)?nav.view:'today');
+  React.useEffect(()=>{if(nav&&nav.view&&['all','upcoming','overdue','today','done'].indexOf(nav.view)>=0)setFilter(nav.view);},[nav&&nav.view]);
   const [search,setSearch]=React.useState('');
   const [modal,setModal]=React.useState(null);
+  const [asgFilter,setAsgFilter]=React.useState('me');   // me | all | <team avatar code> — personal view defaults to me
+  const [typeFilter,setTypeFilter]=React.useState('all'); // all | contact | company | lead | deal | none
+  const [selected,setSelected]=React.useState(()=>new Set());
+  const [reassignOpen,setReassignOpen]=React.useState(false);
+  const [rescheduleOpen,setRescheduleOpen]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
   const {toasts,addToast}=useToast();
   const now=new Date();const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
@@ -17257,25 +17369,40 @@ function TasksPage({goTo,nav}){
   const saveTaskChanges=()=>setTaskViews(vs=>vs.map(v=>v.key===activeViewKey?{...v,filter:JSON.parse(JSON.stringify(workFilter))}:v));
   const isOverdue=(t)=>!t.done&&t.date<startToday;
   const isToday=(t)=>calSameDay(t.date,now);
-  const FILTERS=[{k:'all',l:'All'},{k:'open',l:'Open'},{k:'overdue',l:'Overdue'},{k:'today',l:'Today'},{k:'done',l:'Done'}];
-  const counts={all:tasks.length,open:tasks.filter(t=>!t.done).length,overdue:tasks.filter(isOverdue).length,today:tasks.filter(t=>isToday(t)&&!t.done).length,done:tasks.filter(t=>t.done).length};
+  const taskAsg=(t)=>t.assignee||t.owner||'AM';
+  const matchAsg=(t)=>asgFilter==='all'||(asgFilter==='me'?taskAsg(t)==='AM':taskAsg(t)===asgFilter);
+  const matchType=(t)=>{if(typeFilter==='all')return true;if(typeFilter==='none')return !(t.contact||t.company||t.deal);if(typeFilter==='deal')return !!t.deal;if(typeFilter==='company')return !!t.company&&!t.contact;if(typeFilter==='lead')return t.linkType==='lead';if(typeFilter==='contact')return t.linkType==='contact';return true;};
+  const isUpcoming=(t)=>!t.done&&t.date>=startToday&&!isToday(t);
+  const scoped=tasks.filter(t=>matchAsg(t)&&matchType(t)&&(!search||(t.title||'').toLowerCase().includes(search.toLowerCase())));
+  const FILTERS=[{k:'today',l:'Today'},{k:'upcoming',l:'Upcoming'},{k:'overdue',l:'Overdue'},{k:'done',l:'Completed'},{k:'all',l:'All'}];
+  const counts={today:scoped.filter(t=>(isToday(t)&&!t.done)||isOverdue(t)).length,upcoming:scoped.filter(isUpcoming).length,overdue:scoped.filter(isOverdue).length,done:scoped.filter(t=>t.done).length,all:scoped.length};
   const list=omApplyFilter(tasks,workFilter,taskFields).filter(t=>{
+    if(!matchAsg(t)||!matchType(t))return false;
     if(search&&!(t.title||'').toLowerCase().includes(search.toLowerCase()))return false;
-    if(filter==='open'&&t.done)return false;
-    if(filter==='done'&&!t.done)return false;
-    if(filter==='overdue'&&!isOverdue(t))return false;
-    if(filter==='today'&&!(isToday(t)&&!t.done))return false;
+    if(filter==='done')return t.done;
+    if(filter==='overdue')return isOverdue(t);
+    if(filter==='today')return (isToday(t)&&!t.done)||isOverdue(t);
+    if(filter==='upcoming')return isUpcoming(t);
     return true;
   }).sort((a,b)=>(a.done-b.done)||(a.date-b.date)||((a.order??1e9)-(b.order??1e9)));
   const dueLabel=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(t.done)return{txt:s,c:null};if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(t.date<startToday)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
   const linkedTxt=(t)=>[t.contact,t.company,t.deal].filter(Boolean).join(' · ');
   const save=(ev)=>{if(ev.id)updateItem(ev);else addItem(ev);setModal(null);addToast('Task saved');};
   const del=(t)=>openConfirm({title:'Delete task?',body:'"'+t.title+'" will be removed.',confirmLabel:'Delete',danger:true,onConfirm:()=>{deleteItem(t.id);addToast('Task deleted');}});
+  const primaryLink=(t)=>{if(t.deal)return{label:t.deal,Icon:I.GitBranch,go:()=>goTo('pipeline')};if(t.contact)return{label:t.contact,Icon:t.linkType==='lead'?I.Target:I.Users,go:()=>{dashGoToRecord(goTo,t.contact)||goTo(t.linkType==='lead'?'leads':'contacts');}};if(t.company)return{label:t.company,Icon:I.Building,go:()=>{dashGoToRecord(goTo,t.company)||goTo('companies');}};return null;};
+  const toggleSelect=(id)=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const clearSel=()=>setSelected(new Set());
+  const selTasks=()=>tasks.filter(t=>selected.has(t.id));
+  const bulkComplete=()=>{const n=selected.size;selTasks().forEach(t=>{if(!t.done)toggleDone(t.id);});addToast(n+' task'+(n!==1?'s':'')+' completed');clearSel();};
+  const bulkDelete=()=>{const n=selected.size;openConfirm({title:'Delete '+n+' task'+(n!==1?'s':'')+'?',body:'These tasks will be permanently removed.',confirmLabel:'Delete',danger:true,onConfirm:()=>{selTasks().forEach(t=>deleteItem(t.id));addToast(n+' deleted');clearSel();}});};
+  const bulkReassign=(code)=>{selTasks().forEach(t=>updateItem({id:t.id,assignee:code}));addToast('Reassigned to '+(userByCode(code)?userByCode(code).name:code));setReassignOpen(false);clearSel();};
+  const bulkReschedule=(when)=>{const n=selected.size;const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());const off=({today:0,tomorrow:1,week:7})[when]||0;const dd=new Date(base);dd.setDate(dd.getDate()+off);selTasks().forEach(t=>{const nd=new Date(dd);if(!t.allDay)nd.setHours(t.date.getHours(),t.date.getMinutes());updateItem({id:t.id,date:nd});});addToast('Rescheduled '+n+' task'+(n!==1?'s':''));setRescheduleOpen(false);clearSel();};
   const [quickTitle,setQuickTitle]=React.useState('');
   const [quickPrio,setQuickPrio]=React.useState('Medium');
-  const quickAdd=()=>{const t=quickTitle.trim();if(!t)return;addItem({type:'task',title:t,priority:quickPrio,allDay:true,date:new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0),done:false});setQuickTitle('');addToast('Task added');};
-  const groups=(()=>{if(filter!=='all'&&filter!=='open')return null;const g={Overdue:[],Today:[],Upcoming:[],Done:[]};list.forEach(t=>{if(t.done)g.Done.push(t);else if(isOverdue(t))g.Overdue.push(t);else if(isToday(t))g.Today.push(t);else g.Upcoming.push(t);});return [['Overdue',g.Overdue,'#f87171'],['Today',g.Today,'#fbbf24'],['Upcoming',g.Upcoming,'#94a3b8'],['Done',g.Done,'#34d399']].filter(x=>x[1].length);})();
-  const COL='34px 1fr 150px 84px 96px';
+  const [quickAssignee,setQuickAssignee]=React.useState('AM');
+  const quickAdd=()=>{const t=quickTitle.trim();if(!t)return;addItem({type:'task',title:t,priority:quickPrio,assignee:quickAssignee,allDay:true,date:new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0),done:false});setQuickTitle('');addToast('Task added');};
+  const groups=(()=>{const sd=(arr)=>arr.slice().sort((a,b)=>((a.order??1e9)-(b.order??1e9))||(a.date-b.date));const inWeek=(t)=>t.date<calAddDays(startToday,7);if(filter==='today'){return [['Overdue',sd(list.filter(isOverdue)),'#f87171'],['Today',sd(list.filter(t=>isToday(t)&&!t.done)),'#fbbf24']].filter(x=>x[1].length);}if(filter==='upcoming'){return [['This week',sd(list.filter(t=>isUpcoming(t)&&inWeek(t))),'#60a5fa'],['Later',sd(list.filter(t=>isUpcoming(t)&&!inWeek(t))),'#94a3b8']].filter(x=>x[1].length);}if(filter==='all'){const g={Overdue:[],Today:[],Upcoming:[],Done:[]};list.forEach(t=>{if(t.done)g.Done.push(t);else if(isOverdue(t))g.Overdue.push(t);else if(isToday(t))g.Today.push(t);else g.Upcoming.push(t);});return [['Overdue',sd(g.Overdue),'#f87171'],['Today',sd(g.Today),'#fbbf24'],['Upcoming',sd(g.Upcoming),'#94a3b8'],['Done',sd(g.Done),'#34d399']].filter(x=>x[1].length);}return null;})();
+  const COL='30px 30px minmax(0,1fr) 138px 92px 32px 64px';
   const [dragId,setDragId]=React.useState(null);
   const [overId,setOverId]=React.useState(null);
   const [overCol,setOverCol]=React.useState(null);
@@ -17286,19 +17413,21 @@ function TasksPage({goTo,nav}){
   const toggleSubtask=(taskId,subId)=>{const tk=tasks.find(x=>x.id===taskId);if(!tk)return;updateItem({id:taskId,subtasks:(tk.subtasks||[]).map(st=>st.id===subId?{...st,done:!st.done}:st)});};
   const addSubtaskTo=(taskId,title)=>{const tk=tasks.find(x=>x.id===taskId);if(!tk||!title.trim())return;updateItem({id:taskId,subtasks:[...(tk.subtasks||[]),{id:'st'+Date.now()+Math.floor(Math.random()*1e4),title:title.trim(),done:false}]});};
   const SubAdder=({taskId})=>{const [v,setV]=React.useState('');return(<div className="flex items-center gap-2 pt-0.5"><span className="w-[16px] h-[16px] rounded border border-dashed border-white/20 flex items-center justify-center shrink-0"><I.Plus size={9} className="text-white/35"/></span><input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){addSubtaskTo(taskId,v);setV('');}}} placeholder="Add subtask…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/25"/></div>);};
-  const Row=({t,last,arr})=>{const d=dueLabel(t);const lt=linkedTxt(t);const isDrag=dragId===t.id;const isOver=overId===t.id&&dragId&&dragId!==t.id;const sub=t.subtasks||[];const isExp=expanded.has(t.id);return(<React.Fragment>
-    <div draggable onDragStart={(e)=>{setDragId(t.id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragId(null);setOverId(null);}} onDragOver={(e)=>{e.preventDefault();if(overId!==t.id)setOverId(t.id);}} onDrop={(e)=>{e.preventDefault();if(arr&&dragId)reorderWithin(arr,dragId,t.id);setDragId(null);setOverId(null);}} onClick={()=>toggleExpand(t.id)} role="button" aria-expanded={isExp} className={['crm-list-row relative w-full grid items-center gap-4 px-7 py-3 transition-colors group cursor-pointer active:cursor-grabbing',isOver?'bg-brand-500/[0.07]':'hover:bg-white/[0.025]',isDrag?'opacity-40':'',!last?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+  const Row=({t,last,arr})=>{const d=dueLabel(t);const lt=linkedTxt(t);const lk=primaryLink(t);const asgU=userByCode(taskAsg(t));const isSel=selected.has(t.id);const isDrag=dragId===t.id;const isOver=overId===t.id&&dragId&&dragId!==t.id;const sub=t.subtasks||[];const isExp=expanded.has(t.id);return(<React.Fragment>
+    <div draggable onDragStart={(e)=>{setDragId(t.id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragId(null);setOverId(null);}} onDragOver={(e)=>{e.preventDefault();if(overId!==t.id)setOverId(t.id);}} onDrop={(e)=>{e.preventDefault();if(arr&&dragId)reorderWithin(arr,dragId,t.id);setDragId(null);setOverId(null);}} onClick={()=>toggleExpand(t.id)} role="button" aria-expanded={isExp} className={['crm-list-row relative w-full grid items-center gap-4 px-7 py-3 transition-colors group cursor-pointer active:cursor-grabbing',isOver?'bg-brand-500/[0.07]':isSel?'bg-brand-500/[0.05]':'hover:bg-white/[0.025]',isDrag?'opacity-40':'',!last?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
       <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-white/25 opacity-0 group-hover:opacity-100 transition-opacity select-none pointer-events-none" style={{fontSize:'11px',letterSpacing:'-1px',lineHeight:1}}>⠿</span>
-      <button onClick={(e)=>{e.stopPropagation();toggleDone(t.id);}} className={['w-4.5 h-4.5 w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
+      <button onClick={(e)=>{e.stopPropagation();toggleSelect(t.id);}} title="Select" className={['w-[16px] h-[16px] rounded flex items-center justify-center border transition-all shrink-0',isSel?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/45 '+(selected.size?'opacity-100':'opacity-0 group-hover:opacity-100')].join(' ')}>{isSel&&<I.Check size={10} stroke={3} style={{color:'#fff'}}/>}</button>
+      <button onClick={(e)=>{e.stopPropagation();toggleDone(t.id);}} title={t.done?'Mark open':'Mark complete'} className={['w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
       <div className="flex items-center gap-2 min-w-0">
         <I.ChevronDown size={16} className="shrink-0 text-white/35 group-hover:text-white/70 transition-colors" style={{transform:isExp?'rotate(0deg)':'rotate(-90deg)',transition:'transform .15s'}}/>
         <div className="min-w-0 text-left">
           <p className={['text-[13px] font-medium truncate',t.done?'text-white/40 line-through':'text-white'].join(' ')}>{t.title}</p>
-          {(lt||(t.subtasks||[]).length>0)&&<p className="text-[11px] text-white/40 mt-0.5 flex items-center gap-2 min-w-0">{lt&&<span className="truncate min-w-0">{lt}</span>}{(t.subtasks||[]).length>0&&<span className="inline-flex items-center gap-1 shrink-0" style={{color:(t.subtasks||[]).every(x=>x.done)?'#34d399':'rgba(255,255,255,0.45)'}}><I.CheckSquare size={10}/>{(t.subtasks||[]).filter(x=>x.done).length}/{(t.subtasks||[]).length}</span>}</p>}
+          {(lk||sub.length>0)&&<div className="flex items-center gap-2 mt-1 min-w-0">{lk&&<button onClick={(e)=>{e.stopPropagation();lk.go();}} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/55 hover:text-white hover:border-brand-500/40 hover:bg-brand-500/10 transition-all max-w-[180px] min-w-0"><lk.Icon size={9} className="shrink-0"/><span className="truncate">{lk.label}</span></button>}{sub.length>0&&<span className="inline-flex items-center gap-1 shrink-0 text-[11px]" style={{color:sub.every(x=>x.done)?'#34d399':'rgba(255,255,255,0.45)'}}><I.CheckSquare size={10}/>{sub.filter(x=>x.done).length}/{sub.length}</span>}</div>}
         </div>
       </div>
       <div className="flex items-center gap-1.5 min-w-0">{d.c&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:d.c}}/>}<span className="text-[12px] truncate" style={{color:d.c||'rgba(255,255,255,0.55)'}}>{d.txt}</span></div>
       {t.priority?<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium w-fit" style={{background:(CAL_PRIORITY_C[t.priority]||'#64748b')+'1f',color:CAL_PRIORITY_C[t.priority]||'#94a3b8',boxShadow:'inset 0 0 0 1px '+(CAL_PRIORITY_C[t.priority]||'#64748b')+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[t.priority]||'#64748b'}}/>{t.priority}</span>:<span/>}
+      <div className="flex items-center justify-center">{asgU?<span title={asgU.name} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:asgU.color}}>{taskAsg(t)}</span>:<span className="text-white/25 text-[11px]">—</span>}</div>
       <div className="flex items-center justify-end gap-1">
         <button onClick={(e)=>{e.stopPropagation();setModal({task:t});}} title="Edit" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.Edit size={12}/></button>
         <button onClick={(e)=>{e.stopPropagation();del(t);}} title="Delete" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={12}/></button>
@@ -17345,7 +17474,7 @@ function TasksPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="tasks" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Tasks" subtitle={`${counts.open} open · ${counts.overdue} overdue`}
+        <AppTopbar goTo={goTo} title="Tasks" subtitle={`${scoped.filter(t=>!t.done).length} open · ${counts.overdue} overdue`}
           rightSlot={<>
             <button onClick={()=>goTo('calendar')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Calendar size={13}/>Calendar</button>
             <button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Task</button>
@@ -17353,9 +17482,22 @@ function TasksPage({goTo,nav}){
         <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tasks..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40"/></div>
           <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{FILTERS.map(f=>{const a=filter===f.k;return(<button key={f.k} onClick={()=>setFilter(f.k)} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{f.l}<span className={['text-[10px] font-mono px-1 py-0.5 rounded-full',a?'bg-white/20 text-white':'bg-white/[0.06] text-white/45'].join(' ')}>{counts[f.k]}</span></button>);})}</div>
+          <div className="flex items-center gap-2">
+            <div className="relative"><select value={asgFilter} onChange={e=>setAsgFilter(e.target.value)} title="Assignee" className="appearance-none pl-7 pr-6 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/75 outline-none focus:border-brand-500/40 cursor-pointer" style={{colorScheme:'dark'}}><option value="me">Me</option><option value="all">Anyone</option>{TEAM_MEMBERS.filter(m=>m.avatar!=='AM').map(m=>(<option key={m.avatar} value={m.avatar}>{m.name}</option>))}</select><I.UserCog size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/><I.ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
+            <div className="relative"><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} title="Linked to" className="appearance-none pl-7 pr-6 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/75 outline-none focus:border-brand-500/40 cursor-pointer" style={{colorScheme:'dark'}}><option value="all">All types</option><option value="contact">Contacts</option><option value="company">Companies</option><option value="lead">Leads</option><option value="deal">Deals</option><option value="none">Unlinked</option></select><I.Tag size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/><I.ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
+          </div>
           <div className="ml-auto flex items-center gap-2"><OmViewMenu views={taskViews} activeKey={activeViewKey} onSelect={selectTaskView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={taskDirty} onSaveChanges={saveTaskChanges}/><OmFiltersButton object='task' fields={taskFields} model={workFilter} onChange={setWorkFilter}/></div><div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[{k:'list',Icon:I.LayoutDash,l:'List'},{k:'board',Icon:I.Filter,l:'Board'}].map(v=>{const a=view===v.k;return(<button key={v.k} onClick={()=>setView(v.k)} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all',a?'bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25':'text-white/45 hover:text-white/70'].join(' ')}><v.Icon size={13}/>{v.l}</button>);})}</div>
         </div>
         <div className="flex-1 overflow-y-auto scroll-area">
+          {tasks.length>0&&(counts.overdue>0||scoped.filter(t=>isToday(t)&&!t.done).length>0)&&<div className="px-7 pt-4">
+            <div className="rounded-2xl border border-white/[0.06] p-4 flex items-center gap-4 flex-wrap" style={{background:'linear-gradient(135deg, rgba(99,102,241,0.10), transparent 70%)'}}>
+              <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.Sun size={17}/></span><div><p className="text-[13px] font-semibold text-white">My day</p><p className="text-[11px] text-white/45">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</p></div></div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {counts.overdue>0&&<button onClick={()=>setFilter('overdue')} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/[0.08] border border-red-500/20 text-[12px] font-medium text-red-300 hover:bg-red-500/[0.14] transition-all"><span className="w-1.5 h-1.5 rounded-full bg-red-400"/>{counts.overdue} overdue</button>}
+                <button onClick={()=>setFilter('today')} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 text-[12px] font-medium text-amber-300 hover:bg-amber-500/[0.14] transition-all"><span className="w-1.5 h-1.5 rounded-full bg-amber-400"/>{scoped.filter(t=>isToday(t)&&!t.done).length} due today</button>
+              </div>
+            </div>
+          </div>}
           {tasks.length===0?(
             <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.CheckSquare size={26}/></div><p className="text-[16px] font-semibold text-white">No tasks yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">Create a task to keep follow-ups on track. Tasks also show on your Calendar and dashboard.</p><button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add task</button></div></div>
           ):view==='list'?(
@@ -17369,11 +17511,12 @@ function TasksPage({goTo,nav}){
                   <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/[0.05]">
                     <span className="text-[11px] text-white/40">Priority</span>
                     <div className="inline-flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{['Low','Medium','High'].map(p=>{const on=quickPrio===p;const ACT={Low:'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30',Medium:'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30',High:'bg-red-500/20 text-red-300 ring-1 ring-red-500/30'};return(<button key={p} onClick={()=>setQuickPrio(p)} title={p+' priority'} className={['px-2.5 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer',on?ACT[p]:'text-white/45 hover:text-white/75'].join(' ')}>{p}</button>);})}</div>
+                    <div className="relative ml-auto"><select value={quickAssignee} onChange={e=>setQuickAssignee(e.target.value)} title="Assignee" className="appearance-none pl-6 pr-5 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/75 outline-none focus:border-brand-500/40 cursor-pointer" style={{colorScheme:'dark'}}>{TEAM_MEMBERS.map(m=>(<option key={m.avatar} value={m.avatar}>{m.name}{m.avatar==='AM'?' (me)':''}</option>))}</select><I.UserCog size={11} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div>
                     <button onClick={quickAdd} disabled={!quickTitle.trim()} title="Add task" className={['ml-auto inline-flex items-center gap-1 h-[28px] px-3 rounded-md text-[12px] font-medium transition-all',quickTitle.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.04] cursor-not-allowed'].join(' ')}><I.Plus size={12} stroke={2.6}/>Add</button>
                   </div>
                 </div>
               </div>}
-              <div className="crm-list-head grid items-center gap-4 px-7 py-2.5 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span/><span>Task</span><span>Due</span><span>Priority</span><span/></div>
+              <div className="crm-list-head grid items-center gap-4 px-7 py-2.5 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span/><span/><span>Task</span><span>Due</span><span>Priority</span><span className="text-center">Owner</span><span/></div>
               {list.length===0?(<div className="py-16 text-center text-[13px] text-white/45">No tasks match this filter.</div>):groups?(
                 groups.map(([name,arr,c])=>(<div key={name}>
                   <div className="flex items-center gap-2 px-7 py-2.5 mt-1"><span className="w-1.5 h-1.5 rounded-full" style={{background:c}}/><span className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{color:c}}>{name}</span><span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/45">{arr.length}</span></div>
@@ -17389,6 +17532,16 @@ function TasksPage({goTo,nav}){
               </div>);})}</div>
           )}
         </div>
+        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
+          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
+          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
+          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
+          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
+          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
+        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveTaskView} onClose={()=>{setSaveOpen(false);setEditView(null);}}/>}
         {modal&&<TaskFormModal initial={modal==='new'?{type:'task',allDay:true,priority:'Medium'}:modal.task} onClose={()=>setModal(null)} onSave={save} onDelete={(t)=>{setModal(null);del(t);}}/>}
         {confirmNode}
