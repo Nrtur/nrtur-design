@@ -1098,7 +1098,7 @@ function GlobalSearchOverlay({close,goTo}){
   const {contacts:_contacts,leads:_leads,companies:_companies,customObjects:_customObjects}=React.useContext(CrmDataContext);
   const q=query.trim().toLowerCase();
   const match=(...fs)=>!q||fs.some(f=>(f||'').toString().toLowerCase().includes(q));
-  const PAGE_LIST=[{label:'Dashboard',page:'dashboard'},{label:'Leads',page:'leads'},{label:'Contacts',page:'contacts'},{label:'Companies',page:'companies'},{label:'Pipeline',page:'pipeline'},{label:'Funnels',page:'funnels'},{label:'Calendar',page:'calendar'},{label:'Bookings',page:'settings-booking'},{label:'Tasks',page:'tasks'},{label:'Inbox',page:'inbox'},{label:'Reports',page:'reports'},{label:'Payments',page:'payments'},{label:'Settings',page:'settings-general'},{label:'Profile & account',page:'profile'},{label:'My availability',page:'settings-booking'},{label:'Notification preferences',page:'settings-notifications'}];
+  const PAGE_LIST=[{label:'Dashboard',page:'dashboard'},{label:'Leads',page:'leads'},{label:'Contacts',page:'contacts'},{label:'Companies',page:'companies'},{label:'Pipeline',page:'pipeline'},{label:'Calendar',page:'calendar'},{label:'Bookings',page:'settings-booking'},{label:'Tasks',page:'tasks'},{label:'Inbox',page:'inbox'},{label:'Reports',page:'reports'},{label:'Settings',page:'settings-general'},{label:'Profile & account',page:'profile'},{label:'My availability',page:'settings-booking'},{label:'Notification preferences',page:'settings-notifications'}];
   const SETTINGS_PAGES=[
     {label:'General',page:'settings-general'},
     {label:'Properties',page:'settings-properties'},
@@ -1114,7 +1114,6 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Forms',page:'settings-forms'},
     {label:'Notifications',page:'settings-notifications'},
     {label:'Notification defaults',page:'settings-notification-defaults'},
-    {label:'Tasks & reminders',page:'settings-tasks'},
     {label:'Suppression List',page:'settings-suppression'},
     {label:'Unsubscribes',page:'settings-unsubscribes'},
     {label:'Integrations',page:'settings-integrations'},
@@ -2256,56 +2255,38 @@ function NavConfigProvider({children}){
   return(<NavConfigContext.Provider value={val}>{children}</NavConfigContext.Provider>);
 }
 // "More" app-launcher — full-height left drawer (slides in next to the rail). Lists every destination.
-// Logical grouping for the "All destinations" flyout so it reads as sections, not a flat list.
-const NAV_MORE_SECTIONS=[
-  {label:'CRM',       ids:['dashboard','contacts','companies','leads','pipeline','tasks','calendar']},
-  {label:'Comms',     ids:['inbox','emailtpl']},
-  {label:'Marketing', ids:['funnels','automations','sequences','forms']},
-  {label:'Revenue',   ids:['payments','billing']},
-  {label:'Reports',   ids:['reports']},
-  {label:'Workspace', ids:['settings','integrations','team']},
-];
-const NAV_MORE_ORDER=['CRM','Comms','Marketing','Revenue','Reports','Workspace','Saved views','Custom objects','Links','More'];
-function navMoreSection(it){
-  if(!it)return 'More';
-  if(it.type==='view')return 'Saved views';
-  if(it.type==='custom')return 'Custom objects';
-  if(it.type==='link')return 'Links';
-  const s=NAV_MORE_SECTIONS.find(x=>x.ids.indexOf(it.id)>=0);
-  return s?s.label:'More';
-}
-// "All destinations" flyout — opens on hover from the rail (see AppSidebar), styled like the settings flyout.
-// onEnter/onLeave keep it open while the pointer bridges from the rail button onto the panel.
-function NavMoreDrawer({active,goTo,close,onCustomize,onEnter,onLeave}){
+function NavMoreDrawer({active,goTo,close,onCustomize}){
   const {resolved}=React.useContext(NavConfigContext);
   React.useEffect(()=>{const esc=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',esc);return()=>document.removeEventListener('keydown',esc);},[close]);
-  const all=[...navPinnedList(resolved),...navMoreList(resolved)]; // every destination — nothing stranded
-  const groups={};all.forEach(it=>{const s=navMoreSection(it);(groups[s]=groups[s]||[]).push(it);});
-  const sections=NAV_MORE_ORDER.filter(s=>groups[s]&&groups[s].length);
+  const pinned=navPinnedList(resolved);
+  const more=navMoreList(resolved);
   const go=(it)=>{navGo(it,goTo);if(!it||it.type!=='link')close();};
   const row=(it)=>{const Ic=navIco(it.icon);const a=navIsActive(it,active);return(
-    <button key={navKey(it)} onClick={()=>go(it)} aria-current={a?'page':undefined} className={['group/navrow flex items-center gap-2.5 px-2.5 rounded-lg text-left transition-all duration-150',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/70 hover:text-white hover:bg-white/[0.05]'].join(' ')} style={{minHeight:38}}>
-      <span className={['w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors',a?'text-brand-300':'text-white/55 group-hover/navrow:text-white/85'].join(' ')}><Ic size={15} stroke={2}/></span>
-      <span className="text-[13px] font-medium truncate flex-1">{it.label}</span>
+    <button key={navKey(it)} onClick={()=>go(it)} aria-current={a?'page':undefined} className={['flex items-center gap-3 px-3 rounded-xl text-left transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/70 hover:text-white hover:bg-white/[0.05]'].join(' ')} style={{minHeight:42}}>
+      <span className={['w-7 h-7 rounded-lg flex items-center justify-center shrink-0',a?'bg-brand-500/15 text-brand-300':'bg-white/[0.04] text-white/60'].join(' ')}><Ic size={15}/></span>
+      <span className="text-[13.5px] font-medium truncate flex-1">{it.label}</span>
       {it.type==='view'&&<span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
-      {it.type==='link'&&<I.ExternalLink size={11} className="text-white/35 shrink-0"/>}
+      {it.type==='link'&&<I.ExternalLink size={12} className="text-white/35 shrink-0"/>}
     </button>);};
-  return(
-    <div className="nav-more-drawer fixed top-0 bottom-0 z-[180] flex flex-col rounded-r-2xl border-r border-white/[0.10]" style={{left:56,width:284,maxWidth:'calc(100vw - 56px)',background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'12px 0 50px rgba(0,0,0,0.55)',animation:'drawerInL .2s ease both'}} role="dialog" aria-label="All destinations" onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      <div className="shrink-0 flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-white/[0.06]">
-        <span className="w-8 h-8 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><I.Apps size={16}/></span>
-        <div className="min-w-0"><p className="text-[13.5px] font-semibold text-white leading-tight">All destinations</p><p className="text-[11px] text-white/40 leading-tight mt-0.5">Jump to any page</p></div>
-        <button onClick={close} aria-label="Close" className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"><I.X size={15}/></button>
+  const section=(title,items)=>items.length===0?null:(
+    <div className="mb-4 last:mb-0">
+      <p className="px-2 mb-1.5 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">{title}</p>
+      <div className="flex flex-col gap-0.5">{items.map(row)}</div>
+    </div>);
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[179] bg-black/40" style={{backdropFilter:'blur(2px)'}} onClick={close}/>
+    <div className="nav-more-drawer fixed top-0 bottom-0 z-[180] flex flex-col border-r border-white/[0.10]" style={{left:56,width:312,maxWidth:'calc(100vw - 56px)',background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'8px 0 40px rgba(0,0,0,0.5)',animation:'drawerInL .24s ease both'}} role="dialog" aria-modal="true" aria-label="All destinations">
+      <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3.5 border-b border-white/[0.07]">
+        <div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-xl bg-brand-500/12 text-brand-300 flex items-center justify-center shrink-0"><I.Apps size={17}/></span><p className="text-[14px] font-semibold text-white truncate">All destinations</p></div>
+        <button onClick={close} aria-label="Close" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"><I.X size={16}/></button>
       </div>
-      <div className="flex-1 overflow-y-auto scroll-area px-2.5 py-3">
-        {sections.map((s,si)=>(<div key={s} className={si>0?'mt-3.5':''}>
-          <p className="px-2.5 mb-1 text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">{s}</p>
-          <div className="flex flex-col gap-0.5">{groups[s].map(row)}</div>
-        </div>))}
+      <div className="flex-1 overflow-y-auto scroll-area px-3 py-3">
+        {section('Pinned',pinned)}
+        {section('More',more)}
       </div>
-      {onCustomize&&<div className="shrink-0 p-2.5 border-t border-white/[0.06]"><button onClick={()=>{close();onCustomize();}} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12.5px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Edit size={13}/>Customize navigation</button></div>}
+      {onCustomize&&<div className="shrink-0 p-3 border-t border-white/[0.07]"><button onClick={()=>{close();onCustomize();}} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/18 transition-all"><I.Edit size={14}/>Customize navigation</button></div>}
     </div>
-  );
+  </React.Fragment>);
 }
 // Customize-navigation drawer (right side / bottom sheet on mobile). mode='user'|'admin'.
 function NavCustomizeDrawer({mode,close,onToast}){
@@ -2452,19 +2433,11 @@ function AppSidebar({active,goTo}){
   const [moreOpen,setMoreOpen]=React.useState(false);
   const [customizeOpen,setCustomizeOpen]=React.useState(false);
   const moreRef=React.useRef(null);
-  const moreHoverT=React.useRef(null);
-  const morePinned=React.useRef(false);
   const [quickModal,setQuickModal]=React.useState(null);
   const [multiRecord,setMultiRecord]=React.useState(null);
   const addHoverT=React.useRef(null);
   const openAddHover=()=>{clearTimeout(addHoverT.current);setAddOpen(true);};
   const closeAddHover=()=>{clearTimeout(addHoverT.current);addHoverT.current=setTimeout(()=>setAddOpen(false),180);};
-  // "More destinations": hover reveals (120ms in / 200ms out); click pins it open; click-outside or Esc closes.
-  const openMoreHover=()=>{clearTimeout(moreHoverT.current);moreHoverT.current=setTimeout(()=>setMoreOpen(true),120);};
-  const cancelMoreClose=()=>clearTimeout(moreHoverT.current);
-  const closeMoreHover=()=>{clearTimeout(moreHoverT.current);moreHoverT.current=setTimeout(()=>{if(!morePinned.current)setMoreOpen(false);},200);};
-  const closeMoreNow=()=>{clearTimeout(moreHoverT.current);morePinned.current=false;setMoreOpen(false);};
-  const toggleMorePin=()=>{clearTimeout(moreHoverT.current);if(moreOpen){morePinned.current=false;setMoreOpen(false);}else{morePinned.current=true;setMoreOpen(true);}};
   const [sideToast,setSideToast]=React.useState('');
   const [notifOpen,setNotifOpen]=React.useState(false);
   const [theme,setTheme]=React.useState(()=>{try{return document.documentElement.getAttribute('data-theme')||localStorage.getItem('nrtur-theme')||'dark';}catch(e){return 'dark';}});
@@ -2474,7 +2447,6 @@ function AppSidebar({active,goTo}){
   const notifRef=React.useRef(null);
   const sideToastFn=(m)=>{setSideToast(m);setTimeout(()=>setSideToast(''),2200);};
   React.useEffect(()=>{const fn=(e)=>{if(notifRef.current&&!notifRef.current.contains(e.target))setNotifOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))closeMoreNow();};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   return(
     <React.Fragment>
     <button onClick={()=>setMenuOpen(true)} className="mobile-hamburger" aria-label="Open navigation menu" aria-haspopup="menu" aria-expanded={menuOpen} title="Menu"><I.Menu size={20}/></button>
@@ -2493,9 +2465,9 @@ function AppSidebar({active,goTo}){
         const a=navIsActive(it,active);const Ic=navIco(it.icon);
         return(<button key={navKey(it)} data-nav={it.type==='page'?it.page:it.id} onClick={()=>navGo(it,goTo)} title={it.label+(it.type==='link'?' (opens in new tab)':'')} aria-label={it.label} aria-current={a?'page':undefined} className={['nav-pin w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 shrink-0',idx>=4?'nav-overflow':'',a?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25 shadow-[0_0_18px_rgba(99,102,241,0.35)]':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><Ic size={16}/></button>);
       })}
-      <div ref={moreRef} className="nav-more relative w-9 shrink-0" onMouseEnter={openMoreHover} onMouseLeave={closeMoreHover}>
-        <button onClick={toggleMorePin} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',moreOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Apps size={18}/></button>
-        {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={closeMoreNow} onCustomize={()=>setCustomizeOpen(true)} onEnter={cancelMoreClose} onLeave={closeMoreHover}/>}
+      <div ref={moreRef} className="nav-more relative w-9 shrink-0">
+        <button onClick={()=>setMoreOpen(v=>!v)} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150',moreOpen?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/25':'text-white/30 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}><I.Apps size={18}/></button>
+        {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={()=>setMoreOpen(false)} onCustomize={()=>setCustomizeOpen(true)}/>}
       </div>
       </div>
       <div className="mt-auto flex flex-col items-center gap-3">
@@ -2631,18 +2603,13 @@ const SETTINGS_GROUPS=[
     {label:'SMS templates',page:'sms-templates',Icon:I.Hash},
     {label:'Forms',page:'settings-forms',Icon:I.Note},
     {label:'Notification defaults',page:'settings-notification-defaults',Icon:I.Bell},
-    {label:'Tasks & reminders',page:'settings-tasks',Icon:I.CheckSquare},
     {label:'Frequency cap',page:'settings-frequency',Icon:I.SliderH},
     {label:'Re-engagement',page:'settings-reengagement',Icon:I.Reply},
     {label:'Suppression list',page:'settings-suppression',Icon:I.Ban},
   ]},
-  {key:'marketing',title:'Marketing',Icon:I.Megaphone,admin:true,items:[
-    {label:'Funnels',page:'funnels',Icon:I.Filter},
-    {label:'Ad lead sources',page:'settings-ad-leads',Icon:I.Megaphone},
-  ]},
   {key:'connections',title:'Connections',Icon:I.Plug,admin:true,items:[
     {label:'Integrations',page:'settings-integrations',Icon:I.Plug},
-    {label:'Payments',page:'payments',Icon:I.CreditCard},
+    {label:'Ad lead sources',page:'settings-ad-leads',Icon:I.Megaphone},
   ]},
   {key:'billing',title:'Billing',Icon:I.CreditCard,admin:true,billingOnly:true,items:[
     {label:'Billing & usage',page:'settings-billing',Icon:I.CreditCard},
@@ -2717,9 +2684,9 @@ const ALL_PAGES=[
   'pipeline','deal-detail','add-deal',
   'calendar','tasks',
   'inbox','automation-builder','sms-sequence-builder','email-sequence-builder','push-sequence-builder','inapp-sequence-builder',
-  'reports','funnels','payments','custom-object','custom-record',
+  'reports','payments','custom-object','custom-record',
   'settings-billing','settings-team','settings-permissions','settings-permission-matrix','settings-general','settings-properties','settings-automations','settings-sequences','email-templates','sms-templates','email-builder','settings-forms','form-builder','settings-integrations','settings-ad-leads',
-  'settings-booking','settings-notifications','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-suppression','settings-privacy','settings-duplicates','settings-tags','settings-statuses',
+  'settings-booking','settings-notifications','settings-notification-defaults','settings-frequency','settings-reengagement','settings-suppression','settings-privacy','settings-duplicates','settings-tags','settings-statuses',
   'settings-calendar-personal','settings-my-integrations','settings-preferences','settings-close-account','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace','settings-white-label',
   'profile',
 ];
@@ -7445,7 +7412,7 @@ function DealDetailPage({goTo,nav}){
           </div>
         </header>
         <div className="flex-1 overflow-y-auto scroll-area">
-          <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
+          <div className="px-7 py-6 max-w-[1100px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-5 items-start">
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
                 <div className="flex items-start justify-between mb-4"><div><h2 className="text-white text-[24px] font-bold">{d.company}</h2><p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stage}</span></div>
@@ -7454,12 +7421,10 @@ function DealDetailPage({goTo,nav}){
               </div>
               <RecordProperties record={drec} primary={dealPrimary} secondary={dealSecondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
             </div>
-            <div className="flex flex-col gap-5 min-w-0">
-              <RecordTasks match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
-              <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
-            </div>
+            <RecordTasks match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
+            <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
           </div>
-          <RecordMetaFooter record={drec} meta={dealMeta} max="1400px"/>
+          <RecordMetaFooter record={drec} meta={dealMeta} max="1100px"/>
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
@@ -11438,7 +11403,7 @@ const SETTINGS_PAGE_META={
   'settings-tags':'Tags','settings-statuses':'Statuses',
   'settings-duplicates':'Duplicates','settings-booking':'My availability','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
-  'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
+  'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement',
   // Personal
   'settings-calendar-personal':'My calendar & availability','settings-my-integrations':'My integrations','settings-preferences':'My preferences','settings-close-account':'Close my account',
   // Customization
@@ -11448,7 +11413,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -12518,7 +12483,23 @@ function SettingsThemesPage({goTo}){
     </div>
   </SettingsShell>);
 }
-// (old SettingsCustomObjectsPage "Coming soon" stub removed — replaced by the full builder defined later)
+function SettingsCustomObjectsPage({goTo}){
+  const STD=[['Contacts',I.Users],['Companies',I.Building],['Leads',I.Sparkles],['Deals',I.GitBranch]];
+  return(<SettingsShell active="settings-custom-objects" goTo={goTo} subtitle="Define your own record types beyond contacts, companies, leads, and deals.">
+    <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-brand-100"><I.Sparkles size={14} className="text-brand-300 shrink-0"/><span><span className="font-semibold">Coming soon.</span> Model the things your business tracks — projects, properties, subscriptions, tickets — each with its own fields, layout, and list view.</span></div>
+    <div className={CUST_CARD}>
+      <p className={CUST_EYE+' mb-3'}>Standard objects</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{STD.map(([l,Ic])=>(<div key={l} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]"><span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><Ic size={15}/></span><span className="text-[13px] font-medium text-white truncate">{l}</span></div>))}</div>
+    </div>
+    <div className="rounded-2xl border border-dashed border-white/[0.14] bg-white/[0.015] px-6 py-12 text-center flex flex-col items-center gap-3">
+      <span className="w-14 h-14 rounded-2xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center"><I.Layers size={24}/></span>
+      <p className="text-[15px] font-semibold text-white">Custom objects are on the way</p>
+      <p className="text-[13px] text-white/50 max-w-md leading-relaxed">Soon you’ll create a brand-new object, give it custom fields, a record layout, and a default list view — all managed here, alongside your standard objects.</p>
+      <button disabled className="mt-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/40 bg-white/[0.05] border border-white/[0.10] cursor-not-allowed"><I.Plus size={14}/>New custom object</button>
+      <span className="text-[11px] text-white/30">Available in a future release</span>
+    </div>
+  </SettingsShell>);
+}
 function SettingsImportPage({goTo}){
   const crm=React.useContext(CrmDataContext);
   const {props}=React.useContext(PropertiesContext);
@@ -14964,50 +14945,6 @@ const COLD_CONTACTS_SEED=[
   {id:'cold7',name:'Bianca Tate',co:'Marlow & Finch',email:'bianca@marlow.co',avatar:'BT',color:'#3b82f6',days:154,lastEng:'No engagement logged',sent:18,channel:'email'},
   {id:'cold8',name:'Felix Norton',co:'Stonebridge Inc',email:'felix@stonebridge.io',avatar:'FN',color:'#a855f7',days:108,lastEng:'Replied to a text',sent:13,channel:'sms'},
 ];
-// Tasks & reminders — workspace defaults that pre-fill the task drawer + quick-add (one source of truth: the task object).
-function SettingsTasksPage({goTo}){
-  const admin=settingsIsAdmin();
-  const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t||'success');};
-  const [reminder,setReminder]=React.useState('30');
-  const [emailReminders,setEmailReminders]=React.useState(true);
-  const [priority,setPriority]=React.useState('Medium');
-  const [assignee,setAssignee]=React.useState('AM');
-  const [dueDefault,setDueDefault]=React.useState('today');
-  const DUE=[['today','Today'],['tomorrow','Tomorrow'],['3d','In 3 days'],['none','No due date']];
-  const PRIOS=['Low','Medium','High'];
-  const PRIO_ACT={Low:'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30',Medium:'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30',High:'bg-red-500/20 text-red-300 ring-1 ring-red-500/30'};
-  const SEL='pl-3 pr-8 py-2 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer disabled:opacity-50';
-  const Sel=({value,onChange,children})=>(<div className="relative inline-block"><select value={value} onChange={e=>onChange(e.target.value)} disabled={!admin} style={{colorScheme:'dark',background:'var(--s850)'}} className={SEL}>{children}</select><span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={13}/></span></div>);
-  const Card=({Icon,title,sub,children})=>(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
-    <div className="flex items-center gap-2.5 mb-4"><span className="w-9 h-9 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center shrink-0"><Icon size={15}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">{title}</p>{sub&&<p className="text-[12px] text-white/45 mt-0.5">{sub}</p>}</div></div>
-    <div className="flex flex-col">{children}</div>
-  </div>);
-  const Row=({label,hint,children})=>(<div className="flex items-center justify-between gap-4 py-3 border-t border-white/[0.05] first:border-0 first:pt-0"><div className="min-w-0"><p className="text-[13px] text-white/85">{label}</p>{hint&&<p className="text-[11.5px] text-white/40 mt-0.5">{hint}</p>}</div><div className="shrink-0">{children}</div></div>);
-  return(
-    <SettingsShell active="settings-tasks" goTo={goTo} subtitle="Workspace defaults for new tasks and their reminders — these pre-fill the task drawer and the quick-add bar." actions={admin?<button onClick={()=>toast('Task defaults saved')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={14}/>Save defaults</button>:undefined}>
-      <Card Icon={I.Bell} title="Reminder defaults" sub="When a task has a due time, remind the assignee ahead of it.">
-        <Row label="Default reminder" hint="Pre-selected in the task drawer's reminder field.">
-          <Sel value={reminder} onChange={setReminder}>{CAL_REMIND.map(r=>(<option key={r.l} value={r.v}>{r.l}</option>))}</Sel>
-        </Row>
-        <Row label="Also send reminders by email" hint="Reminders always fire in the notification drawer; email is optional.">
-          <Toggle on={emailReminders} onChange={admin?setEmailReminders:()=>{}}/>
-        </Row>
-      </Card>
-      <Card Icon={I.CheckSquare} title="Task defaults" sub="Applied to new tasks unless the creator changes them.">
-        <Row label="Default priority">
-          <div className="inline-flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{PRIOS.map(pp=>{const on=priority===pp;return(<button key={pp} onClick={()=>admin&&setPriority(pp)} className={['px-3 py-1 rounded-md text-[12px] font-medium transition-all',on?PRIO_ACT[pp]:'text-white/45 hover:text-white/75'].join(' ')}>{pp}</button>);})}</div>
-        </Row>
-        <Row label="Default assignee" hint="Who a new task is assigned to by default.">
-          <Sel value={assignee} onChange={setAssignee}><option value="AM">Me (task creator)</option>{TEAM_MEMBERS.filter(m=>m.avatar!=='AM').map(m=>(<option key={m.avatar} value={m.avatar}>{m.name}</option>))}<option value="unassigned">Unassigned</option></Sel>
-        </Row>
-        <Row label="Default due date">
-          <Sel value={dueDefault} onChange={setDueDefault}>{DUE.map(([v,l])=>(<option key={v} value={v}>{l}</option>))}</Sel>
-        </Row>
-      </Card>
-      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-brand-100"><I.CheckSquare size={14} className="text-brand-300 shrink-0"/><span>Tasks live on the <button onClick={()=>goTo('tasks')} className="font-semibold underline decoration-brand-400/40 hover:decoration-brand-300">Tasks</button> page and on each record's timeline. These defaults only set the starting values.</span></div>
-    </SettingsShell>
-  );
-}
 function SettingsReengagementPage({goTo}){
   const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t||'success');};
   const WINDOWS=[30,60,90,120,180];
@@ -19881,7 +19818,7 @@ function CoRelForm({crm,selfId,onClose,onAdd}){
       <div className="flex items-center justify-between mb-4"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.GitBranch size={15} className="text-brand-300"/>Add relationship</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex flex-col gap-3.5">
         <div><label className={CO_LBL}>Label</label><input autoFocus value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. Company" className={CO_INP}/></div>
-        <div><label className={CO_LBL}>Links to</label><select value={target} onChange={e=>setTarget(e.target.value)} className={CO_SEL} style={{colorScheme:'dark'}}><optgroup label="Standard objects" style={{background:'var(--s900)'}}>{[['contact','Contact'],['company','Company'],['lead','Lead'],['deal','Deal']].map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</optgroup>{customTargets.length>0&&<optgroup label="Custom objects" style={{background:'var(--s900)'}}>{customTargets.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</optgroup>}</select></div>
+        <div><label className={CO_LBL}>Links to</label><select value={target} onChange={e=>setTarget(e.target.value)} className={CO_SEL} style={{colorScheme:'dark'}}><optgroup label="Standard objects" style={{background:'var(--s900)'}}>{[['contact','Contact'],['company','Company'],['lead','Lead'],['deal','Deal']].map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</optgroup>{customTargets.length>0&&<optgroup label="Custom objects" style={{background:'var(--s900)'}}>{customTargets.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</optgroup></select></div>
         <div className="flex items-start justify-between gap-3 rounded-xl bg-white/[0.02] border border-white/[0.06] px-3 py-2.5"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">Allow many</p><p className="text-[11px] text-white/45 mt-0.5">Link more than one related record.</p></div><Toggle on={many} onChange={setMany}/></div>
       </div>
       <div className="flex gap-3 mt-5"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onAdd({label:label.trim(),target,many});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Add</button></div>
@@ -20562,7 +20499,6 @@ function App(){
       {page==='settings-booking' && <CalendarPage goTo={goTo} nav={{tab:'bookings'}}/>}
       {page==='settings-notifications' && <SettingsNotificationsPage {...p}/>}
       {page==='settings-notification-defaults' && <SettingsNotificationDefaultsPage {...p}/>}
-      {page==='settings-tasks' && <SettingsTasksPage {...p}/>}
       {(page==='settings-suppression'||page==='settings-unsubscribes') && <SettingsSuppressionPage {...p}/>}
       {page==='settings-frequency' && <SettingsFrequencyPage {...p}/>}
       {page==='settings-reengagement' && <SettingsReengagementPage {...p}/>}
