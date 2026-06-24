@@ -12220,26 +12220,20 @@ function SettingsWhiteLabelPage({goTo}){
     </SettingsShell>);
   }
   const seed=(()=>{try{return JSON.parse(localStorage.getItem('nrtur-whitelabel')||'null');}catch(e){return null;}})()||{};
+  // Logo + brand colors are owned by Branding (single source of truth) — read and reuse
+  // them here instead of collecting a second copy. Only WL-specific assets live below.
+  const brand=(()=>{try{return JSON.parse(localStorage.getItem('nrtur-branding')||'null');}catch(e){return null;}})()||{};
+  const logo=brand.logo||null;
+  const primary=brand.primary||'#6366f1';
+  const accent=brand.accent||'#10b981';
   const [appName,setAppName]=React.useState(seed.appName||'Bloom Studio CRM');
-  const [logo,setLogo]=React.useState(seed.logo||null);
   const [favicon,setFavicon]=React.useState(seed.favicon||null);
-  const [primary,setPrimary]=React.useState(seed.primary||'#6366f1');
-  const [accent,setAccent]=React.useState(seed.accent||'#10b981');
   const [supportEmail,setSupportEmail]=React.useState(seed.supportEmail||'support@bloomstudio.com');
   const [supportUrl,setSupportUrl]=React.useState(seed.supportUrl||'help.bloomstudio.com');
   const [domain,setDomain]=React.useState(seed.domain||'');
-  const logoRef=React.useRef(null);const favRef=React.useRef(null);
+  const favRef=React.useRef(null);
   const onImg=(set)=>(e)=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){custToast('Please choose an image file','warning');return;}const r=new FileReader();r.onload=()=>set(r.result);r.readAsDataURL(f);};
-  const save=()=>{try{localStorage.setItem('nrtur-whitelabel',JSON.stringify({appName,logo,favicon,primary,accent,supportEmail,supportUrl,domain}));}catch(e){}custToast('White-label branding saved');};
-  const hexOk=(v)=>/^#[0-9a-fA-F]{6}$/.test(v);
-  // plain functions (not <Components/>) so inputs keep focus across keystrokes (per branding-page note).
-  const swatch=(label,value,set,help)=>(<div><p className="text-[12px] font-medium text-white/70 mb-1.5">{label}</p>
-    <div className="flex items-center gap-2.5">
-      <input type="color" value={hexOk(value)?value:'#000000'} onChange={e=>set(e.target.value)} className="w-10 h-10 rounded-lg border border-white/[0.12] bg-transparent cursor-pointer shrink-0" style={{padding:0}}/>
-      <span className="w-7 h-7 rounded-md border border-white/[0.12] shrink-0" style={{background:value}}/>
-      <input value={value} onChange={e=>{let v=e.target.value;if(!v.startsWith('#'))v='#'+v;set(v.slice(0,7));}} className="w-28 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] focus:border-brand-500/40 outline-none text-[13px] font-mono text-white"/>
-    </div>
-    {help&&<p className="text-[11px] text-white/40 mt-1.5">{help}</p>}</div>);
+  const save=()=>{try{localStorage.setItem('nrtur-whitelabel',JSON.stringify({appName,favicon,supportEmail,supportUrl,domain}));}catch(e){}custToast('White-label branding saved');};
   const logoMark=(size=40)=>logo?<img src={logo} alt="" className="rounded-lg object-cover" style={{width:size,height:size}}/>:<span className="rounded-lg flex items-center justify-center text-white font-bold" style={{width:size,height:size,background:primary,fontSize:size*0.42}}>{(appName||'?').slice(0,1)}</span>;
   const soon=()=><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 shrink-0">Coming soon</span>;
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus:border-brand-500/40 outline-none text-[13px] text-white placeholder:text-white/30';
@@ -12266,9 +12260,8 @@ function SettingsWhiteLabelPage({goTo}){
             <div className="flex items-center gap-4">
               {logoMark(56)}
               <div className="flex flex-col gap-2">
-                <button onClick={()=>logoRef.current&&logoRef.current.click()} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Upload size={13}/>Upload logo</button>
-                {logo&&<button onClick={()=>setLogo(null)} className="text-[11.5px] text-white/45 hover:text-red-300 text-left transition-colors">Remove</button>}
-                <input ref={logoRef} type="file" accept="image/*" onChange={onImg(setLogo)} className="hidden"/>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 w-fit"><I.Check size={10} stroke={3}/>Synced from Branding</span>
+                <button onClick={()=>goTo('settings-branding')} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 text-left transition-colors">Edit logo in Branding →</button>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -12280,12 +12273,12 @@ function SettingsWhiteLabelPage({goTo}){
               </div>
             </div>
           </div>
-          <p className="text-[11px] text-white/40 mt-3">PNG or SVG. The logo shows on the login portal, emails &amp; public pages; the favicon shows in the browser tab of tenant-facing pages.</p>
+          <p className="text-[11px] text-white/40 mt-3">Your logo is managed in Branding and reused here. The favicon shows in the browser tab of tenant-facing pages.</p>
         </div>
         <div className={CUST_CARD+' flex flex-col gap-4'}>
-          <p className={CUST_EYE}>Brand colors <span className="text-white/30 normal-case tracking-normal">· tenant-facing surfaces only</span></p>
-          {swatch('Primary brand color',primary,setPrimary,'Portal header, links, and primary buttons your clients see.')}
-          {swatch('Accent color',accent,setAccent,'Highlights and secondary actions.')}
+          <div className="flex items-center justify-between gap-3 flex-wrap"><p className={CUST_EYE}>Brand colors <span className="text-white/30 normal-case tracking-normal">· synced from Branding</span></p><button onClick={()=>goTo('settings-branding')} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors">Edit in Branding →</button></div>
+          <div className="flex items-center gap-5">{[['Primary',primary],['Accent',accent]].map(([l,v])=>(<div key={l} className="flex items-center gap-2.5"><span className="w-8 h-8 rounded-lg border border-white/[0.12] shrink-0" style={{background:v}}/><div><p className="text-[12px] font-medium text-white/80">{l}</p><p className="text-[11px] font-mono text-white/45">{v}</p></div></div>))}</div>
+          <p className="text-[11px] text-white/40">Set once in Branding and reused across customer- and tenant-facing surfaces.</p>
         </div>
         <div className={CUST_CARD}>
           <p className={CUST_EYE+' mb-3'}>Support contact</p>
@@ -12667,13 +12660,13 @@ function SettingsThemesPage({goTo}){
           <PrefRow title="Density" desc="Row spacing across tables, lists, and toolbars.">
             <PrefSeg value={density} onChange={applyDensity} options={[{k:'comfortable',l:'Comfortable'},{k:'compact',l:'Compact'}]}/>
           </PrefRow>
-          <PrefRow title="Accent" desc="Pick a preset or choose any custom color.">
+          <PrefRow title="Accent" desc="Pick a brand-safe preset.">
             <div className="flex items-center gap-2 flex-wrap justify-end">{THEME_ACCENT_PRESETS.map(c=>{const on=accent===c;return(<button key={c} onClick={()=>setAccent(c)} title={c} className="w-8 h-8 rounded-lg transition-all flex items-center justify-center" style={{background:c,boxShadow:on?'0 0 0 2px var(--s950,#0c1018), 0 0 0 4px '+c:'inset 0 0 0 1px rgba(255,255,255,0.15)'}}>{on&&<I.Check size={14} className="text-white" stroke={2.6}/>}</button>);})}
-              <label title="Custom color" className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative overflow-hidden transition-all" style={THEME_ACCENT_PRESETS.indexOf(accent)<0?{background:accent,boxShadow:'0 0 0 2px var(--s950,#0c1018), 0 0 0 4px '+accent,color:'#fff'}:{border:'1px dashed rgba(255,255,255,0.28)',color:'rgba(255,255,255,0.6)'}}><input type="color" value={accent} onChange={e=>setAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer"/>{THEME_ACCENT_PRESETS.indexOf(accent)<0?<I.Check size={14} stroke={2.6}/>:<I.Plus size={15} stroke={2.4}/>}</label></div>
+              </div>
           </PrefRow>
           <PrefRow title="Nav bar color" desc="Sidebar background. Default follows the theme.">
             <div className="flex items-center gap-2 flex-wrap justify-end">{NAV_COLOR_PRESETS.map(c=>{const on=(navColor||'')===c;return(<button key={c||'default'} onClick={()=>setNavColor(c)} title={c||'Default'} className="w-8 h-8 rounded-lg transition-all flex items-center justify-center" style={{background:c||'var(--s950)',boxShadow:on?'0 0 0 2px var(--s950,#0c1018), 0 0 0 4px '+(c||'#6366f1'):'inset 0 0 0 1px rgba(255,255,255,0.15)'}}>{!c&&<span className="text-[8px] font-semibold text-white/50">A</span>}{on&&c&&<I.Check size={14} className="text-white" stroke={2.6}/>}</button>);})}
-              <label title="Custom nav color" className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative overflow-hidden transition-all" style={{border:'1px dashed rgba(255,255,255,0.28)',color:'rgba(255,255,255,0.6)'}}><input type="color" value={navColor||'#07070f'} onChange={e=>setNavColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer"/><I.Plus size={15} stroke={2.4}/></label></div>
+              </div>
           </PrefRow>
           <PrefRow title="UI font" desc="Typeface across the app interface.">
             <PrefSeg value={uiFont} onChange={setUiFont} options={[{k:'Inter',l:'Inter'},{k:'System',l:'System'},{k:'Mono',l:'Mono'}]}/>
