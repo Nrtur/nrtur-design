@@ -19933,10 +19933,10 @@ function coFieldOpts(f){return f.type==='Boolean'?['Yes','No']:(f.options||[]);}
 // same action set to every object, so 'Contacts' is a faithful stand-in). The builder is admin-gated.
 function effCanCustom(act){return effCanObject('Contacts',act);}
 // Om filter/sort field schema for a custom object definition.
-function coOmFields(def){
+function coOmFields(def,crm){
   const out=[{key:'name',label:def.primaryLabel||'Name',type:'text',get:r=>r.name}];
   (def.fields||[]).forEach(f=>out.push({key:f.key,label:f.label,type:coOmType(f.type),options:coFieldOpts(f),get:r=>r[f.key]}));
-  (def.relationships||[]).forEach(rel=>out.push({key:rel.key,label:rel.label,type:'text',get:r=>rel.many?((r[rel.key]||[]).join(', ')):(r[rel.key]||'')}));
+  (def.relationships||[]).forEach(rel=>out.push({key:rel.key,label:rel.label,type:'text',get:r=>{const v=r[rel.key];return rel.many?((v||[]).map(x=>coResolveLink(crm,rel.target,x).name).join(', ')):(v?coResolveLink(crm,rel.target,v).name:'');}}));
   out.push({key:'owner',label:'Owner',type:'owner',get:r=>r.owner});
   return out;
 }
@@ -19957,6 +19957,25 @@ function coLinkedId(crm,target,name){
   if(target==='lead'){const l=(crm.leads||[]).find(x=>x.name===name);return l?l.id:null;}
   if(target==='deal'){const d=allDeals().find(x=>(x.name||(x.company+' · '+x.value))===name);return d?d.id:null;}
   const ob=(crm.customObjects||[]).find(o=>o.id===target);const r=ob&&(ob.records||[]).find(x=>x.name===name);return r?{objectId:ob.id,recordId:r.id}:null;
+}
+// ── ID-keyed links: store the target record's stable id; resolve to its CURRENT name at
+// render (rename-safe). Backward-compatible — legacy name-keyed values still resolve by name.
+function coTargetOptions(crm,target){
+  if(!crm)return [];
+  const map=(arr,nameOf)=>arr.map(r=>({id:r.id,name:nameOf(r)}));
+  if(target==='company')return map((crm.companies||[]).filter(c=>!c.deleted&&!c.archived),c=>c.name);
+  if(target==='contact')return map((crm.contacts||[]).filter(c=>!c.deleted&&!c.archived),c=>c.name);
+  if(target==='lead')return map((crm.leads||[]).filter(l=>!l.deleted&&!l.archived&&!l.converted),l=>l.name);
+  if(target==='deal')return map(allDeals().filter(d=>!d.deleted),d=>d.name||(d.company+' · '+d.value));
+  const ob=(crm.customObjects||[]).find(o=>o.id===target);return ob?map((ob.records||[]).filter(r=>!r.deleted&&!r.archived),r=>r.name):[];
+}
+function coResolveLink(crm,target,val){
+  if(val==null||val==='')return {name:'',nav:null};
+  if(!crm)return {name:String(val),nav:null};
+  const opts=coTargetOptions(crm,target);
+  const rec=opts.find(o=>o.id===val)||opts.find(o=>o.name===val);
+  if(!rec)return {name:String(val),nav:null};
+  return {name:rec.name,nav:CO_TARGET_META[target]?rec.id:{objectId:target,recordId:rec.id}};
 }
 function coMember(av){return (typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(m=>m.avatar===av)||{avatar:av,color:'#64748b',name:av};}
 function coOwnerColor(av){return coMember(av).color;}
@@ -20097,6 +20116,15 @@ function CoMultiLink({options,value,onChange,placeholder,Icon}){
     <ARLookup value="" onChange={(v)=>{if(v&&!vals.includes(v))onChange([...vals,v]);}} options={options.filter(o=>!vals.includes(o))} placeholder={placeholder||'Add…'} Icon={Icon}/>
   </div>);
 }
+// ── Custom-object link picker: shows target names, stores their ids (rename-safe). ──
+function CoLinkField({crm,target,many,value,onChange,placeholder,Icon}){
+  const opts=coTargetOptions(crm,target);
+  const names=opts.map(o=>o.name);
+  const toId=(name)=>{const o=opts.find(x=>x.name===name);return o?o.id:name;};
+  const toName=(val)=>coResolveLink(crm,target,val).name;
+  if(many){const vals=value||[];return <CoMultiLink options={names} value={vals.map(toName)} onChange={(ns)=>onChange(ns.map(toId))} placeholder={placeholder} Icon={Icon}/>;}
+  return <ARLookup value={value?toName(value):''} onChange={(n)=>onChange(n?toId(n):'')} options={names} placeholder={placeholder} Icon={Icon}/>;
+}
 // ── Tag input (reuses TagChip) ──
 function CoTagInput({value,onChange}){
   const [draft,setDraft]=React.useState('');
@@ -20123,7 +20151,7 @@ function CustomRecordDrawer({mode,def,record,crm,onClose,onSave}){
         <div><label className={CO_LBL}>{def.primaryLabel||'Name'}<span className="text-red-400/70 ml-0.5">*</span></label><input autoFocus value={draft.name||''} onChange={e=>set('name',e.target.value)} placeholder={def.primaryLabel||'Name'} className={CO_INP}/></div>
         <div><label className={CO_LBL}>Owner</label><select value={draft.owner||'AM'} onChange={e=>set('owner',e.target.value)} className={CO_SEL} style={{colorScheme:'dark'}}>{(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>
         {(def.fields||[]).map(f=>(<DrawerField key={f.id} f={{label:f.label,type:coCtrlType(f.type),options:coFieldOpts(f),required:f.required}} value={draft[f.key]} onChange={v=>set(f.key,v)}/>))}
-        {(def.relationships||[]).map(rel=>{const meta=coTargetMeta(crm,rel.target);return(<div key={rel.id}><label className={CO_LBL}>{rel.label}</label>{rel.many?<CoMultiLink options={coTargetNames(crm,rel.target)} value={draft[rel.key]||[]} onChange={v=>set(rel.key,v)} placeholder={'Link a '+meta.label.toLowerCase()+'…'} Icon={meta.Icon}/>:<ARLookup value={draft[rel.key]||''} onChange={v=>set(rel.key,v)} options={coTargetNames(crm,rel.target)} placeholder={'Link a '+meta.label.toLowerCase()+'…'} Icon={meta.Icon}/>}</div>);})}
+        {(def.relationships||[]).map(rel=>{const meta=coTargetMeta(crm,rel.target);return(<div key={rel.id}><label className={CO_LBL}>{rel.label}</label><CoLinkField crm={crm} target={rel.target} many={rel.many} value={draft[rel.key]} onChange={v=>set(rel.key,v)} placeholder={'Link a '+meta.label.toLowerCase()+'…'} Icon={meta.Icon}/></div>);})}
         <div><label className={CO_LBL}>Tags</label><CoTagInput value={draft.tags||[]} onChange={v=>set('tags',v)}/></div>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{mode==='edit'?'Save changes':'Create '+def.singular}</button></div>
@@ -20168,7 +20196,7 @@ function CoLinksPanel({def,rec,crm,goTo}){
     <div className="p-3.5 flex flex-col gap-3.5">
       {def.relationships.map(rel=>{const meta=coTargetMeta(crm,rel.target);const vals=rel.many?(rec[rel.key]||[]):(rec[rel.key]?[rec[rel.key]]:[]);return(
         <div key={rel.id}><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] mb-1.5 flex items-center gap-1.5"><meta.Icon size={11}/>{rel.label}</p>
-          {vals.length?(<div className="flex flex-wrap gap-1.5">{vals.map(name=>{const lid=coLinkedId(crm,rel.target,name);const can=lid!=null&&meta.page;return(<button key={name} onClick={()=>{if(can)goTo(meta.page,lid);}} disabled={!can} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium ring-1 transition-all',can?'text-white/80 bg-white/[0.04] ring-white/[0.10] hover:bg-white/[0.07] hover:text-white':'text-white/45 bg-white/[0.02] ring-white/[0.06] cursor-default'].join(' ')}><meta.Icon size={11}/>{name}{can&&<I.ArrowRight size={10} className="opacity-50"/>}</button>);})}</div>):<span className="text-[12px] text-white/30">Not linked</span>}
+          {vals.length?(<div className="flex flex-wrap gap-1.5">{vals.map(val=>{const _r=coResolveLink(crm,rel.target,val);const can=_r.nav!=null&&meta.page;return(<button key={String(val)} onClick={()=>{if(can)goTo(meta.page,_r.nav);}} disabled={!can} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium ring-1 transition-all',can?'text-white/80 bg-white/[0.04] ring-white/[0.10] hover:bg-white/[0.07] hover:text-white':'text-white/45 bg-white/[0.02] ring-white/[0.06] cursor-default'].join(' ')}><meta.Icon size={11}/>{_r.name||String(val)}{can&&<I.ArrowRight size={10} className="opacity-50"/>}</button>);})}</div>):<span className="text-[12px] text-white/30">Not linked</span>}
         </div>);})}
     </div>
   </div>);
@@ -20192,7 +20220,7 @@ function CustomObjectListPage({goTo,nav}){
   if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.plural}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">{def.plural} is restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view this object.</p></div></div></div></div>);
   const records=def.records||[];
   const setRows=(fn)=>crm.setCustomRecords(def.id,fn);
-  const omFields=coOmFields(def);
+  const omFields=coOmFields(def,crm);
   const canCreate=effCanCustom('create'),canEdit=effCanCustom('edit'),canDelete=effCanCustom('delete')&&effCanBulkDelete();
   const cols=[{key:'name',w:'1.6fr',label:def.primaryLabel||'Name',cell:(r)=>(<button onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="flex items-center gap-3 min-w-0 text-left w-full"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:15})}</span><span className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{r.r_company||r.createdAt||''}</p></span></button>)}];
   (def.fields||[]).filter(f=>f.col).forEach(f=>cols.push({key:f.key,w:'130px',label:f.label,cell:(r)=>coCellRender(f,r[f.key])}));

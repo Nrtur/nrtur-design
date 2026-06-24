@@ -73,6 +73,16 @@ Both sides of the argument landed in the **same place**:
 
 Most of these are small changes. The hardest (links by ID) is mostly a back-end concern and can come last.
 
+### Status — all five implemented in the prototype (June 2026)
+
+1. **Cap it** — ✅ caps of 5 objects / 25 fields / 5 relationships, enforced in the editor + settings.
+2. **Lock it** — ✅ each object has a per-object visibility setting (Everyone / Admins only), enforced across the list, detail, nav, search, and recycle bin.
+3. **Make delete undoable** — ✅ custom records soft-delete to the Recycle Bin (30-day restore).
+4. **Stop name clashes** — ✅ a custom object can't shadow a standard one (or another custom object); inline warning + save blocked.
+5. **Link by ID, not name** — ✅ relationships store the target's stable id and resolve to its current name at render (rename-safe), backward-compatible with legacy name links.
+
+The bounded model is complete for the prototype stage; the remaining hardening (real persistence, server-enforced permissions) belongs to the backend that's yet to be built.
+
 ---
 
 ## Bottom line
