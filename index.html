@@ -1647,7 +1647,7 @@ function GlobalSearchOverlay({close,goTo}){
   const deals=effScopeRows('Deals',allDeals().filter(d=>match(d.company,d.value)),d=>d.owner).slice(0,4).map((d,i)=>({key:'d'+i,id:d.id,name:d.company,sub:d.value+' · '+d.stageName,deal:true,page:'deal-detail'}));
   const pages=PAGE_LIST.filter(p=>match(p.label)).map(p=>({key:'p'+p.page+(p.nav?JSON.stringify(p.nav):''),name:p.label,page:p.page,id:p.nav,pageIcon:true}));
   const settingsPages=SETTINGS_PAGES.filter(p=>match(p.label,'settings')).filter(p=>p.page!=='settings-billing'||effCanManageBilling()).slice(0,5).map(p=>({key:'s'+p.page,name:p.label,page:p.page,settings:true}));
-  const customRecs=(_customObjects||[]).flatMap(ob=>effScopeRows('Contacts',(ob.records||[]).filter(r=>!r.deleted&&!r.archived&&match(r.name,r.r_company)),r=>r.owner).slice(0,3).map(r=>({key:'cob'+ob.id+r.id,id:{objectId:ob.id,recordId:r.id},name:r.name,sub:ob.singular,color:ob.color,avatar:(r.name||'?').slice(0,1).toUpperCase(),square:true,page:'custom-record'}))).slice(0,5);
+  const customRecs=(_customObjects||[]).filter(ob=>coCanView(ob)).flatMap(ob=>effScopeRows('Contacts',(ob.records||[]).filter(r=>!r.deleted&&!r.archived&&match(r.name,r.r_company)),r=>r.owner).slice(0,3).map(r=>({key:'cob'+ob.id+r.id,id:{objectId:ob.id,recordId:r.id},name:r.name,sub:ob.singular,color:ob.color,avatar:(r.name||'?').slice(0,1).toUpperCase(),square:true,page:'custom-record'}))).slice(0,5);
   const sections=[{t:'Contacts',items:people},{t:'Leads',items:leads},{t:'Companies',items:companies},{t:'Deals',items:deals},{t:'Custom records',items:customRecs},{t:'Pages',items:pages},{t:'Settings',items:settingsPages}].filter(s=>s.items.length);
   const total=sections.reduce((a,s)=>a+s.items.length,0);
   const row={display:'flex',alignItems:'center',gap:12,padding:'9px 10px',borderRadius:8,cursor:'pointer',border:'none',textAlign:'left',fontFamily:'inherit',background:'transparent',transition:'background .1s',width:'100%'};
@@ -2583,7 +2583,7 @@ const NAV_BUILTIN_DEFAULT=['dashboard','inbox','tasks','calendar','contacts','co
 const NAV_CLUSTER={dashboard:0,inbox:1,tasks:1,calendar:1,contacts:2,companies:2,leads:2,pipeline:2,engage:3,reports:3};
 function navClusterOf(it){return (it&&it.id!=null&&NAV_CLUSTER[it.id]!=null)?NAV_CLUSTER[it.id]:4;}
 const NAV_MAX_PINNED=12; // cap on how many items a user can pin to the rail (rest live in the More drawer)
-function navAllDestinations(){return [...NAV_CATALOG.map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG,...(_liveCustomObjects||[]).map(o=>({id:'cob_'+o.id,type:'custom',objectId:o.id,label:o.plural,icon:o.icon,pinned:false}))];}
+function navAllDestinations(){return [...NAV_CATALOG.map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG,...(_liveCustomObjects||[]).filter(o=>coCanView(o)).map(o=>({id:'cob_'+o.id,type:'custom',objectId:o.id,label:o.plural,icon:o.icon,pinned:false}))];}
 function navPinnedList(cfg){return (cfg||[]).filter(i=>i&&i.pinned!==false);}
 function navMoreList(cfg){
   cfg=cfg||[];const inList=new Set(cfg.map(navKey));
@@ -11874,7 +11874,7 @@ function SettingsRecycleBinPage({goTo}){
     (cal.items||[]).forEach(t=>{if(t.type==='task'&&t.deleted)out.push({key:'task:'+t.id,type:'Tasks',name:t.title||'Untitled task',sub:t.company||t.contact||'',taskIcon:true,color:'#14b8a6',square:true,deletedAt:t.deletedAt,deletedBy:t.deletedBy,
       restore:()=>cal.updateItem({id:t.id,deleted:false,deletedAt:null,deletedBy:null}),
       purge:()=>cal.deleteItem(t.id)});});
-    (crm.customObjects||[]).forEach(o=>{(o.records||[]).forEach(r=>{if(r.deleted)out.push({key:'custom:'+o.id+':'+r.id,type:'Records',name:r.name||('Untitled '+(o.singular||'record')),sub:o.singular||'',avatar:(r.name||'?').slice(0,1).toUpperCase(),color:o.color||'#a78bfa',square:true,deletedAt:r.deletedAt,deletedBy:r.deletedBy,
+    (crm.customObjects||[]).filter(coCanView).forEach(o=>{(o.records||[]).forEach(r=>{if(r.deleted)out.push({key:'custom:'+o.id+':'+r.id,type:'Records',name:r.name||('Untitled '+(o.singular||'record')),sub:o.singular||'',avatar:(r.name||'?').slice(0,1).toUpperCase(),color:o.color||'#a78bfa',square:true,deletedAt:r.deletedAt,deletedBy:r.deletedBy,
       restore:()=>crm.setCustomRecords(o.id,rs=>rs.map(x=>x.id===r.id?{...x,deleted:false,deletedAt:null,deletedBy:null}:x)),
       purge:()=>crm.setCustomRecords(o.id,rs=>rs.filter(x=>x.id!==r.id))});});});
     out.sort((a,b)=>nrturDelMs(b.deletedAt)-nrturDelMs(a.deletedAt));
@@ -19998,6 +19998,8 @@ function coSeedObjects(){
 const CO_MAX_OBJECTS=5;
 const CO_MAX_FIELDS=25;
 const CO_MAX_RELS=5;
+// Per-object visibility lock: an 'admins' object is hidden from non-admins everywhere it surfaces.
+function coCanView(def){return !def||def.visibility!=='admins'||settingsIsAdmin();}
 function CoRelForm({crm,selfId,onClose,onAdd}){
   const [label,setLabel]=React.useState('');
   const [target,setTarget]=React.useState('company');
@@ -20026,6 +20028,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
   const [primaryLabel,setPrimaryLabel]=React.useState(initial?(initial.primaryLabel||'Name'):'Name');
   const [fields,setFields]=React.useState(initial?(initial.fields||[]).map(f=>({...f})):[]);
   const [rels,setRels]=React.useState(initial?(initial.relationships||[]).map(r=>({...r})):[]);
+  const [visibility,setVisibility]=React.useState(initial?(initial.visibility||'everyone'):'everyone');
   const [fieldDrawer,setFieldDrawer]=React.useState(null);
   const [relForm,setRelForm]=React.useState(false);
   useEscKey(onClose);
@@ -20039,7 +20042,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
   const fieldsFull=fields.length>=CO_MAX_FIELDS;
   const relsFull=rels.length>=CO_MAX_RELS;
   const valid=singular.trim()&&plural.trim()&&!nameClash;
-  const save=()=>{if(!valid)return;onSave({id:initial?initial.id:'cob_'+Date.now(),singular:singular.trim(),plural:plural.trim(),icon,color,primaryLabel:primaryLabel.trim()||'Name',fields,relationships:rels,records:initial?(initial.records||[]):[]});};
+  const save=()=>{if(!valid)return;onSave({id:initial?initial.id:'cob_'+Date.now(),singular:singular.trim(),plural:plural.trim(),icon,color,primaryLabel:primaryLabel.trim()||'Name',visibility,fields,relationships:rels,records:initial?(initial.records||[]):[]});};
   const Section=({title,children})=>(<div className="flex flex-col gap-2"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{title}</p>{children}</div>);
   return(<React.Fragment>
     <div className="fixed inset-0 z-[180] bg-black/40" onClick={onClose}/>
@@ -20055,6 +20058,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
           <div><label className={CO_LBL}>Primary field label</label><input value={primaryLabel} onChange={e=>setPrimaryLabel(e.target.value)} placeholder="Project name" className={CO_INP}/></div>
           <div><label className={CO_LBL}>Icon</label><div className="flex flex-wrap gap-1.5">{CO_ICONS.map(nm=>{const on=icon===nm;const Ic=coIco(nm);return(<button key={nm} onClick={()=>setIcon(nm)} className={['w-9 h-9 rounded-lg flex items-center justify-center transition-all',on?'text-white ring-1':'text-white/50 bg-white/[0.04] hover:bg-white/[0.08]'].join(' ')} style={on?{background:color+'22',boxShadow:'0 0 0 1px '+color}:undefined}><Ic size={15}/></button>);})}</div></div>
           <div><label className={CO_LBL}>Color</label><div className="flex flex-wrap gap-2">{CO_COLORS.map(co=>(<button key={co} onClick={()=>setColor(co)} className="w-7 h-7 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:color===co?('0 0 0 2px var(--panel98), 0 0 0 4px '+co):'none'}}>{color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}</div></div>
+          <div><label className={CO_LBL}>Who can see this</label><div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit">{[['everyone','Everyone',I.Users],['admins','Admins only',I.Lock]].map(([k,l,Ic])=>{const on=visibility===k;return(<button key={k} onClick={()=>setVisibility(k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',on?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><Ic size={12}/>{l}</button>);})}</div><p className="text-[11px] text-white/40 mt-1.5">{visibility==='admins'?'Only workspace Owners & Admins can see or use this object and its records.':'Everyone in the workspace can see this object (subject to their role).'}</p></div>
         </Section>
         <Section title="Fields">
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
@@ -20185,6 +20189,7 @@ function CustomObjectListPage({goTo,nav}){
   const [bulkTag,setBulkTag]=React.useState('');
   const [bulkUntag,setBulkUntag]=React.useState('');
   if(!def)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Custom object"/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.Folder size={26}/></div><p className="text-[16px] font-semibold text-white">No custom objects yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5">Define one in Settings → Custom objects.</p><button onClick={()=>goTo('settings-custom-objects')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Create an object</button></div></div></div></div>);
+  if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.plural}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">{def.plural} is restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view this object.</p></div></div></div></div>);
   const records=def.records||[];
   const setRows=(fn)=>crm.setCustomRecords(def.id,fn);
   const omFields=coOmFields(def);
@@ -20254,6 +20259,7 @@ function CustomRecordDetailPage({goTo,nav}){
   const [extra,setExtra]=React.useState([]);
   const [editOpen,setEditOpen]=React.useState(false);
   if(!def||!rec)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Record"/><div className="flex-1 flex items-center justify-center text-[13px] text-white/40">Record not found.</div></div></div>);
+  if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.singular}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">Restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view {def.plural}.</p></div></div></div></div>);
   const canEdit=effCanCustom('edit'),canDelete=effCanCustom('delete');
   const m=coMember(rec.owner);
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
@@ -20319,7 +20325,7 @@ function SettingsCustomObjectsPage({goTo}){
         {admin&&<button onClick={()=>setEditor('new')} className="mt-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New custom object</button>}
       </div>
     ):(
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{objs.map(def=>(<div key={def.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex flex-col">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{objs.filter(coCanView).map(def=>(<div key={def.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex flex-col">
         <div className="flex items-start gap-3 mb-3">
           <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:18})}</span>
           <div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white truncate">{def.plural}</p><p className="text-[11.5px] text-white/45">{(def.records||[]).length} record{(def.records||[]).length===1?'':'s'} · {(def.fields||[]).length} field{(def.fields||[]).length===1?'':'s'} · {(def.relationships||[]).length} link{(def.relationships||[]).length===1?'':'s'}</p></div>
