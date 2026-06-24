@@ -19993,6 +19993,11 @@ function coSeedObjects(){
   }];
 }
 // ── Relationship add form (small centered modal) ──
+// Custom-objects guardrails (bounded model, per docs/custom-objects-research.md): caps keep
+// this a small-team feature, not an unbounded schema builder.
+const CO_MAX_OBJECTS=5;
+const CO_MAX_FIELDS=25;
+const CO_MAX_RELS=5;
 function CoRelForm({crm,selfId,onClose,onAdd}){
   const [label,setLabel]=React.useState('');
   const [target,setTarget]=React.useState('company');
@@ -20024,11 +20029,16 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
   const [fieldDrawer,setFieldDrawer]=React.useState(null);
   const [relForm,setRelForm]=React.useState(false);
   useEscKey(onClose);
-  const upsertField=(fd)=>{const nf={...fd,key:fd.key||fd.id};setFields(fs=>fs.some(x=>x.id===nf.id)?fs.map(x=>x.id===nf.id?nf:x):[...fs,nf]);setFieldDrawer(null);};
+  const upsertField=(fd)=>{const nf={...fd,key:fd.key||fd.id};setFields(fs=>fs.some(x=>x.id===nf.id)?fs.map(x=>x.id===nf.id?nf:x):(fs.length>=CO_MAX_FIELDS?fs:[...fs,nf]));setFieldDrawer(null);};
   const rmField=(id)=>setFields(fs=>fs.filter(x=>x.id!==id));
-  const addRel=(rel)=>{const id='r_'+Date.now();setRels(rs=>[...rs,{...rel,id,key:id}]);setRelForm(false);};
+  const addRel=(rel)=>{const id='r_'+Date.now();setRels(rs=>rs.length>=CO_MAX_RELS?rs:[...rs,{...rel,id,key:id}]);setRelForm(false);};
   const rmRel=(id)=>setRels(rs=>rs.filter(x=>x.id!==id));
-  const valid=singular.trim()&&plural.trim();
+  const RESERVED_OBJ_NAMES=['contact','contacts','company','companies','lead','leads','deal','deals'];
+  const otherObjs=(crm.customObjects||[]).filter(o=>!initial||o.id!==initial.id);
+  const nameClash=(()=>{const sn=singular.trim().toLowerCase(),pn=plural.trim().toLowerCase();if(!sn&&!pn)return '';if(RESERVED_OBJ_NAMES.indexOf(sn)>=0||RESERVED_OBJ_NAMES.indexOf(pn)>=0)return 'matches a standard object';if(otherObjs.some(o=>[(o.singular||'').toLowerCase(),(o.plural||'').toLowerCase()].some(x=>x&&(x===sn||x===pn))))return 'matches another custom object';return '';})();
+  const fieldsFull=fields.length>=CO_MAX_FIELDS;
+  const relsFull=rels.length>=CO_MAX_RELS;
+  const valid=singular.trim()&&plural.trim()&&!nameClash;
   const save=()=>{if(!valid)return;onSave({id:initial?initial.id:'cob_'+Date.now(),singular:singular.trim(),plural:plural.trim(),icon,color,primaryLabel:primaryLabel.trim()||'Name',fields,relationships:rels,records:initial?(initial.records||[]):[]});};
   const Section=({title,children})=>(<div className="flex flex-col gap-2"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{title}</p>{children}</div>);
   return(<React.Fragment>
@@ -20041,6 +20051,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
             <div><label className={CO_LBL}>Singular name</label><input value={singular} onChange={e=>{setSingular(e.target.value);if(!initial&&!plural)setPlural(e.target.value?e.target.value+'s':'');}} placeholder="Project" className={CO_INP}/></div>
             <div><label className={CO_LBL}>Plural name</label><input value={plural} onChange={e=>setPlural(e.target.value)} placeholder="Projects" className={CO_INP}/></div>
           </div>
+          {nameClash&&<p className="text-[11.5px] text-amber-300 -mt-1">This name {nameClash} — pick a different one.</p>}
           <div><label className={CO_LBL}>Primary field label</label><input value={primaryLabel} onChange={e=>setPrimaryLabel(e.target.value)} placeholder="Project name" className={CO_INP}/></div>
           <div><label className={CO_LBL}>Icon</label><div className="flex flex-wrap gap-1.5">{CO_ICONS.map(nm=>{const on=icon===nm;const Ic=coIco(nm);return(<button key={nm} onClick={()=>setIcon(nm)} className={['w-9 h-9 rounded-lg flex items-center justify-center transition-all',on?'text-white ring-1':'text-white/50 bg-white/[0.04] hover:bg-white/[0.08]'].join(' ')} style={on?{background:color+'22',boxShadow:'0 0 0 1px '+color}:undefined}><Ic size={15}/></button>);})}</div></div>
           <div><label className={CO_LBL}>Color</label><div className="flex flex-wrap gap-2">{CO_COLORS.map(co=>(<button key={co} onClick={()=>setColor(co)} className="w-7 h-7 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:color===co?('0 0 0 2px var(--panel98), 0 0 0 4px '+co):'none'}}>{color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}</div></div>
@@ -20054,7 +20065,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
               <button onClick={()=>rmField(f.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={13}/></button>
             </div>))}
           </div>
-          <button onClick={()=>setFieldDrawer('new')} className="inline-flex items-center gap-1.5 self-start text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={13} stroke={2.4}/>Add field</button>
+          <div className="flex items-center gap-2.5"><button onClick={()=>!fieldsFull&&setFieldDrawer('new')} disabled={fieldsFull} className={['inline-flex items-center gap-1.5 text-[12.5px] font-medium transition-colors',fieldsFull?'text-white/30 cursor-not-allowed':'text-brand-300 hover:text-brand-200'].join(' ')}><I.Plus size={13} stroke={2.4}/>Add field</button><span className="text-[11px] text-white/35 tabular-nums">{fields.length} / {CO_MAX_FIELDS}</span></div>
         </Section>
         <Section title="Relationships">
           <p className="text-[11px] text-white/40 -mt-1">Link this object to contacts, companies, leads, deals, or other custom objects.</p>
@@ -20065,7 +20076,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
               <button onClick={()=>rmRel(r.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={13}/></button>
             </div>);})}
           </div>
-          <button onClick={()=>setRelForm(true)} className="inline-flex items-center gap-1.5 self-start text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Plus size={13} stroke={2.4}/>Add relationship</button>
+          <div className="flex items-center gap-2.5"><button onClick={()=>!relsFull&&setRelForm(true)} disabled={relsFull} className={['inline-flex items-center gap-1.5 text-[12.5px] font-medium transition-colors',relsFull?'text-white/30 cursor-not-allowed':'text-brand-300 hover:text-brand-200'].join(' ')}><I.Plus size={13} stroke={2.4}/>Add relationship</button><span className="text-[11px] text-white/35 tabular-nums">{rels.length} / {CO_MAX_RELS}</span></div>
         </Section>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{initial?'Save object':'Create object'}</button></div>
@@ -20286,7 +20297,7 @@ function CustomRecordDetailPage({goTo,nav}){
 // ── Builder page (replaces the stub) ──
 function SettingsCustomObjectsPage({goTo}){
   const crm=React.useContext(CrmDataContext);
-  const objs=crm.customObjects||[];
+  const objs=crm.customObjects||[];const atMaxObjs=objs.length>=CO_MAX_OBJECTS;
   const admin=settingsIsAdmin();
   const {confirmNode,openConfirm}=useConfirm();
   const [editor,setEditor]=React.useState(null);
@@ -20294,12 +20305,12 @@ function SettingsCustomObjectsPage({goTo}){
   const STD=[['Contacts',I.Users],['Companies',I.Building],['Leads',I.Sparkles],['Deals',I.GitBranch]];
   const saveObj=(def)=>{crm.setCustomObjects(a=>a.some(o=>o.id===def.id)?a.map(o=>o.id===def.id?def:o):[...a,def]);setEditor(null);toast(def.plural+' saved');};
   const delObj=(def)=>openConfirm({title:'Delete '+def.plural+'?',body:'This permanently removes the '+def.plural+' object and its '+(def.records||[]).length+' record'+((def.records||[]).length===1?'':'s')+'. This cannot be undone.',confirmLabel:'Delete object',danger:true,requireText:def.plural,onConfirm:()=>{crm.setCustomObjects(a=>a.filter(o=>o.id!==def.id));toast(def.plural+' deleted');}});
-  return(<SettingsShell active="settings-custom-objects" goTo={goTo} subtitle="Define your own record types beyond contacts, companies, leads, and deals." actions={admin&&<button onClick={()=>setEditor('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={15} stroke={2.4}/>New object</button>}>
+  return(<SettingsShell active="settings-custom-objects" goTo={goTo} subtitle="Define your own record types beyond contacts, companies, leads, and deals." actions={admin&&(atMaxObjs?<button disabled title={'Limit reached — '+CO_MAX_OBJECTS+' custom objects max'} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white/30 bg-white/[0.06] cursor-not-allowed"><I.Plus size={15} stroke={2.4}/>New object</button>:<button onClick={()=>setEditor('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={15} stroke={2.4}/>New object</button>)}>
     <div className={CUST_CARD}>
       <p className={CUST_EYE+' mb-3'}>Standard objects</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{STD.map(([l,Ic])=>(<div key={l} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]"><span className="w-8 h-8 rounded-lg bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><Ic size={15}/></span><span className="text-[13px] font-medium text-white truncate">{l}</span></div>))}</div>
     </div>
-    <div className="flex items-center justify-between gap-3 mt-1 mb-1"><p className={CUST_EYE}>Custom objects</p><span className="text-[11.5px] text-white/40">{objs.length} object{objs.length===1?'':'s'}</span></div>
+    <div className="flex items-center justify-between gap-3 mt-1 mb-1"><p className={CUST_EYE}>Custom objects</p><span className="text-[11.5px] text-white/40">{objs.length} / {CO_MAX_OBJECTS} objects</span></div>
     {objs.length===0?(
       <div className="rounded-2xl border border-dashed border-white/[0.14] bg-white/[0.015] px-6 py-12 text-center flex flex-col items-center gap-3">
         <span className="w-14 h-14 rounded-2xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center"><I.Layers size={24}/></span>
