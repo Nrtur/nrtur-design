@@ -12,6 +12,8 @@ The industry has converged on a **generic** answer: a kanban board is just a **v
 
 **Recommendation: add a generic "Board" view (group-by-a-select-field) to custom objects — don't clone the Deals pipeline per object.** Medium effort, high payoff, matches how Salesforce / Zoho / monday / Airtable / Attio all do it.
 
+> **✅ Built (this branch):** `CustomObjectListPage` now has a **Table / Board** toggle and a **Group by** picker (over the object's Single-select fields). The board renders one column per option (+ an "Uncategorized" column), with colored headers + counts; cards show the record name, company, a couple of field pills, and the owner; **drag-to-move** patches the chosen field via `crm.updateCustomRecord` (gated by `effCanCustom('edit')`). Owner-scoping and the Om filter/search carry over (it shares the same scoped `list`). Verified on the demo **Projects** object grouped by **Stage** — including a drag that moved a record between columns. (Steps ④–⑥ below — option ordering, a shared `KanbanBoard` for Deals, and per-stage rules — remain as fast-follows.)
+
 ---
 
 ## What nrtur does today
