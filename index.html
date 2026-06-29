@@ -7255,6 +7255,7 @@ function ContactDetailPage({goTo,nav}){
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
                 <button onClick={()=>setMoreOpen(false)} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Star size={13}/>Star contact</button>
                 {effCanObject('Contacts','edit')&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit contact</button>}
+                {effCanPay('create')&&<button onClick={()=>{setMoreOpen(false);goTo('payments',{tab:'invoices',newInvoice:{contact:c.name,company:c.co}});}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Note size={13}/>Create invoice</button>}
                 {effCanObject('Contacts','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete contact</button>}
               </div>}
             </div>
@@ -7866,6 +7867,7 @@ function DealDetailPage({goTo,nav}){
               <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
                 {effCanObject('Deals','edit')&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit deal</button>}
+                {effCanPay('create')&&<button onClick={()=>{setMoreOpen(false);goTo('payments',{tab:'invoices',newInvoice:{contact:(dealContact&&dealContact.name)||'',company:d.company,dealId:d.id}});}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Note size={13}/>Create invoice</button>}
                 {effCanObject('Deals','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete deal</button>}
               </div>}
             </div>}
@@ -8198,6 +8200,7 @@ function CompanyDetailPage({goTo,nav}){
               <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
                 {effCanObject('Companies','edit')&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit company</button>}
+                {effCanPay('create')&&<button onClick={()=>{setMoreOpen(false);goTo('payments',{tab:'invoices',newInvoice:{company:co.name,contact:(people[0]&&people[0].name)||''}});}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Note size={13}/>Create invoice</button>}
                 {effCanObject('Companies','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete company</button>}
               </div>}
             </div>}
@@ -18957,10 +18960,12 @@ function PayStripeStatus({goTo}){
 function PayRevenueWidget({invoices,subs}){
   const sum=(st)=>invoices.filter(v=>v.status===st).reduce((a,v)=>a+v.amount,0);
   const cnt=(st)=>invoices.filter(v=>v.status===st).length;
-  const collected=sum('paid'),outstanding=sum('sent'),overdue=sum('overdue');
+  // "Collected" is a flow — money received in the last 30 days (uses paidAgoMin). Outstanding/Overdue are current balances.
+  const PAY_WINDOW_DAYS=30;const paidWin=invoices.filter(v=>v.status==='paid'&&v.paidAgoMin!=null&&v.paidAgoMin<=PAY_WINDOW_DAYS*1440);
+  const collected=paidWin.reduce((a,v)=>a+v.amount,0),outstanding=sum('sent'),overdue=sum('overdue');
   const mrr=subs.filter(s=>s.status==='active').reduce((a,s)=>a+(s.interval==='year'?s.amount/12:s.amount),0);
   const KPI=[
-    {l:'Collected this period',v:payMoney(collected),Icon:I.Check,accent:'emerald',sub:cnt('paid')+' paid invoices'},
+    {l:'Collected · 30 days',v:payMoney(collected),Icon:I.Check,accent:'emerald',sub:paidWin.length+' paid · last 30 days'},
     {l:'Outstanding',v:payMoney(outstanding),Icon:I.Clock,accent:'blue',sub:cnt('sent')+' awaiting payment'},
     {l:'Overdue',v:payMoney(overdue),Icon:I.AlertTriangle,accent:'red',sub:cnt('overdue')+' past due'},
     {l:'Recurring / mo (MRR)',v:payMoney(Math.round(mrr)),Icon:I.History,accent:'violet',sub:subs.filter(s=>s.status==='active').length+' active subscriptions'},
@@ -18975,7 +18980,7 @@ function PayRevenueWidget({invoices,subs}){
       <p className="text-[11px] text-white/40 mt-2">{k.sub}</p>
     </div>))}</div>
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-      <div className="flex items-center justify-between mb-4"><p className="text-[13px] font-semibold text-white">Invoice revenue by status</p><span className="text-[11px] text-white/40">This period</span></div>
+      <div className="flex items-center justify-between mb-4"><p className="text-[13px] font-semibold text-white">Invoice revenue by status</p><span className="text-[11px] text-white/40">Collected = last 30 days</span></div>
       <div className="flex flex-col gap-3">{bars.map(b=>(<div key={b.l}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:b.c}}/><span className="text-[12px] font-medium text-white/70">{b.l}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{payMoney(b.v)}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:Math.max(2,(b.v/max)*100)+'%',background:b.c}}/></div></div>))}</div>
     </div>
   </div>);
@@ -19058,12 +19063,12 @@ function PaySubModal({products,onClose,onSave}){
 }
 const PAY_DUE_PRESETS=[['receipt','Due on receipt',0],['net7','Net 7',7],['net14','Net 14',14],['net30','Net 30',30]];
 // ── New invoice drawer (Part C) ─────────────────────────────────────────────
-function PayInvoiceDrawer({crm,onClose,onCreate,toast}){
+function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
   const products=crm.payProducts||[];
   const contacts=crm.contacts||[];
   const deals=allDeals();
-  const [contact,setContact]=React.useState('');
-  const [dealLabel,setDealLabel]=React.useState('');
+  const [contact,setContact]=React.useState((prefill&&prefill.contact)||'');
+  const [dealLabel,setDealLabel]=React.useState(()=>{if(prefill&&prefill.dealId!=null){const d=deals.find(x=>x.id===prefill.dealId);if(d)return d.name||(d.company+' · '+d.value);}return '';});
   const [items,setItems]=React.useState([]);
   const [duePreset,setDuePreset]=React.useState('net14');
   const [notes,setNotes]=React.useState('');
@@ -19071,7 +19076,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast}){
   useEscKey(onClose);
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
-  const co=(contacts.find(c=>c.name===contact)||{}).co||'';
+  const co=(contacts.find(c=>c.name===contact)||{}).co||(prefill&&prefill.company)||'';
   const amount=items.reduce((a,it)=>a+(parseFloat(it.qty)||0)*(parseFloat(it.price)||0),0);
   const addProduct=(id)=>{const p=products.find(x=>x.id===id);if(!p)return;setItems(its=>[...its,{desc:p.name,qty:1,price:p.price}]);setProdPick('');};
   const addCustom=()=>setItems(its=>[...its,{desc:'',qty:1,price:0}]);
@@ -19173,7 +19178,8 @@ function PaymentsPage({goTo,nav}){
   const [toast,setToast]=React.useState('');
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2600);};
   const {confirmNode,openConfirm}=useConfirm();
-  const [newInv,setNewInv]=React.useState(false);
+  const [newInv,setNewInv]=React.useState((nav&&nav.newInvoice)||false);
+  React.useEffect(()=>{if(nav&&nav.newInvoice)nav.newInvoice=null;},[]);
   const [openInv,setOpenInv]=React.useState(null);
   const [prodModal,setProdModal]=React.useState(null);
   const [linkModal,setLinkModal]=React.useState(false);
@@ -19283,7 +19289,7 @@ function PaymentsPage({goTo,nav}){
       </div></div>
       <AppFooter note="Secured by Stripe · card details never touch our servers"/>
     </div>
-    {newInv&&<PayInvoiceDrawer crm={crm} onClose={()=>setNewInv(false)} onCreate={createInvoice} toast={showToast}/>}
+    {newInv&&<PayInvoiceDrawer crm={crm} prefill={(newInv&&typeof newInv==='object')?newInv:null} onClose={()=>setNewInv(false)} onCreate={createInvoice} toast={showToast}/>}
     {openInvoice&&<PayInvoiceDetail inv={openInvoice} crm={crm} goTo={goTo} onClose={()=>setOpenInv(null)} onUpdate={updateInvoice} toast={showToast}/>}
     {prodModal&&<PayProductModal initial={prodModal&&prodModal.id?prodModal:null} onClose={()=>setProdModal(null)} onSave={saveProduct}/>}
     {linkModal&&<PayLinkModal onClose={()=>setLinkModal(false)} onSave={createLink}/>}
