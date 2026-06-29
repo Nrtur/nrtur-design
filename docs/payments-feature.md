@@ -51,7 +51,7 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
 8. **"Collected this period" is actually all-time** — the label says "this period" but there's no date window, so an invoice paid 30 days ago counts the same as today's.
    **✅ Fixed (this branch):** "Collected" is now a real **rolling 30-day window** (computed from `paidAgoMin`), relabelled **"Collected · 30 days"** with a "{n} paid · last 30 days" sub; the revenue-by-status chart pill now reads "Collected = last 30 days". Outstanding/Overdue stay as current balances (they're snapshots, not flows).
 9. **No tax, discount, or currency** anywhere — the invoice total is a bare sum of qty × price, and "$"/USD is hardcoded. Tax-on-invoice is table-stakes for billing real customers.
-   **✅ Mostly fixed (this branch):** the invoice drawer now has **Discount ($)** and **Tax (%)** fields with a live **Subtotal → Discount → Tax → Total** breakdown; the parts (`subtotal`, `discount`, `taxRate`, `tax`) are stored on the invoice and the breakdown also shows in the invoice detail. *(Currency is still USD-only — a multi-currency selector is the remaining piece.)*
+   **✅ Fixed (this branch):** the invoice drawer now has **Discount ($)** and **Tax (%)** fields with a live **Subtotal → Discount → Tax → Total** breakdown (stored as `subtotal`/`discount`/`taxRate`/`tax`), plus a **Currency** selector (USD/EUR/GBP/CAD/AUD). `payMoney` is currency-aware, and an invoice renders consistently in its own currency across the drawer, list, detail, and checkout. *(The headline KPIs — Collected/Outstanding/MRR — still total in the workspace base currency; correct mixed-currency rollups would need FX rates, out of scope for the prototype.)*
 10. **Paid = dead-end.** Once paid, there's no refund, no "view/send receipt" — the only button left is Close.
     **✅ Fixed (this branch):** a paid invoice now has **Refund** (full refund, with confirm → "Refunded" status + amber banner; the live "Collected" KPI drops accordingly and a refund entry posts to the linked contact/deal timeline) and **Send receipt**. Unpaid invoices get **Void** (confirm → "Void" status, drops out of outstanding). Both route through the permission-checked `updateInvoice`.
 11. **Payment-link "Paid" status is broken** — nothing in the UI can set it, and the menu's "Disable" can overwrite it into a stuck state. (Links are reusable; "paid" doesn't belong as a status.)
@@ -97,7 +97,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 **Quick, high-value:** ① ✅ gate Payments by permission + owner scope · ② ✅ fix the stale-timeline memo · ③ ✅ "Create invoice" button on contact/deal · ④ ✅ honest "Collected" 30-day window — *all done (this branch)*.
 
-**Medium:** ⑤ ✅ simulated hosted checkout page *(done — this branch; unlocks real end-to-end pay)* · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ ✅ pay-at-booking creates a paid invoice *(done — this branch)*.
+**Medium:** ⑤ ✅ simulated hosted checkout page *(done — this branch; unlocks real end-to-end pay)* · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount + multi-currency *(done — this branch)* · ⑧ ✅ pay-at-booking creates a paid invoice *(done — this branch)*.
 
 **Strategic:** ⑨ ✅ Quote/Estimate → convert to invoice *(done — this branch)* · ⑩ ✅ subscriptions generate invoices *(done — this branch)*.
 
