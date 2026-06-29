@@ -14535,11 +14535,25 @@ function CatChip({cat}){
 // Polished, consistent integration card: icon, name, category chip + scope badge, description,
 // an inline "key setting" line once connected, and a clear state — Connect (outlined) vs
 // Connected ✓ (emerald) with Configure / Disconnect. Connected cards get a subtle emerald frame.
+// Real brand logos, three tiers with graceful fallback: (1) the simple-icons CDN (crisp SVG, the
+// product/brand mark in its own colour); (2) the DuckDuckGo icon service (full-colour favicon, by
+// domain — covers brands simple-icons has dropped, e.g. Slack / LinkedIn / Segment); (3) the Lucide
+// icon / first letter. Each entry is [simpleIconsSlug, domain]. Generic capabilities (webhooks,
+// sending domain, data export, push, in-app) have no brand mark and keep their icon.
+const INTG_LOGO={slack:['slack','slack.com'],slackdm:['slack','slack.com'],whatsapp:['whatsapp','whatsapp.com'],'meta-ads':['meta','meta.com'],'google-ads':['googleads','google.com'],'linkedin-leads':['linkedin','linkedin.com'],stripe:['stripe','stripe.com'],paypal:['paypal','paypal.com'],quickbooks:['quickbooks','quickbooks.intuit.com'],zapier:['zapier','zapier.com'],make:['make','make.com'],segment:['segment','segment.com'],hubspot:['hubspot','hubspot.com'],'google-calendar':['googlecalendar','calendar.google.com'],'outlook-calendar':['microsoftoutlook','outlook.com'],'apple-calendar':['icloud','icloud.com'],zoom:['zoom','zoom.us'],'google-meet':['googlemeet','meet.google.com'],'ms-teams':['microsoftteams','teams.microsoft.com']};
+function IntgLogo({intg,size}){
+  const m=INTG_LOGO[intg.key];const slug=m&&m[0];const domain=m&&m[1];
+  const [stage,setStage]=React.useState(0);
+  const Icon=intg.Icon;
+  if(stage===0&&slug)return <img key="si" src={'https://cdn.simpleicons.org/'+slug+'/'+String(intg.iconColor||'#888888').replace('#','')} alt="" width={size} height={size} style={{width:size,height:size,objectFit:'contain',display:'block'}} onError={()=>setStage(domain?1:2)}/>;
+  if(stage<=1&&domain)return <img key="dd" src={'https://icons.duckduckgo.com/ip3/'+domain+'.ico'} alt="" width={size} height={size} style={{width:size,height:size,objectFit:'contain',display:'block',borderRadius:'4px'}} onError={()=>setStage(2)}/>;
+  return Icon?<Icon size={size}/>:((intg.name||'?').slice(0,1));
+}
 function IntegCard({intg,on,comingSoon,onOpen,onConnect,onConfigure,onDisconnect}){
   const Icon=intg.Icon;
   return(<div onClick={onOpen} role="button" tabIndex={0} onKeyDown={e=>{if(onOpen&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onOpen();}}} className={['group/intg rounded-2xl border p-5 flex flex-col cursor-pointer transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-500/40',on?'border-emerald-500/25 bg-emerald-500/[0.04]':comingSoon?'border-white/[0.05] bg-white/[0.02] hover:border-white/[0.09]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
     <div className="flex items-start gap-3 mb-3">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-[14px] shrink-0" style={{background:intg.iconColor+'20',color:intg.iconColor,border:'1px solid '+intg.iconColor+'30'}}>{Icon?<Icon size={17}/>:intg.name.slice(0,1)}</div>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-[14px] shrink-0" style={{background:intg.iconColor+'20',color:intg.iconColor,border:'1px solid '+intg.iconColor+'30'}}><IntgLogo intg={intg} size={18}/></div>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold text-white truncate">{intg.name}</p>
         <div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat={intg.cat}/>{intg.scope&&<ScopeBadge scope={intg.scope}/>}</div>
@@ -14571,7 +14585,7 @@ function IntegDetailDrawer({intg,on,comingSoon,readOnly,onConnect,onConfigure,on
     <div className="w-full sm:w-[460px] sm:max-w-full max-h-[90vh] sm:max-h-none sm:h-full flex flex-col border-t sm:border-t-0 sm:border-l border-white/[0.10] rounded-t-2xl sm:rounded-none animate-[sheetUp_.24s_ease] sm:animate-[arIn_.22s_ease]" style={{background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-[16px] shrink-0" style={{background:intg.iconColor+'22',color:intg.iconColor,border:'1px solid '+intg.iconColor+'40'}}>{Icon?<Icon size={18}/>:intg.name[0]}</div>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-[16px] shrink-0" style={{background:intg.iconColor+'22',color:intg.iconColor,border:'1px solid '+intg.iconColor+'40'}}><IntgLogo intg={intg} size={20}/></div>
           <div className="min-w-0"><p className="text-white text-[15px] font-semibold truncate">{intg.name}</p><div className="flex items-center gap-1.5 mt-1 flex-wrap"><CatChip cat={intg.cat}/>{intg.scope&&<ScopeBadge scope={intg.scope}/>}</div></div>
         </div>
         <button onClick={close} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
@@ -19073,17 +19087,23 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
   const [duePreset,setDuePreset]=React.useState('net14');
   const [notes,setNotes]=React.useState('');
   const [prodPick,setProdPick]=React.useState('');
+  const [discount,setDiscount]=React.useState('');
+  const [taxRate,setTaxRate]=React.useState('');
   useEscKey(onClose);
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
   const co=(contacts.find(c=>c.name===contact)||{}).co||(prefill&&prefill.company)||'';
   const amount=items.reduce((a,it)=>a+(parseFloat(it.qty)||0)*(parseFloat(it.price)||0),0);
+  const discountVal=Math.min(parseFloat(discount)||0,amount);
+  const taxPct=parseFloat(taxRate)||0;
+  const taxVal=Math.round((amount-discountVal)*taxPct)/100;
+  const total=Math.round((amount-discountVal+taxVal)*100)/100;
   const addProduct=(id)=>{const p=products.find(x=>x.id===id);if(!p)return;setItems(its=>[...its,{desc:p.name,qty:1,price:p.price}]);setProdPick('');};
   const addCustom=()=>setItems(its=>[...its,{desc:'',qty:1,price:0}]);
   const setItem=(i,patch)=>setItems(its=>its.map((x,j)=>j===i?{...x,...patch}:x));
   const rmItem=(i)=>setItems(its=>its.filter((_,j)=>j!==i));
   const dueDays=(PAY_DUE_PRESETS.find(p=>p[0]===duePreset)||[,,14])[2];
-  const build=(status)=>({id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0})),amount,status,owner:'AM',notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null});
+  const build=(status)=>({id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0})),amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null});
   const canSave=contact.trim()&&items.length>0&&amount>0;
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
@@ -19107,9 +19127,16 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
             <button onClick={addCustom} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12}/>Custom line</button>
           </div>
         </div>
+        <div><label className={PAY_LBL}>Due</label><select value={duePreset} onChange={e=>setDuePreset(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{PAY_DUE_PRESETS.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</select></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={PAY_LBL}>Due</label><select value={duePreset} onChange={e=>setDuePreset(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{PAY_DUE_PRESETS.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</select></div>
-          <div className="text-right pt-5"><span className="text-[11px] text-white/45 block">Total</span><span className="text-[20px] font-bold text-white tabular-nums">{payMoney(amount)}</span></div>
+          <div><label className={PAY_LBL}>Discount ($)</label><div className="flex items-center rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 overflow-hidden"><span className="pl-3 pr-1 text-[13px] text-white/45 shrink-0">$</span><input value={discount} onChange={e=>setDiscount(e.target.value.replace(/[^0-9.]/g,''))} inputMode="decimal" placeholder="0" className="flex-1 min-w-0 pr-3 py-2.5 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30"/></div></div>
+          <div><label className={PAY_LBL}>Tax (%)</label><div className="flex items-center rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 overflow-hidden"><input value={taxRate} onChange={e=>setTaxRate(e.target.value.replace(/[^0-9.]/g,''))} inputMode="decimal" placeholder="0" className="flex-1 min-w-0 pl-3 py-2.5 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30"/><span className="pr-3 pl-1 text-[13px] text-white/45 shrink-0">%</span></div></div>
+        </div>
+        <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] px-3.5 py-3 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(amount)}</span></div>
+          {discountVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(discountVal)}</span></div>}
+          {taxVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{taxPct?(' ('+taxPct+'%)'):''}</span><span className="tabular-nums">{payMoney(taxVal)}</span></div>}
+          <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/70">Total</span><span className="text-[18px] font-bold text-white tabular-nums">{payMoney(total)}</span></div>
         </div>
         <div><label className={PAY_LBL}>Notes <span className="text-white/30 font-normal">(optional)</span></label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Payment terms, thank-you note…" className={PAY_INP+' resize-none'}/></div>
         <PayStripeNotice/>
@@ -19147,6 +19174,11 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
           <div className="px-3.5 py-2 border-b border-white/[0.05] text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]">Line items</div>
           {(inv.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+          {(inv.discount>0||inv.tax>0)&&<div className="px-3.5 pt-2.5 flex flex-col gap-1.5 border-t border-white/[0.05]">
+            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(inv.subtotal!=null?inv.subtotal:inv.amount)}</span></div>
+            {inv.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount)}</span></div>}
+            {inv.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(inv.tax)}</span></div>}
+          </div>}
           <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(inv.amount)}</span></div>
         </div>
         {inv.notes&&<div><p className="text-[11px] text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><p className="text-[12.5px] text-white/65 leading-relaxed">{inv.notes}</p></div>}
