@@ -26,7 +26,7 @@ The simplest mental model: **Themes/Navigation/Dashboards = inward** (your team'
 
 | Feature | What it styles | Who sees the result | Who can edit | Scope |
 |---|---|---|---|---|
-| **Navigation** | The sidebar menu (rename / hide / reorder items) | Your team, in-app | Admin (sets the default; each user can personalize their own) | Workspace default |
+| **Navigation** | The sidebar menu (rename · reorder · hide/show · add custom links) | Your team, in-app | Admin (sets the default; each user can personalize their own) | Workspace default |
 | **Dashboards** | The starting dashboard (and reports) layout | Your team, in-app | Admin (per role); each user can then customize | Per role |
 | **Themes & display** | App theme (dark/light), density, accent, nav color, font, date/time format, landing page | Your team, in-app | Admin (workspace default); each user via *My preferences* | Workspace default + per user |
 | **Branding** | Logo + brand colors on **customer-facing** pages — booking pages, emails, web forms | Your customers | Admin | Workspace |
@@ -37,7 +37,7 @@ The simplest mental model: **Themes/Navigation/Dashboards = inward** (your team'
 ## Each feature, in depth
 
 ### 1. Navigation
-**What it does:** sets the **default sidebar** every new member starts with — you can rename items ("Contacts" → "Clients"), hide ones you don't use, and reorder them. A user can still personalize their own sidebar; this is just the starting point.
+**What it does:** sets the **default sidebar** every new member starts with. You can **rename** items (e.g. "Contacts" → "Clients" — edit the label inline), **reorder** them (drag the ⠿ grip handle), **hide/show** items, and **add custom links** to external URLs (with your own label + icon). A user can still personalize their own sidebar; this is just the starting point.
 **When to use:** tailor the app's language and surface area to your business (an agency might hide "Deals" and rename "Companies" to "Accounts").
 **Why it's better than nothing:** new hires land in a workspace that already speaks your team's language, instead of the generic default.
 **Different from Dashboards:** Navigation = *which screens exist and what they're called*; Dashboards = *what the home screen shows*.
