@@ -34,9 +34,11 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
 
 ### 🔴 Fix first (high impact)
 1. **Anyone can do anything.** Unlike the rest of the app, Payments has **no permission checks and no owner-scoping at all** — every role can see all revenue, mark any invoice paid, and cancel any subscription. *(Verified: zero permission calls in the Payments code.)* → Gate it like Deals, and scope lists to the owner.
+   **✅ Fixed (this branch):** Payments now proxies to Deals permissions via `effCanPay(act){return effCanObject('Deals',act)}` (same pattern as `effCanCustom`). The page shows a no-access state for roles without view, the invoice list is owner-scoped with `effScopeRows('Deals', …)`, and all 9 mutations + the "New …" button are gated. Net effect: **Read Only can no longer mark-paid / cancel, and a Sales Rep sees only their own invoices** (Team Lead sees their team's). No new `PERM_OBJECTS` key was added, so the Permissions matrix `/32` count is unchanged.
 2. **You can't actually pay end-to-end.** The "payment link" is a **dead URL string** — there's no customer-facing checkout page anywhere. The only way an invoice becomes "paid" is the *seller* clicking a button. → Add a simulated hosted checkout page the link/invoice opens to.
 3. **Can't invoice from a contact/deal.** There's **no "Create invoice" button on a contact, company, or deal** — you must leave, go to Payments, and re-type the customer's name. That's the most common real entry point, and it's missing.
 4. **The timeline goes stale.** Paying or creating an invoice doesn't refresh an already-open contact/deal timeline until you navigate away and back. *(Verified: a memo is missing `invoices` in its dependency list — a one-line fix.)*
+   **✅ Fixed (this branch):** `ctx.invoices` added to the `ActivityTimeline` memo dependency array (~line 7073). Since all 5 detail pages funnel through that one memo, an open contact/deal timeline now refreshes the moment an invoice is paid or created.
 5. **Invoices are immutable.** No edit, void, delete, duplicate, resend, or download-PDF — a draft with a typo can only be sent, never fixed. (Products and subscriptions have full menus; invoices, the most important object, have the least.)
 6. **Subscriptions never create invoices.** In real Stripe, each billing cycle *is* an invoice — here Subscriptions and Invoices are two unrelated lists, so MRR and invoice revenue can never reconcile.
 7. **"Send invoice" sends nothing.** There's no customer email on an invoice and no delivery step — "Send" just flips the status while claiming a link was generated and emailed.
@@ -82,7 +84,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 ## Suggested order of work
 
-**Quick, high-value (do first):** ① gate Payments by permission + owner scope · ② fix the stale-timeline memo (one line) · ③ "Create invoice" button on contact/deal · ④ honest "Collected" label or a real 30-day window.
+**Quick, high-value (do first):** ① ✅ gate Payments by permission + owner scope *(done — this branch)* · ② ✅ fix the stale-timeline memo *(done — this branch)* · ③ "Create invoice" button on contact/deal · ④ honest "Collected" label or a real 30-day window.
 
 **Medium:** ⑤ simulated hosted checkout page (unlocks real end-to-end pay) · ⑥ invoice Edit/Void/Refund + receipt · ⑦ tax + discount lines · ⑧ make pay-at-booking create a paid invoice.
 

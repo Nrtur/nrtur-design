@@ -2583,7 +2583,7 @@ const NAV_BUILTIN_DEFAULT=['dashboard','inbox','tasks','calendar','contacts','co
 const NAV_CLUSTER={dashboard:0,inbox:1,tasks:1,calendar:1,contacts:2,companies:2,leads:2,pipeline:2,engage:3,reports:3};
 function navClusterOf(it){return (it&&it.id!=null&&NAV_CLUSTER[it.id]!=null)?NAV_CLUSTER[it.id]:4;}
 const NAV_MAX_PINNED=12; // cap on how many items a user can pin to the rail (rest live in the More drawer)
-function navAllDestinations(){return [...NAV_CATALOG.map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG,...(_liveCustomObjects||[]).filter(o=>coCanView(o)).map(o=>({id:'cob_'+o.id,type:'custom',objectId:o.id,label:o.plural,icon:o.icon,pinned:false}))];}
+function navAllDestinations(){return [...NAV_CATALOG.filter(c=>c.id!=='payments'||effCanPay('view')).map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG,...(_liveCustomObjects||[]).filter(o=>coCanView(o)).map(o=>({id:'cob_'+o.id,type:'custom',objectId:o.id,label:o.plural,icon:o.icon,pinned:false}))];}
 function navPinnedList(cfg){return (cfg||[]).filter(i=>i&&i.pinned!==false);}
 function navMoreList(cfg){
   cfg=cfg||[];const inList=new Set(cfg.map(navKey));
@@ -7070,7 +7070,7 @@ function TimelineComposer({me,noteId,notePlaceholder,onAddNote,onEmail,onLogCall
 function ActivityTimeline({kind,rec,ctx,goTo,extra,onAddNote,onEmail,onLogCall,onSchedule,noteId,notePlaceholder,actorMe}){
   const [filter,setFilter]=React.useState('all');
   const recId=rec&&rec.id;
-  const base=React.useMemo(()=>buildActivityFeed(kind,rec,ctx||{}),[kind,recId,ctx&&ctx.contacts,ctx&&ctx.companies,ctx&&ctx.deals,ctx&&ctx.leads,rec&&rec.dnc,rec&&rec.qual]);
+  const base=React.useMemo(()=>buildActivityFeed(kind,rec,ctx||{}),[kind,recId,ctx&&ctx.contacts,ctx&&ctx.companies,ctx&&ctx.deals,ctx&&ctx.leads,ctx&&ctx.invoices,rec&&rec.dnc,rec&&rec.qual]);
   const items=React.useMemo(()=>[...(extra||[]),...base].slice().sort((a,b)=>a.ts-b.ts),[base,extra]);
   const counts=React.useMemo(()=>{const o={all:items.length};ACT_CAT.forEach(([k])=>{if(k!=='all')o[k]=items.filter(i=>i.cat===k).length;});return o;},[items]);
   const shown=filter==='all'?items:items.filter(i=>i.cat===filter);
@@ -19164,6 +19164,9 @@ const PAY_TABS=[
   {k:'links',l:'Payment links',Icon:I.CreditCard},
   {k:'subscriptions',l:'Subscriptions',Icon:I.History},
 ];
+// Payments has no first-class permission object; it proxies to Deals (invoices link to deals
+// and carry a deal-style owner code). Mirrors effCanCustom -> Contacts. view/create/edit/delete + Own/Team/All scope.
+function effCanPay(act){return effCanObject('Deals',act);}
 function PaymentsPage({goTo,nav}){
   const crm=React.useContext(CrmDataContext);
   const [tab,setTab]=React.useState((nav&&nav.tab)||'overview');
@@ -19179,18 +19182,18 @@ function PaymentsPage({goTo,nav}){
   const [subMenu,setSubMenu]=React.useState(null);
   const [linkMenu,setLinkMenu]=React.useState(null);
   React.useEffect(()=>{const fn=()=>{setProdMenu(null);setSubMenu(null);setLinkMenu(null);};document.addEventListener('click',fn);return()=>document.removeEventListener('click',fn);},[]);
-  const invoices=crm.payInvoices||[],products=crm.payProducts||[],subs=crm.paySubs||[],links=crm.payLinks||[];
+  const invoices=effScopeRows('Deals',crm.payInvoices||[],v=>v.owner),products=crm.payProducts||[],subs=crm.paySubs||[],links=crm.payLinks||[];
   const openInvoice=invoices.find(v=>v.id===(openInv&&openInv.id))||null;
   // mutations
-  const createInvoice=(invoice,status)=>{crm.setPayInvoices(a=>[invoice,...a]);setNewInv(false);showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated · logged to '+(invoice.contact||'contact')+'’s timeline'));};
-  const updateInvoice=(id,patch)=>crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));
-  const saveProduct=(p)=>{crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
-  const delProduct=(p)=>{setProdMenu(null);openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
-  const toggleProduct=(p)=>{crm.setPayProducts(a=>a.map(x=>x.id===p.id?{...x,active:!(x.active!==false)}:x));setProdMenu(null);showToast(p.name+((p.active!==false)?' archived':' restored'));};
-  const createLink=(l)=>{crm.setPayLinks(a=>[l,...a]);setLinkModal(false);showToast('Payment link created ✓');};
-  const setLinkStatus=(l,st)=>{crm.setPayLinks(a=>a.map(x=>x.id===l.id?{...x,status:st}:x));setLinkMenu(null);showToast('Link '+(st==='disabled'?'disabled':'reactivated'));};
-  const createSub=(s)=>{crm.setPaySubs(a=>[s,...a]);setSubModal(false);showToast('Subscription started ✓');};
-  const setSubStatus=(s,st,label)=>{crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
+  const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated · logged to '+(invoice.contact||'contact')+'’s timeline'));};
+  const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
+  const saveProduct=(p)=>{if(!(effCanPay('create')||effCanPay('edit'))){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
+  const delProduct=(p)=>{setProdMenu(null);if(!effCanPay('delete')){showToast('Your role can’t delete products.');return;}openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
+  const toggleProduct=(p)=>{if(!effCanPay('edit')){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.map(x=>x.id===p.id?{...x,active:!(x.active!==false)}:x));setProdMenu(null);showToast(p.name+((p.active!==false)?' archived':' restored'));};
+  const createLink=(l)=>{if(!effCanPay('create')){showToast('Your role can’t create payment links.');return;}crm.setPayLinks(a=>[l,...a]);setLinkModal(false);showToast('Payment link created ✓');};
+  const setLinkStatus=(l,st)=>{if(!effCanPay('edit')){showToast('Your role can’t change payment links.');return;}crm.setPayLinks(a=>a.map(x=>x.id===l.id?{...x,status:st}:x));setLinkMenu(null);showToast('Link '+(st==='disabled'?'disabled':'reactivated'));};
+  const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);setSubModal(false);showToast('Subscription started ✓');};
+  const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
   // header action depends on tab
   const primary=tab==='products'?{l:'New product',on:()=>setProdModal({})}:tab==='links'?{l:'New link',on:()=>setLinkModal(true)}:tab==='subscriptions'?{l:'New subscription',on:()=>setSubModal(true)}:{l:'New invoice',on:()=>setNewInv(true)};
   const TH='text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]';
@@ -19198,10 +19201,17 @@ function PaymentsPage({goTo,nav}){
   const menuCls='absolute right-0 top-9 z-30 w-40 overflow-hidden rounded-xl';
   const menuStyle={background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',boxShadow:'0 16px 48px rgba(0,0,0,0.6)'};
   const menuItem='w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors text-left';
+  if(!effCanPay('view'))return(<div className="h-full flex" style={{background:'var(--s925)'}}>
+    <AppSidebar active="payments" goTo={goTo}/>
+    <div className="flex-1 flex flex-col min-w-0">
+      <AppTopbar goTo={goTo} title="Payments" subtitle="Invoices, payment links, and subscriptions — powered by Stripe."/>
+      <div className="flex-1 overflow-y-auto scroll-area"><div className="px-4 sm:px-7 py-6 max-w-[1240px] mx-auto"><div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-12 text-center flex flex-col items-center gap-3"><span className="w-12 h-12 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center"><I.Lock size={20}/></span><p className="text-[15px] font-semibold text-white">Payments is restricted</p><p className="text-[13px] text-white/50 max-w-sm">Your role doesn’t have access to invoicing and payments.{effectiveRole()!==CURRENT_USER_ROLE?(' You’re previewing as '+effectiveRole()+'.'):''}</p></div></div></div>
+    </div>
+  </div>);
   return(<div className="h-full flex" style={{background:'var(--s925)'}}>
     <AppSidebar active="payments" goTo={goTo}/>
     <div className="flex-1 flex flex-col min-w-0">
-      <AppTopbar goTo={goTo} title="Payments" subtitle="Invoices, payment links, and subscriptions — powered by Stripe." rightSlot={<button onClick={primary.on} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>{primary.l}</button>}/>
+      <AppTopbar goTo={goTo} title="Payments" subtitle="Invoices, payment links, and subscriptions — powered by Stripe." rightSlot={effCanPay('create')?<button onClick={primary.on} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>{primary.l}</button>:null}/>
       <div className="shrink-0 border-b border-white/[0.05] px-4 sm:px-7 py-2.5 overflow-x-auto cal-tab-group" style={{background:'var(--s925)'}}><SegTabs tabs={PAY_TABS} value={tab} onChange={setTab} size={13} className="max-w-full"/></div>
       <div className="flex-1 overflow-y-auto scroll-area"><div className="px-4 sm:px-7 py-6 max-w-[1240px] mx-auto flex flex-col gap-5">
 
