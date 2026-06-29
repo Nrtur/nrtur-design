@@ -18945,6 +18945,12 @@ function paySeedSubs(){
     {id:'sub_4',customer:'Forge & Co',contact:'Emily Tran',plan:'Strategy retainer',amount:2500,interval:'month',status:'cancelled',nextBill:'—',seats:1},
   ];
 }
+// A subscription billing cycle IS an invoice (mirrors Stripe). Build a paid invoice for the current
+// period from a subscription so MRR and invoice revenue reconcile. Tagged with subId + source.
+function paySubInvoice(sub){
+  const seats=sub.seats||1;const per=seats?Math.round((sub.amount/seats)*100)/100:sub.amount;const now=payDateLabel(payDayShift(0));
+  return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',company:sub.customer||'',dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:sub.amount,subtotal:sub.amount,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
+}
 function paySeedLinks(){
   return [
     {id:'lnk_1',title:'Workshop seat — June cohort',amount:149,desc:'Live group onboarding webinar seat.',url:payLinkUrl('w_'+payRandToken()),status:'active',clicks:42,paidCount:7,created:payDateLabel(payDayShift(-5))},
@@ -19327,8 +19333,9 @@ function PaymentsPage({goTo,nav}){
   const toggleProduct=(p)=>{if(!effCanPay('edit')){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.map(x=>x.id===p.id?{...x,active:!(x.active!==false)}:x));setProdMenu(null);showToast(p.name+((p.active!==false)?' archived':' restored'));};
   const createLink=(l)=>{if(!effCanPay('create')){showToast('Your role can’t create payment links.');return;}crm.setPayLinks(a=>[l,...a]);setLinkModal(false);showToast('Payment link created ✓');};
   const setLinkStatus=(l,st)=>{if(!effCanPay('edit')){showToast('Your role can’t change payment links.');return;}crm.setPayLinks(a=>a.map(x=>x.id===l.id?{...x,status:st}:x));setLinkMenu(null);showToast('Link '+(st==='disabled'?'disabled':'reactivated'));};
-  const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);setSubModal(false);showToast('Subscription started ✓');};
+  const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);crm.setPayInvoices(a=>[paySubInvoice(s),...a]);setSubModal(false);showToast('Subscription started ✓ · first invoice issued');};
   const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
+  const billSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t bill subscriptions.');return;}crm.setPayInvoices(a=>[paySubInvoice(s),...a]);crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,nextBill:payDateLabel(payDayShift(s.interval==='year'?365:30))}:x));setSubMenu(null);showToast('Invoice generated for '+(s.customer||s.plan)+' ✓ · counts in revenue');};
   // header action depends on tab
   const primary=tab==='products'?{l:'New product',on:()=>setProdModal({})}:tab==='links'?{l:'New link',on:()=>setLinkModal(true)}:tab==='subscriptions'?{l:'New subscription',on:()=>setSubModal(true)}:{l:'New invoice',on:()=>setNewInv(true)};
   const TH='text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]';
@@ -19411,7 +19418,7 @@ function PaymentsPage({goTo,nav}){
               <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(s.amount)}</span><span className="text-[11px] text-white/40">/{s.interval==='year'?'yr':'mo'}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_SUB_ST} k={s.status}/></span></div>
               <span className="hidden sm:block"><PayPill map={PAY_SUB_ST} k={s.status}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{s.nextBill}</span>
-              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active','Subscription reactivated')} className={menuItem}><I.Check size={13}/>Mark active</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>setSubStatus(s,'cancelled','Subscription cancelled')} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
+              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{s.status==='active'&&<button onClick={()=>billSub(s)} className={menuItem}><I.Note size={13}/>Bill this period</button>}{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active','Subscription reactivated')} className={menuItem}><I.Check size={13}/>Mark active</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>setSubStatus(s,'cancelled','Subscription cancelled')} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
             </div>))}
         </div>)}
 

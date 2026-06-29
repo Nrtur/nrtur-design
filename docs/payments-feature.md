@@ -44,6 +44,7 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
 5. **Invoices are immutable.** No edit, void, delete, duplicate, resend, or download-PDF — a draft with a typo can only be sent, never fixed. (Products and subscriptions have full menus; invoices, the most important object, have the least.)
    **◑ Partly fixed (this branch):** **Void** (with confirm) now exists for any unpaid invoice — see finding #10. *(Edit / duplicate / download-PDF are still open.)*
 6. **Subscriptions never create invoices.** In real Stripe, each billing cycle *is* an invoice — here Subscriptions and Invoices are two unrelated lists, so MRR and invoice revenue can never reconcile.
+   **✅ Fixed (this branch):** a subscription billing cycle now *is* an invoice (`paySubInvoice` builds a paid invoice from a sub — line item = plan × seats, tagged `subId` + `source:'Subscription'`). **Starting** a subscription issues its first invoice, and each active sub has a **"Bill this period"** action that generates the next cycle's paid invoice and advances `nextBill`. Because those invoices are `paid`, recurring revenue now flows into **Collected**, so MRR and invoice revenue reconcile. Verified: "Bill this period" on the Pro-annual sub created a $1,770 "Subscription renewal" invoice and lifted Collected $3,566 → $5,336.
 7. **"Send invoice" sends nothing.** There's no customer email on an invoice and no delivery step — "Send" just flips the status while claiming a link was generated and emailed.
 
 ### 🟠 Worth fixing (medium)
@@ -95,7 +96,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 **Medium:** ⑤ ✅ simulated hosted checkout page *(done — this branch; unlocks real end-to-end pay)* · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ ✅ pay-at-booking creates a paid invoice *(done — this branch)*.
 
-**Strategic:** ⑨ Quote/Estimate → convert to invoice · ⑩ subscriptions generate invoices.
+**Strategic:** ⑨ Quote/Estimate → convert to invoice · ⑩ ✅ subscriptions generate invoices *(done — this branch)*.
 
 ---
 
