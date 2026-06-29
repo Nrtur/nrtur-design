@@ -7569,7 +7569,7 @@ function PipelineSwitcher({pipelines,activeId,onSwitch,onNew}){
 function PipeObjSelect({value,onChange,customObjects}){
   return(<div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45 shrink-0">Object</span><select value={value} onChange={e=>onChange(e.target.value)} className="bg-transparent text-[13px] font-semibold text-white/90 outline-none cursor-pointer" style={{colorScheme:'dark'}} title="Switch pipeline object"><option value="deal" style={{background:'var(--s900)'}}>Deals</option><option value="lead" style={{background:'var(--s900)'}}>Leads</option><option value="company" style={{background:'var(--s900)'}}>Companies</option><option value="contact" style={{background:'var(--s900)'}}>Contacts</option>{(customObjects||[]).map(o=>(<option key={o.id} value={o.id} style={{background:'var(--s900)'}}>{o.plural}</option>))}</select></div>);
 }
-function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNew,goTo}){
+function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
   const crm=React.useContext(CrmDataContext);
   const custom=(crm.customObjects||[]).find(o=>o.id===objKind);
   const STAGE_PAL=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
@@ -7583,6 +7583,7 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNew,goTo}){
   const [groupBy,setGroupBy]=React.useState(groupList[0][0]);
   const [editStages,setEditStages]=React.useState(false);
   const [colorPop,setColorPop]=React.useState(null);
+  const [newPipeOpen,setNewPipeOpen]=React.useState(false);
   const [dragOver,setDragOver]=React.useState(null);
   const dragRef=React.useRef(null);
   React.useEffect(()=>{setGroupBy((desc.groups[0]&&desc.groups[0][0])||'owner');setEditStages(false);setColorPop(null);setDragOver(null);},[objKind]);
@@ -7628,7 +7629,7 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNew,goTo}){
   return(<div className="h-full flex" style={{background:'var(--s925)'}}>
     <AppSidebar active="pipeline" goTo={goTo}/>
     <div className="flex-1 flex flex-col min-w-0">
-      <AppTopbar goTo={goTo} subtitle={<div className="flex items-center gap-2.5"><PipelineSwitcher pipelines={pipelines} activeId={activeId} onSwitch={onSwitch} onNew={onNew}/>{canEditStages&&<button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>}</div>} rightSlot={<React.Fragment><div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45">Group by</span><select value={groupBy} onChange={e=>setGroupBy(e.target.value)} className="bg-transparent text-[11.5px] text-white/80 outline-none cursor-pointer" style={{colorScheme:'dark'}}>{groupList.map(g=>(<option key={g[0]} value={g[0]} style={{background:'var(--s900)'}}>{g[1]}</option>))}</select></div>{canCreate&&<button onClick={()=>addRecord('')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New {desc.singular}</button>}</React.Fragment>}/>
+      <AppTopbar goTo={goTo} subtitle={<div className="flex items-center gap-2.5"><PipelineSwitcher pipelines={pipelines} activeId={activeId} onSwitch={onSwitch} onNew={()=>setNewPipeOpen(true)}/>{canEditStages&&<button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>}</div>} rightSlot={<React.Fragment><div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45">Group by</span><select value={groupBy} onChange={e=>setGroupBy(e.target.value)} className="bg-transparent text-[11.5px] text-white/80 outline-none cursor-pointer" style={{colorScheme:'dark'}}>{groupList.map(g=>(<option key={g[0]} value={g[0]} style={{background:'var(--s900)'}}>{g[1]}</option>))}</select></div>{canCreate&&<button onClick={()=>addRecord('')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New {desc.singular}</button>}</React.Fragment>}/>
       <div className="shrink-0 border-b border-white/[0.05] px-7 py-2 flex items-center gap-x-6 gap-y-1 flex-wrap overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
         <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">Total {desc.plural}</span><span className="text-[14px] font-semibold text-white tabular-nums">{totalRows}</span></div>
         <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">Stages</span><span className="text-[14px] font-semibold text-white tabular-nums">{order.length}</span></div>
@@ -7639,6 +7640,25 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNew,goTo}){
         {desc.sub(r)?<p className="text-[11px] text-white/45 truncate mt-0.5">{desc.sub(r)}</p>:null}
         <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/[0.04]">{r.owner?<div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</div><span className="text-[10px] text-white/50">{r.owner}</span></div>:<span/>}<I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
       </button>)}/>}
+      {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={crm.customObjects} onCreateDeal={onNewDeal} onSelect={onSwitch}/>}
+    </div>
+  </div>);
+}
+function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
+  const [obj,setObj]=React.useState('deal');
+  const [name,setName]=React.useState('');
+  useEscKey(onClose);
+  const OBJS=[{k:'deal',label:'Deals',Icon:I.GitBranch,color:'#818cf8',desc:'Sales opportunities'},{k:'lead',label:'Leads',Icon:I.UserPlus,color:'#34d399',desc:'Qualify by status'},{k:'contact',label:'Contacts',Icon:I.Users,color:'#60a5fa',desc:'Group by status'},{k:'company',label:'Companies',Icon:I.Building,color:'#fbbf24',desc:'Group by type'}].concat((customObjects||[]).map(o=>({k:o.id,label:o.plural,Icon:coIco(o.icon),color:o.color||'#a78bfa',desc:'Custom object',custom:true})));
+  const sel=OBJS.find(o=>o.k===obj)||OBJS[0];
+  const create=()=>{if(obj==='deal'){onCreateDeal((name||'').trim()||'New Pipeline');}else{const pid=(customObjects||[]).some(o=>o.id===obj)?'cop_'+obj:'obj_'+obj;onSelect(pid);}onClose();};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:520}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.GitBranch size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-semibold">Create pipeline</p><p className="text-white/45 text-[12px]">Choose what this pipeline tracks</p></div></div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Object</label><div className="grid grid-cols-2 gap-2">{OBJS.map(o=>{const on=obj===o.k;return(<button key={o.k} onClick={()=>setObj(o.k)} className={['flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left border transition-all',on?'bg-brand-500/12 border-brand-500/30':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:o.color+'22',color:o.color,border:'1px solid '+o.color+'33'}}><o.Icon size={15}/></span><div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white truncate">{o.label}</p><p className="text-[10.5px] text-white/40 truncate">{o.desc}</p></div>{on&&<I.Check size={14} className="text-brand-300 shrink-0"/>}</button>);})}</div></div>
+        {obj==='deal'?(<div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Pipeline name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')create();}} placeholder="e.g. Renewals, Partner deals" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>):(<div className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[12px] text-white/55 leading-relaxed">Opens the <span className="text-white/80 font-medium">{sel.label}</span> pipeline — its records grouped by stage. {sel.custom?'Edit its stages right on the board.':'Grouped by its status field.'}</div>)}
+      </div>
+      <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Cancel</button><button onClick={create} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>{obj==='deal'?'Create pipeline':'Open pipeline'}</button></div>
     </div>
   </div>);
 }
@@ -7702,14 +7722,16 @@ function PipelinePage({goTo,nav}){
   const [dragOver,setDragOver]=React.useState(null);
   const active=pipelines.find(p=>p.id===activeId)||pipelines[0];
   const _coPipes=(_customObjects||[]).filter(o=>(o.fields||[]).some(f=>f.type==='Single select')).map(o=>({id:'cop_'+o.id,name:o.plural,object:o.id,customObj:o}));
-  const allPipelines=[...pipelines.map(p=>({...p,object:p.object||'deal'})),..._coPipes];
+  const _builtinPipes=[{id:'obj_lead',name:'Leads',object:'lead'},{id:'obj_contact',name:'Contacts',object:'contact'},{id:'obj_company',name:'Companies',object:'company'}];
+  const allPipelines=[...pipelines.map(p=>({...p,object:p.object||'deal'})),..._builtinPipes,..._coPipes];
+  const [newPipeOpen,setNewPipeOpen]=React.useState(false);
   const selPipe=allPipelines.find(p=>p.id===activeId)||active;
   const {confirmNode,openConfirm}=useConfirm();
   const dealSmartMgr=useSmartListMgr({views:dealViews,setViews:setDealViews,object:'deal',fields:dealFields,rows:_deals,activeKey:activeViewKey,setActiveKey:setActiveViewKey,applyModel:(f)=>setWorkFilter(JSON.parse(JSON.stringify(f))),showToast:(m)=>{try{window.__nrturToast&&window.__nrturToast(m,'success');}catch(e){}},openConfirm,canShare:effCanObject('Deals','edit')});
   const countForDeal=(v)=>omApplyFilter((_deals||[]).filter(d=>!d.archived),v.filter||{conds:[]},dealFields).length;
   const setStages=(updater)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,stages:typeof updater==='function'?updater(p.stages):updater}:p));
   const renamePipeline=(name)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,name}:p));
-  const addPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
+  const addPipeline=(name)=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:name||'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
   const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:false,demo:[]}))}]);setActiveId(id);};
   const delPipeline=()=>{if(pipelines.length<=1)return;openConfirm({title:'Delete "'+active.name+'" pipeline?',body:'All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.',confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{const next=pipelines.find(p=>p.id!==active.id);setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
   const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
@@ -7770,7 +7792,7 @@ function PipelinePage({goTo,nav}){
   const lvOpen=(d)=>{if(d._stage&&d._stage.real)goTo('deal-detail',d.id);};
   const onBulkStage=(toStage)=>{const ids=selected.slice();ids.forEach(id=>{const d=listFlat.find(x=>x.id===id);if(d&&d._stage&&d._stage.id!==toStage.id)applyMove({id,fromStageId:d._stage.id},toStage);});lvToast(ids.length+' deal'+(ids.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
   const dealColCtx={goTo,onOpen:lvOpen,onStage:lvStage,onOwner:lvOwner,stages:active.stages,readOnly:!_dEdit,canEdit:_dEdit,canDelete:_dDel};
-  if(selPipe&&selPipe.object&&selPipe.object!=='deal')return(<ObjectBoard objKind={selPipe.object} pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNew={addPipeline} goTo={goTo}/>);
+  if(selPipe&&selPipe.object&&selPipe.object!=='deal')return(<ObjectBoard objKind={selPipe.object} pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNewDeal={addPipeline} goTo={goTo}/>);
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="pipeline" goTo={goTo}/>
@@ -7784,7 +7806,7 @@ function PipelinePage({goTo,nav}){
                 <input autoFocus={focusName} onFocus={()=>{if(focusName)setFocusName(false);}} value={active.name} onChange={e=>renamePipeline(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renamePipeline('Untitled pipeline');}} placeholder="Pipeline name" title="Rename this pipeline" className="bg-transparent text-white text-[21px] font-semibold tracking-tight leading-none outline-none border-b border-white/15 focus:border-brand-500/60 pb-0.5 w-[220px] max-w-[40vw]"/>
               </div>
               ):(
-              <PipelineSwitcher pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNew={addPipeline}/>
+              <PipelineSwitcher pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNew={()=>setNewPipeOpen(true)}/>
               )}
               <button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages & pipeline'} aria-label={editStages?'Done editing':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>
               {editStages&&(<React.Fragment>
@@ -7909,6 +7931,7 @@ function PipelinePage({goTo,nav}){
           </div>
         </div>)}
         <AppFooter note={boardView==='board'?(groupBy==='stage'?"Drag deals between stages to move them":"Drag deals to change "+groupBy):undefined}/>
+        {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={setActiveId}/>}
       </div>
       {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason)=>{applyMove(outcomePrompt.dd,outcomePrompt.toStage);window.__nrturToast&&window.__nrturToast('Deal marked '+(outcomePrompt.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setOutcomePrompt(null);}}/>);})()}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
