@@ -1538,7 +1538,7 @@ function Toggle({on,onChange}){
 }
 function useToast(){
   const [toasts,setToasts]=React.useState([]);
-  const addToast=React.useCallback((msg,type='success')=>{const id=Date.now();setToasts(t=>[...t,{id,msg,type}]);setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3500);},[]);
+  const addToast=React.useCallback((msg,type='success')=>{const id=Date.now()+'-'+Math.random().toString(36).slice(2,8);setToasts(t=>[...t,{id,msg,type}]);setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3500);},[]);
   return {toasts,addToast};
 }
 function ToastContainer({toasts}){
@@ -18228,6 +18228,11 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       const mins=schedParseTime(slot);
       const start=new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(mins/60),mins%60);
       addMeeting({id:'m'+Date.now(),name:et.name,color:et.color,date:start,duration:et.duration,location:et.location,status:'confirmed',recordKind,recordId,contactId,leadId,contactName:nm,avatar,contactColor:color,dealName:dealCreated?dealName:null,dealValue:dealCreated?dealValue:null,questions:(et.questions||[]).map((q,i)=>({q,a:answers[i]||''})),qualForm:qForm?qForm.name:null,qualAnswers,qualStatus:qEval.status,qualReason:qEval.reasons.join('; '),notes:'',host:(calType==='collective'?schedHostsLabel(etHosts):calType==='roundrobin'?rep.name:'Alex Morgan'),hosts:calType==='collective'?schedHostNames(etHosts):undefined,calType,assignedHost:calType==='roundrobin'?rep.name:undefined,seatTotal:calType==='class'?seatCap:undefined,join:/meet|zoom/i.test(et.location)?('meet.google.com/new-'+Math.random().toString(36).slice(2,7)):'',rep:rep.avatar});
+    }
+    if(et.collectPayment&&crm&&crm.setPayInvoices){
+      const _seatAmt=parseFloat(String(et.seatPrice))||0;const _now=payDateLabel(payDayShift(0));
+      crm.setPayInvoices(arr=>[{id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:nm,company:(existing&&existing.co)||'',email:form.email.trim()||'',dealId:null,items:[{desc:et.name+' — seat',qty:1,price:_seatAmt}],amount:_seatAmt,subtotal:_seatAmt,discount:0,taxRate:0,tax:0,status:'paid',owner:rep.avatar||CURRENT_USER_CODE,notes:'Paid at booking',link:payLinkUrl('inv_'+payRandToken()),issued:_now,due:_now,agoMin:0,paidDate:_now,paidAgoMin:0,source:'Booking'},...arr]);
+      addToast('Payment collected · '+payMoney(_seatAmt)+' → Payments ✓');
     }
     setBookResult({name:nm,recordKind,recordId,recordCreated,dealCreated,rep,qualStatus:qEval.status,calType,assignedName:rep.name,hostsLabel:schedHostsLabel(etHosts),seatLine:calType==='class'?(Math.max(0,seatCap-schedSeatsTaken(date,slot,seatCap)-1)+' of '+seatCap+' seats left'):null});
     setStep('done');

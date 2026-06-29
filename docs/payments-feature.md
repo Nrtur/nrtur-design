@@ -54,6 +54,7 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
     **✅ Fixed (this branch):** a paid invoice now has **Refund** (full refund, with confirm → "Refunded" status + amber banner; the live "Collected" KPI drops accordingly and a refund entry posts to the linked contact/deal timeline) and **Send receipt**. Unpaid invoices get **Void** (confirm → "Void" status, drops out of outstanding). Both route through the permission-checked `updateInvoice`.
 11. **Payment-link "Paid" status is broken** — nothing in the UI can set it, and the menu's "Disable" can overwrite it into a stuck state. (Links are reusable; "paid" doesn't belong as a status.)
 12. **Pay-at-booking charges nothing.** A paid event seat ("Pay $149 & confirm") runs a fake delay and confirms — it never creates a payment or shows up in revenue.
+    **✅ Fixed (this branch):** confirming a paid booking now records a **paid invoice** in the Payments store (system action — bypasses the role gate), linked to the booker. Verified end-to-end: booking the $149 webinar created **INV-1042 · Booker Test · $149 · Paid** and lifted **Collected · 30 days $3,566 → $3,715**. *(Also fixed a latent toast-key collision this surfaced — `useToast` ids were `Date.now()`, so two same-millisecond toasts shared a React key; now suffixed for uniqueness.)*
 13. **"Connect Stripe" is decorative** — invoices can be marked paid whether Stripe is "connected" or not, and the account number is hardcoded.
 14. **Free-typed "Bill to"** lets you type a name that isn't a real contact, which silently drops the company and the timeline link (while the toast still claims it logged to the timeline).
 
@@ -91,7 +92,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 **Quick, high-value:** ① ✅ gate Payments by permission + owner scope · ② ✅ fix the stale-timeline memo · ③ ✅ "Create invoice" button on contact/deal · ④ ✅ honest "Collected" 30-day window — *all done (this branch)*.
 
-**Medium:** ⑤ simulated hosted checkout page (unlocks real end-to-end pay) · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ make pay-at-booking create a paid invoice.
+**Medium:** ⑤ simulated hosted checkout page (unlocks real end-to-end pay) · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ ✅ pay-at-booking creates a paid invoice *(done — this branch)*.
 
 **Strategic:** ⑨ Quote/Estimate → convert to invoice · ⑩ subscriptions generate invoices.
 
