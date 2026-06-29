@@ -19106,20 +19106,21 @@ function PaySubModal({products,onClose,onSave}){
 }
 const PAY_DUE_PRESETS=[['receipt','Due on receipt',0],['net7','Net 7',7],['net14','Net 14',14],['net30','Net 30',30]];
 // ── New invoice drawer (Part C) ─────────────────────────────────────────────
-function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
+function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const products=crm.payProducts||[];
   const contacts=crm.contacts||[];
   const deals=allDeals();
-  const [contact,setContact]=React.useState((prefill&&prefill.contact)||'');
-  const [dealLabel,setDealLabel]=React.useState(()=>{if(prefill&&prefill.dealId!=null){const d=deals.find(x=>x.id===prefill.dealId);if(d)return d.name||(d.company+' · '+d.value);}return '';});
+  const [contact,setContact]=React.useState((editInv&&editInv.contact)||(prefill&&prefill.contact)||'');
+  const [dealLabel,setDealLabel]=React.useState(()=>{const _did=(editInv&&editInv.dealId!=null)?editInv.dealId:((prefill&&prefill.dealId!=null)?prefill.dealId:null);if(_did!=null){const d=deals.find(x=>x.id===_did);if(d)return d.name||(d.company+' · '+d.value);}return '';});
   const [items,setItems]=React.useState([]);
   const [duePreset,setDuePreset]=React.useState('net14');
   const [notes,setNotes]=React.useState('');
   const [prodPick,setProdPick]=React.useState('');
-  const [discount,setDiscount]=React.useState('');
-  const [taxRate,setTaxRate]=React.useState('');
+  const [discount,setDiscount]=React.useState(editInv&&editInv.discount?String(editInv.discount):'');
+  const [taxRate,setTaxRate]=React.useState(editInv&&editInv.taxRate?String(editInv.taxRate):'');
   useEscKey(onClose);
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
+  React.useEffect(()=>{if(editInv){setItems((editInv.items||[]).map(it=>({desc:it.desc,qty:String(it.qty),price:String(it.price)})));setNotes(editInv.notes||'');}},[]);
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
   const co=(contacts.find(c=>c.name===contact)||{}).co||(prefill&&prefill.company)||'';
   const amount=items.reduce((a,it)=>a+(parseFloat(it.qty)||0)*(parseFloat(it.price)||0),0);
@@ -19132,12 +19133,12 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
   const setItem=(i,patch)=>setItems(its=>its.map((x,j)=>j===i?{...x,...patch}:x));
   const rmItem=(i)=>setItems(its=>its.filter((_,j)=>j!==i));
   const dueDays=(PAY_DUE_PRESETS.find(p=>p[0]===duePreset)||[,,14])[2];
-  const build=(status)=>({id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0})),amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null});
+  const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes}:_b;};
   const canSave=contact.trim()&&items.length>0&&amount>0;
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{kind==='quote'?'New quote':'New invoice'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{editInv?'Edit invoice':(kind==='quote'?'New quote':'New invoice')}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}{contact.trim()&&!contacts.find(c=>c.name===contact.trim())&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={10}/>Not a saved contact — this invoice won't link to a contact record.</p>}</div>
         <div><label className={PAY_LBL}>Link to a deal <span className="text-white/30 font-normal">(optional)</span></label><ARLookup value={dealLabel} onChange={setDealLabel} options={dealOpts} placeholder="Search an open deal…" Icon={I.Target}/></div>
@@ -19173,15 +19174,15 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
       <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
         <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/55 hover:text-white transition-all">Cancel</button>
         <div className="ml-auto flex items-center gap-2.5">
-          <button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>
-          <button onClick={()=>{if(!canSave)return;onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{kind==='quote'?'Send quote':'Send invoice'}</button>
+          {!editInv&&<button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>}
+          <button onClick={()=>{if(!canSave)return;editInv?onCreate(build(editInv.status||'draft'),editInv.status||'draft'):onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{editInv?'Save changes':(kind==='quote'?'Send quote':'Send invoice')}</button>
         </div>
       </div>
     </div>
   </React.Fragment>);
 }
 // ── Invoice detail drawer: view, mark paid / simulate payment, copy link, navigate ──
-function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
+function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,onEdit,onDuplicate,toast}){
   useEscKey(onClose);
   const contactRec=(crm.contacts||[]).find(c=>c.name===inv.contact);
   const {confirmNode,openConfirm}=useConfirm();
@@ -19191,6 +19192,7 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
   const voidInv=()=>openConfirm({title:'Void '+inv.number+'?',body:'This cancels the invoice. It stays on record but drops out of outstanding revenue and can no longer be paid.',confirmLabel:'Void invoice',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'void'});toast('Invoice '+inv.number+' voided');}});
   const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount)+' · '+inv.number+' ✓');}});
   const sendReceipt=()=>toast('Receipt for '+inv.number+' sent to '+(inv.contact||'the customer')+' ✓');
+  const downloadPdf=()=>{try{const rows=(inv.items||[]).map(it=>'<tr><td>'+(it.desc||'')+'</td><td>'+it.qty+'</td><td>'+payMoney(it.price)+'</td><td style="text-align:right">'+payMoney(it.qty*it.price)+'</td></tr>').join('');const html='<!doctype html><meta charset="utf-8"><title>'+inv.number+'</title><body style="font-family:system-ui,Arial,sans-serif;max-width:680px;margin:40px auto;color:#111"><h1 style="margin:0">nrtur</h1><p style="color:#666">Invoice '+inv.number+' · Issued '+inv.issued+'</p><p>Bill to: <b>'+(inv.contact||'—')+'</b>'+(inv.company?(' · '+inv.company):'')+'<br>Due: '+inv.due+'</p><table style="width:100%;border-collapse:collapse;margin-top:16px"><thead><tr style="text-align:left;border-bottom:2px solid #111"><th>Description</th><th>Qty</th><th>Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="font-weight:700;border-top:2px solid #111"><td colspan="3">Total</td><td style="text-align:right">'+payMoney(inv.amount)+'</td></tr></tfoot></table></body>';const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=inv.number+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},120);}catch(e){}toast('Invoice '+inv.number+' downloaded ✓');};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -19226,6 +19228,9 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
         {(inv.status==='draft'||inv.status==='sent'||inv.status==='overdue')&&<button onClick={voidInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 transition-all"><I.Ban size={13}/>Void</button>}
         {inv.status==='paid'&&<button onClick={sendReceipt} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={13}/>Send receipt</button>}
         {inv.status==='paid'&&<button onClick={refundInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-all"><I.Reply size={13}/>Refund</button>}
+        {inv.status==='draft'&&onEdit&&<button onClick={()=>onEdit(inv)} title="Edit invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={14}/></button>}
+        {onDuplicate&&<button onClick={()=>onDuplicate(inv)} title="Duplicate invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={14}/></button>}
+        <button onClick={downloadPdf} title="Download invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={14}/></button>
         <button onClick={onClose} className="ml-auto px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
       </div>
     </div>
@@ -19379,6 +19384,7 @@ function PaymentsPage({goTo,nav}){
   const [openQuoteId,setOpenQuoteId]=React.useState(null);
   React.useEffect(()=>{if(nav&&nav.newInvoice)nav.newInvoice=null;if(nav&&nav.newQuote)nav.newQuote=null;},[]);
   const [openInv,setOpenInv]=React.useState(null);
+  const [editInv,setEditInv]=React.useState(null);
   const [prodModal,setProdModal]=React.useState(null);
   const [linkModal,setLinkModal]=React.useState(false);
   const [subModal,setSubModal]=React.useState(false);
@@ -19391,6 +19397,8 @@ function PaymentsPage({goTo,nav}){
   const openQuote=quotes.find(q=>q.id===openQuoteId)||null;
   // mutations
   const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);const _linked=(crm.contacts||[]).some(c=>c.name===((invoice.contact||'').trim()));showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated'+(_linked?(' · logged to '+invoice.contact+'’s timeline'):'')));};
+  const saveEditInvoice=(obj)=>{if(!effCanPay('edit')){showToast('Your role can’t edit invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===obj.id?obj:v));setEditInv(null);showToast('Invoice '+obj.number+' updated ✓');};
+  const duplicateInvoice=(src)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const copy={...src,id:'inv_'+Date.now(),number:payNextInvoiceNo(),status:'draft',issued:payDateLabel(payDayShift(0)),agoMin:0,paidDate:null,paidAgoMin:null,link:null,fromQuote:undefined};crm.setPayInvoices(a=>[copy,...a]);setOpenInv(null);showToast('Duplicated as '+copy.number+' (draft) ✓');};
   const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
   const saveProduct=(p)=>{if(!(effCanPay('create')||effCanPay('edit'))){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
   const delProduct=(p)=>{setProdMenu(null);if(!effCanPay('delete')){showToast('Your role can’t delete products.');return;}openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
@@ -19505,7 +19513,8 @@ function PaymentsPage({goTo,nav}){
       <AppFooter note="Secured by Stripe · card details never touch our servers"/>
     </div>
     {newInv&&<PayInvoiceDrawer crm={crm} prefill={(newInv&&typeof newInv==='object')?newInv:null} onClose={()=>setNewInv(false)} onCreate={createInvoice} toast={showToast}/>}
-    {openInvoice&&<PayInvoiceDetail inv={openInvoice} crm={crm} goTo={goTo} onClose={()=>setOpenInv(null)} onUpdate={updateInvoice} toast={showToast}/>}
+    {openInvoice&&<PayInvoiceDetail inv={openInvoice} crm={crm} goTo={goTo} onClose={()=>setOpenInv(null)} onUpdate={updateInvoice} onEdit={(i)=>{setOpenInv(null);setEditInv(i);}} onDuplicate={duplicateInvoice} toast={showToast}/>}
+    {editInv&&<PayInvoiceDrawer editInv={editInv} crm={crm} onClose={()=>setEditInv(null)} onCreate={saveEditInvoice} toast={showToast}/>}
     {prodModal&&<PayProductModal initial={prodModal&&prodModal.id?prodModal:null} onClose={()=>setProdModal(null)} onSave={saveProduct}/>}
     {linkModal&&<PayLinkModal onClose={()=>setLinkModal(false)} onSave={createLink}/>}
     {subModal&&<PaySubModal products={products} onClose={()=>setSubModal(false)} onSave={createSub}/>}
