@@ -12383,9 +12383,20 @@ function SettingsWhiteLabelPage({goTo}){
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div className={CUST_CARD}>
-        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap"><p className={CUST_EYE+' flex items-center gap-2'}><I.Phone size={13} className="text-white/45"/>Branded mobile apps</p>{soon()}</div>
-        <p className="text-[12.5px] text-white/55">Ship iOS &amp; Android apps under your own name and icon to the App Store and Google Play. We handle builds and updates; you keep the brand.</p>
-        <button onClick={()=>custToast('We’ll let you know when branded mobile apps are available')} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Bell size={13}/>Notify me</button>
+        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap"><p className={CUST_EYE+' flex items-center gap-2'}><I.Phone size={13} className="text-white/45"/>Branded mobile apps</p></div>
+        <p className="text-[12.5px] text-white/55 mb-3">Ship iOS &amp; Android apps under your own name and icon. We handle builds &amp; updates; you keep the brand.</p>
+        <label className={LBL}>App name</label>
+        <input defaultValue={appName} placeholder="Bloom Studio" className={INP+' mb-3'}/>
+        <div className="flex flex-col gap-2">
+          {[['iOS · App Store','Live','v2.4.0','emerald'],['Android · Google Play','In review','v2.4.0','amber']].map(([label,status,ver,tone])=>(
+            <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <span className="w-8 h-8 rounded-lg bg-white/[0.05] text-white/65 flex items-center justify-center shrink-0"><I.Phone size={14}/></span>
+              <div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white truncate">{label}</p><p className="text-[11px] text-white/40">{ver}</p></div>
+              <span className={['text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 shrink-0',tone==='emerald'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-amber-500/12 text-amber-300 ring-amber-500/25'].join(' ')}>{status}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={()=>custToast('New build requested — we’ll submit it to the stores','success')} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Upload size={13}/>Request a new build</button>
       </div>
       <div className={CUST_CARD}>
         <div className="flex items-center justify-between gap-3 mb-2 flex-wrap"><p className={CUST_EYE+' flex items-center gap-2'}><I.Mail size={13} className="text-white/45"/>Custom sending domain</p><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold uppercase tracking-wider bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0">Available</span></div>
@@ -12397,18 +12408,20 @@ function SettingsWhiteLabelPage({goTo}){
     <div className="h-px bg-white/[0.06] mt-2"/>
     {H2(I.Layers,'SaaS & reseller mode')}
     <div className="rounded-2xl border border-brand-500/20 p-5" style={{background:'linear-gradient(135deg,rgba(99,102,241,0.10),transparent 70%)'}}>
-      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap"><p className="text-[14px] font-semibold text-white flex items-center gap-2"><I.Sparkles size={15} className="text-brand-300"/>Resell nrtur as your own SaaS</p>{soon()}</div>
-      <p className="text-[12.5px] text-white/60 max-w-2xl">Spin up sub-accounts for your clients, set your own pricing and markup, and bill them directly — all under your brand. You manage the roster; we run the infrastructure.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-        {[['Sub-accounts',I.Users,'Provision an isolated workspace per client in a click.'],['Your pricing',I.CreditCard,'Set plans & markup; charge what you like on top.'],['Consolidated billing',I.BarChart,'One dashboard for MRR, churn, and usage across tenants.']].map(([t,Ic,d])=>(
-          <div key={t} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5"><span className="w-8 h-8 rounded-lg bg-white/[0.05] text-brand-300 flex items-center justify-center mb-2"><Ic size={15}/></span><p className="text-[12.5px] font-semibold text-white">{t}</p><p className="text-[11.5px] text-white/50 mt-0.5 leading-snug">{d}</p></div>
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap"><p className="text-[14px] font-semibold text-white flex items-center gap-2"><I.Sparkles size={15} className="text-brand-300"/>Resell nrtur as your own SaaS</p><button onClick={()=>custToast('New sub-account — provision a client workspace')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New sub-account</button></div>
+      <p className="text-[12.5px] text-white/60 max-w-2xl mb-4">Each sub-account is an isolated workspace under your brand. You set pricing &amp; markup; billing rolls up to you.</p>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {[['Active tenants','12'],['Total MRR','$4,180'],['Your margin','38%']].map(([l,v])=>(<div key={l} className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3.5 py-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.12em]">{l}</p><p className="text-[19px] font-bold text-white mt-0.5 tabular-nums">{v}</p></div>))}
+      </div>
+      <div className="rounded-xl border border-white/[0.07] overflow-hidden bg-white/[0.02]">
+        <div className="grid grid-cols-[1.6fr_1.1fr_84px_84px] gap-2 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/35 bg-white/[0.02]"><span>Sub-account</span><span>Plan</span><span className="text-right">MRR</span><span className="text-right">Status</span></div>
+        {[['Northwind Co','Business · 18 seats','$1,420','Active','emerald'],['Apex Labs','Pro · 6 seats','$540','Active','emerald'],['Quill Media','Starter · 3 seats','$180','Past due','amber'],['Vertex Group','Pro · 9 seats','$810','Active','emerald']].map(([nm,plan,mrr,st,tone])=>(
+          <div key={nm} className="grid grid-cols-[1.6fr_1.1fr_84px_84px] gap-2 px-3.5 py-2.5 text-[12.5px] border-t border-white/[0.05] items-center"><span className="font-medium text-white truncate">{nm}</span><span className="text-white/55 truncate">{plan}</span><span className="text-right font-semibold text-white tabular-nums">{mrr}</span><span className="text-right"><span className={['text-[10px] font-semibold px-2 py-0.5 rounded-full ring-1 whitespace-nowrap',tone==='emerald'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-amber-500/12 text-amber-300 ring-amber-500/25'].join(' ')}>{st}</span></span></div>
         ))}
       </div>
-      <button onClick={()=>custToast('You’re on the SaaS mode waitlist — we’ll be in touch')} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Sparkles size={14}/>Join the waitlist</button>
-      <p className="text-[11px] text-white/35 mt-2">Needs real billing infrastructure — we’ll roll this out to agencies first.</p>
     </div>
     <div className={CUST_CARD}>
-      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap"><p className={CUST_EYE+' flex items-center gap-2'}><I.Grid size={13} className="text-white/45"/>Tenant menu</p>{soon()}</div>
+      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap"><p className={CUST_EYE+' flex items-center gap-2'}><I.Grid size={13} className="text-white/45"/>Tenant menu</p></div>
       <p className="text-[12.5px] text-white/55 mb-3">Rename or hide navigation items for your tenants’ sub-accounts. Built on the same nav editor you use for your own workspace.</p>
       <div className="flex flex-col gap-1.5">
         {navDraft.map((it,i)=>{const Ic=navIco(it.icon);return(
@@ -12420,7 +12433,7 @@ function SettingsWhiteLabelPage({goTo}){
           </div>);})}
       </div>
       <div className="flex items-center gap-3 mt-3 flex-wrap">
-        <span className="text-[11px] text-white/35">Preview only — tenant menus apply once SaaS mode ships.</span>
+        <span className="text-[11px] text-white/40">These labels &amp; visibility apply across all your tenant sub-accounts.</span>
         <button onClick={()=>goTo('settings-nav-customize')} className="ml-auto inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200">Customize your own nav<I.ArrowRight size={12} stroke={2.4}/></button>
       </div>
     </div>
