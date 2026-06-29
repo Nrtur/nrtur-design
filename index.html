@@ -19196,7 +19196,7 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
           <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(inv.amount)}</span></div>
         </div>
         {inv.notes&&<div><p className="text-[11px] text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><p className="text-[12.5px] text-white/65 leading-relaxed">{inv.notes}</p></div>}
-        {inv.link&&<div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-2"><I.CreditCard size={13} className="text-white/40 shrink-0"/><span className="flex-1 min-w-0 text-[12px] font-mono text-white/55 truncate">{inv.link}</span><button onClick={()=>payCopy(inv.link,toast,'Payment link')} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Copy</button></div>}
+        {inv.link&&<div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-2"><I.CreditCard size={13} className="text-white/40 shrink-0"/><span className="flex-1 min-w-0 text-[12px] font-mono text-white/55 truncate">{inv.link}</span><button onClick={()=>goTo('pay-checkout',{invoiceId:inv.id})} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all"><I.ExternalLink size={12}/>Open</button><button onClick={()=>payCopy(inv.link,toast,'Payment link')} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Copy</button></div>}
         <PayStripeNotice/>
       </div>
       <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
@@ -19219,6 +19219,85 @@ const PAY_TABS=[
   {k:'links',l:'Payment links',Icon:I.CreditCard},
   {k:'subscriptions',l:'Subscriptions',Icon:I.History},
 ];
+// ── Public hosted checkout page (Part H): the customer-facing "Pay this invoice / link" page that
+// a payment link opens to. Full-screen, branded, simulated card form. On success it marks the
+// invoice paid (or bumps the link's paid count) directly via the store — a public/system action.
+function PayCheckoutPage({goTo,nav}){
+  const crm=React.useContext(CrmDataContext);
+  const inv=(nav&&nav.invoiceId)?((crm&&crm.payInvoices)||[]).find(v=>v.id===nav.invoiceId):null;
+  const link=(nav&&nav.linkId)?((crm&&crm.payLinks)||[]).find(l=>l.id===nav.linkId):null;
+  const item=inv||link;
+  const amount=inv?inv.amount:(link?link.amount:0);
+  const title=inv?('Invoice '+inv.number):(link?link.title:'Payment');
+  const sub=inv?(inv.company||inv.contact||''):'';
+  const alreadyPaid=inv&&(inv.status==='paid'||inv.status==='refunded'||inv.status==='void');
+  const linkDisabled=link&&link.status==='disabled';
+  const [stage,setStage]=React.useState((alreadyPaid||linkDisabled)?'closed':'pay');
+  const [card,setCard]=React.useState({num:'',exp:'',cvc:''});
+  const [email,setEmail]=React.useState((inv&&inv.email)||'');
+  const cardOk=card.num.replace(/\D/g,'').length>=12&&card.exp.length>=4&&card.cvc.length>=3&&/.+@.+\..+/.test(email);
+  const pay=()=>{if(!cardOk||stage==='processing')return;setStage('processing');setTimeout(()=>{
+    if(inv&&crm.setPayInvoices)crm.setPayInvoices(a=>a.map(v=>v.id===inv.id?{...v,status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0}:v));
+    if(link&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,paidCount:(l.paidCount||0)+1,clicks:(l.clicks||0)+1}:l));
+    setStage('done');},1200);};
+  const fmtCard=(v)=>v.replace(/\D/g,'').slice(0,16).replace(/(.{4})/g,'$1 ').trim();
+  const fmtExp=(v)=>{const d=v.replace(/\D/g,'').slice(0,4);return d.length>2?d.slice(0,2)+'/'+d.slice(2):d;};
+  const INP='w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.12] text-[14px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/50 transition-colors';
+  if(!item)return(<div className="min-h-screen flex items-center justify-center px-4" style={{background:'var(--s950,#0a0a12)'}}>
+    <div className="w-full max-w-[420px] text-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-12 flex flex-col items-center gap-3">
+      <span className="w-12 h-12 rounded-2xl bg-white/[0.05] text-white/40 flex items-center justify-center"><I.AlertTriangle size={20}/></span>
+      <p className="text-[16px] font-semibold text-white">Payment link unavailable</p>
+      <p className="text-[13px] text-white/50">This payment link is invalid, expired, or has been disabled.</p>
+      <button onClick={()=>goTo('payments')} className="mt-2 text-[13px] font-medium text-brand-300 hover:text-brand-200">Back to nrtur</button>
+    </div>
+  </div>);
+  return(<div className="min-h-screen flex flex-col" style={{background:'var(--s950,#0a0a12)'}}>
+    <div className="flex-1 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-[860px] grid grid-cols-1 md:grid-cols-2 rounded-2xl overflow-hidden border border-white/[0.08]" style={{boxShadow:'0 30px 80px rgba(0,0,0,0.55)'}}>
+        <div className="p-7 sm:p-9 flex flex-col" style={{background:'var(--s900,#12121c)'}}>
+          <div className="flex items-center gap-2.5 mb-8"><span className="w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></span><span className="text-[15px] font-semibold text-white">nrtur</span></div>
+          <p className="text-[13px] text-white/50">{alreadyPaid?'Receipt for':'Pay'} {title}</p>
+          <p className="text-[40px] font-bold text-white tabular-nums mt-1 leading-none">{payMoney(amount)}</p>
+          {sub&&<p className="text-[13px] text-white/55 mt-2">{sub}</p>}
+          {inv&&inv.items&&<div className="mt-7 flex flex-col gap-2 border-t border-white/[0.07] pt-5">
+            {inv.items.map((it,i)=>(<div key={i} className="flex items-center justify-between text-[13px]"><span className="text-white/65 truncate pr-3">{it.desc} <span className="text-white/35">× {it.qty}</span></span><span className="text-white/80 tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+            {inv.discount>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount)}</span></div>}
+            {inv.tax>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums text-white/80">{payMoney(inv.tax)}</span></div>}
+            <div className="flex items-center justify-between text-[14px] font-semibold border-t border-white/[0.07] pt-2.5 mt-1"><span className="text-white">Total due</span><span className="text-white tabular-nums">{payMoney(amount)}</span></div>
+            {inv.due&&<p className="text-[11.5px] text-white/40 mt-1">Due {inv.due}</p>}
+          </div>}
+          {link&&link.desc&&<p className="mt-7 text-[13px] text-white/55 leading-relaxed border-t border-white/[0.07] pt-5">{link.desc}</p>}
+          <div className="mt-auto pt-8"><PayStripeNotice/></div>
+        </div>
+        <div className="p-7 sm:p-9 flex flex-col justify-center" style={{background:'var(--s925,#0e0e16)'}}>
+          {stage==='done'?(<div className="flex flex-col items-center text-center gap-3">
+            <span className="w-14 h-14 rounded-full bg-emerald-500/12 ring-1 ring-emerald-500/30 text-emerald-300 flex items-center justify-center"><I.Check size={26} stroke={2.4}/></span>
+            <p className="text-[18px] font-semibold text-white">Payment successful</p>
+            <p className="text-[13px] text-white/55 max-w-[260px]">{payMoney(amount)} paid to nrtur. A receipt has been sent{email?(' to '+email):''}.</p>
+            <button onClick={()=>goTo('payments')} className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Done</button>
+          </div>):stage==='closed'?(<div className="flex flex-col items-center text-center gap-3">
+            <span className="w-14 h-14 rounded-full bg-white/[0.05] text-white/45 flex items-center justify-center"><I.Check size={24}/></span>
+            <p className="text-[16px] font-semibold text-white">{inv&&inv.status==='paid'?'Already paid':inv&&inv.status==='refunded'?'Refunded':inv&&inv.status==='void'?'No longer payable':'Link disabled'}</p>
+            <p className="text-[13px] text-white/50 max-w-[260px]">{inv&&inv.status==='paid'?('This invoice was paid'+(inv.paidDate?(' on '+inv.paidDate):'')+'.'):inv&&inv.status==='refunded'?'This payment was refunded.':inv&&inv.status==='void'?'This invoice was voided.':'This payment link is no longer active.'}</p>
+            <button onClick={()=>goTo('payments')} className="mt-3 text-[13px] font-medium text-brand-300 hover:text-brand-200">Back to nrtur</button>
+          </div>):(<React.Fragment>
+            <p className="text-[15px] font-semibold text-white mb-5">Pay with card</p>
+            <div className="flex flex-col gap-3">
+              <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Email</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com" className={INP}/></div>
+              <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Card number</label><div className="relative"><input value={card.num} onChange={e=>setCard(c=>({...c,num:fmtCard(e.target.value)}))} inputMode="numeric" placeholder="4242 4242 4242 4242" className={INP}/><I.CreditCard size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30"/></div></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Expiry</label><input value={card.exp} onChange={e=>setCard(c=>({...c,exp:fmtExp(e.target.value)}))} inputMode="numeric" placeholder="MM/YY" className={INP}/></div>
+                <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">CVC</label><input value={card.cvc} onChange={e=>setCard(c=>({...c,cvc:e.target.value.replace(/\D/g,'').slice(0,4)}))} inputMode="numeric" placeholder="123" className={INP}/></div>
+              </div>
+            </div>
+            <button onClick={pay} disabled={!cardOk||stage==='processing'} className={['mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-all',(cardOk&&stage!=='processing')?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{stage==='processing'?'Processing…':('Pay '+payMoney(amount))}</button>
+            <p className="text-[11px] text-white/35 text-center mt-3 flex items-center justify-center gap-1.5"><I.ShieldCheck size={11} className="text-emerald-400/70"/>Test mode — use 4242 4242 4242 4242. No real charge.</p>
+          </React.Fragment>)}
+        </div>
+      </div>
+    </div>
+  </div>);
+}
 // Payments has no first-class permission object; it proxies to Deals (invoices link to deals
 // and carry a deal-style owner code). Mirrors effCanCustom -> Contacts. view/create/edit/delete + Own/Team/All scope.
 function effCanPay(act){return effCanObject('Deals',act);}
@@ -19318,7 +19397,7 @@ function PaymentsPage({goTo,nav}){
                 <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(l.amount)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_LINK_ST} k={l.status}/></span></div>
                 <span className="hidden sm:block"><PayPill map={PAY_LINK_ST} k={l.status}/></span>
                 <span className="hidden sm:block text-[11.5px] text-white/50">{l.clicks} clicks · {l.paidCount} paid</span>
-                <div className="relative justify-self-end flex items-center gap-1" onClick={e=>e.stopPropagation()}><button onClick={()=>payCopy(l.url,showToast,'Payment link')} title="Copy link" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.Copy size={13}/></button><button onClick={()=>setLinkMenu(linkMenu===l.id?null:l.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{linkMenu===l.id&&(<div className={menuCls} style={menuStyle}><button onClick={()=>payCopy(l.url,showToast,'Payment link')} className={menuItem}><I.Copy size={13}/>Copy link</button>{l.status==='disabled'?<button onClick={()=>setLinkStatus(l,'active')} className={menuItem}><I.Check size={13}/>Reactivate</button>:<button onClick={()=>setLinkStatus(l,'disabled')} className={menuItem}><I.Ban size={13}/>Disable</button>}</div>)}</div>
+                <div className="relative justify-self-end flex items-center gap-1" onClick={e=>e.stopPropagation()}><button onClick={()=>goTo('pay-checkout',{linkId:l.id})} title="Open checkout" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.ExternalLink size={13}/></button><button onClick={()=>payCopy(l.url,showToast,'Payment link')} title="Copy link" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.Copy size={13}/></button><button onClick={()=>setLinkMenu(linkMenu===l.id?null:l.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{linkMenu===l.id&&(<div className={menuCls} style={menuStyle}><button onClick={()=>{setLinkMenu(null);goTo('pay-checkout',{linkId:l.id});}} className={menuItem}><I.ExternalLink size={13}/>Open checkout</button><button onClick={()=>payCopy(l.url,showToast,'Payment link')} className={menuItem}><I.Copy size={13}/>Copy link</button>{l.status==='disabled'?<button onClick={()=>setLinkStatus(l,'active')} className={menuItem}><I.Check size={13}/>Reactivate</button>:<button onClick={()=>setLinkStatus(l,'disabled')} className={menuItem}><I.Ban size={13}/>Disable</button>}</div>)}</div>
               </div>))}
           </div>
         </React.Fragment>)}
@@ -20887,7 +20966,7 @@ function App(){
   React.useEffect(()=>{window.__nrturOpenSearch=()=>setSearchOpen(true);window.__nrturOpenCmd=()=>setCmdOpen(true);window.__nrturGoTo=goTo;return()=>{delete window.__nrturOpenSearch;delete window.__nrturOpenCmd;delete window.__nrturGoTo;};},[goTo]);
   React.useEffect(()=>{const fn=(e)=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setSearchOpen(false);setCmdOpen(true);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   const p={goTo,nav};
-  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5'];
+  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','pay-checkout'];
   const isApp=!MARKETING_PAGES.includes(page);
   return(
     <RoleProvider previewRole={previewRole} setPreview={setPreviewRole}>
@@ -20905,6 +20984,7 @@ function App(){
       {page==='landing'           && <LandingPage {...p}/>}
       {page==='signup'            && <SignUpPage {...p}/>}
       {page==='signin'            && <SignInPage {...p}/>}
+      {page==='pay-checkout'      && <PayCheckoutPage {...p}/>}
       {page==='forgot-password'   && <ForgotPasswordPage {...p}/>}
       {page==='verify-email'      && <EmailVerificationPendingPage {...p}/>}
       {page==='reset-password'    && <ResetPasswordPage {...p}/>}
