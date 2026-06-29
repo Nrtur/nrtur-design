@@ -18899,6 +18899,8 @@ const PAY_INV_ST={
   sent:   {label:'Sent',   chip:'bg-blue-500/12 text-blue-300 ring-blue-500/25',            dot:'#60a5fa'},
   paid:   {label:'Paid',   chip:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',   dot:'#34d399'},
   overdue:{label:'Overdue',chip:'bg-red-500/12 text-red-300 ring-red-500/25',               dot:'#f87171'},
+  void:    {label:'Void',    chip:'bg-white/[0.05] text-white/45 ring-white/[0.10]',          dot:'#64748b'},
+  refunded:{label:'Refunded',chip:'bg-amber-500/12 text-amber-300 ring-amber-500/25',         dot:'#f59e0b'},
 };
 const PAY_SUB_ST={
   active:    {label:'Active',    chip:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25', dot:'#34d399'},
@@ -18950,7 +18952,8 @@ function actInvoiceOwn(v){
   if(!v)return [];
   const out=[];const amt=payMoney(v.amount);
   out.push(mkAct('invoice',{ts:v.agoMin||0,by:v.owner||'AM',label:v.status==='draft'?'INVOICE · DRAFT':'INVOICE',title:'Invoice '+v.number+' · '+amt+(v.status==='draft'?' (draft)':' sent'),body:((v.items&&v.items[0]?v.items[0].desc:'Payment request')+(v.items&&v.items.length>1?(' +'+(v.items.length-1)+' more'):''))+(v.due?(' · due '+v.due):''),payload:{kind:'invoice',id:v.id}}));
-  if(v.status==='paid')out.push(mkAct('payment',{ts:(v.paidAgoMin!=null?v.paidAgoMin:0),by:v.owner||'AM',title:'Payment received · '+amt,body:'Invoice '+v.number+' paid via Stripe.',payload:{kind:'payment',id:v.id}}));
+  if(v.status==='paid'||v.status==='refunded')out.push(mkAct('payment',{ts:(v.paidAgoMin!=null?v.paidAgoMin:0),by:v.owner||'AM',title:'Payment received · '+amt,body:'Invoice '+v.number+' paid via Stripe.',payload:{kind:'payment',id:v.id}}));
+  if(v.status==='refunded')out.push(mkAct('payment',{ts:(v.refundedAgoMin!=null?v.refundedAgoMin:0),by:v.owner||'AM',label:'REFUND',title:'Refund issued · '+amt,body:'Invoice '+v.number+' refunded via Stripe.',payload:{kind:'payment',id:v.id}}));
   return out;
 }
 // ── Shared payments UI primitives ───────────────────────────────────────────
@@ -19155,9 +19158,13 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
 function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
   useEscKey(onClose);
   const contactRec=(crm.contacts||[]).find(c=>c.name===inv.contact);
+  const {confirmNode,openConfirm}=useConfirm();
   const dealRec=inv.dealId!=null?allDeals().find(d=>d.id===inv.dealId):null;
   const markPaid=()=>{onUpdate(inv.id,{status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0});toast('Payment received · '+payMoney(inv.amount)+' ✓');};
   const sendInv=()=>{onUpdate(inv.id,{status:'sent',link:inv.link||payLinkUrl('inv_'+payRandToken())});toast('Invoice '+inv.number+' sent ✓ · logged to timeline');};
+  const voidInv=()=>openConfirm({title:'Void '+inv.number+'?',body:'This cancels the invoice. It stays on record but drops out of outstanding revenue and can no longer be paid.',confirmLabel:'Void invoice',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'void'});toast('Invoice '+inv.number+' voided');}});
+  const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount)+' · '+inv.number+' ✓');}});
+  const sendReceipt=()=>toast('Receipt for '+inv.number+' sent to '+(inv.contact||'the customer')+' ✓');
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -19165,6 +19172,8 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div className="flex items-center justify-between"><PayPill map={PAY_INV_ST} k={inv.status}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(inv.amount)}</span></div>
         {inv.status==='paid'&&inv.paidDate&&<div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-emerald-200"><I.Check size={13} stroke={2.5}/>Paid on {inv.paidDate} via Stripe.</div>}
+        {inv.status==='refunded'&&<div className="rounded-xl bg-amber-500/[0.07] border border-amber-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-amber-200"><I.Reply size={13}/>Refunded{inv.refundedDate?(' on '+inv.refundedDate):''} · {payMoney(inv.amount)} returned via Stripe.</div>}
+        {inv.status==='void'&&<div className="rounded-xl bg-white/[0.04] border border-white/[0.08] px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-white/55"><I.Ban size={13}/>This invoice was voided — no longer payable.</div>}
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Bill to</span>{contactRec?<button onClick={()=>{goTo('contact-detail',contactRec.id);onClose();}} className="text-[13px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 truncate">{inv.contact}<I.ArrowRight size={11}/></button>:<span className="text-[13px] font-medium text-white truncate">{inv.contact||'—'}</span>}</div>
           {inv.company&&<div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Company</span><span className="text-[12.5px] text-white/75 truncate">{inv.company}</span></div>}
@@ -19188,9 +19197,13 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
       <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
         {inv.status==='draft'&&<button onClick={sendInv} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Send size={13}/>Send invoice</button>}
         {(inv.status==='sent'||inv.status==='overdue')&&<button onClick={markPaid} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-emerald-500 hover:bg-emerald-400 transition-all" style={{background:'#059669'}}><I.Check size={13}/>Simulate payment</button>}
+        {(inv.status==='draft'||inv.status==='sent'||inv.status==='overdue')&&<button onClick={voidInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 transition-all"><I.Ban size={13}/>Void</button>}
+        {inv.status==='paid'&&<button onClick={sendReceipt} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={13}/>Send receipt</button>}
+        {inv.status==='paid'&&<button onClick={refundInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-all"><I.Reply size={13}/>Refund</button>}
         <button onClick={onClose} className="ml-auto px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
       </div>
     </div>
+    {confirmNode}
   </React.Fragment>);
 }
 // ── Payments page (Overview · Invoices · Products · Payment links · Subscriptions) ──

@@ -41,6 +41,7 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
 4. **The timeline goes stale.** Paying or creating an invoice doesn't refresh an already-open contact/deal timeline until you navigate away and back. *(Verified: a memo is missing `invoices` in its dependency list — a one-line fix.)*
    **✅ Fixed (this branch):** `ctx.invoices` added to the `ActivityTimeline` memo dependency array (~line 7073). Since all 5 detail pages funnel through that one memo, an open contact/deal timeline now refreshes the moment an invoice is paid or created.
 5. **Invoices are immutable.** No edit, void, delete, duplicate, resend, or download-PDF — a draft with a typo can only be sent, never fixed. (Products and subscriptions have full menus; invoices, the most important object, have the least.)
+   **◑ Partly fixed (this branch):** **Void** (with confirm) now exists for any unpaid invoice — see finding #10. *(Edit / duplicate / download-PDF are still open.)*
 6. **Subscriptions never create invoices.** In real Stripe, each billing cycle *is* an invoice — here Subscriptions and Invoices are two unrelated lists, so MRR and invoice revenue can never reconcile.
 7. **"Send invoice" sends nothing.** There's no customer email on an invoice and no delivery step — "Send" just flips the status while claiming a link was generated and emailed.
 
@@ -50,6 +51,7 @@ It's **"Stripe-first" and simulated** — there's no real money movement yet (no
 9. **No tax, discount, or currency** anywhere — the invoice total is a bare sum of qty × price, and "$"/USD is hardcoded. Tax-on-invoice is table-stakes for billing real customers.
    **✅ Mostly fixed (this branch):** the invoice drawer now has **Discount ($)** and **Tax (%)** fields with a live **Subtotal → Discount → Tax → Total** breakdown; the parts (`subtotal`, `discount`, `taxRate`, `tax`) are stored on the invoice and the breakdown also shows in the invoice detail. *(Currency is still USD-only — a multi-currency selector is the remaining piece.)*
 10. **Paid = dead-end.** Once paid, there's no refund, no "view/send receipt" — the only button left is Close.
+    **✅ Fixed (this branch):** a paid invoice now has **Refund** (full refund, with confirm → "Refunded" status + amber banner; the live "Collected" KPI drops accordingly and a refund entry posts to the linked contact/deal timeline) and **Send receipt**. Unpaid invoices get **Void** (confirm → "Void" status, drops out of outstanding). Both route through the permission-checked `updateInvoice`.
 11. **Payment-link "Paid" status is broken** — nothing in the UI can set it, and the menu's "Disable" can overwrite it into a stuck state. (Links are reusable; "paid" doesn't belong as a status.)
 12. **Pay-at-booking charges nothing.** A paid event seat ("Pay $149 & confirm") runs a fake delay and confirms — it never creates a payment or shows up in revenue.
 13. **"Connect Stripe" is decorative** — invoices can be marked paid whether Stripe is "connected" or not, and the account number is hardcoded.
@@ -89,7 +91,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 **Quick, high-value:** ① ✅ gate Payments by permission + owner scope · ② ✅ fix the stale-timeline memo · ③ ✅ "Create invoice" button on contact/deal · ④ ✅ honest "Collected" 30-day window — *all done (this branch)*.
 
-**Medium:** ⑤ simulated hosted checkout page (unlocks real end-to-end pay) · ⑥ invoice Edit/Void/Refund + receipt · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ make pay-at-booking create a paid invoice.
+**Medium:** ⑤ simulated hosted checkout page (unlocks real end-to-end pay) · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ make pay-at-booking create a paid invoice.
 
 **Strategic:** ⑨ Quote/Estimate → convert to invoice · ⑩ subscriptions generate invoices.
 
