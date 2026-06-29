@@ -19958,10 +19958,14 @@ function FunnelBuilderPage({goTo,nav}){
           <div className="mt-3">
             <label className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] block mb-1.5">Custom domain</label>
             <div className="flex items-center gap-2">
-              <input disabled value={funnel.domain||''} placeholder="funnels.yourbrand.com" className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[13px] text-white/50 outline-none cursor-not-allowed"/>
-              <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[12px] font-medium text-white/40 bg-white/[0.03] border border-white/[0.07] cursor-default shrink-0"><I.Clock size={11}/>Coming soon</span>
+              <input disabled={!canEdit} value={funnel.domain||''} onChange={e=>updateFunnel(funnel.id,{domain:e.target.value.trim(),domainVerified:false})} placeholder="funnels.yourbrand.com" className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
+              {funnel.domain?(funnel.domainVerified?<span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[12px] font-medium text-emerald-300 bg-emerald-500/12 ring-1 ring-emerald-500/25 shrink-0"><I.Check size={12} stroke={2.6}/>Live</span>:<button disabled={!canEdit} onClick={()=>{updateFunnel(funnel.id,{domainVerified:true});if(window.__nrturToast)window.__nrturToast('Domain verified — funnel is live','success');}} className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[12px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0 disabled:opacity-60"><I.ShieldCheck size={12}/>Verify</button>):null}
             </div>
-            <p className="text-[11px] text-white/40 mt-2 leading-relaxed">Domain mapping &amp; real hosting need DNS + a publish backend — they’ll be connectable in an upcoming release. For now, share the <span className="text-white/60">go.nrtur.com</span> link or embed the funnel.</p>
+            {funnel.domain&&!funnel.domainVerified?(<div className="mt-2 rounded-xl border border-white/[0.07] overflow-hidden">
+              <div className="grid grid-cols-[60px_1fr_1.5fr] gap-2 px-3 py-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-white/35 bg-white/[0.02]"><span>Type</span><span>Host</span><span>Points to</span></div>
+              <div className="grid grid-cols-[60px_1fr_1.5fr] gap-2 px-3 py-2 text-[11.5px] text-white/70 font-mono border-t border-white/[0.05]"><span className="text-brand-300">CNAME</span><span className="truncate">{funnel.domain}</span><span className="truncate">funnels.nrtur.app</span></div>
+            </div>):null}
+            <p className="text-[11px] text-white/40 mt-2 leading-relaxed">{funnel.domainVerified?('Live at '+funnel.domain+' — visitors load your funnel from your own domain.'):funnel.domain?'Add this CNAME record at your DNS provider, then click Verify. The go.nrtur.com link keeps working in the meantime.':'Point your own domain at this funnel, or just share the go.nrtur.com link / embed below.'}</p>
           </div>
         </div>
       </div></div>}
