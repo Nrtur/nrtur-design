@@ -7868,6 +7868,7 @@ function DealDetailPage({goTo,nav}){
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
                 {effCanObject('Deals','edit')&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit deal</button>}
                 {effCanPay('create')&&<button onClick={()=>{setMoreOpen(false);goTo('payments',{tab:'invoices',newInvoice:{contact:(dealContact&&dealContact.name)||'',company:d.company,dealId:d.id}});}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Note size={13}/>Create invoice</button>}
+                {effCanPay('create')&&<button onClick={()=>{setMoreOpen(false);goTo('payments',{tab:'quotes',newQuote:{contact:(dealContact&&dealContact.name)||'',company:d.company,dealId:d.id}});}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Create quote</button>}
                 {effCanObject('Deals','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete deal</button>}
               </div>}
             </div>}
@@ -18907,6 +18908,14 @@ const PAY_INV_ST={
   void:    {label:'Void',    chip:'bg-white/[0.05] text-white/45 ring-white/[0.10]',          dot:'#64748b'},
   refunded:{label:'Refunded',chip:'bg-amber-500/12 text-amber-300 ring-amber-500/25',         dot:'#f59e0b'},
 };
+const PAY_QUOTE_ST={
+  draft:    {label:'Draft',    chip:'bg-white/[0.06] text-white/55 ring-white/[0.12]',          dot:'#94a3b8'},
+  sent:     {label:'Sent',     chip:'bg-blue-500/12 text-blue-300 ring-blue-500/25',            dot:'#60a5fa'},
+  accepted: {label:'Accepted', chip:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',   dot:'#34d399'},
+  declined: {label:'Declined', chip:'bg-red-500/12 text-red-300 ring-red-500/25',               dot:'#f87171'},
+  expired:  {label:'Expired',  chip:'bg-white/[0.05] text-white/45 ring-white/[0.10]',           dot:'#64748b'},
+  converted:{label:'Converted',chip:'bg-violet-500/12 text-violet-300 ring-violet-500/25',       dot:'#a78bfa'},
+};
 const PAY_SUB_ST={
   active:    {label:'Active',    chip:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25', dot:'#34d399'},
   'past-due':{label:'Past due',  chip:'bg-amber-500/12 text-amber-300 ring-amber-500/25',       dot:'#fbbf24'},
@@ -18949,6 +18958,13 @@ function paySeedSubs(){
 function paySubInvoice(sub){
   const seats=sub.seats||1;const per=seats?Math.round((sub.amount/seats)*100)/100:sub.amount;const now=payDateLabel(payDayShift(0));
   return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',company:sub.customer||'',dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:sub.amount,subtotal:sub.amount,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
+}
+function paySeedQuotes(){
+  return [
+    {id:'qot_1',number:'QUO-2041',kind:'quote',contact:'Marcus Reed',company:'Northwind Labs',dealId:null,items:[{desc:'CRM Onboarding',qty:1,price:1200},{desc:'Pro plan — annual (5 seats)',qty:5,price:590}],amount:4150,subtotal:4150,discount:0,taxRate:0,tax:0,status:'sent',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(10)),due:payDateLabel(payDayShift(24))},
+    {id:'qot_2',number:'QUO-2040',kind:'quote',contact:'Sarah Chen',company:'Meridian Agency',dealId:1,items:[{desc:'Strategy retainer',qty:1,price:2500}],amount:2500,subtotal:2500,discount:0,taxRate:0,tax:0,status:'accepted',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(6)),due:payDateLabel(payDayShift(20))},
+    {id:'qot_3',number:'QUO-2039',kind:'quote',contact:'Priya Nair',company:'Lumen Co',dealId:null,items:[{desc:'Workshop seat',qty:6,price:149}],amount:894,subtotal:894,discount:0,taxRate:0,tax:0,status:'draft',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(14)),due:payDateLabel(payDayShift(28))},
+  ];
 }
 function paySeedLinks(){
   return [
@@ -19090,7 +19106,7 @@ function PaySubModal({products,onClose,onSave}){
 }
 const PAY_DUE_PRESETS=[['receipt','Due on receipt',0],['net7','Net 7',7],['net14','Net 14',14],['net30','Net 30',30]];
 // ── New invoice drawer (Part C) ─────────────────────────────────────────────
-function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
+function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
   const products=crm.payProducts||[];
   const contacts=crm.contacts||[];
   const deals=allDeals();
@@ -19121,7 +19137,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>New invoice</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{kind==='quote'?'New quote':'New invoice'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}{contact.trim()&&!contacts.find(c=>c.name===contact.trim())&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={10}/>Not a saved contact — this invoice won't link to a contact record.</p>}</div>
         <div><label className={PAY_LBL}>Link to a deal <span className="text-white/30 font-normal">(optional)</span></label><ARLookup value={dealLabel} onChange={setDealLabel} options={dealOpts} placeholder="Search an open deal…" Icon={I.Target}/></div>
@@ -19158,7 +19174,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
         <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/55 hover:text-white transition-all">Cancel</button>
         <div className="ml-auto flex items-center gap-2.5">
           <button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>
-          <button onClick={()=>{if(!canSave)return;onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>Send invoice</button>
+          <button onClick={()=>{if(!canSave)return;onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{kind==='quote'?'Send quote':'Send invoice'}</button>
         </div>
       </div>
     </div>
@@ -19220,6 +19236,7 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
 const PAY_TABS=[
   {k:'overview',l:'Overview',Icon:I.BarChart},
   {k:'invoices',l:'Invoices',Icon:I.Note},
+  {k:'quotes',l:'Quotes',Icon:I.Edit},
   {k:'products',l:'Products',Icon:I.Tag},
   {k:'links',l:'Payment links',Icon:I.CreditCard},
   {k:'subscriptions',l:'Subscriptions',Icon:I.History},
@@ -19304,6 +19321,50 @@ function PayCheckoutPage({goTo,nav}){
     </div>
   </div>);
 }
+// ── Quote detail drawer: view, send, accept/decline, and convert to an invoice (Part I) ──
+function PayQuoteDetail({q,crm,goTo,onClose,onStatus,onConvert,toast}){
+  useEscKey(onClose);
+  const contactRec=(crm.contacts||[]).find(c=>c.name===q.contact);
+  const dealRec=q.dealId!=null?allDeals().find(d=>d.id===q.dealId):null;
+  const live=q.status;
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg bg-violet-500/12 ring-1 ring-violet-500/25 flex items-center justify-center text-violet-300 shrink-0"><I.Edit size={15}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white truncate">{q.number}</p><p className="text-[11px] text-white/45">Quote · valid until {q.validUntil}</p></div></div><button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between"><PayPill map={PAY_QUOTE_ST} k={live}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(q.amount)}</span></div>
+        {live==='accepted'&&<div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-emerald-200"><I.Check size={13} stroke={2.5}/>Accepted by the customer — ready to convert to an invoice.</div>}
+        {live==='converted'&&<div className="rounded-xl bg-violet-500/[0.08] border border-violet-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-violet-200"><I.Check size={13} stroke={2.5}/>Converted to an invoice.</div>}
+        {live==='declined'&&<div className="rounded-xl bg-red-500/[0.06] border border-red-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-red-200"><I.Ban size={13}/>Declined by the customer.</div>}
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Prepared for</span>{contactRec?<button onClick={()=>{goTo('contact-detail',contactRec.id);onClose();}} className="text-[13px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 truncate">{q.contact}<I.ArrowRight size={11}/></button>:<span className="text-[13px] font-medium text-white truncate">{q.contact||'—'}</span>}</div>
+          {q.company&&<div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Company</span><span className="text-[12.5px] text-white/75 truncate">{q.company}</span></div>}
+          <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Valid until</span><span className="text-[12.5px] text-white/75">{q.validUntil}</span></div>
+          {dealRec&&<div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Deal</span><button onClick={()=>{goTo('deal-detail',dealRec.id);onClose();}} className="text-[12.5px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 truncate">{dealRec.name||dealRec.company}<I.ArrowRight size={11}/></button></div>}
+        </div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <div className="px-3.5 py-2 border-b border-white/[0.05] text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]">Line items</div>
+          {(q.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+          {(q.discount>0||q.tax>0)&&<div className="px-3.5 pt-2.5 flex flex-col gap-1.5 border-t border-white/[0.05]">
+            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(q.subtotal!=null?q.subtotal:q.amount)}</span></div>
+            {q.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(q.discount)}</span></div>}
+            {q.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{q.taxRate?(' ('+q.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(q.tax)}</span></div>}
+          </div>}
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(q.amount)}</span></div>
+        </div>
+        {q.notes&&<div><p className="text-[11px] text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><p className="text-[12.5px] text-white/65 leading-relaxed">{q.notes}</p></div>}
+        <PayStripeNotice/>
+      </div>
+      <div className="shrink-0 flex flex-wrap items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
+        {live==='draft'&&<button onClick={()=>onStatus(q,'sent','Quote '+q.number+' sent ✓')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Send size={13}/>Send quote</button>}
+        {live==='sent'&&<button onClick={()=>onStatus(q,'accepted','Quote '+q.number+' marked accepted')} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15 transition-all"><I.Check size={13}/>Mark accepted</button>}
+        {(live==='sent'||live==='accepted')&&<button onClick={()=>onConvert(q)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.ArrowRight size={13}/>Convert to invoice</button>}
+        {(live==='sent'||live==='draft')&&<button onClick={()=>onStatus(q,'declined','Quote '+q.number+' declined')} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 transition-all"><I.Ban size={13}/>Decline</button>}
+        <button onClick={onClose} className="ml-auto px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
+      </div>
+    </div>
+  </React.Fragment>);
+}
 // Payments has no first-class permission object; it proxies to Deals (invoices link to deals
 // and carry a deal-style owner code). Mirrors effCanCustom -> Contacts. view/create/edit/delete + Own/Team/All scope.
 function effCanPay(act){return effCanObject('Deals',act);}
@@ -19314,7 +19375,9 @@ function PaymentsPage({goTo,nav}){
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2600);};
   const {confirmNode,openConfirm}=useConfirm();
   const [newInv,setNewInv]=React.useState((nav&&nav.newInvoice)||false);
-  React.useEffect(()=>{if(nav&&nav.newInvoice)nav.newInvoice=null;},[]);
+  const [newQuote,setNewQuote]=React.useState((nav&&nav.newQuote)||false);
+  const [openQuoteId,setOpenQuoteId]=React.useState(null);
+  React.useEffect(()=>{if(nav&&nav.newInvoice)nav.newInvoice=null;if(nav&&nav.newQuote)nav.newQuote=null;},[]);
   const [openInv,setOpenInv]=React.useState(null);
   const [prodModal,setProdModal]=React.useState(null);
   const [linkModal,setLinkModal]=React.useState(false);
@@ -19323,8 +19386,9 @@ function PaymentsPage({goTo,nav}){
   const [subMenu,setSubMenu]=React.useState(null);
   const [linkMenu,setLinkMenu]=React.useState(null);
   React.useEffect(()=>{const fn=()=>{setProdMenu(null);setSubMenu(null);setLinkMenu(null);};document.addEventListener('click',fn);return()=>document.removeEventListener('click',fn);},[]);
-  const invoices=effScopeRows('Deals',crm.payInvoices||[],v=>v.owner),products=crm.payProducts||[],subs=crm.paySubs||[],links=crm.payLinks||[];
+  const invoices=effScopeRows('Deals',crm.payInvoices||[],v=>v.owner),products=crm.payProducts||[],subs=crm.paySubs||[],links=crm.payLinks||[],quotes=effScopeRows('Deals',crm.payQuotes||[],v=>v.owner);
   const openInvoice=invoices.find(v=>v.id===(openInv&&openInv.id))||null;
+  const openQuote=quotes.find(q=>q.id===openQuoteId)||null;
   // mutations
   const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);const _linked=(crm.contacts||[]).some(c=>c.name===((invoice.contact||'').trim()));showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated'+(_linked?(' · logged to '+invoice.contact+'’s timeline'):'')));};
   const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
@@ -19336,8 +19400,11 @@ function PaymentsPage({goTo,nav}){
   const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);crm.setPayInvoices(a=>[paySubInvoice(s),...a]);setSubModal(false);showToast('Subscription started ✓ · first invoice issued');};
   const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
   const billSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t bill subscriptions.');return;}crm.setPayInvoices(a=>[paySubInvoice(s),...a]);crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,nextBill:payDateLabel(payDayShift(s.interval==='year'?365:30))}:x));setSubMenu(null);showToast('Invoice generated for '+(s.customer||s.plan)+' ✓ · counts in revenue');};
+  const createQuote=(q,status)=>{if(!effCanPay('create')){showToast('Your role can’t create quotes.');return;}const quote={...q,kind:'quote',id:'qot_'+Date.now(),number:'QUO-'+String(Date.now()).slice(-4),status:status==='sent'?'sent':'draft',validUntil:payDateLabel(payDayShift(14)),link:null,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayQuotes(a=>[quote,...a]);setNewQuote(false);showToast(status==='draft'?('Quote '+quote.number+' saved'):('Quote '+quote.number+' sent ✓'));};
+  const setQuoteStatus=(q,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change quotes.');return;}crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:st}:x));showToast(label);};
+  const convertQuote=(q)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const inv={...q,id:'inv_'+Date.now(),number:payNextInvoiceNo(),kind:'invoice',status:'sent',fromQuote:q.id,link:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(14)),agoMin:0,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayInvoices(a=>[inv,...a]);crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:'converted',invoiceId:inv.id}:x));setOpenQuoteId(null);showToast('Quote '+q.number+' → Invoice '+inv.number+' created ✓');};
   // header action depends on tab
-  const primary=tab==='products'?{l:'New product',on:()=>setProdModal({})}:tab==='links'?{l:'New link',on:()=>setLinkModal(true)}:tab==='subscriptions'?{l:'New subscription',on:()=>setSubModal(true)}:{l:'New invoice',on:()=>setNewInv(true)};
+  const primary=tab==='products'?{l:'New product',on:()=>setProdModal({})}:tab==='links'?{l:'New link',on:()=>setLinkModal(true)}:tab==='subscriptions'?{l:'New subscription',on:()=>setSubModal(true)}:tab==='quotes'?{l:'New quote',on:()=>setNewQuote(true)}:{l:'New invoice',on:()=>setNewInv(true)};
   const TH='text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]';
   const cardCls='rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden';
   const menuCls='absolute right-0 top-9 z-30 w-40 overflow-hidden rounded-xl';
@@ -19382,6 +19449,18 @@ function PaymentsPage({goTo,nav}){
             </button>))}
         </div>)}
 
+        {tab==='quotes'&&(<div className={cardCls}>
+          <div className="hidden sm:grid grid-cols-[110px_1.4fr_1fr_96px_120px_28px] gap-x-4 items-center px-4 py-2.5 border-b border-white/[0.06]"><span className={TH}>Quote</span><span className={TH}>Customer</span><span className={TH}>Amount</span><span className={TH}>Status</span><span className={TH}>Valid until</span><span/></div>
+          {quotes.length===0?(<PayEmpty Icon={I.Edit} title="No quotes yet" sub="Build an estimate, send it, and convert it to an invoice when the customer accepts." cta="New quote" onCta={()=>setNewQuote(true)}/>):quotes.map((v,i,a)=>(
+            <button key={v.id} onClick={()=>setOpenQuoteId(v.id)} className={['w-full text-left grid grid-cols-[1fr_auto] sm:grid-cols-[110px_1.4fr_1fr_96px_120px_28px] gap-x-3 sm:gap-x-4 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}>
+              <span className="hidden sm:block text-[12px] font-mono text-white/55">{v.number}</span>
+              <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate sm:hidden">{v.number} · valid until {v.validUntil}</p><p className="text-[11px] text-white/40 truncate hidden sm:block">{v.company}</p></div>
+              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span></div>
+              <span className="hidden sm:block"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span>
+              <span className="hidden sm:block text-[12px] text-white/55">{v.validUntil}</span>
+              <span className="hidden sm:flex justify-end text-white/25"><I.ChevronRight size={15}/></span>
+            </button>))}
+        </div>)}
         {tab==='products'&&(<div className={cardCls}>
           <div className="hidden sm:grid grid-cols-[1.6fr_110px_150px_90px_28px] gap-x-4 items-center px-4 py-2.5 border-b border-white/[0.06]"><span className={TH}>Product</span><span className={TH}>Price</span><span className={TH}>Billing</span><span className={TH}>Status</span><span/></div>
           {products.length===0?(<PayEmpty Icon={I.Tag} title="No products yet" sub="Add products and plans to reuse them on invoices and subscriptions." cta="New product" onCta={()=>setProdModal({})}/>):products.map((p,i,a)=>(
@@ -19430,6 +19509,8 @@ function PaymentsPage({goTo,nav}){
     {prodModal&&<PayProductModal initial={prodModal&&prodModal.id?prodModal:null} onClose={()=>setProdModal(null)} onSave={saveProduct}/>}
     {linkModal&&<PayLinkModal onClose={()=>setLinkModal(false)} onSave={createLink}/>}
     {subModal&&<PaySubModal products={products} onClose={()=>setSubModal(false)} onSave={createSub}/>}
+    {newQuote&&<PayInvoiceDrawer kind="quote" crm={crm} prefill={(newQuote&&typeof newQuote==='object')?newQuote:null} onClose={()=>setNewQuote(false)} onCreate={createQuote} toast={showToast}/>}
+    {openQuote&&<PayQuoteDetail q={openQuote} crm={crm} goTo={goTo} onClose={()=>setOpenQuoteId(null)} onStatus={setQuoteStatus} onConvert={convertQuote} toast={showToast}/>}
     {confirmNode}
     {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[210] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md max-w-[90vw]"><I.Check size={15} stroke={2.4} className="shrink-0"/><span className="truncate">{toast}</span></div>)}
   </div>);
@@ -20889,6 +20970,7 @@ function App(){
   const [payInvoices,setPayInvoices]=React.useState(paySeedInvoices);
   const [paySubs,setPaySubs]=React.useState(paySeedSubs);
   const [payLinks,setPayLinks]=React.useState(paySeedLinks);
+  const [payQuotes,setPayQuotes]=React.useState(paySeedQuotes);
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
   _liveCustomObjects=customObjects; // mirror for nav/search helpers
   // ── Ad lead capture (Meta / Google) — connection state, lead-form mappings, intake feed, ingest ──
@@ -20934,7 +21016,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
-    payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,
+    payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     updateCustomObject:(id,patch)=>setCustomObjects(a=>a.map(o=>o.id===id?{...o,...patch}:o)),
     setCustomRecords:(objId,fn)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(typeof fn==='function'?fn(o.records||[]):fn)}:o)),
@@ -20944,7 +21026,7 @@ function App(){
     updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
     updateCompany:(id,patch)=>setCompanies(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,customObjects]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);

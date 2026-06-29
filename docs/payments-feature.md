@@ -79,7 +79,7 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 |---|---|---|---|
 | **Hosted checkout / "Pay now" page** | Stripe gives every invoice a hosted page with a Pay button (Apple/Google Pay, 40+ methods) + PDF. | Dead link string | **Yes — highest-credibility add** (a simulated pay page). |
 | **Tax** | Stripe Tax auto-adds sales tax/VAT at finalize; everyone has at least a manual tax line. | None | **Yes — a simple manual "Tax %" line.** Table-stakes. |
-| **Quotes / estimates → invoice** | HubSpot, Xero, QuickBooks, GoHighLevel: build a quote, customer accepts, one-click convert to invoice. | None | **Yes — most strategic add for a deal CRM** (reuse the invoice drawer). |
+| **Quotes / estimates → invoice** | HubSpot, Xero, QuickBooks, GoHighLevel: build a quote, customer accepts, one-click convert to invoice. | **✅ Built (this branch)** | Done — Quotes tab + draft→sent→accepted lifecycle + one-click **Convert to invoice**. |
 | **Edit / void / refund / receipt** | Full invoice state machine + credit notes + refunds from the dashboard. | Mark-paid / send only | **Yes — at least Void + Refund + receipt.** |
 | **Discounts / coupons** | Per-line or invoice-level discounts everywhere. | None | Yes — a simple invoice discount line. |
 | **Reminders / dunning** | Stripe Smart Retries (≈8 tries / 2 weeks); QuickBooks/Xero send up to 3–5 scheduled reminders. | Automation *recipes* (no real schedule) | Make it **visible** — a reminder/retry timeline on overdue items. |
@@ -99,7 +99,9 @@ The market splits into **payment processors** (Stripe) and **CRM/accounting tool
 
 **Medium:** ⑤ ✅ simulated hosted checkout page *(done — this branch; unlocks real end-to-end pay)* · ⑥ ◑ invoice **Void / Refund + receipt** *(done — this branch; Edit / duplicate / PDF still open)* · ⑦ ✅ tax + discount lines *(done — this branch; currency still USD-only)* · ⑧ ✅ pay-at-booking creates a paid invoice *(done — this branch)*.
 
-**Strategic:** ⑨ Quote/Estimate → convert to invoice · ⑩ ✅ subscriptions generate invoices *(done — this branch)*.
+**Strategic:** ⑨ ✅ Quote/Estimate → convert to invoice *(done — this branch)* · ⑩ ✅ subscriptions generate invoices *(done — this branch)*.
+
+> **⑨ Quotes (this branch):** a new **Quotes** tab (6th tab) with its own status lifecycle — draft → sent → accepted/declined/expired → **converted**. Create a quote (reuses the invoice drawer with `kind="quote"`, or **Create quote** from a deal's menu — prefilled with the deal's contact/company), send it, mark it accepted, then **Convert to invoice** in one click — which spins up a real *sent* invoice (fresh `INV-` number, links back via `fromQuote`) and marks the quote converted. Since the invoice is real, it then flows through the normal send → pay → revenue path. Verified end-to-end: converting the accepted $2,500 quote created a Sarah Chen invoice and lifted Outstanding $472 → $2,972.
 
 ---
 
