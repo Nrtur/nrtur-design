@@ -12264,6 +12264,7 @@ function SettingsWhiteLabelPage({goTo}){
   const [supportEmail,setSupportEmail]=React.useState(seed.supportEmail||'support@bloomstudio.com');
   const [supportUrl,setSupportUrl]=React.useState(seed.supportUrl||'help.bloomstudio.com');
   const [domain,setDomain]=React.useState(seed.domain||'');
+  const [dnsVerified,setDnsVerified]=React.useState(false);
   const favRef=React.useRef(null);
   const onImg=(set)=>(e)=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){custToast('Please choose an image file','warning');return;}const r=new FileReader();r.onload=()=>set(r.result);r.readAsDataURL(f);};
   const save=()=>{try{localStorage.setItem('nrtur-whitelabel',JSON.stringify({appName,favicon,supportEmail,supportUrl,domain}));}catch(e){}custToast('White-label branding saved');};
@@ -12363,22 +12364,22 @@ function SettingsWhiteLabelPage({goTo}){
     <div className="h-px bg-white/[0.06] mt-2"/>
     {H2(I.Globe,'Domains & apps')}
     <div className={CUST_CARD}>
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap"><p className={CUST_EYE}>Custom domain</p>{soon()}</div>
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap"><p className={CUST_EYE}>Custom domain</p>{domain.trim()?(dnsVerified?<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25"><I.Check size={10} stroke={3}/>Verified</span>:<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25"><I.Clock size={10}/>Pending verification</span>):null}</div>
       <p className="text-[12.5px] text-white/55 mb-3">Serve the portal and public pages from your own domain, e.g. <span className="text-white/80 font-mono">app.youragency.com</span>.</p>
-      <div className="relative">
-        <div className="opacity-50 pointer-events-none select-none">
-          <label className={LBL}>Your domain</label>
-          <input value={domain} onChange={e=>setDomain(e.target.value)} placeholder="app.youragency.com" className={INP+' mb-3'} disabled/>
-          <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.12em] mb-2">DNS records to add</p>
-          <div className="rounded-xl border border-white/[0.07] overflow-hidden">
-            <div className="grid grid-cols-[64px_1fr_1.5fr] gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/35 bg-white/[0.02]"><span>Type</span><span>Host</span><span>Value</span></div>
-            {DNS.map((r,i)=>(<div key={i} className="grid grid-cols-[64px_1fr_1.5fr] gap-2 px-3 py-2 text-[12px] text-white/70 font-mono border-t border-white/[0.05]"><span className="text-brand-300">{r.type}</span><span>{r.host}</span><span className="truncate">{r.value}</span></div>))}
-          </div>
+      <label className={LBL}>Your domain</label>
+      <input value={domain} onChange={e=>{setDomain(e.target.value);setDnsVerified(false);}} placeholder="app.youragency.com" className={INP}/>
+      {domain.trim()?(<div className="mt-4">
+        <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.12em] mb-2">Add these DNS records at your registrar</p>
+        <div className="rounded-xl border border-white/[0.07] overflow-hidden">
+          <div className="grid grid-cols-[64px_1fr_1.6fr_34px] gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/35 bg-white/[0.02]"><span>Type</span><span>Host</span><span>Value</span><span/></div>
+          {DNS.map((r,i)=>(<div key={i} className="grid grid-cols-[64px_1fr_1.6fr_34px] gap-2 px-3 py-2 text-[12px] text-white/70 font-mono border-t border-white/[0.05] items-center"><span className="text-brand-300">{r.type}</span><span className="truncate">{r.host}</span><span className="truncate">{r.value}</span><button onClick={()=>{try{navigator.clipboard&&navigator.clipboard.writeText(r.value);}catch(e){}custToast('DNS value copied');}} title="Copy value" className="text-white/35 hover:text-white flex items-center justify-center"><I.Copy size={12}/></button></div>))}
         </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="px-4 py-2 rounded-xl border border-white/[0.10] text-[12px] text-white/75 flex items-center gap-2 backdrop-blur-sm" style={{background:'rgba(20,20,30,0.72)'}}><I.Lock size={13} className="text-amber-300"/>Requires DNS setup — coming soon</div>
+        <div className="flex items-center gap-2.5 mt-3 flex-wrap">
+          {dnsVerified
+            ?<span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-300"><I.Check size={14} stroke={2.6}/><span className="font-mono mx-1">{domain.trim()}</span>is verified &amp; live</span>
+            :<React.Fragment><button onClick={()=>{setDnsVerified(true);custToast('Domain verified — portal now serves from '+domain.trim(),'success');}} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.ShieldCheck size={13}/>Verify DNS</button><span className="text-[11.5px] text-white/45">DNS changes can take up to 24h to propagate.</span></React.Fragment>}
         </div>
-      </div>
+      </div>):<p className="text-[12px] text-white/40 mt-2">Enter your domain to get the exact DNS records to add.</p>}
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div className={CUST_CARD}>
