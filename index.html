@@ -18914,7 +18914,6 @@ const PAY_SUB_ST={
 };
 const PAY_LINK_ST={
   active:  {label:'Active',  chip:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25', dot:'#34d399'},
-  paid:    {label:'Paid',    chip:'bg-blue-500/12 text-blue-300 ring-blue-500/25',          dot:'#60a5fa'},
   disabled:{label:'Disabled',chip:'bg-white/[0.06] text-white/50 ring-white/[0.12]',        dot:'#94a3b8'},
 };
 function PayPill({map,k}){const s=map[k]||map[Object.keys(map)[0]];return(<span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 whitespace-nowrap',s.chip].join(' ')}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:s.dot}}/>{s.label}</span>);}
@@ -18955,7 +18954,7 @@ function paySeedLinks(){
   return [
     {id:'lnk_1',title:'Workshop seat — June cohort',amount:149,desc:'Live group onboarding webinar seat.',url:payLinkUrl('w_'+payRandToken()),status:'active',clicks:42,paidCount:7,created:payDateLabel(payDayShift(-5))},
     {id:'lnk_2',title:'Discovery deposit',amount:250,desc:'Refundable deposit to hold a strategy slot.',url:payLinkUrl('d_'+payRandToken()),status:'active',clicks:9,paidCount:2,created:payDateLabel(payDayShift(-2))},
-    {id:'lnk_3',title:'Annual plan — early renewal',amount:1770,desc:'3 seats · Pro annual.',url:payLinkUrl('r_'+payRandToken()),status:'paid',clicks:3,paidCount:1,created:payDateLabel(payDayShift(-12))},
+    {id:'lnk_3',title:'Annual plan — early renewal',amount:1770,desc:'3 seats · Pro annual.',url:payLinkUrl('r_'+payRandToken()),status:'active',clicks:3,paidCount:1,created:payDateLabel(payDayShift(-12))},
   ];
 }
 // ── Timeline entries derived from the Payments store (shown on the linked contact / deal) ──
@@ -19124,7 +19123,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill}){
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>New invoice</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
-        <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}</div>
+        <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}{contact.trim()&&!contacts.find(c=>c.name===contact.trim())&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={10}/>Not a saved contact — this invoice won't link to a contact record.</p>}</div>
         <div><label className={PAY_LBL}>Link to a deal <span className="text-white/30 font-normal">(optional)</span></label><ARLookup value={dealLabel} onChange={setDealLabel} options={dealOpts} placeholder="Search an open deal…" Icon={I.Target}/></div>
         <div>
           <div className="flex items-center justify-between mb-1.5"><label className="text-[11px] font-medium text-white/45">Line items</label><span className="text-[11px] text-white/40">{items.length} item{items.length===1?'':'s'}</span></div>
@@ -19230,6 +19229,7 @@ const PAY_TABS=[
 // invoice paid (or bumps the link's paid count) directly via the store — a public/system action.
 function PayCheckoutPage({goTo,nav}){
   const crm=React.useContext(CrmDataContext);
+  const _ci=React.useContext(IntegrationsContext);const stripeOn=!!(_ci&&_ci.conns&&_ci.conns.stripe);
   const inv=(nav&&nav.invoiceId)?((crm&&crm.payInvoices)||[]).find(v=>v.id===nav.invoiceId):null;
   const link=(nav&&nav.linkId)?((crm&&crm.payLinks)||[]).find(l=>l.id===nav.linkId):null;
   const item=inv||link;
@@ -19296,8 +19296,8 @@ function PayCheckoutPage({goTo,nav}){
                 <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">CVC</label><input value={card.cvc} onChange={e=>setCard(c=>({...c,cvc:e.target.value.replace(/\D/g,'').slice(0,4)}))} inputMode="numeric" placeholder="123" className={INP}/></div>
               </div>
             </div>
-            <button onClick={pay} disabled={!cardOk||stage==='processing'} className={['mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-all',(cardOk&&stage!=='processing')?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{stage==='processing'?'Processing…':('Pay '+payMoney(amount))}</button>
-            <p className="text-[11px] text-white/35 text-center mt-3 flex items-center justify-center gap-1.5"><I.ShieldCheck size={11} className="text-emerald-400/70"/>Test mode — use 4242 4242 4242 4242. No real charge.</p>
+            <button onClick={pay} disabled={!cardOk||!stripeOn||stage==='processing'} className={['mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-all',(cardOk&&stripeOn&&stage!=='processing')?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{stage==='processing'?'Processing…':('Pay '+payMoney(amount))}</button>
+            {stripeOn?<p className="text-[11px] text-white/35 text-center mt-3 flex items-center justify-center gap-1.5"><I.ShieldCheck size={11} className="text-emerald-400/70"/>Test mode — use 4242 4242 4242 4242. No real charge.</p>:<p className="text-[11px] text-amber-300/80 text-center mt-3 flex items-center justify-center gap-1.5"><I.AlertTriangle size={11}/>This merchant hasn't finished connecting Stripe — payments are disabled.</p>}
           </React.Fragment>)}
         </div>
       </div>
@@ -19326,7 +19326,7 @@ function PaymentsPage({goTo,nav}){
   const invoices=effScopeRows('Deals',crm.payInvoices||[],v=>v.owner),products=crm.payProducts||[],subs=crm.paySubs||[],links=crm.payLinks||[];
   const openInvoice=invoices.find(v=>v.id===(openInv&&openInv.id))||null;
   // mutations
-  const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated · logged to '+(invoice.contact||'contact')+'’s timeline'));};
+  const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);const _linked=(crm.contacts||[]).some(c=>c.name===((invoice.contact||'').trim()));showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated'+(_linked?(' · logged to '+invoice.contact+'’s timeline'):'')));};
   const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
   const saveProduct=(p)=>{if(!(effCanPay('create')||effCanPay('edit'))){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
   const delProduct=(p)=>{setProdMenu(null);if(!effCanPay('delete')){showToast('Your role can’t delete products.');return;}openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
