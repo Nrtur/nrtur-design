@@ -7650,6 +7650,24 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
     </div>
   </div>);
 }
+function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
+  const [obj,setObj]=React.useState('deal');
+  const [name,setName]=React.useState('');
+  useEscKey(onClose);
+  const OBJS=[{k:'deal',label:'Deals',Icon:I.GitBranch,color:'#818cf8',desc:'Sales opportunities'},{k:'lead',label:'Leads',Icon:I.UserPlus,color:'#34d399',desc:'Qualify by status'},{k:'contact',label:'Contacts',Icon:I.Users,color:'#60a5fa',desc:'Group by status'},{k:'company',label:'Companies',Icon:I.Building,color:'#fbbf24',desc:'Group by type'}].concat((customObjects||[]).map(o=>({k:o.id,label:o.plural,Icon:coIco(o.icon),color:o.color||'#a78bfa',desc:'Custom object',custom:true})));
+  const sel=OBJS.find(o=>o.k===obj)||OBJS[0];
+  const create=()=>{if(obj==='deal'){onCreateDeal((name||'').trim()||'New Pipeline');}else{const pid=(customObjects||[]).some(o=>o.id===obj)?'cop_'+obj:'obj_'+obj;onSelect(pid);}onClose();};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:520}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.GitBranch size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-semibold">Create pipeline</p><p className="text-white/45 text-[12px]">Choose what this pipeline tracks</p></div></div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Object</label><div className="grid grid-cols-2 gap-2">{OBJS.map(o=>{const on=obj===o.k;return(<button key={o.k} onClick={()=>setObj(o.k)} className={['flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left border transition-all',on?'bg-brand-500/12 border-brand-500/30':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:o.color+'22',color:o.color,border:'1px solid '+o.color+'33'}}><o.Icon size={15}/></span><div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white truncate">{o.label}</p><p className="text-[10.5px] text-white/40 truncate">{o.desc}</p></div>{on&&<I.Check size={14} className="text-brand-300 shrink-0"/>}</button>);})}</div></div>
+        {obj==='deal'?(<div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Pipeline name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')create();}} placeholder="e.g. Renewals, Partner deals" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>):(<div className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[12px] text-white/55 leading-relaxed">Opens the <span className="text-white/80 font-medium">{sel.label}</span> pipeline — its records grouped by stage. {sel.custom?'Edit its stages right on the board.':'Grouped by its status field.'}</div>)}
+      </div>
+      <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Cancel</button><button onClick={create} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>{obj==='deal'?'Create pipeline':'Open pipeline'}</button></div>
+    </div>
+  </div>);
+}
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
   const {deals:_deals,setDeals,customObjects:_customObjects}=React.useContext(CrmDataContext);
