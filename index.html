@@ -7528,9 +7528,150 @@ function DealRowDyn({d,COL,shownCols,selected,onSelect,ctx,freeze}){
     <div className="flex justify-end">{(d._stage&&d._stage.real)?<button onClick={()=>ctx.onOpen(d)} title="Open deal" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.ArrowRight size={13}/></button>:<span/>}</div>
   </div>);
 }
+function KanbanBoard({columns,renderCard,onMove,canDrag,dragEnabled,wrapClass,boardClass,colClass,bodyClass,colProps,leading,trailing,placeholder,renderEmpty}){
+  const [drag,setDrag]=React.useState(null);
+  const [over,setOver]=React.useState(null);
+  const en=dragEnabled!==false;
+  return(<div className={wrapClass==null?'flex-1 overflow-x-auto overflow-y-hidden scroll-area':wrapClass}><div className={boardClass==null?'pipe-board h-full p-6 flex gap-4 min-w-max':boardClass}>
+    {columns.map((col,ci)=>{const ov=en&&!!drag&&over===col.key;return(<React.Fragment key={col.key==null?'_k'+ci:'k'+col.key}>
+      {leading?leading(col,ci):null}
+      <div {...(colProps?colProps(col,ci):{})} className={colClass?colClass(col,ci,ov):'pipe-col w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border border-white/[0.05] overflow-hidden'}>
+        {col.header}
+        <div onDragOver={e=>{if(en&&drag){e.preventDefault();if(over!==col.key)setOver(col.key);}}} onDrop={e=>{if(en&&drag){e.preventDefault();const d=drag;setDrag(null);setOver(null);if(onMove)onMove(d.id,d.fromKey,col.key);}}} className={bodyClass?bodyClass(col,ci,ov):['flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors',ov?'bg-brand-500/[0.05]':''].join(' ')}>
+          {col.rows.map(row=>{const can=en&&(canDrag?canDrag(row,col):true);const dp={draggable:can,onDragStart:e=>{if(!can){e.preventDefault();return;}setDrag({id:row.id,fromKey:col.key});if(e.dataTransfer)e.dataTransfer.effectAllowed='move';},onDragEnd:()=>{setDrag(null);setOver(null);}};return(<React.Fragment key={row.id}>{renderCard(row,col,dp,!!drag&&drag.id===row.id)}</React.Fragment>);})}
+          {en&&drag&&over===col.key&&placeholder!==false&&<div className="h-10 rounded-xl border-2 border-dashed border-brand-500/50 bg-brand-500/[0.06] flex items-center justify-center text-[10.5px] text-brand-300/90 font-medium">{placeholder||'Drop here'}</div>}
+          {col.footer}
+          {renderEmpty&&col.rows.length===0?renderEmpty(col):null}
+        </div>
+      </div>
+    </React.Fragment>);})}
+    {trailing?trailing:null}
+  </div></div>);
+}
+function PipelineSwitcher({pipelines,activeId,onSwitch,onNew}){
+  const [open,setOpen]=React.useState(false);
+  const list=pipelines||[];
+  const active=list.find(p=>p.id===activeId)||list[0]||{name:'Pipeline'};
+  React.useEffect(()=>{if(!open)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[open]);
+  return(<div className="relative" data-pipe-menu>
+    <button onClick={()=>setOpen(o=>!o)} className="group flex items-center gap-2.5 -ml-1.5 pl-1.5 pr-2.5 py-1 rounded-xl border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08] transition-all">
+      <span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0"><I.GitBranch size={16}/></span>
+      <span className="text-white text-[21px] font-semibold tracking-tight leading-none">{active.name}</span>
+      <I.ChevronDown size={17} className="text-white/35 group-hover:text-white/70 transition-colors"/>
+    </button>
+    {open&&(<div className="absolute left-0 top-[calc(100%+8px)] z-50 w-64 rounded-xl border border-white/[0.10] p-1.5 shadow-[0_12px_50px_rgba(0,0,0,0.55)]" style={{background:'var(--pop)'}}>
+      <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">Switch pipeline</p>
+      {list.map(p=>{const on=p.id===activeId;const _isco=p.object&&p.object!=='deal';return(<button key={p.id} onClick={()=>{onSwitch(p.id);setOpen(false);}} className={['w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-all',on?'bg-brand-500/12 text-white':'text-white/75 hover:bg-white/[0.05]'].join(' ')}><I.GitBranch size={13} className={on?'text-brand-300':'text-white/40'}/><span className="flex-1 text-left truncate">{p.name}</span><span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-white/[0.05] text-white/40 shrink-0">{_isco?(p.customObj?p.customObj.singular:'Object'):'Deals'}</span>{!_isco&&p.stages&&<span className="text-[10px] font-semibold tabular-nums text-white/40">{p.stages.length}</span>}{on&&<I.Check size={13} className="text-brand-300"/>}</button>);})}
+      {onNew&&<React.Fragment><div className="h-px bg-white/[0.06] my-1.5 mx-1"/><button onClick={()=>{onNew();setOpen(false);}} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-brand-300 hover:bg-brand-500/10 transition-all"><I.Plus size={13} stroke={2.4}/>New pipeline</button></React.Fragment>}
+    </div>)}
+  </div>);
+}
+function PipeObjSelect({value,onChange,customObjects}){
+  return(<div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45 shrink-0">Object</span><select value={value} onChange={e=>onChange(e.target.value)} className="bg-transparent text-[13px] font-semibold text-white/90 outline-none cursor-pointer" style={{colorScheme:'dark'}} title="Switch pipeline object"><option value="deal" style={{background:'var(--s900)'}}>Deals</option><option value="lead" style={{background:'var(--s900)'}}>Leads</option><option value="company" style={{background:'var(--s900)'}}>Companies</option><option value="contact" style={{background:'var(--s900)'}}>Contacts</option>{(customObjects||[]).map(o=>(<option key={o.id} value={o.id} style={{background:'var(--s900)'}}>{o.plural}</option>))}</select></div>);
+}
+function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const {props:_propsCtx}=React.useContext(PropertiesContext);
+  const custom=(crm.customObjects||[]).find(o=>o.id===objKind);
+  const STAGE_PAL=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
+  const BUILT={
+    lead:{singular:'Lead',plural:'Leads',perm:'Leads',route:'lead-detail',recs:crm.leads,set:crm.setLeads,groups:[['status','Status',['New','Contacted','Nurturing','Qualified','Unqualified']],['source','Source',null],['owner','Owner',null]],sub:r=>r.company||r.email||''},
+    contact:{singular:'Contact',plural:'Contacts',perm:'Contacts',route:'contact-detail',recs:crm.contacts,set:crm.setContacts,groups:[['cstatus','Status',['Prospect','Customer','Lost']],['source','Source',null],['owner','Owner',null]],sub:r=>r.company||r.title||r.email||''},
+    company:{singular:'Company',plural:'Companies',perm:'Companies',route:'company-detail',recs:crm.companies,set:crm.setCompanies,groups:[['type','Type',['Customer','Prospect','Partner','Vendor']],['industry','Industry',null],['owner','Owner',null]],sub:r=>r.industry||r.domain||''},
+  };
+  const desc=custom?{singular:custom.singular,plural:custom.plural,perm:'Contacts',route:'custom-record',recs:custom.records||[],set:null,groups:(custom.fields||[]).filter(f=>f.type==='Single select').map(f=>[f.key,f.label,(f.options||null)]).concat([['owner','Owner',null]]),sub:r=>r.r_company||''}:(BUILT[objKind]||BUILT.lead);
+  const groupList=desc.groups.length?desc.groups:[['owner','Owner',null]];
+  const [groupBy,setGroupBy]=React.useState(groupList[0][0]);
+  const [editStages,setEditStages]=React.useState(false);
+  const [colorPop,setColorPop]=React.useState(null);
+  const [dragOver,setDragOver]=React.useState(null);
+  const [newPipeOpen,setNewPipeOpen]=React.useState(false);
+  const [view,setView]=React.useState('board');
+  const [workFilter,setWorkFilter]=React.useState({match:'AND',conds:[]});
+  const dragRef=React.useRef(null);
+  React.useEffect(()=>{setGroupBy((desc.groups[0]&&desc.groups[0][0])||'owner');setEditStages(false);setColorPop(null);setDragOver(null);setView('board');setWorkFilter({match:'AND',conds:[]});},[objKind]);
+  const gf=groupBy;
+  const ge=desc.groups.find(g=>g[0]===gf);
+  const opts=ge?ge[2]:null;
+  const canEdit=effCanObject(desc.perm,'edit');
+  const canCreate=effCanObject(desc.perm,'create');
+  const canEditStages=!!custom&&gf!=='owner'&&canEdit;
+  const baseRows=(desc.recs||[]).filter(r=>!r.deleted&&!r.archived);
+  const omFields=custom?coOmFields(custom,crm):omFieldSchema(objKind,_propsCtx,baseRows);
+  const rows=omApplyFilter(baseRows,workFilter,omFields);
+  const totalRows=rows.length;
+  const valOf=r=>{const v=r[gf];return v==null?'':String(v);};
+  const fieldDef=custom?(custom.fields||[]).find(x=>x.key===gf):null;
+  const stageOpts=fieldDef?(fieldDef.options||[]):[];
+  const order=[];
+  if(opts)opts.forEach(o=>{if(order.indexOf(String(o))<0)order.push(String(o));});
+  rows.forEach(r=>{const v=valOf(r);if(v!==''&&order.indexOf(v)<0)order.push(v);});
+  const cols=order.map(v=>({key:v,val:v,rows:rows.filter(r=>valOf(r)===v)}));
+  const none=rows.filter(r=>valOf(r)==='');if(none.length)cols.push({key:'__none',val:'',rows:none});
+  const doneCol=cols.find(c=>/complete|done|won|live|closed/i.test(c.val||''));
+  const colorFor=v=>{if(gf==='owner')return arOwnerColor(v);if(fieldDef&&fieldDef.optColors&&fieldDef.optColors[v])return fieldDef.optColors[v];return arHashColor(v||'_');};
+  const move=(id,toVal)=>{
+    if(!canEdit){window.__nrturToast&&window.__nrturToast('Your role can’t edit '+desc.plural.toLowerCase(),'error');return;}
+    let nm='';
+    if(custom){const rr=rows.find(x=>x.id===id);nm=(rr&&rr.name)||desc.singular;crm.updateCustomRecord(custom.id,id,{[gf]:toVal});}
+    else{desc.set(a=>a.map(r=>{if(r.id!==id)return r;nm=r.name||desc.singular;const p={[gf]:toVal};if(gf==='owner')p.ownerColor=arOwnerColor(toVal);return{...r,...p};}));}
+    window.__nrturToast&&window.__nrturToast((nm||desc.singular)+' → '+(toVal||'None'),'success');
+  };
+  const openRec=r=>{if(custom)goTo('custom-record',{objectId:custom.id,recordId:r.id});else goTo(desc.route,r.id);};
+  const updObj=fn=>crm.setCustomObjects(a=>a.map(o=>o.id===custom.id?fn(o):o));
+  const uniqName=(arr,base)=>{let n=base,i=2;while(arr.indexOf(n)>=0){n=base+' '+i;i++;}return n;};
+  const insertStageAt=idx=>updObj(o=>({...o,fields:(o.fields||[]).map(x=>{if(x.key!==gf)return x;const arr=[...(x.options||[])];arr.splice(Math.max(0,Math.min(idx,arr.length)),0,uniqName(arr,'New stage'));return{...x,options:arr};})}));
+  const reorderStage=toIdx=>{const from=dragRef.current;dragRef.current=null;setDragOver(null);if(from==null||toIdx<0||from===toIdx)return;updObj(o=>({...o,fields:(o.fields||[]).map(x=>{if(x.key!==gf)return x;const arr=[...(x.options||[])];if(from<0||from>=arr.length)return x;const m=arr.splice(from,1)[0];arr.splice(Math.max(0,Math.min(toIdx,arr.length)),0,m);return{...x,options:arr};})}));};
+  const renameStage=(oldv,nv)=>{nv=(nv||'').trim()||'Untitled';if(nv===oldv)return;updObj(o=>{const fields=(o.fields||[]).map(x=>{if(x.key!==gf)return x;const oc=x.optColors?{...x.optColors}:null;if(oc&&oc[oldv]!=null){oc[nv]=oc[oldv];delete oc[oldv];}return{...x,options:(x.options||[]).map(v=>v===oldv?nv:v),optColors:oc};});const records=(o.records||[]).map(r=>String(r[gf])===oldv?{...r,[gf]:nv}:r);return{...o,fields,records};});};
+  const setStageColor=(opt,c)=>updObj(o=>({...o,fields:(o.fields||[]).map(x=>x.key===gf?{...x,optColors:{...(x.optColors||{}),[opt]:c}}:x)}));
+  const delStage=opt=>updObj(o=>{const fields=(o.fields||[]).map(x=>x.key===gf?{...x,options:(x.options||[]).filter(v=>v!==opt)}:x);const records=(o.records||[]).map(r=>String(r[gf])===opt?{...r,[gf]:''}:r);return{...o,fields,records};});
+  const addStage=()=>insertStageAt(stageOpts.length);
+  const addRecord=stageVal=>{
+    if(!canCreate){window.__nrturToast&&window.__nrturToast('Your role can’t create '+desc.plural.toLowerCase(),'error');return;}
+    if(custom){const id='rec_'+Date.now();const rec={id,name:'New '+custom.singular,owner:'AM',ownerColor:arOwnerColor('AM'),tags:[],createdAt:'Just now',agoMin:0,acts:[]};if(stageVal)rec[gf]=stageVal;crm.setCustomObjects(a=>a.map(o=>o.id===custom.id?{...o,records:[...(o.records||[]),rec]}:o));goTo('custom-record',{objectId:custom.id,recordId:id});}
+    else{window.__nrturQuickAdd?window.__nrturQuickAdd(objKind):goTo('add-'+objKind);}
+  };
+  const gearBtn=canEditStages&&view==='board'?<button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>:null;
+  return(<div className="h-full flex" style={{background:'var(--s925)'}}>
+    <AppSidebar active="pipeline" goTo={goTo}/>
+    <div className="flex-1 flex flex-col min-w-0">
+      <AppTopbar goTo={goTo} subtitle={<div className="flex items-center gap-2.5"><PipelineSwitcher pipelines={pipelines} activeId={activeId} onSwitch={onSwitch} onNew={()=>setNewPipeOpen(true)}/>{gearBtn}</div>} rightSlot={<React.Fragment><div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setView(k)} title={l+' view'} aria-pressed={view===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',view===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/><span className="hidden sm:inline">{l}</span></button>))}</div>{view==='board'&&<div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45">Group by</span><select value={groupBy} onChange={e=>setGroupBy(e.target.value)} className="bg-transparent text-[11.5px] text-white/80 outline-none cursor-pointer" style={{colorScheme:'dark'}}>{groupList.map(g=>(<option key={g[0]} value={g[0]} style={{background:'var(--s900)'}}>{g[1]}</option>))}</select></div>}<OmFiltersButton object={custom?'custom':objKind} fields={omFields} model={workFilter} onChange={setWorkFilter}/>{canCreate&&<button onClick={()=>addRecord('')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New {desc.singular}</button>}</React.Fragment>}/>
+      <div className="shrink-0 border-b border-white/[0.05] px-7 py-2 flex items-center gap-x-6 gap-y-1 flex-wrap overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
+        <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">Total {desc.plural}</span><span className="text-[14px] font-semibold text-white tabular-nums">{totalRows}</span></div>
+        <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">Stages</span><span className="text-[14px] font-semibold text-white tabular-nums">{order.length}</span></div>
+        {doneCol&&<div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-emerald-300/70 font-medium">{doneCol.val}</span><span className="text-[14px] font-semibold text-white tabular-nums">{doneCol.rows.length}</span><span className="text-[10px] text-emerald-300/70">{totalRows?Math.round(doneCol.rows.length/totalRows*100):0}%</span></div>}
+      </div>
+      {view==='list'?(<div className="flex-1 overflow-auto scroll-area px-7 py-4"><table className="w-full text-left border-collapse"><thead><tr className="text-[10px] uppercase tracking-[0.14em] text-white/40 border-b border-white/[0.07]"><th className="py-2 pr-4 font-medium">{desc.singular}</th><th className="py-2 pr-4 font-medium">{ge?ge[1]:'Stage'}</th><th className="py-2 pr-4 font-medium">Owner</th></tr></thead><tbody>{rows.map(r=>(<tr key={r.id} onClick={()=>openRec(r)} className="border-b border-white/[0.04] hover:bg-white/[0.03] cursor-pointer transition-colors"><td className="py-2.5 pr-4"><p className="text-[13px] font-medium text-white">{r.name||'—'}</p>{desc.sub(r)?<p className="text-[11px] text-white/45">{desc.sub(r)}</p>:null}</td><td className="py-2.5 pr-4"><span className="inline-flex items-center gap-1.5 text-[12px] text-white/75"><span className="w-2 h-2 rounded-full shrink-0" style={{background:colorFor(valOf(r))}}/>{valOf(r)||'—'}</span></td><td className="py-2.5 pr-4">{r.owner?<div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</div><span className="text-[11px] text-white/55">{r.owner}</span></div>:<span className="text-white/30">—</span>}</td></tr>))}</tbody></table>{rows.length===0&&<div className="text-center py-16 text-white/40 text-[13px]">No {desc.plural.toLowerCase()} {workFilter.conds.length?'match the filters':'yet'}.</div>}</div>):(totalRows===0&&!canEditStages?(<div className="flex-1 flex items-center justify-center text-white/40 text-[13px]">No {desc.plural.toLowerCase()} {workFilter.conds.length?'match the filters':'yet'}.</div>):<KanbanBoard wrapClass="flex-1 overflow-x-auto overflow-y-hidden scroll-area" boardClass="pipe-board h-full p-6 flex gap-4 min-w-max" dragEnabled={!editStages} placeholder="Move here" canDrag={()=>canEdit} columns={cols.map(c=>{const oi=stageOpts.indexOf(c.val);return {key:c.key,val:c.val,oi:oi,rows:c.rows,footer:(canCreate&&c.key!=='__none'&&!editStages?<button onClick={()=>addRecord(c.val)} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add {desc.singular}</button>:null),header:(<div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>{editStages&&canEditStages&&oi>=0?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=oi;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0"><button onClick={()=>setColorPop(colorPop===c.val?null:c.val)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:colorFor(c.val)}}/>{colorPop===c.val&&<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}}>{STAGE_PAL.map(co=>(<button key={co} onClick={()=>{setStageColor(c.val,co);setColorPop(null);}} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform" style={{background:co}}/>))}</div>}</div><input defaultValue={c.val} onBlur={e=>renameStage(c.val,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(c.val)} disabled={stageOpts.length<=1} title="Delete stage" className={['shrink-0 transition-colors',stageOpts.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<React.Fragment><div className="flex items-center justify-between"><div className="flex items-center gap-2 min-w-0"><span className="w-2 h-2 rounded-full shrink-0" style={{background:colorFor(c.val),boxShadow:'0 0 10px '+colorFor(c.val)+'66'}}/><span className="text-[13px] font-medium text-white truncate">{c.val||'None'}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono shrink-0">{c.rows.length}</span></div>{canEditStages&&c.key!=='__none'&&<button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all shrink-0"><I.More size={13}/></button>}</div><div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{c.rows.length} {desc.singular.toLowerCase()}{c.rows.length===1?'':'s'}</span><span className="text-[10px] text-white/35 font-medium">{totalRows?Math.round(c.rows.length/totalRows*100):0}% of total</span></div></React.Fragment>)}</div>)};})} colClass={(col,ci,ov)=>['pipe-col w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',(editStages&&col.oi>=0&&dragOver===col.oi)||ov?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')} colProps={(col)=>editStages&&canEditStages&&col.oi>=0?{onDragOver:e=>{e.preventDefault();if(dragOver!==col.oi)setDragOver(col.oi);},onDrop:e=>{e.preventDefault();reorderStage(col.oi);},onDragEnd:()=>{dragRef.current=null;setDragOver(null);}}:{}} leading={(col)=>editStages&&canEditStages&&col.oi>=0?(<button onClick={()=>insertStageAt(col.oi)} title="Insert a stage here" className="group/ins relative w-6 shrink-0 self-stretch flex items-center justify-center -mx-2"><span className="absolute inset-y-6 w-px bg-white/[0.07] group-hover/ins:bg-brand-500/50 transition-colors"/><span className="relative z-10 w-6 h-6 rounded-full border flex items-center justify-center transition-all text-white/40 group-hover/ins:text-brand-200 group-hover/ins:border-brand-500/50 group-hover/ins:bg-brand-500/15 group-hover/ins:scale-110" style={{background:'var(--s900)',borderColor:'rgba(255,255,255,0.12)'}}><I.Plus size={13} stroke={2.4}/></span></button>):null} trailing={editStages&&canEditStages?<button onClick={addStage} className="w-[150px] shrink-0 self-start rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">Add stage</span></button>:null} onMove={(id,fromKey,toKey)=>{const c=cols.find(x=>x.key===toKey);move(id,c?c.val:'');}} renderCard={(r,col,dp,dragging)=>(<button {...dp} onClick={()=>openRec(r)} className={['deal-card w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors','bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragging?'opacity-50 scale-[0.97]':''].join(' ')}>
+        <p className="text-[13px] font-medium text-white leading-tight truncate">{r.name||'—'}</p>
+        {desc.sub(r)?<p className="text-[11px] text-white/45 truncate mt-0.5">{desc.sub(r)}</p>:null}
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/[0.04]">{r.owner?<div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</div><span className="text-[10px] text-white/50">{r.owner}</span></div>:<span/>}<I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
+      </button>)}/>)}
+      {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={crm.customObjects} onCreateDeal={onNewDeal} onSelect={onSwitch}/>}
+    </div>
+  </div>);
+}
+function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
+  const [obj,setObj]=React.useState('deal');
+  const [name,setName]=React.useState('');
+  useEscKey(onClose);
+  const OBJS=[{k:'deal',label:'Deals',Icon:I.GitBranch,color:'#818cf8',desc:'Sales opportunities'},{k:'lead',label:'Leads',Icon:I.UserPlus,color:'#34d399',desc:'Qualify by status'},{k:'contact',label:'Contacts',Icon:I.Users,color:'#60a5fa',desc:'Group by status'},{k:'company',label:'Companies',Icon:I.Building,color:'#fbbf24',desc:'Group by type'}].concat((customObjects||[]).map(o=>({k:o.id,label:o.plural,Icon:coIco(o.icon),color:o.color||'#a78bfa',desc:'Custom object',custom:true})));
+  const sel=OBJS.find(o=>o.k===obj)||OBJS[0];
+  const create=()=>{if(obj==='deal'){onCreateDeal((name||'').trim()||'New Pipeline');}else{const pid=(customObjects||[]).some(o=>o.id===obj)?'cop_'+obj:'obj_'+obj;onSelect(pid);}onClose();};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:520}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.GitBranch size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-semibold">Create pipeline</p><p className="text-white/45 text-[12px]">Choose what this pipeline tracks</p></div></div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Object</label><div className="grid grid-cols-2 gap-2">{OBJS.map(o=>{const on=obj===o.k;return(<button key={o.k} onClick={()=>setObj(o.k)} className={['flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left border transition-all',on?'bg-brand-500/12 border-brand-500/30':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:o.color+'22',color:o.color,border:'1px solid '+o.color+'33'}}><o.Icon size={15}/></span><div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white truncate">{o.label}</p><p className="text-[10.5px] text-white/40 truncate">{o.desc}</p></div>{on&&<I.Check size={14} className="text-brand-300 shrink-0"/>}</button>);})}</div></div>
+        {obj==='deal'?(<div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Pipeline name</label><input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')create();}} placeholder="e.g. Renewals, Partner deals" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>):(<div className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[12px] text-white/55 leading-relaxed">Opens the <span className="text-white/80 font-medium">{sel.label}</span> pipeline — its records grouped by stage. {sel.custom?'Edit its stages right on the board.':'Grouped by its status field.'}</div>)}
+      </div>
+      <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Cancel</button><button onClick={create} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>{obj==='deal'?'Create pipeline':'Open pipeline'}</button></div>
+    </div>
+  </div>);
+}
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
-  const {deals:_deals,setDeals}=React.useContext(CrmDataContext);
+  const {deals:_deals,setDeals,customObjects:_customObjects}=React.useContext(CrmDataContext);
+  const [pipeObject,setPipeObject]=React.useState((nav&&nav.objectType)||'deal');
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const dealFields=React.useMemo(()=>omFieldSchema('deal',_propsCtx,_deals),[_propsCtx,_deals]);
   const [workFilter,setWorkFilter]=React.useState({match:'AND',conds:[]});
@@ -7552,6 +7693,8 @@ function PipelinePage({goTo,nav}){
   const [cardF,setCardF]=React.useState({name:true,amount:true,contact:false,close:false,tags:true,rot:true});
   const [boardView,_setBoardView]=React.useState(()=>{try{return sessionStorage.getItem('nrtur-pipe-view')||'board';}catch(e){return 'board';}});
   const setBoardView=(v)=>{_setBoardView(v);try{sessionStorage.setItem('nrtur-pipe-view',v);}catch(e){}};
+  const [groupBy,setGroupBy]=React.useState('stage');
+  const DEAL_GROUPS=[['stage','Stage'],['owner','Owner'],['score','Score'],['tag','Tag']];
   // List-view state: per-pipeline columns, multi-select, frozen first column.
   const [selected,setSelected]=React.useState([]);
   const [colsMap,setColsMap]=React.useState({});
@@ -7584,12 +7727,17 @@ function PipelinePage({goTo,nav}){
   const dragRef=React.useRef(null);
   const [dragOver,setDragOver]=React.useState(null);
   const active=pipelines.find(p=>p.id===activeId)||pipelines[0];
+  const _coPipes=(_customObjects||[]).filter(o=>(o.fields||[]).some(f=>f.type==='Single select')).map(o=>({id:'cop_'+o.id,name:o.plural,object:o.id,customObj:o}));
+  const _builtinPipes=[{id:'obj_lead',name:'Leads',object:'lead'},{id:'obj_contact',name:'Contacts',object:'contact'},{id:'obj_company',name:'Companies',object:'company'}];
+  const allPipelines=[...pipelines.map(p=>({...p,object:p.object||'deal'})),..._builtinPipes,..._coPipes];
+  const [newPipeOpen,setNewPipeOpen]=React.useState(false);
+  const selPipe=allPipelines.find(p=>p.id===activeId)||active;
   const {confirmNode,openConfirm}=useConfirm();
   const dealSmartMgr=useSmartListMgr({views:dealViews,setViews:setDealViews,object:'deal',fields:dealFields,rows:_deals,activeKey:activeViewKey,setActiveKey:setActiveViewKey,applyModel:(f)=>setWorkFilter(JSON.parse(JSON.stringify(f))),showToast:(m)=>{try{window.__nrturToast&&window.__nrturToast(m,'success');}catch(e){}},openConfirm,canShare:effCanObject('Deals','edit')});
   const countForDeal=(v)=>omApplyFilter((_deals||[]).filter(d=>!d.archived),v.filter||{conds:[]},dealFields).length;
   const setStages=(updater)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,stages:typeof updater==='function'?updater(p.stages):updater}:p));
   const renamePipeline=(name)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,name}:p));
-  const addPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
+  const addPipeline=(name)=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:name||'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
   const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:false,demo:[]}))}]);setActiveId(id);};
   const delPipeline=()=>{if(pipelines.length<=1)return;openConfirm({title:'Delete "'+active.name+'" pipeline?',body:'All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.',confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{const next=pipelines.find(p=>p.id!==active.id);setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
   const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
@@ -7650,6 +7798,7 @@ function PipelinePage({goTo,nav}){
   const lvOpen=(d)=>{if(d._stage&&d._stage.real)goTo('deal-detail',d.id);};
   const onBulkStage=(toStage)=>{const ids=selected.slice();ids.forEach(id=>{const d=listFlat.find(x=>x.id===id);if(d&&d._stage&&d._stage.id!==toStage.id)applyMove({id,fromStageId:d._stage.id},toStage);});lvToast(ids.length+' deal'+(ids.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
   const dealColCtx={goTo,onOpen:lvOpen,onStage:lvStage,onOwner:lvOwner,stages:active.stages,readOnly:!_dEdit,canEdit:_dEdit,canDelete:_dDel};
+  if(selPipe&&selPipe.object&&selPipe.object!=='deal')return(<ObjectBoard objKind={selPipe.object} pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNewDeal={addPipeline} goTo={goTo}/>);
   return(
     <div className="h-full flex" style={{background:'var(--s925)'}}>
       <AppSidebar active="pipeline" goTo={goTo}/>
@@ -7663,19 +7812,7 @@ function PipelinePage({goTo,nav}){
                 <input autoFocus={focusName} onFocus={()=>{if(focusName)setFocusName(false);}} value={active.name} onChange={e=>renamePipeline(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renamePipeline('Untitled pipeline');}} placeholder="Pipeline name" title="Rename this pipeline" className="bg-transparent text-white text-[21px] font-semibold tracking-tight leading-none outline-none border-b border-white/15 focus:border-brand-500/60 pb-0.5 w-[220px] max-w-[40vw]"/>
               </div>
               ):(
-              <div className="relative" data-pipe-menu>
-                <button onClick={()=>setPipeMenu(o=>!o)} className="group flex items-center gap-2.5 -ml-1.5 pl-1.5 pr-2.5 py-1 rounded-xl border border-transparent hover:bg-white/[0.05] hover:border-white/[0.08] transition-all">
-                  <span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0"><I.GitBranch size={16}/></span>
-                  <span className="text-white text-[21px] font-semibold tracking-tight leading-none">{active.name}</span>
-                  <I.ChevronDown size={17} className="text-white/35 group-hover:text-white/70 transition-colors"/>
-                </button>
-                {pipeMenu&&(<div className="absolute left-0 top-[calc(100%+8px)] z-50 w-64 rounded-xl border border-white/[0.10] p-1.5 shadow-[0_12px_50px_rgba(0,0,0,0.55)]" style={{background:'var(--pop)'}}>
-                  <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">Switch pipeline</p>
-                  {pipelines.map(p=>{const on=p.id===active.id;return(<button key={p.id} onClick={()=>{setActiveId(p.id);setPipeMenu(false);}} className={['w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-all',on?'bg-brand-500/12 text-white':'text-white/75 hover:bg-white/[0.05]'].join(' ')}><I.GitBranch size={13} className={on?'text-brand-300':'text-white/40'}/><span className="flex-1 text-left truncate">{p.name}</span><span className="text-[10px] font-semibold tabular-nums text-white/40">{p.stages.length}</span>{on&&<I.Check size={13} className="text-brand-300"/>}</button>);})}
-                  <div className="h-px bg-white/[0.06] my-1.5 mx-1"/>
-                  <button onClick={addPipeline} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-brand-300 hover:bg-brand-500/10 transition-all"><I.Plus size={13} stroke={2.4}/>New pipeline</button>
-                </div>)}
-              </div>
+              <PipelineSwitcher pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNew={()=>setNewPipeOpen(true)}/>
               )}
               <button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages & pipeline'} aria-label={editStages?'Done editing':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>
               {editStages&&(<React.Fragment>
@@ -7688,6 +7825,7 @@ function PipelinePage({goTo,nav}){
         }
           rightSlot={<>
             <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List],['forecast','Forecast',I.Target]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBoardView(k)} title={l+' view'} aria-pressed={boardView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',boardView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/><span className="hidden sm:inline">{l}</span></button>))}</div>
+            
             <div className="flex items-center gap-2.5"><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges} smart={dealSmartMgr} countFor={countForDeal}/>{dealSmartMgr.builderNode}<OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/>
               <div className="relative">
                 <button ref={viewOptsRef} onClick={()=>setViewOptsOpen(o=>!o)} title="View options" aria-haspopup="menu" aria-expanded={viewOptsOpen} className={['inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all',viewOptsOpen?'bg-brand-500/20 text-brand-200 border-brand-500/30':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:border-white/[0.18]'].join(' ')}><I.More size={16}/></button>
@@ -7710,33 +7848,32 @@ function PipelinePage({goTo,nav}){
         {boardView==='board'&&<div className="pipe-mob-tabs shrink-0 border-b border-white/[0.05] px-3 py-2 hidden items-center gap-1.5 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
           {active.stages.map((s,i)=>{const on=i===Math.min(mobStage,active.stages.length-1);return(<button key={s.id} onClick={()=>setMobStage(i)} className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all',on?'bg-brand-500/20 text-brand-200 border-brand-500/35':'text-white/50 border-white/[0.08] bg-white/[0.03]'].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:s.color}}></span>{s.name}<span className="text-[10px] font-mono opacity-70">{dealsFor(s).length}</span></button>);})}
         </div>}
-        {boardView==='board'&&<div className="flex-1 overflow-x-auto overflow-y-hidden scroll-area">
-          <div className="pipe-board h-full p-6 flex gap-4 min-w-max">
-            {active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return(
-              <React.Fragment key={stage.id}>
-                {editStages&&(<button onClick={()=>insertStageAt(si)} title="Insert a stage here" className="group/ins relative w-6 shrink-0 self-stretch flex items-center justify-center -mx-2"><span className="absolute inset-y-6 w-px bg-white/[0.07] group-hover/ins:bg-brand-500/50 transition-colors"/><span className="relative z-10 w-6 h-6 rounded-full border flex items-center justify-center transition-all text-white/40 group-hover/ins:text-brand-200 group-hover/ins:border-brand-500/50 group-hover/ins:bg-brand-500/15 group-hover/ins:scale-110" style={{background:'var(--s900)',borderColor:'rgba(255,255,255,0.12)'}}><I.Plus size={13} stroke={2.4}/></span></button>)}
-              <div onDragOver={editStages?(e=>{e.preventDefault();if(dragOver!==si)setDragOver(si);}):undefined} onDrop={editStages?(e=>{e.preventDefault();onDropStage(si);}):undefined} onDragEnd={editStages?(()=>{dragRef.current=null;setDragOver(null);}):undefined} className={['pipe-col '+(si===Math.min(mobStage,active.stages.length-1)?'pipe-col-active ':'')+'w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}>
-                <div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
+        {boardView==='board'&&<KanbanBoard
+          wrapClass="flex-1 overflow-x-auto overflow-y-hidden scroll-area"
+          boardClass="pipe-board h-full p-6 flex gap-4 min-w-max"
+          dragEnabled={!editStages}
+          placeholder="Drop deal here"
+          canDrag={()=>effCanObject('Deals','edit')}
+          columns={active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return({key:stage.id,si,stage,sval,rows:sd,
+            header:(<div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
                   {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.slice(0,3).map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}<CustomColorWheel value={stage.color} onPick={(c)=>setColor(stage.id,c)}/></div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
                   <div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span>{editStages?(<label className="flex items-center gap-1.5 shrink-0" title="Win probability at this stage"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:stage.color,width:64}}/><span className="text-[10px] text-white/55 tabular-nums w-8 text-right">{stage.prob}%</span></label>):(<span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span>)}</div>
                   {editStages&&!/won|lost|closed|live/i.test(stage.name||'')&&<div className="flex items-center gap-1.5 mt-1.5" title="Flag deals as stale after this many days without activity"><I.AlertTriangle size={10} className="text-amber-300/70 shrink-0"/><span className="text-[10px] text-white/45">Rot after</span><input type="number" min="0" value={stage.rotDays!=null?stage.rotDays:DEAL_ROT_DEFAULT} onChange={e=>setRot(stage.id,e.target.value)} className="w-12 bg-white/[0.05] border border-white/[0.10] rounded-md px-1.5 py-0.5 text-[10px] text-white text-center outline-none focus:border-brand-500/40"/><span className="text-[10px] text-white/45">days</span></div>}
-                </div>
-                <div onDragOver={e=>{if(dragDeal){e.preventDefault();if(dropStageId!==stage.id)setDropStageId(stage.id);}}} onDrop={e=>{if(dragDeal){e.preventDefault();moveDeal(stage);}}} className={['flex-1 overflow-y-auto scroll-area p-3 flex flex-col gap-2.5 min-h-[120px] transition-colors',dragDeal&&dropStageId===stage.id?'bg-brand-500/[0.05]':''].join(' ')}>
-                  {sd.map(d=>{const rot=dealRotInfo(d,stage);return(<button key={d.id} draggable={!editStages&&effCanObject('Deals','edit')} onDragStart={e=>{if(!effCanObject('Deals','edit')){e.preventDefault();return;}setDragDeal({id:d.id,fromStageId:stage.id});e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragDeal(null);setDropStageId(null);}} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors',rot.rotting?'bg-amber-500/[0.04] border-amber-500/30 ring-1 ring-amber-500/20 hover:border-amber-500/45':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragDeal&&dragDeal.id===d.id?'opacity-50 scale-[0.97]':''].join(' ')}>
+                </div>),
+            footer:(effCanObject('Deals','create')?<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{stage:stage.name}):goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>:null)});})}
+          colClass={(col,ci,ov)=>['pipe-col '+(col.si===Math.min(mobStage,active.stages.length-1)?'pipe-col-active ':'')+'w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===col.si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}
+          colProps={(col)=>editStages?{onDragOver:(e=>{e.preventDefault();if(dragOver!==col.si)setDragOver(col.si);}),onDrop:(e=>{e.preventDefault();onDropStage(col.si);}),onDragEnd:(()=>{dragRef.current=null;setDragOver(null);})}:{}}
+          leading={(col)=>editStages?(<button onClick={()=>insertStageAt(col.si)} title="Insert a stage here" className="group/ins relative w-6 shrink-0 self-stretch flex items-center justify-center -mx-2"><span className="absolute inset-y-6 w-px bg-white/[0.07] group-hover/ins:bg-brand-500/50 transition-colors"/><span className="relative z-10 w-6 h-6 rounded-full border flex items-center justify-center transition-all text-white/40 group-hover/ins:text-brand-200 group-hover/ins:border-brand-500/50 group-hover/ins:bg-brand-500/15 group-hover/ins:scale-110" style={{background:'var(--s900)',borderColor:'rgba(255,255,255,0.12)'}}><I.Plus size={13} stroke={2.4}/></span></button>):null}
+          trailing={effCanObject('Deals','edit')?<button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>:null}
+          renderCard={(d,col,dp,dragging)=>{const stage=col.stage;const rot=dealRotInfo(d,stage);return(<button {...dp} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors',rot.rotting?'bg-amber-500/[0.04] border-amber-500/30 ring-1 ring-amber-500/20 hover:border-amber-500/45':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragging?'opacity-50 scale-[0.97]':''].join(' ')}>
                     {(cardF.name||cardF.amount)&&<div className="flex items-start justify-between gap-2 mb-2">{cardF.name?<p className="text-[13px] font-medium text-white leading-tight truncate">{d.company}</p>:<span/>}{cardF.amount&&<span className="text-[14px] font-semibold text-white tabular-nums shrink-0">{d.value}</span>}</div>}
                     {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags?<span className={['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',d.tagBg,d.tagFg].join(' ')}>{d.tag}</span>:<span/>}{cardF.rot&&(rot.rotting?<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-amber-300 bg-amber-500/12 ring-1 ring-amber-500/25" title={'No activity for '+rot.days+' days — past this stage’s '+rot.thresh+'-day threshold'}><I.AlertTriangle size={9}/>Stale {rot.days}d</span>:<div className="flex items-center gap-1.5 text-[10px] text-white/35" title={'Age '+rot.days+' days'}><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>)}</div>}
                     {cardF.contact&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.UserPlus size={11} className="text-white/35 shrink-0"/><span className="truncate">{d.primaryContact||contactsForCompany(d.company)[0]&&contactsForCompany(d.company)[0].name||'No contact'}</span></div>}
                     {cardF.close&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.Calendar size={11} className="text-white/35 shrink-0"/>{d.closeDate?fmtShortDate(d.closeDate):'No close date'}</div>}
                     <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]"><div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:d.ownerColor}}>{d.owner}</div><span className="text-[10px] text-white/50">{d.owner}</span></div><I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
-                  </button>);})}
-                  {dragDeal&&dropStageId===stage.id&&<div className="h-10 rounded-xl border-2 border-dashed border-brand-500/50 bg-brand-500/[0.06] flex items-center justify-center text-[10.5px] text-brand-300/90 font-medium">Drop deal here</div>}{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{stage:stage.name}):goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>}
-                </div>
-              </div>
-              </React.Fragment>
-            );})}
-            {effCanObject('Deals','edit')&&<button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>}
-          </div>
-        </div>}
+                  </button>);}}
+          onMove={(dealId,fromStageId,toStageId)=>{if(!effCanObject('Deals','edit'))return;const dd={id:dealId,fromStageId};const toStage=active.stages.find(s=>s.id===toStageId);if(!toStage)return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);}}
+        />}
         {boardView==='list'&&(
         <div className="flex-1 flex flex-col min-h-0">
           {selected.length>0&&(<BulkBar object="deal" selected={selected} setSelected={setSelected} setRows={setDeals} showToast={lvToast} openConfirm={openConfirm} stageOptions={active.stages} onStageMove={onBulkStage}/>)}
@@ -7776,6 +7913,7 @@ function PipelinePage({goTo,nav}){
           </div>
         </div>)}
         <AppFooter note={boardView==='board'?"Drag deals between stages to move them":undefined}/>
+        {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={setActiveId}/>}
       </div>
       {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason)=>{applyMove(outcomePrompt.dd,outcomePrompt.toStage);window.__nrturToast&&window.__nrturToast('Deal marked '+(outcomePrompt.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setOutcomePrompt(null);}}/>);})()}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
@@ -18891,7 +19029,8 @@ function TasksPage({goTo,nav}){
 // Card handling is Stripe-hosted — card details never touch our servers. Processing here is
 // simulated; the data model mirrors a real Stripe-backed invoices / links / subscriptions setup.
 const PAY_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function payMoney(n){const num=typeof n==='number'?n:parseFloat(String(n==null?'':n).replace(/[^0-9.\-]/g,''));if(isNaN(num))return '$0';const cents=Math.round(num*100)%100!==0;return '$'+num.toLocaleString('en-US',{minimumFractionDigits:cents?2:0,maximumFractionDigits:2});}
+const PAY_CCY={USD:'$',EUR:'€',GBP:'£',CAD:'CA$',AUD:'A$'};
+function payMoney(n,ccy){const sym=PAY_CCY[ccy]||'$';const num=typeof n==='number'?n:parseFloat(String(n==null?'':n).replace(/[^0-9.\-]/g,''));if(isNaN(num))return sym+'0';const cents=Math.round(num*100)%100!==0;return sym+num.toLocaleString('en-US',{minimumFractionDigits:cents?2:0,maximumFractionDigits:2});}
 function payDayShift(n){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return d;}
 function payDateLabel(d){return PAY_MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
 function payRandToken(){return Math.random().toString(36).slice(2,10);}
@@ -18976,7 +19115,7 @@ function paySeedLinks(){
 // ── Timeline entries derived from the Payments store (shown on the linked contact / deal) ──
 function actInvoiceOwn(v){
   if(!v)return [];
-  const out=[];const amt=payMoney(v.amount);
+  const out=[];const amt=payMoney(v.amount,v.currency);
   out.push(mkAct('invoice',{ts:v.agoMin||0,by:v.owner||'AM',label:v.status==='draft'?'INVOICE · DRAFT':'INVOICE',title:'Invoice '+v.number+' · '+amt+(v.status==='draft'?' (draft)':' sent'),body:((v.items&&v.items[0]?v.items[0].desc:'Payment request')+(v.items&&v.items.length>1?(' +'+(v.items.length-1)+' more'):''))+(v.due?(' · due '+v.due):''),payload:{kind:'invoice',id:v.id}}));
   if(v.status==='paid'||v.status==='refunded')out.push(mkAct('payment',{ts:(v.paidAgoMin!=null?v.paidAgoMin:0),by:v.owner||'AM',title:'Payment received · '+amt,body:'Invoice '+v.number+' paid via Stripe.',payload:{kind:'payment',id:v.id}}));
   if(v.status==='refunded')out.push(mkAct('payment',{ts:(v.refundedAgoMin!=null?v.refundedAgoMin:0),by:v.owner||'AM',label:'REFUND',title:'Refund issued · '+amt,body:'Invoice '+v.number+' refunded via Stripe.',payload:{kind:'payment',id:v.id}}));
@@ -19106,20 +19245,22 @@ function PaySubModal({products,onClose,onSave}){
 }
 const PAY_DUE_PRESETS=[['receipt','Due on receipt',0],['net7','Net 7',7],['net14','Net 14',14],['net30','Net 30',30]];
 // ── New invoice drawer (Part C) ─────────────────────────────────────────────
-function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
+function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const products=crm.payProducts||[];
   const contacts=crm.contacts||[];
   const deals=allDeals();
-  const [contact,setContact]=React.useState((prefill&&prefill.contact)||'');
-  const [dealLabel,setDealLabel]=React.useState(()=>{if(prefill&&prefill.dealId!=null){const d=deals.find(x=>x.id===prefill.dealId);if(d)return d.name||(d.company+' · '+d.value);}return '';});
+  const [contact,setContact]=React.useState((editInv&&editInv.contact)||(prefill&&prefill.contact)||'');
+  const [dealLabel,setDealLabel]=React.useState(()=>{const _did=(editInv&&editInv.dealId!=null)?editInv.dealId:((prefill&&prefill.dealId!=null)?prefill.dealId:null);if(_did!=null){const d=deals.find(x=>x.id===_did);if(d)return d.name||(d.company+' · '+d.value);}return '';});
   const [items,setItems]=React.useState([]);
   const [duePreset,setDuePreset]=React.useState('net14');
   const [notes,setNotes]=React.useState('');
   const [prodPick,setProdPick]=React.useState('');
-  const [discount,setDiscount]=React.useState('');
-  const [taxRate,setTaxRate]=React.useState('');
+  const [ccy,setCcy]=React.useState((editInv&&editInv.currency)||'USD');
+  const [discount,setDiscount]=React.useState(editInv&&editInv.discount?String(editInv.discount):'');
+  const [taxRate,setTaxRate]=React.useState(editInv&&editInv.taxRate?String(editInv.taxRate):'');
   useEscKey(onClose);
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
+  React.useEffect(()=>{if(editInv){setItems((editInv.items||[]).map(it=>({desc:it.desc,qty:String(it.qty),price:String(it.price)})));setNotes(editInv.notes||'');}},[]);
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
   const co=(contacts.find(c=>c.name===contact)||{}).co||(prefill&&prefill.company)||'';
   const amount=items.reduce((a,it)=>a+(parseFloat(it.qty)||0)*(parseFloat(it.price)||0),0);
@@ -19132,12 +19273,12 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
   const setItem=(i,patch)=>setItems(its=>its.map((x,j)=>j===i?{...x,...patch}:x));
   const rmItem=(i)=>setItems(its=>its.filter((_,j)=>j!==i));
   const dueDays=(PAY_DUE_PRESETS.find(p=>p[0]===duePreset)||[,,14])[2];
-  const build=(status)=>({id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0})),amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null});
+  const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',currency:ccy,notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes,currency:ccy}:_b;};
   const canSave=contact.trim()&&items.length>0&&amount>0;
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{kind==='quote'?'New quote':'New invoice'}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{editInv?'Edit invoice':(kind==='quote'?'New quote':'New invoice')}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}{contact.trim()&&!contacts.find(c=>c.name===contact.trim())&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={10}/>Not a saved contact — this invoice won't link to a contact record.</p>}</div>
         <div><label className={PAY_LBL}>Link to a deal <span className="text-white/30 font-normal">(optional)</span></label><ARLookup value={dealLabel} onChange={setDealLabel} options={dealOpts} placeholder="Search an open deal…" Icon={I.Target}/></div>
@@ -19156,16 +19297,16 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
             <button onClick={addCustom} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12}/>Custom line</button>
           </div>
         </div>
-        <div><label className={PAY_LBL}>Due</label><select value={duePreset} onChange={e=>setDuePreset(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{PAY_DUE_PRESETS.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</select></div>
+        <div className="grid grid-cols-2 gap-3"><div><label className={PAY_LBL}>Due</label><select value={duePreset} onChange={e=>setDuePreset(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{PAY_DUE_PRESETS.map(([k,l])=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{l}</option>))}</select></div><div><label className={PAY_LBL}>Currency</label><select value={ccy} onChange={e=>setCcy(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{Object.keys(PAY_CCY).map(k=>(<option key={k} value={k} style={{background:'var(--s900)'}}>{k} ({PAY_CCY[k]})</option>))}</select></div></div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={PAY_LBL}>Discount ($)</label><div className="flex items-center rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 overflow-hidden"><span className="pl-3 pr-1 text-[13px] text-white/45 shrink-0">$</span><input value={discount} onChange={e=>setDiscount(e.target.value.replace(/[^0-9.]/g,''))} inputMode="decimal" placeholder="0" className="flex-1 min-w-0 pr-3 py-2.5 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30"/></div></div>
           <div><label className={PAY_LBL}>Tax (%)</label><div className="flex items-center rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 overflow-hidden"><input value={taxRate} onChange={e=>setTaxRate(e.target.value.replace(/[^0-9.]/g,''))} inputMode="decimal" placeholder="0" className="flex-1 min-w-0 pl-3 py-2.5 bg-transparent text-[13px] text-white outline-none placeholder:text-white/30"/><span className="pr-3 pl-1 text-[13px] text-white/45 shrink-0">%</span></div></div>
         </div>
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] px-3.5 py-3 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(amount)}</span></div>
-          {discountVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(discountVal)}</span></div>}
-          {taxVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{taxPct?(' ('+taxPct+'%)'):''}</span><span className="tabular-nums">{payMoney(taxVal)}</span></div>}
-          <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/70">Total</span><span className="text-[18px] font-bold text-white tabular-nums">{payMoney(total)}</span></div>
+          <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(amount,ccy)}</span></div>
+          {discountVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(discountVal,ccy)}</span></div>}
+          {taxVal>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{taxPct?(' ('+taxPct+'%)'):''}</span><span className="tabular-nums">{payMoney(taxVal,ccy)}</span></div>}
+          <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/70">Total</span><span className="text-[18px] font-bold text-white tabular-nums">{payMoney(total,ccy)}</span></div>
         </div>
         <div><label className={PAY_LBL}>Notes <span className="text-white/30 font-normal">(optional)</span></label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Payment terms, thank-you note…" className={PAY_INP+' resize-none'}/></div>
         <PayStripeNotice/>
@@ -19173,32 +19314,33 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind}){
       <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
         <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/55 hover:text-white transition-all">Cancel</button>
         <div className="ml-auto flex items-center gap-2.5">
-          <button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>
-          <button onClick={()=>{if(!canSave)return;onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{kind==='quote'?'Send quote':'Send invoice'}</button>
+          {!editInv&&<button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>}
+          <button onClick={()=>{if(!canSave)return;editInv?onCreate(build(editInv.status||'draft'),editInv.status||'draft'):onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{editInv?'Save changes':(kind==='quote'?'Send quote':'Send invoice')}</button>
         </div>
       </div>
     </div>
   </React.Fragment>);
 }
 // ── Invoice detail drawer: view, mark paid / simulate payment, copy link, navigate ──
-function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
+function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,onEdit,onDuplicate,toast}){
   useEscKey(onClose);
   const contactRec=(crm.contacts||[]).find(c=>c.name===inv.contact);
   const {confirmNode,openConfirm}=useConfirm();
   const dealRec=inv.dealId!=null?allDeals().find(d=>d.id===inv.dealId):null;
-  const markPaid=()=>{onUpdate(inv.id,{status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0});toast('Payment received · '+payMoney(inv.amount)+' ✓');};
+  const markPaid=()=>{onUpdate(inv.id,{status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0});toast('Payment received · '+payMoney(inv.amount,inv.currency)+' ✓');};
   const sendInv=()=>{onUpdate(inv.id,{status:'sent',link:inv.link||payLinkUrl('inv_'+payRandToken())});toast('Invoice '+inv.number+' sent ✓ · logged to timeline');};
   const voidInv=()=>openConfirm({title:'Void '+inv.number+'?',body:'This cancels the invoice. It stays on record but drops out of outstanding revenue and can no longer be paid.',confirmLabel:'Void invoice',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'void'});toast('Invoice '+inv.number+' voided');}});
-  const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount)+' · '+inv.number+' ✓');}});
+  const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount,inv.currency)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount,inv.currency)+' · '+inv.number+' ✓');}});
   const sendReceipt=()=>toast('Receipt for '+inv.number+' sent to '+(inv.contact||'the customer')+' ✓');
+  const downloadPdf=()=>{try{const rows=(inv.items||[]).map(it=>'<tr><td>'+(it.desc||'')+'</td><td>'+it.qty+'</td><td>'+payMoney(it.price)+'</td><td style="text-align:right">'+payMoney(it.qty*it.price)+'</td></tr>').join('');const html='<!doctype html><meta charset="utf-8"><title>'+inv.number+'</title><body style="font-family:system-ui,Arial,sans-serif;max-width:680px;margin:40px auto;color:#111"><h1 style="margin:0">nrtur</h1><p style="color:#666">Invoice '+inv.number+' · Issued '+inv.issued+'</p><p>Bill to: <b>'+(inv.contact||'—')+'</b>'+(inv.company?(' · '+inv.company):'')+'<br>Due: '+inv.due+'</p><table style="width:100%;border-collapse:collapse;margin-top:16px"><thead><tr style="text-align:left;border-bottom:2px solid #111"><th>Description</th><th>Qty</th><th>Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="font-weight:700;border-top:2px solid #111"><td colspan="3">Total</td><td style="text-align:right">'+payMoney(inv.amount,inv.currency)+'</td></tr></tfoot></table></body>';const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=inv.number+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},120);}catch(e){}toast('Invoice '+inv.number+' downloaded ✓');};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.Note size={15}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white truncate">{inv.number}</p><p className="text-[11px] text-white/45">Issued {inv.issued}</p></div></div><button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between"><PayPill map={PAY_INV_ST} k={inv.status}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(inv.amount)}</span></div>
+        <div className="flex items-center justify-between"><PayPill map={PAY_INV_ST} k={inv.status}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(inv.amount,inv.currency)}</span></div>
         {inv.status==='paid'&&inv.paidDate&&<div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-emerald-200"><I.Check size={13} stroke={2.5}/>Paid on {inv.paidDate} via Stripe.</div>}
-        {inv.status==='refunded'&&<div className="rounded-xl bg-amber-500/[0.07] border border-amber-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-amber-200"><I.Reply size={13}/>Refunded{inv.refundedDate?(' on '+inv.refundedDate):''} · {payMoney(inv.amount)} returned via Stripe.</div>}
+        {inv.status==='refunded'&&<div className="rounded-xl bg-amber-500/[0.07] border border-amber-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-amber-200"><I.Reply size={13}/>Refunded{inv.refundedDate?(' on '+inv.refundedDate):''} · {payMoney(inv.amount,inv.currency)} returned via Stripe.</div>}
         {inv.status==='void'&&<div className="rounded-xl bg-white/[0.04] border border-white/[0.08] px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-white/55"><I.Ban size={13}/>This invoice was voided — no longer payable.</div>}
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Bill to</span>{contactRec?<button onClick={()=>{goTo('contact-detail',contactRec.id);onClose();}} className="text-[13px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 truncate">{inv.contact}<I.ArrowRight size={11}/></button>:<span className="text-[13px] font-medium text-white truncate">{inv.contact||'—'}</span>}</div>
@@ -19208,13 +19350,13 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
         </div>
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
           <div className="px-3.5 py-2 border-b border-white/[0.05] text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]">Line items</div>
-          {(inv.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+          {(inv.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price,inv.currency)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price,inv.currency)}</span></div>))}
           {(inv.discount>0||inv.tax>0)&&<div className="px-3.5 pt-2.5 flex flex-col gap-1.5 border-t border-white/[0.05]">
-            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(inv.subtotal!=null?inv.subtotal:inv.amount)}</span></div>
-            {inv.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount)}</span></div>}
-            {inv.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(inv.tax)}</span></div>}
+            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(inv.subtotal!=null?inv.subtotal:inv.amount,inv.currency)}</span></div>
+            {inv.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount,inv.currency)}</span></div>}
+            {inv.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(inv.tax,inv.currency)}</span></div>}
           </div>}
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(inv.amount)}</span></div>
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(inv.amount,inv.currency)}</span></div>
         </div>
         {inv.notes&&<div><p className="text-[11px] text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><p className="text-[12.5px] text-white/65 leading-relaxed">{inv.notes}</p></div>}
         {inv.link&&<div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 flex items-center gap-2"><I.CreditCard size={13} className="text-white/40 shrink-0"/><span className="flex-1 min-w-0 text-[12px] font-mono text-white/55 truncate">{inv.link}</span><button onClick={()=>goTo('pay-checkout',{invoiceId:inv.id})} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all"><I.ExternalLink size={12}/>Open</button><button onClick={()=>payCopy(inv.link,toast,'Payment link')} className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Copy</button></div>}
@@ -19226,6 +19368,9 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,toast}){
         {(inv.status==='draft'||inv.status==='sent'||inv.status==='overdue')&&<button onClick={voidInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 transition-all"><I.Ban size={13}/>Void</button>}
         {inv.status==='paid'&&<button onClick={sendReceipt} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={13}/>Send receipt</button>}
         {inv.status==='paid'&&<button onClick={refundInv} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-all"><I.Reply size={13}/>Refund</button>}
+        {inv.status==='draft'&&onEdit&&<button onClick={()=>onEdit(inv)} title="Edit invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Edit size={14}/></button>}
+        {onDuplicate&&<button onClick={()=>onDuplicate(inv)} title="Duplicate invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={14}/></button>}
+        <button onClick={downloadPdf} title="Download invoice" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Note size={14}/></button>
         <button onClick={onClose} className="ml-auto px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
       </div>
     </div>
@@ -19284,7 +19429,7 @@ function PayCheckoutPage({goTo,nav}){
           {sub&&<p className="text-[13px] text-white/55 mt-2">{sub}</p>}
           {inv&&inv.items&&<div className="mt-7 flex flex-col gap-2 border-t border-white/[0.07] pt-5">
             {inv.items.map((it,i)=>(<div key={i} className="flex items-center justify-between text-[13px]"><span className="text-white/65 truncate pr-3">{it.desc} <span className="text-white/35">× {it.qty}</span></span><span className="text-white/80 tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
-            {inv.discount>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount)}</span></div>}
+            {inv.discount>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount,inv.currency)}</span></div>}
             {inv.tax>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums text-white/80">{payMoney(inv.tax)}</span></div>}
             <div className="flex items-center justify-between text-[14px] font-semibold border-t border-white/[0.07] pt-2.5 mt-1"><span className="text-white">Total due</span><span className="text-white tabular-nums">{payMoney(amount)}</span></div>
             {inv.due&&<p className="text-[11.5px] text-white/40 mt-1">Due {inv.due}</p>}
@@ -19379,6 +19524,7 @@ function PaymentsPage({goTo,nav}){
   const [openQuoteId,setOpenQuoteId]=React.useState(null);
   React.useEffect(()=>{if(nav&&nav.newInvoice)nav.newInvoice=null;if(nav&&nav.newQuote)nav.newQuote=null;},[]);
   const [openInv,setOpenInv]=React.useState(null);
+  const [editInv,setEditInv]=React.useState(null);
   const [prodModal,setProdModal]=React.useState(null);
   const [linkModal,setLinkModal]=React.useState(false);
   const [subModal,setSubModal]=React.useState(false);
@@ -19391,6 +19537,8 @@ function PaymentsPage({goTo,nav}){
   const openQuote=quotes.find(q=>q.id===openQuoteId)||null;
   // mutations
   const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);const _linked=(crm.contacts||[]).some(c=>c.name===((invoice.contact||'').trim()));showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated'+(_linked?(' · logged to '+invoice.contact+'’s timeline'):'')));};
+  const saveEditInvoice=(obj)=>{if(!effCanPay('edit')){showToast('Your role can’t edit invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===obj.id?obj:v));setEditInv(null);showToast('Invoice '+obj.number+' updated ✓');};
+  const duplicateInvoice=(src)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const copy={...src,id:'inv_'+Date.now(),number:payNextInvoiceNo(),status:'draft',issued:payDateLabel(payDayShift(0)),agoMin:0,paidDate:null,paidAgoMin:null,link:null,fromQuote:undefined};crm.setPayInvoices(a=>[copy,...a]);setOpenInv(null);showToast('Duplicated as '+copy.number+' (draft) ✓');};
   const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
   const saveProduct=(p)=>{if(!(effCanPay('create')||effCanPay('edit'))){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
   const delProduct=(p)=>{setProdMenu(null);if(!effCanPay('delete')){showToast('Your role can’t delete products.');return;}openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
@@ -19429,7 +19577,7 @@ function PaymentsPage({goTo,nav}){
           <PayRevenueWidget invoices={invoices} subs={subs}/>
           <div className={cardCls}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]"><p className="text-[13px] font-semibold text-white">Recent invoices</p><button onClick={()=>setTab('invoices')} className="text-[12px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button></div>
-            {invoices.slice(0,4).map((v,i,a)=>(<button key={v.id} onClick={()=>setOpenInv(v)} className={['w-full text-left grid grid-cols-[1fr_auto] gap-3 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate">{v.number} · due {v.due}</p></div><div className="flex items-center gap-3 shrink-0"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount)}</span><PayPill map={PAY_INV_ST} k={v.status}/></div></button>))}
+            {invoices.slice(0,4).map((v,i,a)=>(<button key={v.id} onClick={()=>setOpenInv(v)} className={['w-full text-left grid grid-cols-[1fr_auto] gap-3 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate">{v.number} · due {v.due}</p></div><div className="flex items-center gap-3 shrink-0"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount,v.currency)}</span><PayPill map={PAY_INV_ST} k={v.status}/></div></button>))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[{l:'Send an invoice',d:'Bill a contact and collect via a payment link.',Icon:I.Note,on:()=>setNewInv(true)},{l:'Create a payment link',d:'A shareable link for a one-off charge.',Icon:I.CreditCard,on:()=>{setTab('links');setLinkModal(true);}},{l:'Add a product',d:'Build your catalog of plans & services.',Icon:I.Tag,on:()=>{setTab('products');setProdModal({});}}].map(q=>(<button key={q.l} onClick={q.on} className="text-left rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:border-brand-500/30 hover:bg-brand-500/[0.05] p-4 transition-all"><div className="w-9 h-9 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center mb-3"><q.Icon size={16}/></div><p className="text-[13px] font-semibold text-white">{q.l}</p><p className="text-[11.5px] text-white/45 mt-1 leading-relaxed">{q.d}</p></button>))}
@@ -19442,7 +19590,7 @@ function PaymentsPage({goTo,nav}){
             <button key={v.id} onClick={()=>setOpenInv(v)} className={['w-full text-left grid grid-cols-[1fr_auto] sm:grid-cols-[110px_1.4fr_1fr_96px_120px_28px] gap-x-3 sm:gap-x-4 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}>
               <span className="hidden sm:block text-[12px] font-mono text-white/55">{v.number}</span>
               <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate sm:hidden">{v.number} · due {v.due}</p><p className="text-[11px] text-white/40 truncate hidden sm:block">{v.company}</p></div>
-              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_INV_ST} k={v.status}/></span></div>
+              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount,v.currency)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_INV_ST} k={v.status}/></span></div>
               <span className="hidden sm:block"><PayPill map={PAY_INV_ST} k={v.status}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{v.due}</span>
               <span className="hidden sm:flex justify-end text-white/25"><I.ChevronRight size={15}/></span>
@@ -19455,7 +19603,7 @@ function PaymentsPage({goTo,nav}){
             <button key={v.id} onClick={()=>setOpenQuoteId(v.id)} className={['w-full text-left grid grid-cols-[1fr_auto] sm:grid-cols-[110px_1.4fr_1fr_96px_120px_28px] gap-x-3 sm:gap-x-4 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}>
               <span className="hidden sm:block text-[12px] font-mono text-white/55">{v.number}</span>
               <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate sm:hidden">{v.number} · valid until {v.validUntil}</p><p className="text-[11px] text-white/40 truncate hidden sm:block">{v.company}</p></div>
-              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span></div>
+              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount,v.currency)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span></div>
               <span className="hidden sm:block"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{v.validUntil}</span>
               <span className="hidden sm:flex justify-end text-white/25"><I.ChevronRight size={15}/></span>
@@ -19505,7 +19653,8 @@ function PaymentsPage({goTo,nav}){
       <AppFooter note="Secured by Stripe · card details never touch our servers"/>
     </div>
     {newInv&&<PayInvoiceDrawer crm={crm} prefill={(newInv&&typeof newInv==='object')?newInv:null} onClose={()=>setNewInv(false)} onCreate={createInvoice} toast={showToast}/>}
-    {openInvoice&&<PayInvoiceDetail inv={openInvoice} crm={crm} goTo={goTo} onClose={()=>setOpenInv(null)} onUpdate={updateInvoice} toast={showToast}/>}
+    {openInvoice&&<PayInvoiceDetail inv={openInvoice} crm={crm} goTo={goTo} onClose={()=>setOpenInv(null)} onUpdate={updateInvoice} onEdit={(i)=>{setOpenInv(null);setEditInv(i);}} onDuplicate={duplicateInvoice} toast={showToast}/>}
+    {editInv&&<PayInvoiceDrawer editInv={editInv} crm={crm} onClose={()=>setEditInv(null)} onCreate={saveEditInvoice} toast={showToast}/>}
     {prodModal&&<PayProductModal initial={prodModal&&prodModal.id?prodModal:null} onClose={()=>setProdModal(null)} onSave={saveProduct}/>}
     {linkModal&&<PayLinkModal onClose={()=>setLinkModal(false)} onSave={createLink}/>}
     {subModal&&<PaySubModal products={products} onClose={()=>setSubModal(false)} onSave={createSub}/>}
@@ -20516,6 +20665,11 @@ function CustomObjectListPage({goTo,nav}){
   const records=def.records||[];
   const setRows=(fn)=>crm.setCustomRecords(def.id,fn);
   const omFields=coOmFields(def,crm);
+  const _selFields=(def.fields||[]).filter(f=>f.type==='Single select');
+  const [coView,setCoView]=React.useState('table');
+  const [coGroupBy,setCoGroupBy]=React.useState((_selFields[0]&&_selFields[0].key)||'');
+  const [dragRec,setDragRec]=React.useState(null);
+  const [dropCol,setDropCol]=React.useState(null);
   const canCreate=effCanCustom('create'),canEdit=effCanCustom('edit'),canDelete=effCanCustom('delete')&&effCanBulkDelete();
   const cols=[{key:'name',w:'1.6fr',label:def.primaryLabel||'Name',cell:(r)=>(<button onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="flex items-center gap-3 min-w-0 text-left w-full"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:15})}</span><span className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{r.r_company||r.createdAt||''}</p></span></button>)}];
   (def.fields||[]).filter(f=>f.col).forEach(f=>cols.push({key:f.key,w:'130px',label:f.label,cell:(r)=>coCellRender(f,r[f.key])}));
@@ -20527,6 +20681,29 @@ function CustomObjectListPage({goTo,nav}){
   const q=search.toLowerCase();
   if(q)base=base.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.r_company||'').toLowerCase().includes(q));
   const list=effScopeRows('Contacts',omSortRows(base,workSort,'custom',omFields),r=>r.owner);
+  const coBoardEl=(coView==='board'&&coGroupBy)?(()=>{
+    const gf=(def.fields||[]).find(f=>f.key===coGroupBy)||_selFields[0];const opts=coFieldOpts(gf);
+    const cols=opts.map(o=>({o,rows:list.filter(r=>String(r[gf.key]==null?'':r[gf.key])===o)}));
+    const unc=list.filter(r=>{const v=String(r[gf.key]==null?'':r[gf.key]);return !opts.includes(v);});
+    if(unc.length)cols.push({o:'',rows:unc});
+    const canDrag=effCanCustom('edit');
+    const move=(r,toOpt)=>{if(!canDrag){showToast('Your role can’t move '+def.plural.toLowerCase());return;}crm.updateCustomRecord(def.id,r.id,{[gf.key]:toOpt});showToast((r.name||def.singular)+' → '+(toOpt||'Uncategorized'));};
+    return(<React.Fragment><style>{".crm-list-head{display:none}"}</style><KanbanBoard
+      wrapClass="overflow-x-auto scroll-area px-4 sm:px-7 py-4" boardClass="flex gap-3 items-start" placeholder={false}
+      dragEnabled={canDrag}
+      columns={cols.map(c=>({key:c.o,rows:c.rows,header:(<div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-white/[0.05]"><span className="w-2 h-2 rounded-full shrink-0" style={{background:c.o?arHashColor(c.o):'#475569'}}/><span className="text-[12.5px] font-semibold text-white truncate">{c.o||'Uncategorized'}</span><span className="ml-auto text-[11px] font-medium text-white/40 bg-white/[0.05] rounded-full px-2 py-0.5 shrink-0">{c.rows.length}</span></div>)}))}
+      colClass={(col,ci,ov)=>['w-[280px] shrink-0 rounded-2xl border flex flex-col',ov?'border-brand-500/40 bg-brand-500/[0.05]':'border-white/[0.06] bg-white/[0.02]'].join(' ')}
+      bodyClass={()=>'p-2.5 flex flex-col gap-2 min-h-[80px]'}
+      canDrag={()=>canDrag}
+      onMove={(id,fromKey,toKey)=>{const r=list.find(x=>x.id===id);if(r)move(r,toKey);}}
+      renderCard={(r,col,dp,dragging)=>(<button {...dp} onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className={['w-full text-left rounded-xl p-3 border transition-colors',canDrag?'cursor-grab':'cursor-pointer',dragging?'opacity-50 bg-white/[0.05] border-white/[0.12]':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'].join(' ')}>
+        <p className="text-[13px] font-medium text-white truncate">{r.name||'—'}</p>
+        {r.r_company&&<p className="text-[11px] text-white/45 truncate mt-0.5">{r.r_company}</p>}
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">{(def.fields||[]).filter(f=>f.key!==gf.key&&f.col&&r[f.key]!=null&&r[f.key]!=='').slice(0,2).map(f=>(<span key={f.key}>{coCellRender(f,r[f.key])}</span>))}{r.owner&&<span className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</span>}</div>
+      </button>)}
+      renderEmpty={()=>(<div className="text-[11px] text-white/25 text-center py-6">Drop here</div>)}
+    /></React.Fragment>);
+  })():null;
   const onSort=(k)=>setWorkSort(s=>omNextSort(s,k));
   const toggleSel=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
   const allChecked=list.length>0&&list.every(r=>selected.includes(r.id));
@@ -20540,6 +20717,8 @@ function CustomObjectListPage({goTo,nav}){
       <div className="shrink-0 flex items-center gap-2 px-4 sm:px-7 py-3 border-b border-white/[0.05] flex-wrap" style={{background:'var(--s925)'}}>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] w-[220px] max-w-full"><I.Search size={13} className="text-white/35"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={'Search '+def.plural.toLowerCase()+'…'} className="flex-1 bg-transparent outline-none text-[12.5px] text-white placeholder:text-white/30"/></div>
         <OmFiltersButton object="custom" fields={omFields} model={workFilter} onChange={setWorkFilter}/>
+        {_selFields.length>0&&<div className="inline-flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{[['table','Table'],['board','Board']].map(([k,l])=>(<button key={k} onClick={()=>setCoView(k)} className={['px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-all',coView===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>}
+        {coView==='board'&&_selFields.length>0&&<div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"><span className="text-[11px] text-white/45">Group by</span><select value={coGroupBy} onChange={e=>setCoGroupBy(e.target.value)} className="bg-transparent text-[11.5px] text-white/80 outline-none" style={{colorScheme:'dark'}}>{_selFields.map(f=>(<option key={f.key} value={f.key} style={{background:'var(--s900)'}}>{f.label}</option>))}</select></div>}
         <div className="ml-auto inline-flex items-center p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">{[['active','Active'],['arch','Archived']].map(([k,l])=>{const on=(k==='arch')===showArch;return(<button key={k} onClick={()=>setShowArch(k==='arch')} className={['px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-all',on?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}{k==='arch'&&archived>0?' '+archived:''}</button>);})}</div>
       </div>
       {selected.length>0&&canEdit&&(<div className="shrink-0 flex items-center gap-2 px-4 sm:px-7 py-2.5 border-b border-brand-500/20 bg-brand-500/[0.06] flex-wrap">
@@ -20556,7 +20735,7 @@ function CustomObjectListPage({goTo,nav}){
           <button onClick={toggleAll} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',allChecked?'bg-brand-500 border-brand-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{allChecked&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
           {cols.map(c=>(<OmSortHeader key={c.key} colKey={c.key} label={c.label} sort={workSort} onSort={onSort}/>))}<span/>
         </div>
-        {list.length===0?(<div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30">{React.createElement(coIco(def.icon),{size:26})}</div><p className="text-[16px] font-semibold text-white">{search||workFilter.conds.length?'No '+def.plural.toLowerCase()+' match':(showArch?'No archived '+def.plural.toLowerCase():'No '+def.plural.toLowerCase()+' yet')}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5">{search||workFilter.conds.length?'Try adjusting your search or filters.':'Create your first '+def.singular.toLowerCase()+' to get started.'}</p>{canCreate&&!showArch&&!search&&!workFilter.conds.length&&<button onClick={()=>setDrawer(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New {def.singular}</button>}</div></div>):list.map((r,i)=>{const sel=selected.includes(r.id);return(
+        {coView==='board'?coBoardEl:list.length===0?(<div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30">{React.createElement(coIco(def.icon),{size:26})}</div><p className="text-[16px] font-semibold text-white">{search||workFilter.conds.length?'No '+def.plural.toLowerCase()+' match':(showArch?'No archived '+def.plural.toLowerCase():'No '+def.plural.toLowerCase()+' yet')}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5">{search||workFilter.conds.length?'Try adjusting your search or filters.':'Create your first '+def.singular.toLowerCase()+' to get started.'}</p>{canCreate&&!showArch&&!search&&!workFilter.conds.length&&<button onClick={()=>setDrawer(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>New {def.singular}</button>}</div></div>):list.map((r,i)=>{const sel=selected.includes(r.id);return(
           <div key={r.id} className={['crm-list-row w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',i<list.length-1?'border-b border-white/[0.03]':'',sel?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
             {canEdit?<button onClick={()=>toggleSel(r.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',sel?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{sel&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>:<span/>}
             {cols.map(c=>(<div key={c.key} className="min-w-0">{c.cell(r)}</div>))}
