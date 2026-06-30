@@ -7587,9 +7587,12 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
   const [dragOver,setDragOver]=React.useState(null);
   const [newPipeOpen,setNewPipeOpen]=React.useState(false);
   const [view,setView]=React.useState('board');
+  const [gearMenu,setGearMenu]=React.useState(false);
+  const {confirmNode,openConfirm}=useConfirm();
   const [workFilter,setWorkFilter]=React.useState({match:'AND',conds:[]});
   const dragRef=React.useRef(null);
-  React.useEffect(()=>{setGroupBy((desc.groups[0]&&desc.groups[0][0])||'owner');setEditStages(false);setColorPop(null);setDragOver(null);setView('board');setWorkFilter({match:'AND',conds:[]});},[objKind]);
+  React.useEffect(()=>{setGroupBy((desc.groups[0]&&desc.groups[0][0])||'owner');setEditStages(false);setColorPop(null);setDragOver(null);setView('board');setWorkFilter({match:'AND',conds:[]});setGearMenu(false);},[objKind]);
+  React.useEffect(()=>{if(!gearMenu)return;const fn=e=>{if(!e.target.closest('[data-gear-menu]'))setGearMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[gearMenu]);
   const gf=groupBy;
   const ge=desc.groups.find(g=>g[0]===gf);
   const opts=ge?ge[2]:null;
@@ -7631,7 +7634,10 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
     if(custom){const id='rec_'+Date.now();const rec={id,name:'New '+custom.singular,owner:'AM',ownerColor:arOwnerColor('AM'),tags:[],createdAt:'Just now',agoMin:0,acts:[]};if(stageVal)rec[gf]=stageVal;crm.setCustomObjects(a=>a.map(o=>o.id===custom.id?{...o,records:[...(o.records||[]),rec]}:o));goTo('custom-record',{objectId:custom.id,recordId:id});}
     else{window.__nrturQuickAdd?window.__nrturQuickAdd(objKind):goTo('add-'+objKind);}
   };
-  const gearBtn=canEditStages&&view==='board'?<button onClick={()=>setEditStages(v=>!v)} title={editStages?'Done editing stages':'Edit stages'} aria-pressed={editStages} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',editStages?'text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}>{editStages?<I.Check size={15} stroke={2.6}/>:<I.Settings size={15}/>}</button>:null;
+  const openObjPage=()=>{if(custom)goTo('custom-object',{objectId:custom.id});else goTo(objKind==='lead'?'leads':objKind==='contact'?'contacts':'companies');};
+  const deletePipeline=()=>{if(!custom)return;openConfirm({title:'Delete "'+custom.plural+'" pipeline?',body:'This permanently removes the '+custom.plural+' object and its '+(custom.records||[]).length+' record'+((custom.records||[]).length===1?'':'s')+'. This cannot be undone.',confirmLabel:'Delete pipeline',danger:true,requireText:custom.plural,onConfirm:()=>{crm.setCustomObjects(a=>a.filter(o=>o.id!==custom.id));window.__nrturToast&&window.__nrturToast(custom.plural+' deleted','success');onSwitch(1);}});};
+  const gMI='w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-all';
+  const gearBtn=view==='board'?(editStages&&canEditStages?<button onClick={()=>setEditStages(false)} title="Done editing stages" aria-pressed={true} className="inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all text-emerald-300 bg-emerald-500/12 border-emerald-500/25 hover:bg-emerald-500/[0.16]"><I.Check size={15} stroke={2.6}/></button>:<div className="relative" data-gear-menu><button onClick={()=>setGearMenu(o=>!o)} title="Pipeline settings" aria-haspopup="menu" aria-expanded={gearMenu} className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',gearMenu?'bg-brand-500/20 text-brand-200 border-brand-500/30':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.Settings size={15}/></button>{gearMenu&&<div className="absolute left-0 top-[calc(100%+8px)] z-50 w-56 rounded-xl border border-white/[0.10] p-1.5 shadow-[0_12px_50px_rgba(0,0,0,0.55)]" style={{background:'var(--pop)'}}>{canEditStages&&<button onClick={()=>{setEditStages(true);setGearMenu(false);}} className={gMI+' text-white/80 hover:bg-white/[0.05]'}><I.Settings size={14} className="text-white/40"/>Edit stages</button>}<button onClick={()=>{openObjPage();setGearMenu(false);}} className={gMI+' text-white/80 hover:bg-white/[0.05]'}><I.ArrowUpRight size={14} className="text-white/40"/>Open {desc.plural}</button>{custom&&<button onClick={()=>{goTo('settings-custom-objects');setGearMenu(false);}} className={gMI+' text-white/80 hover:bg-white/[0.05]'}><I.ExternalLink size={14} className="text-white/40"/>Configure object</button>}{custom&&<div className="h-px bg-white/[0.06] my-1.5 mx-1"/>}{custom&&<button onClick={()=>{setGearMenu(false);deletePipeline();}} className={gMI+' text-red-300/90 hover:bg-red-500/10'}><I.Trash size={14}/>Delete pipeline</button>}</div>}</div>):null;
   return(<div className="h-full flex" style={{background:'var(--s925)'}}>
     <AppSidebar active="pipeline" goTo={goTo}/>
     <div className="flex-1 flex flex-col min-w-0">
@@ -7647,6 +7653,7 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,goTo}){
         <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/[0.04]">{r.owner?<div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</div><span className="text-[10px] text-white/50">{r.owner}</span></div>:<span/>}<I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
       </button>)}/>)}
       {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={crm.customObjects} onCreateDeal={onNewDeal} onSelect={onSwitch}/>}
+      {confirmNode}
     </div>
   </div>);
 }
