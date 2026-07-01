@@ -2351,6 +2351,17 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const createRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(createRef.current&&!createRef.current.contains(e.target))setCreateOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   const set=(id,v)=>setVals(s=>({...s,[id]:v}));
+  // Auto-fill Company from the picked Contact's linked company (Wave 3: contacts carry companyId).
+  // Switching the contact updates the company too — unless the company was set manually.
+  const _coAuto=React.useRef(false);
+  const _contactFld=fields.find(f=>f.type==='Lookup'&&/contact/.test((f.label||'').toLowerCase()));
+  const _companyFld=fields.find(f=>f.type==='Lookup'&&/company/.test((f.label||'').toLowerCase()));
+  const _contactCompanyName=(name)=>{const ct=(crm.contacts||[]).find(c=>c.name===name&&!c.deleted);if(!ct)return'';const co=(ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null)||(ct.co?(crm.companies||[]).find(c=>c.name===ct.co):null);return co?co.name:(ct.co||'');};
+  const onFieldChange=(f,v)=>{
+    if(_companyFld&&f.id===_companyFld.id){_coAuto.current=false;return set(f.id,v);} // user chose the company manually → respect it
+    if(_contactFld&&_companyFld&&f.id===_contactFld.id){return setVals(s=>{const next={...s,[f.id]:v};const coName=_contactCompanyName(v);const cur=String(s[_companyFld.id]||'').trim();if(coName&&(!cur||_coAuto.current)){next[_companyFld.id]=coName;_coAuto.current=true;}return next;});}
+    return set(f.id,v);
+  };
   const emailRe=/\S+@\S+\.\S+/;
   const errorFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());if(f.required&&empty)return'Required';if(f.type==='Email'&&!empty&&!emailRe.test(v))return'Enter a valid email';return'';};
   const nudgeFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());return(f.important&&empty)?'Recommended':'';};
@@ -2386,11 +2397,11 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
       {mode==='single'?(<React.Fragment>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4">
-            {primary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>set(f.id,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}
+            {primary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}
           </div>
           {secondary.length>0&&<div className="mt-4">
             <button onClick={()=>setShowMore(o=>!o)} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.ChevronDown size={14} style={{transform:showMore?'rotate(180deg)':'none',transition:'transform .15s'}}/>{showMore?'Hide':'Show more fields'}<span className="text-white/35 font-normal">({secondary.length})</span></button>
-            {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>set(f.id,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
+            {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
           </div>}
         </div>
         <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
