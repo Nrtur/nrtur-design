@@ -4,7 +4,7 @@
 > **Components:** `PipelinePage` · `ObjectBoard` · `DealDetailPage` · `AddDealPage` · `DealOutcomeModal` · `NewPipelineModal` · `KanbanBoard`
 > **Source lines (index.html):** 7368–8078
 
-The Pipeline page is the central hub for all revenue-tracking activity. It is pipeline-first: the page title is the pipeline name, and switching pipelines is done from a dropdown in the title area — not from the CRM object tabs. Named deal pipelines (e.g., "Sales Pipeline", "Customer Onboarding") and custom-object pipelines (Leads board, Companies board) all live under this one route.
+The Pipeline page is the central hub for all revenue-tracking activity. It is pipeline-first: the page title is the pipeline name, and switching pipelines is done from a dropdown in the title area — not from the CRM object tabs. Named deal pipelines (e.g., "Sales Pipeline", "Customer Onboarding") and custom-object pipelines all live under this one route. Pipelines themselves are Deals-only — Leads, Contacts, and Companies are no longer pipeline objects (the Leads page carries its own status-board view; see Module — Leads).
 
 ---
 
@@ -130,7 +130,7 @@ Only Pipeline and Forecast are computed live from the deal data. Won, Avg deal, 
 ### Three lenses
 
 **Frontend**
-- `dealsFor(stage)` runs `omApplyFilter` + `omSortRows` on every render for every column. This is O(stages × deals × conditions) per frame. Memoise with `useMemo([active.id, workFilter, workSort, _deals])`.
+- `dealsFor(stage)` first scopes deals to the **active pipeline** via `dealInActivePipe(d)` (`(d.pipeline || defaultPipe) === active.name`), then matches `stageKey`, then runs `omApplyFilter` + `omSortRows`. A deal appears only on its own pipeline's board — not on every pipeline that happens to have a stage with the same key. This is O(stages × deals × conditions) per frame; memoise with `useMemo([active.id, workFilter, workSort, _deals])`.
 - `fc_stageRows` is computed once and shared by Board metrics, List (for the flat listFlat), and Forecast — it's the right single-computation pattern to keep.
 - Mobile: `pipe-col-active` and `pipe-mob-tabs` are driven by CSS classes. The `mobStage` index must clamp to `active.stages.length - 1` (already done via `Math.min`).
 - `publishRecordCtx('deal', allVisible.map(d=>d.id))` publishes visible deal IDs to a shared context for the global search highlight and for the `RecordSwitcher` on detail pages.
@@ -320,30 +320,30 @@ Win probability is used for the Forecast weighted total. Setting a stage to 100%
 | Element | Detail |
 |---|---|
 | Header | "Create pipeline" + "Choose what this pipeline tracks" |
-| Object grid | 2-col grid of object option buttons |
+| Object grid | 2-col grid of object option buttons — **Deals + any custom objects only** (no Leads/Contacts/Companies) |
 | Pipeline name input | Only shown when `obj === 'deal'`; auto-focused |
-| Info text | Shown for non-deal objects: describes what the pipeline will show |
-| Footer | Cancel + "Create pipeline" (deals) / "Open pipeline" (non-deals) |
+| Info text | Shown for a custom object: describes the board it will open |
+| Footer | Cancel + "Create pipeline" (deals) / "Open pipeline" (custom object) |
 
 ### Object options
+
+The picker (`OBJS`) is `[{k:'deal',…}]` concatenated with the workspace's custom objects. Leads, Contacts, and Companies were removed — pipelines are Deals-only, and those objects are no longer pipeline objects.
 
 | Option | Label | Description | Behaviour on create |
 |---|---|---|---|
 | `deal` | Deals | "Sales opportunities" | Creates a new pipeline with "Lead in" + "Won" stages; navigates to it with `editStages=true` |
-| `lead` | Leads | "Qualify by status" | Switches to `obj_lead` built-in pipeline (ObjectBoard) |
-| `contact` | Contacts | "Group by status" | Switches to `obj_contact` built-in pipeline |
-| `company` | Companies | "Group by type" | Switches to `obj_company` built-in pipeline |
 | _(custom objects)_ | Object plural name | "Custom object" | Switches to `cop_{objectId}` pipeline |
 
 For Deals: "Create pipeline" → `addPipeline(name)` → new pipeline object with id=Date.now(), two starter stages, `setEditStages(true)`, `setFocusName(true)`.
 
-For non-Deals: button label is "Open pipeline" — just switches `activeId` to the built-in or custom-object pipeline ID. No new pipeline is created; Leads/Contacts/Companies boards are always available.
+For a custom object: button label is "Open pipeline" — just switches `activeId` to the `cop_{objectId}` pipeline. No new pipeline is created; the custom-object board already exists.
 
 ### Design decision
 
 | Decision | Alternative | Why this | Tradeoff |
 |---|---|---|---|
-| "Create pipeline" for non-deals navigates instead of creating | Create a separate pipeline record for Leads/Contacts/Companies | Built-in object boards always exist — there's nothing to create. The modal's role for these objects is navigation, not creation. Button label changes to "Open pipeline" to signal this | Users who expect all options in the modal to behave the same way (create) may be confused by the asymmetry |
+| "Open pipeline" for a custom object navigates instead of creating | Create a separate pipeline record per custom object | The custom-object board already exists — there's nothing to create. The modal's role for these objects is navigation, not creation. Button label changes to "Open pipeline" to signal this | Users who expect every option in the modal to behave the same way (create) may be confused by the asymmetry |
+| Pipelines are Deals-only; Leads/Contacts/Companies removed from the picker | Keep them as selectable "pipeline" objects | A pipeline is a revenue funnel; Leads have their own status-board view on the Leads page, and grouping Contacts/Companies by a status field is a table concern, not a pipeline. Removing them keeps "pipeline" meaning the deal funnel | Users migrating from GHL/HubSpot (where any object can be a pipeline) lose that flexibility; custom-object boards remain the escape hatch |
 
 ---
 
@@ -371,7 +371,7 @@ For non-Deals: button label is "Open pipeline" — just switches `activeId` to t
 
 ### Stage progress bar
 
-`DEAL_STAGE_ORDER = ['Prospecting','Qualified','Proposal','Negotiation','Won']` — 5 steps, not including Lost.
+`DEAL_STAGE_ORDER` = `STAGES_DATA` with Lost filtered out → `['Prospecting','Qualified','Proposal','Negotiation','Won']` — 5 steps, not including Lost (Lost is a terminal off-ramp, not a linear rung).
 
 ```
 DEAL_STAGE_COLOR = {
@@ -398,19 +398,21 @@ Clicking a dot advances or retreats the deal to that stage:
 | `name` | Name | text | required |
 | `amount` | Amount | currency | **SENSITIVE** — masked below Team Lead |
 | `pipeline` | Pipeline | select | Sales Pipeline / Onboarding Pipeline (hardcoded, not dynamic) |
-| `dStage` | Stage | pill | Qualified / Proposal / Negotiation / Won / Lost |
+| `dStage` | Stage | pill | Prospecting / Qualified / Proposal / Negotiation / Won / Lost (`DEAL_STAGES_ALL`) |
 | `probability` | Probability | percent | 0–100 |
 | `closeDate` | Expected close date | date | |
 | `owner` | Owner | owner | |
-| `primaryContact` | Primary contact | lookup | → contact-detail |
-| `company` | Company | lookup | → company-detail |
+| `primaryContact` | Primary contact | lookup | → contact-detail (resolves the real named person via `d.primaryContactId`, id-first, name fallback) |
+| `company` | Company | lookup | → company-detail (resolves via `d.companyId`, id-first, name fallback) |
 | `nextAction` | Next action | text | |
 | `dealTags` | Tags | tags | |
 | `dStatus` | Status | pill | read-only: Open / Won / Lost |
 
+The `primaryContact` and `company` lookups now resolve by id first (`d.primaryContactId` / `d.companyId`), falling back to the display-name match, then — for the contact only — to the first contact at the company. This means a deal's Primary contact links to the actual named person, not merely "the first contact at the company".
+
 ⚠️ **Prototype inconsistency:** `pipeline` field lists only "Sales Pipeline" and "Onboarding Pipeline" as hardcoded options — it doesn't read from the `pipelines` state in `PipelinePage`. Changes to pipeline names or new pipelines won't appear here. Production must populate this from the pipelines API.
 
-⚠️ **Prototype inconsistency:** `dStage` pill options are `['Qualified','Proposal','Negotiation','Won','Lost']` — NOT the full `STAGES_DATA` list. "Prospecting" is missing. Production should read stage options dynamically from the pipeline's stage definitions.
+`dStage` pill options are `DEAL_STAGES_ALL` — the full canonical stage set (Prospecting / Qualified / Proposal / Negotiation / Won / Lost), derived from `STAGES_DATA`. This is now the one source of truth shared by every deal screen; there is no longer a separate hardcoded five-item list.
 
 ### Secondary fields (dealSecondary)
 
@@ -432,7 +434,7 @@ Clicking a dot advances or retreats the deal to that stage:
 
 ### ActivityTimeline on Deal Detail
 
-`kind="deal"`, supports `onAddNote` + `onSchedule` only. No email compose, no dialer — deals are company-level, not contact-level. Notes added via `onAddNote` create a `mkAct('note')` item in local `extra` state.
+`kind="deal"`, supports `onAddNote` + `onSchedule` only. No email compose, no dialer — deals are company-level, not contact-level. Notes added via `onAddNote` create a `mkAct('note')` item; `extra` now reads from the shared `crm.activities` store (filtered by `subjectType==='deal'` + `subjectId`) and `setExtra` writes via `crm.addActivity`, so logged notes/tasks **persist across navigation** rather than being lost on leaving the record.
 
 RecordTasks match: `t.deal?.includes(d.company) || t.company === d.company` — a loose match by company name.
 
@@ -441,12 +443,11 @@ RecordTasks match: `t.deal?.includes(d.company) || t.company === d.company` — 
 When the `dStage` property is edited in `RecordProperties` or `RecordEditDrawer`:
 ```
 onDealField('dStage', 'Proposal') →
-  mp = { Qualified:'qualified', Proposal:'proposal', Negotiation:'negotiation', Won:'won', Lost:'lost' }
   setStage(v)
-  updateDeal(d.id, { dStage: v, stageKey: mp[v] })
+  updateDeal(d.id, { dStage: v, stageKey: DEAL_STAGE_KEY_BY_NAME[v] || d.stageKey })
 ```
 
-This keeps the local `stage` display state in sync with the persisted `stageKey`.
+The name→key lookup is `DEAL_STAGE_KEY_BY_NAME`, the canonical map derived from `STAGES_DATA` (covers all stages incl. Prospecting and Lost) — not a hand-written subset. This keeps the local `stage` display state in sync with the persisted `stageKey`.
 
 ---
 
@@ -463,15 +464,15 @@ This keeps the local `stage` display state in sync with the persisted `stageKey`
 ### Three lenses
 
 **Frontend**
-- `DEAL_STAGE_ORDER` and `DEAL_STAGE_COLOR` are module-level constants used only by `DealDetailPage` — they are NOT the same as `STAGES_DATA`. This duplication must be consolidated in production.
+- `DEAL_STAGES_ALL`, `DEAL_STAGE_ORDER`, `DEAL_STAGE_COLOR`, and `DEAL_STAGE_KEY_BY_NAME` are module-level constants all **derived from `STAGES_DATA`** — one canonical stage vocabulary shared by the detail ladder, stage selects, filters, and name→key mapping. `DEAL_STAGE_ORDER` is `STAGES_DATA` minus Lost (the happy-path ladder); `DEAL_STAGES_ALL` is the full set including Lost.
 - `allDeals()` is called at the top of `DealDetailPage` to get the current deal. This reads from `_liveDeals` (the CrmDataContext deals) and falls back to `STAGES_DATA` seed. The detail page should receive the deal via prop or route param, not re-query the global list.
 - `omLayoutSplit(dealPrimary, dealSecondary, 'Deals', _propsCtx)` merges with custom properties from `PropertiesContext`, same as other detail pages.
 - The CalEventFormModal is pre-filled with `{ type:'meeting', deal: d.company+'·'+d.value, company: d.company, contact: dealContact?.name, linkType: 'contact' }` — the deal reference is a concatenated display string, not a structured ID.
 
 **Backend**
-- `GET /deals/:id` must return: all primary fields, `stageKey`, `stageName`, `stageColor`, `owner`, `ownerColor`, `primaryContact`, `company`, `createdBy`, `createdAt`, `lastActivity`.
+- `GET /deals/:id` must return: all primary fields, `stageKey`, `stageName`, `stageColor`, `owner`, `ownerColor`, `primaryContactId` + `primaryContact`, `companyId` + `company`, `createdBy`, `createdAt`, `lastActivity`. (The prototype now stores the id links alongside the display names.)
 - Updating `dStage` must validate that the new stage exists in the deal's pipeline.
-- `additionalContacts` is an array of `{contact: string, role: string}` — the lookup relation. Production should store contact IDs, not names.
+- `additionalContacts` is an array of `{contact: string, role: string}` mirrored by `additionalContactIds[]` — the lookup relation. Ids are the authoritative link; the name strings are denormalised display copies.
 - `amount` with `sensitive:true` requires field-level visibility control — same as `annualRevenue` on Company.
 - Delete is soft delete: `{ deleted: true, deletedAt, deletedBy }`. Restore available from Recycle Bin.
 
@@ -552,11 +553,14 @@ Default: first option pre-selected. Exactly one must be selected (buttons are ra
 ```
 onConfirm(reason, note) →
   applyMove(outcomePrompt.dd, outcomePrompt.toStage)
+  setDeals(ds => ds.map(x => x.id===dd.id
+    ? {...x, outcome:{ result: kind, reason, note: note||'', closedAt: Date.now(), closedBy: 'Alex Morgan' }}
+    : x))
   toast("Deal marked Won · [reason]")
   setOutcomePrompt(null)
 ```
 
-Note is captured but not stored anywhere in the prototype (no `updateDeal` call with the note). Production must persist: `{ outcomeReason, outcomeNote, closedAt }` on the deal record.
+The reason and note are now **persisted on the deal** as `deal.outcome = { result, reason, note, closedAt, closedBy }`. The deal detail page surfaces it below the profile-card stage pill (e.g. "Won · Competitive price — [note]", emerald for won / red for lost).
 
 ---
 
@@ -576,40 +580,32 @@ Note is captured but not stored anywhere in the prototype (no `updateDeal` call 
 
 ### What it is
 
-When the active pipeline is not a deal pipeline (e.g., it's `obj_lead`, `obj_company`, or `cop_{customObjectId}`), `PipelinePage` renders `ObjectBoard` instead of its own board. ObjectBoard is a Kanban + list view for any non-deal CRM object.
+When the active pipeline is a custom-object pipeline (`cop_{customObjectId}`), `PipelinePage` renders `ObjectBoard` instead of its own board. ObjectBoard is a Kanban + list view for a custom CRM object. Leads, Contacts, and Companies are no longer pipeline objects, so ObjectBoard now serves custom objects only.
 
 ### allPipelines composition
 
 ```javascript
 allPipelines = [
-  ...pipelines,           // deal pipelines (id:1 Sales, id:2 Onboarding, etc.)
-  { id:'obj_lead',    name:'Leads',     object:'lead'    },
-  { id:'obj_contact', name:'Contacts',  object:'contact' },
-  { id:'obj_company', name:'Companies', object:'company' },
-  ..._coPipes,            // custom objects that have ≥1 Single select field
+  ...pipelines,   // deal pipelines (id:1 Sales, id:2 Onboarding, etc.)
+  ..._auxPipes,   // custom-object pipelines opened on demand
 ]
 ```
 
-`_coPipes` builds from `(customObjects).filter(o => o.fields.some(f => f.type === 'Single select'))` → `{ id:'cop_'+o.id, name:o.plural, object:o.id, customObj:o }`.
+`_auxPipes` derives from `auxPipelines` — custom-object pipelines the user has opened from the New-pipeline modal, mapped to `{ id:'cop_'+o.id, name:o.plural, object:o.id, customObj:o }`. `addAuxPipeline(cop_…)` adds the entry the first time it's opened (or just switches to it if already present). Built-in Leads/Contacts/Companies pipelines are gone — they are no longer part of the switcher.
 
 ### Grouping
 
-ObjectBoard groups records by a field, selectable via a "Group by" dropdown in the toolbar:
-
-| Object | Available groups |
-|---|---|
-| Leads | Status (New/Contacted/Nurturing/Qualified/Unqualified) / Source / Owner |
-| Contacts | Status (Prospect/Customer/Lost) / Source / Owner |
-| Companies | Type (Customer/Prospect/Partner/Vendor) / Industry / Owner |
-| Custom object | All Single select fields + Owner |
+ObjectBoard groups records by a field, selectable via a "Group by" dropdown in the toolbar. For a custom object the available groups are **all its Single select fields + Owner**.
 
 The column values come from the chosen field's distinct values across all records. The order respects the field's `options` array first, then any values found in records that aren't in the options.
+
+> **Note:** The component still carries a dormant `BUILT` map for `lead`/`contact`/`company` (used only as an unreachable `BUILT[objKind] || BUILT.lead` fallback). Since pipelines are Deals-only, those built-in objects are never routed here anymore — `allPipelines` only ever produces deal or `cop_` custom-object pipelines. Treat the `BUILT` map as dead code pending removal.
 
 ### Cards
 
 Simpler than deal cards:
 - Record name (bold)
-- Sub-text: company name (leads), email/title (contacts), industry/domain (companies), `r_company` (custom)
+- Sub-text: `r_company` (the custom record's company field)
 - Owner avatar + initials + name
 - Hover arrow
 
@@ -617,7 +613,7 @@ No amount, no rot indicator, no tag pill, no configurable card fields.
 
 ### Edit stages
 
-Only available for **custom objects** on **non-owner group fields** (`canEditStages = !!custom && gf !== 'owner' && canEdit`):
+Available for **custom objects** on **non-owner group fields** (`canEditStages = !!custom && gf !== 'owner' && canEdit`):
 - Insert stage between columns
 - Rename stage (editable input)
 - Set stage colour (12-colour palette `STAGE_PAL`)
@@ -625,29 +621,27 @@ Only available for **custom objects** on **non-owner group fields** (`canEditSta
 - Add stage (trailing dashed column)
 - Reorder by drag
 
-Built-in objects (Leads/Contacts/Companies) do NOT have editable stages — their group values come from fixed system constants.
+### Remove from pipelines
 
-### Delete pipeline
-
-Only custom objects can be deleted (`custom && <Delete pipeline>` in the gear menu). Deleting a custom object pipeline:
-1. Opens confirm dialog with `requireText: custom.plural`
-2. `crm.setCustomObjects(a => a.filter(o => o.id !== custom.id))`
+The gear menu's "Remove from pipelines" action removes only the pipeline **view** — the custom object and its records are untouched:
+1. Opens a confirm dialog ("Remove '[plural]' from pipelines?", body: "the [plural] and their records are not affected. You can add it back anytime from 'New pipeline'.")
+2. Calls `onDeletePipeline()` → drops the entry from `auxPipelines`
 3. Toast + switches to pipeline id 1 (Sales Pipeline)
 
-This removes the entire custom object definition AND all its records.
+The custom object definition is **not** deleted here — reopen the board anytime from the New-pipeline modal. (Deleting the object itself lives in Settings → Custom objects.)
 
 ### Board vs List view
 
-ObjectBoard has its own Board/List toggle. List view is a simple `<table>`: record name + sub-text | group-by field (colour dot + value) | Owner avatar + name. Clicking a row navigates to `custom-record` or the built-in object's detail page.
+ObjectBoard has its own Board/List toggle. List view is a simple `<table>`: record name + sub-text | group-by field (colour dot + value) | Owner avatar + name. Clicking a row navigates to `custom-record`.
 
 ### Gear menu (Settings icon on ObjectBoard)
 
 | Item | Condition | Action |
 |---|---|---|
 | Edit stages | `canEditStages` | Toggles `editStages` on the board |
-| Open [Leads/Contacts/etc.] | always | Navigates to the object's main list page |
+| Open [plural] | always | Navigates to the custom object's main list page (`custom-object`) |
 | Configure object | custom only | `goTo('settings-custom-objects')` |
-| Delete pipeline | custom only | Confirm dialog → removes custom object |
+| Remove from pipelines | custom only | Confirm dialog → removes the pipeline view only (object + records untouched) |
 
 ---
 
@@ -655,9 +649,9 @@ ObjectBoard has its own Board/List toggle. List view is a simple `<table>`: reco
 
 | Decision | Alternative | Why this | Tradeoff |
 |---|---|---|---|
-| Built-in objects (Leads/Contacts/Companies) get board views under Pipeline | Build a dedicated "Board" view on each object's own page | Unifies all Kanban-style tracking in one place — managers don't need to learn a separate board on each module. One Pipeline switcher covers everything | Conflates "pipeline" (revenue funnel) with "Kanban board" (generic grouping); reps may wonder why "Companies" appears in the pipeline nav |
+| Pipeline hosts Deals + custom-object boards only; Leads get a status board on their own page | Keep Leads/Contacts/Companies as pipeline objects too | "Pipeline" should mean the deal revenue funnel. Leads have their own List/Board status view on the Leads page; Contacts/Companies grouping is a table concern. Custom objects still get Kanban boards here for genuinely funnel-shaped custom workflows | Managers lose one unified Kanban surface for every object; they now look in two places (Pipeline for deals/custom, Leads page for the lead status board) |
 | Only Single select fields qualify for Kanban column grouping on custom objects | Allow any field type as a grouping axis | Only a finite discrete set of values creates finite columns. Text/number/date/relation fields produce unlimited or unmanageable column sets | Custom objects with no Single select fields get no board view at all — they must use list view only |
-| Deleting a pipeline for a custom object deletes the entire custom object | Delete only the pipeline view; keep the object and its records | In the prototype, the pipeline IS the object — there's no pipeline record separate from the object definition | Destroying a view destroys all data. Production must decouple pipeline view records from object definitions so multiple pipelines can exist per object |
+| Removing a custom-object pipeline removes the view only, not the object | Delete the object and its records with the pipeline | The pipeline view is decoupled from the object definition (added on demand via `auxPipelines`). Removing it is non-destructive; the object still lives in Settings → Custom objects and can be re-added anytime | A user wanting to fully delete a custom object must do it from Settings, not from the pipeline gear menu — two locations for two different intents |
 
 ---
 
@@ -666,14 +660,13 @@ ObjectBoard has its own Board/List toggle. List view is a simple `<table>`: reco
 **Frontend**
 - `ObjectBoard` re-uses `KanbanBoard` — same drag/drop primitives as the deals board
 - `omApplyFilter(baseRows, workFilter, omFields)` applies the same filter engine used on list pages
-- `move(id, toVal)` dispatches differently for custom objects (`crm.updateCustomRecord`) vs built-ins (`desc.set(...)`)
+- `move(id, toVal)` calls `crm.updateCustomRecord(custom.id, id, {[gf]: toVal})` for custom records. (The `desc.set(...)` branch exists for the dormant built-in fallback and is not reached in normal use.)
 - The `doneCol` detection (`/complete|done|won|live|closed/i.test(c.val)`) drives the completion % shown in the summary bar — it identifies the "terminal success" column automatically from its name
 
 **Backend**
-- For built-in objects: `PATCH /contacts/:id { cstatus }`, `PATCH /leads/:id { status }`, `PATCH /companies/:id { type }` — each object has its own field name for the group-by value
 - For custom objects: `PATCH /custom-records/:id { [fieldKey]: newValue }`
 - Stage rename for custom objects must cascade: all records with the old value need to be updated to the new value — `renameStage` does both the field `options` update and the records update atomically in the prototype
-- Delete pipeline for custom objects: `DELETE /custom-objects/:id` — cascades to all records
+- Removing a custom-object pipeline is a **view-only** operation: it drops the entry from `auxPipelines` and does not touch the object definition or its records. Deleting the object itself is a separate `DELETE /custom-objects/:id` (cascades to records) invoked from Settings → Custom objects
 
 ---
 
@@ -688,14 +681,14 @@ A: The prototype shows them as full-width columns. A better UX would be to colla
 **Q: `dealsFor(stage)` runs `omApplyFilter` + `omSortRows` on every render for every stage column. At 10 stages × 100 deals × 5 filter conditions, how bad is this?**
 A: 10 × 100 × 5 = 5 000 comparisons per render. Not catastrophic at small scale, but it fires on every state update — including hover events that re-render cards. Memoize `dealsFor` with `useMemo([active.id, workFilter, workSort, _deals])`. In production with 1 000+ deals, also consider windowed rendering within each column.
 
-**Q: `DealOutcomeModal` captures an outcome reason and note but doesn't store them on the deal record.**
-A: Confirmed — `onConfirm(reason, note)` only calls `applyMove` and shows a toast. `note` is silently discarded. Production must call `PATCH /deals/:id { outcomeReason: reason, outcomeNote: note, closedAt: now() }` in the `onConfirm` handler.
+**Q: Does `DealOutcomeModal` store the outcome reason and note on the deal record?**
+A: Yes. `onConfirm(reason, note)` calls `applyMove`, then `setDeals(...)` to write `deal.outcome = { result, reason, note, closedAt, closedBy }` onto the moved deal, then toasts. The deal detail page reads `d.outcome` and renders the reason + note under the profile-card stage pill. Production maps this to `PATCH /deals/:id { outcomeReason, outcomeNote, closedAt }`.
 
 **Q: The stage progress bar on Deal Detail uses `DEAL_STAGE_ORDER` (5 items) but `STAGES_DATA` has 6 stages including Lost. How does a Lost deal look on the detail page?**
 A: A lost deal shows the stage pill as "Lost" (via `d.stageName`) but the progress bar only highlights up to Won — there's no Lost dot. The progress bar doesn't know the deal is Lost. Production should: either add a Lost dot (exit indicator) to the progress bar, or hide the progress bar for terminal deals and show a different "Closed - Lost" state card.
 
 **Q: The `additionalContacts` field is typed as `relcontacts` and stores `[{contact: string, role: string}]`. How is this different from `primaryContact`?**
-A: `primaryContact` is a single string name; `additionalContacts` is an array of `{contact, role}` pairs. The prototype stores both as name strings, not contact IDs. Production must use IDs: `{ contactId: uuid, role: string }`. The `primaryContact` field should also become a lookup FK, not a denormalised name string.
+A: `primaryContact` is the display name; `additionalContacts` is an array of `{contact, role}` pairs. Deals now also carry **id links alongside** the names — `deal.primaryContactId`, `deal.companyId`, and `deal.additionalContactIds[]` — backfilled by the one-time `migrateLinks()` at app start and minted on every live create path. Joins resolve id-first with name fallback, so a deal's Primary contact links to the real named person (not "the first contact at the company"). Production can drop the denormalised name strings once ids are authoritative everywhere.
 
 **Q: Custom object pipelines with `canEditStages` allow renaming stages on the board. Does renaming cascade to records?**
 A: Yes — `renameStage(oldv, nv)` in ObjectBoard updates both `o.fields[].options` (the field definition) AND `o.records[r][gf]` (all records with the old value) in one `updObj` call. This is an atomic in-memory update. Production needs a transaction: `BEGIN → UPDATE custom_field_options SET value=new WHERE value=old → UPDATE custom_records SET field_value=new WHERE field_value=old → COMMIT`.

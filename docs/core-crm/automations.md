@@ -107,12 +107,24 @@ The builder uses a node-tree model. Each node has a `kind`:
 
 | Kind | What it does |
 |---|---|
-| `action` | A step that does something: send SMS, send email, assign rep, create task, notify Slack, etc. |
+| `action` | A step that does something: send SMS, send email, assign rep, create task, notify Slack, create/update a lead (`createLead`), convert a lead, create a company/deal, etc. |
 | `condition` | An If/then branch: evaluates a field value, routes to `yes` or `no` child lists |
 | `wait` | A delay node: waits N minutes/hours/days/weeks before the next step |
 | `waitUntil` | Wait until a specific date/time or event |
 | `goal` | A terminal condition: if the contact reaches this state, exit the flow as "goal met" |
 | `branch` | Percentage or A/B split |
+
+### Trigger library (`TRIGGER_CATS`)
+
+The `TriggerPicker` groups triggers by category (Contact / Lead / Company / Deal / Smart Lists / Messaging / Activity / Scheduling), each with a plain-language "fires when…" hint. The **Lead** category tracks the current lead lifecycle statuses (New · Contacted · Nurturing · Sales-Ready · Disqualified):
+
+- **Lead created** — a new lead is captured or imported
+- **Lead status changed** — hint "New → Contacted → Sales-Ready, etc."
+- **Lead qualified** — fires when a lead is marked **Sales-Ready** (there is no separate "Qualified" lead status)
+- **Lead score reached** / **Lead source is** / **Lead converted** / **Lead assigned**
+- **New ad lead received** — a lead is captured from a connected ad platform (Meta, Google…)
+
+Because inbound capture channels — ad platforms (`ingestAdLead`), forms & funnels (`runFunnelSubmit`), and booking — now create **Leads** (status New) rather than Contacts, the Lead-category triggers see real inbound traffic, and lead-based enrollment/entry conditions fire on genuinely new leads.
 
 ### Entry conditions
 

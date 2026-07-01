@@ -37,11 +37,11 @@ Single page surfacing every feature in the product; acts as a permanent "what ca
 ---
 
 ## MODULE 5 — Leads
-First-class object (separate from Contacts). Lifecycle: New → Contacted → Nurturing → Qualified → Unqualified → Convert.
+First-class object (separate from Contacts). Lifecycle: New → Contacted → Nurturing → Sales-Ready → Disqualified → Convert.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 5.1 | Leads list (Board/List toggle, Om filter/sort engine, Save Views) | ☑ |
+| 5.1 | Leads list (List/Board toggle — Board is a status view grouped by lead status, not a pipeline; Om filter/sort engine, Save Views) | ☑ |
 | 5.2 | Lead Detail (activity timeline, properties panel, tasks, convert flow) | ☑ |
 | 5.3 | Add Lead page (single-entry form) | ☑ |
 | 5.4 | Convert Lead Modal → creates Contact + Company + optional Deal | ☑ |
@@ -79,14 +79,14 @@ Pipeline-first model: users pick a named pipeline (deals or custom-object), not 
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 8.1 | Pipeline page — Board view (Kanban, grouped by Stage only) | ☑ |
+| 8.1 | Pipeline page — Board view (Kanban, grouped by Stage; scoped to the active pipeline so a deal shows only on its own pipeline) | ☑ |
 | 8.2 | Pipeline page — List view | ☑ |
 | 8.3 | Pipeline filters & search (incl. Forecast view, OmViewMenu, CardFields) | ☑ |
 | 8.4 | Edit Stages mode (inline stage rename/add/delete on the board) | ☑ |
-| 8.5 | New Pipeline Modal (name + object type selector) | ☑ |
+| 8.5 | New Pipeline Modal (name + object picker — Deals or a custom object only; Leads/Contacts/Companies removed) | ☑ |
 | 8.6 | Deal Detail page (activity timeline, properties, linked contacts/company) | ☑ |
 | 8.7 | Add Deal page | ☑ |
-| 8.8 | Deal Outcome Modal (Won / Lost confirmation + reason) | ☑ |
+| 8.8 | Deal Outcome Modal (Won / Lost confirmation + reason & note, persisted on the deal and shown on it) | ☑ |
 | 8.9 | Custom-object pipelines (object boards that re-use the same pipeline UI) | ☑ |
 
 ---
@@ -152,8 +152,8 @@ Lead-capture and data-collection forms, embeddable on external pages.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 13.1 | Forms list (SettingsFormsPage) | ☐ |
-| 13.2 | Form Builder (FormBuilderPage — field canvas + embed code) | ☐ |
+| 13.1 | Forms list (SettingsFormsPage) | ☑ |
+| 13.2 | Form Builder (FormBuilderPage — field canvas + embed code) | ☑ |
 
 ---
 
@@ -162,8 +162,8 @@ Landing-page / funnel builder. Separate from forms.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 14.1 | Funnels list (FunnelsPage) | ☐ |
-| 14.2 | Funnel Builder (FunnelBuilderPage — page canvas) | ☐ |
+| 14.1 | Funnels list (FunnelsPage) | ☑ |
+| 14.2 | Funnel Builder (FunnelBuilderPage — page canvas) | ☑ |
 
 ---
 
@@ -172,8 +172,8 @@ Connect paid ad platforms (Meta, Google, TikTok, LinkedIn) to route inbound lead
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 15.1 | Ad Lead Sources page (SettingsAdLeadsPage — list of connected ad accounts + routing rules) | ☐ |
-| 15.2 | Ad Source Connect Modal (OAuth connect flow per platform) | ☐ |
+| 15.1 | Ad Lead Sources page (SettingsAdLeadsPage — list of connected ad accounts + routing rules) | ☑ |
+| 15.2 | Ad Source Connect Modal (OAuth connect flow per platform) | ☑ |
 
 ---
 
@@ -182,11 +182,11 @@ Unified messaging inbox: email threads + SMS/MMS threads side by side.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 16.1 | Inbox thread list (left panel — email + SMS unified, filter tabs) | ☐ |
-| 16.2 | Thread view (right panel — message history, reply, templates) | ☐ |
-| 16.3 | Mailbox Connect Modal (Gmail / Outlook OAuth) | ☐ |
-| 16.4 | MMS Gallery Modal (media attachments viewer) | ☐ |
-| 16.5 | Email Compose Modal (also in Module 12 — same component) | ☐ |
+| 16.1 | Inbox thread list (left panel — email + SMS unified, filter tabs) | ☑ |
+| 16.2 | Thread view (right panel — message history, reply, templates) | ☑ |
+| 16.3 | Mailbox Connect Modal (Gmail / Outlook OAuth) | ☑ |
+| 16.4 | MMS Gallery Modal (media attachments viewer) | ☑ |
+| 16.5 | Email Compose Modal (also in Module 12 — same component) | ☑ |
 
 ---
 
@@ -195,9 +195,9 @@ Scheduling hub: personal calendar view + booking links + event type setup.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 17.1 | Calendar view (Schedule / Week / Month tab group) | ☐ |
-| 17.2 | Bookings tab (upcoming booked meetings) | ☐ |
-| 17.3 | Event types & availability tab (define booking link types + hours) | ☐ |
+| 17.1 | Calendar view (Schedule / Week / Month tab group) | ☑ |
+| 17.2 | Bookings tab (upcoming booked meetings) | ☑ |
+| 17.3 | Event types & availability tab (define booking link types + hours) | ☑ |
 
 ---
 
@@ -206,7 +206,7 @@ Standalone task manager; tasks also surface on contact/deal/lead detail pages.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 18.1 | Tasks list page (filters: due date, assignee, object, priority) | ☐ |
+| 18.1 | Tasks list page (filters: due date, assignee, object, priority) | ☑ |
 
 ---
 
@@ -215,21 +215,26 @@ Built-in analytics + custom report builder. No external BI tool needed.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 19.1 | Reports page (preset charts: revenue over time, win rate, activity, team) | ☐ |
-| 19.2 | Custom report builder (choose object + metric + grouping) | ☐ |
+| 19.1 | Reports page (preset charts: revenue over time, win rate, activity, team) | ☑ |
+| 19.2 | Custom report builder (choose object + metric + grouping) | ☑ |
 
 ---
 
 ## MODULE 20 — Payments & Invoicing
 Stripe-first invoicing and subscription management. Simulated in the prototype.
 
+_Correction (verified in code): 6 tabs, not 5 — a Quotes tab sits between Invoices and Products._
+
 | # | Feature / Screen | Status |
 |---|---|---|
-| 20.1 | Overview tab (revenue metrics, recent transactions) | ☐ |
-| 20.2 | Invoices tab (list, create, send, pay) | ☐ |
-| 20.3 | Products tab (product/service catalog) | ☐ |
-| 20.4 | Payment Links tab | ☐ |
-| 20.5 | Subscriptions tab | ☐ |
+| 20.1 | Overview tab (revenue metrics, recent transactions) | ☑ |
+| 20.2 | Invoices tab (list, create, send, pay) | ☑ |
+| 20.3 | Quotes tab (estimate → send → accept/decline → convert to invoice) | ☑ |
+| 20.4 | Products tab (product/service catalog) | ☑ |
+| 20.5 | Payment Links tab | ☑ |
+| 20.6 | Subscriptions tab | ☑ |
+| 20.7 | Stripe connection (GenericConnectModal OAuth flow) | ☑ |
+| 20.8 | Pay-at-booking integration (class event types) | ☑ |
 
 ---
 
@@ -238,10 +243,11 @@ User-defined record types. Builder at settings; generic list + detail pages for 
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 21.1 | Custom Object List page (CustomObjectListPage — reuses Om filter/sort engine) | ☐ |
-| 21.2 | Custom Record Detail page (CustomRecordDetailPage — CoProperties + CoLinksPanel + ActivityTimeline + RecordTasks) | ☐ |
-| 21.3 | Custom Object Editor (SettingsCustomObjectsPage — field builder via NewPropertyDrawer + relationship editor via CoRelForm) | ☐ |
-| 21.4 | Custom objects in global search + More-drawer nav + pipelines | ☐ |
+| 21.1 | Custom Object List page (CustomObjectListPage — reuses Om filter/sort engine) | ☑ |
+| 21.2 | Custom Record Detail page (CustomRecordDetailPage — CoProperties + CoLinksPanel + ActivityTimeline + RecordTasks) | ☑ |
+| 21.3 | Custom Object Editor (SettingsCustomObjectsPage — field builder via NewPropertyDrawer + relationship editor via CoRelForm) | ☑ |
+| 21.4 | Custom objects in global search + More-drawer nav + pipelines | ☑ |
+| 21.5 | Relationships deep-dive + full gap audit + competitive best-practices benchmarking (Salesforce/HubSpot/Airtable/Zoho/monday.com) | ☑ |
 
 ---
 
@@ -250,34 +256,34 @@ Shown to all roles but editable only by admins. Non-admins see a read-only view.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 22.1 | General (workspace name, timezone, date format, logo) | ☐ |
-| 22.2 | Custom fields / Properties (per-object field definitions) | ☐ |
-| 22.3 | Team (invite / remove team members, roles) | ☐ |
-| 22.4 | Permissions (role definitions — which objects + actions each role can do) | ☐ |
-| 22.5 | Permission Matrix (grid: all roles × all object-actions, sticky headers) | ☐ |
-| 22.6 | Billing (plan, seats, payment method, invoices) | ☐ |
-| 22.7 | Tags (global tag list, usage counts, merge tags) | ☐ |
-| 22.8 | Statuses (custom statuses per object) | ☐ |
-| 22.9 | Duplicates (duplicate detection rules + merge UI) | ☐ |
-| 22.10 | Notification defaults (workspace-level defaults per notification type) | ☐ |
-| 22.11 | Tasks & reminders (default due times, reminder behavior) | ☐ |
-| 22.12 | Suppression list / Unsubscribes (email send suppression) | ☐ |
-| 22.13 | Frequency cap (max sends per contact per time window) | ☐ |
-| 22.14 | Re-engagement (automatic win-back sequences for dormant contacts) | ☐ |
-| 22.15 | Integrations (workspace-wide: Stripe OAuth, Twilio, Vonage, etc.) | ☐ |
-| 22.16 | Privacy & data retention (GDPR-adjacent field + retention policies) | ☐ |
-| 22.17 | Navigation customization (reorder/hide sidebar nav items) | ☐ |
-| 22.18 | Dashboard customization (default widget templates for the workspace) | ☐ |
-| 22.19 | Record Layouts (configure which fields show on detail pages) | ☐ |
-| 22.20 | List Views (default columns per object list) | ☐ |
-| 22.21 | Branding (custom colors, logo for workspace) | ☐ |
-| 22.22 | White-label (custom domain, remove nrtur branding) | ☐ |
-| 22.23 | Themes & display (global theme presets) | ☐ |
-| 22.24 | Custom Objects builder (create/edit/delete custom object types) | ☐ |
-| 22.25 | Import data (CSV upload + field mapping) | ☐ |
-| 22.26 | Export data (per-object CSV export) | ☐ |
-| 22.27 | Recycle bin (restore soft-deleted records) | ☐ |
-| 22.28 | Delete workspace (hard delete with confirmation text gate) | ☐ |
+| 22.1 | General (workspace name, timezone, date format, logo) | ☑ |
+| 22.2 | Custom fields / Properties (per-object field definitions) | ☑ |
+| 22.3 | Team (invite / remove team members, roles) | ☑ |
+| 22.4 | Permissions (role definitions — which objects + actions each role can do) | ☑ |
+| 22.5 | Permission Matrix (grid: all roles × all object-actions, sticky headers) | ☑ |
+| 22.6 | Billing (plan, seats, payment method, invoices) | ☑ |
+| 22.7 | Tags (global tag list, usage counts, merge tags) | ☑ |
+| 22.8 | Statuses (custom statuses per object) | ☑ |
+| 22.9 | Duplicates (duplicate detection rules + merge UI) | ☑ |
+| 22.10 | Notification defaults (workspace-level defaults per notification type) | ☑ |
+| 22.11 | Tasks & reminders (default due times, reminder behavior) | ☑ |
+| 22.12 | Suppression list / Unsubscribes (email send suppression) | ☑ |
+| 22.13 | Frequency cap (max sends per contact per time window) | ☑ |
+| 22.14 | Re-engagement (automatic win-back sequences for dormant contacts) | ☑ |
+| 22.15 | Integrations (workspace-wide: Stripe OAuth, Twilio, Vonage, etc.) | ☑ |
+| 22.16 | Privacy & data retention (GDPR-adjacent field + retention policies) | ☑ |
+| 22.17 | Navigation customization (reorder/hide sidebar nav items) | ☑ |
+| 22.18 | Dashboard customization (default widget templates for the workspace) | ☑ |
+| 22.19 | Record Layouts (configure which fields show on detail pages) | ☑ |
+| 22.20 | List Views (default columns per object list) | ☑ |
+| 22.21 | Branding (custom colors, logo for workspace) | ☑ |
+| 22.22 | White-label (custom domain, remove nrtur branding) | ☑ |
+| 22.23 | Themes & display (global theme presets) | ☑ |
+| 22.24 | Custom Objects builder (create/edit/delete custom object types) | ☑ _(documented in [Module 21](core-crm/custom-objects.md))_ |
+| 22.25 | Import data (CSV upload + field mapping) | ☑ |
+| 22.26 | Export data (per-object CSV export) | ☑ |
+| 22.27 | Recycle bin (restore soft-deleted records) | ☑ |
+| 22.28 | Delete workspace (hard delete with confirmation text gate) | ☑ |
 
 ---
 
@@ -286,12 +292,12 @@ Each user's own preferences; not gated by admin role.
 
 | # | Feature / Screen | Status |
 |---|---|---|
-| 23.1 | Profile & Account page (name, email, avatar, password change) | ☐ |
-| 23.2 | My calendar connection (personal Google/Outlook calendar OAuth) | ☐ |
-| 23.3 | My integrations (personal integration connections) | ☐ |
-| 23.4 | My preferences (language, date format, density) | ☐ |
-| 23.5 | Notification preferences (per-channel: email / push / in-app) | ☐ |
-| 23.6 | Close my account (self-service offboarding) | ☐ |
+| 23.1 | Profile & Account page (name, email, avatar, password change) | ☑ |
+| 23.2 | My calendar connection (personal Google/Outlook calendar OAuth) | ☑ |
+| 23.3 | My integrations (personal integration connections) | ☑ |
+| 23.4 | My preferences (language, date format, density) | ☑ |
+| 23.5 | Notification preferences (per-channel: email / push / in-app) | ☑ _(documented in [Module 22 §22.10](core-crm/settings-workspace.md#2210-notification-defaults))_ |
+| 23.6 | Close my account (self-service offboarding) | ☑ |
 
 ---
 
@@ -300,29 +306,31 @@ These are not standalone pages but cross-cutting components used everywhere.
 
 | # | Component | Status |
 |---|---|---|
-| 24.1 | App Sidebar (nav logo, quick-add +, pinned nav items, More drawer, bell, theme toggle, settings, profile avatar) | ☐ |
-| 24.2 | Mobile nav (bottom tab bar on ≤768px, hamburger + full-screen drawer) | ☐ |
-| 24.3 | Global Search Overlay (search icon or Cmd+F — contacts, leads, companies, deals, custom records, pages, settings) | ☐ |
-| 24.4 | Command Palette (Cmd+K — jump-to-page + quick actions) | ☐ |
-| 24.5 | Notifications Drawer (bell icon — unread count, per-notification routing) | ☐ |
-| 24.6 | Quick Add Menu (+ button — add contact / lead / company / deal / task) | ☐ |
-| 24.7 | Add Record Drawer (inline add from the + menu without navigating away) | ☐ |
-| 24.8 | Light / Dark theme (data-theme toggle, CSS var system, dark unchanged currently) | ☐ |
-| 24.9 | Role Preview banner (admin can impersonate any role to test permissions) | ☐ |
-| 24.10 | Activity Timeline (shared across Contact / Lead / Company / Deal / Custom Record detail pages) | ☐ |
-| 24.11 | Object Manager filter/sort engine (Om*) — shared by Contacts, Leads, Companies, Custom Objects | ☐ |
-| 24.12 | Save Views Modal (name + scope: personal vs team) | ☐ |
-| 24.13 | Nav More Drawer + Nav Customize Drawer (overflow nav items + drag-to-reorder) | ☐ |
-| 24.14 | NrturMark (brand logo component — SVG mark used in sidebar + sign-up left panel) | ☐ |
-| 24.15 | Billing state banner (payment-failed warning bar shown across the app) | ☐ |
+| 24.1 | App Sidebar (nav logo, quick-add +, pinned nav items, More drawer, bell, theme toggle, settings, profile avatar) | ☑ |
+| 24.2 | Mobile nav (bottom tab bar on ≤768px, hamburger + full-screen drawer) | ☑ |
+| 24.3 | Global Search Overlay (search icon or Cmd+F — contacts, leads, companies, deals, custom records, pages, settings) | ☑ |
+| 24.4 | Command Palette (Cmd+K — jump-to-page + quick actions) | ☑ |
+| 24.5 | Notifications Drawer (bell icon — unread count, per-notification routing) | ☑ |
+| 24.6 | Quick Add Menu (+ button — add contact / lead / company / deal / task) | ☑ |
+| 24.7 | Add Record Drawer (inline add from the + menu without navigating away) | ☑ |
+| 24.8 | Light / Dark theme (data-theme toggle, CSS var system, dark unchanged currently) | ☑ |
+| 24.9 | Role Preview banner (admin can impersonate any role to test permissions) | ☑ |
+| 24.10 | Activity Timeline (shared across Contact / Lead / Company / Deal / Custom Record detail pages) | ☑ |
+| 24.11 | Object Manager filter/sort engine (Om*) — shared by Contacts, Leads, Companies, Custom Objects | ☑ |
+| 24.12 | Save Views Modal (name + scope: personal vs team) | ☑ |
+| 24.13 | Nav More Drawer + Nav Customize Drawer (overflow nav items + drag-to-reorder) | ☑ _(Customize Drawer documented in [Module 22 §22.17](core-crm/settings-workspace.md#2217-navigation-customization))_ |
+| 24.14 | NrturMark (brand logo component — SVG mark used in sidebar + sign-up left panel) | ☑ |
+| 24.15 | Billing state banner (payment-failed warning bar shown across the app) | ☑ |
 
 ---
 
 ## Totals
 - **Modules:** 24
-- **Features / Screens:** ~120
-- **☐ not started:** ~78
+- **Features / Screens:** 129
+- **☐ not started:** 1 (Module 4 — Explore page; owner has not requested this one yet)
 - **◐ in progress:** 0
-- **☑ documented:** 49 (Module 3: 4 · Module 5: 4 · Module 6: 7 · Module 7: 3 · Module 8: 9 · Module 9: 1 · Module 10: 7 · Module 11: 7 · Module 12: 7)
+- **☑ documented:** 128 (Module 3: 4 · Module 5: 4 · Module 6: 7 · Module 7: 3 · Module 8: 9 · Module 9: 1 · Module 10: 7 · Module 11: 7 · Module 12: 7 · Module 13: 2 · Module 14: 2 · Module 15: 2 · Module 16: 5 · Module 17: 3 · Module 18: 1 · Module 19: 2 · Module 20: 8 · Module 21: 5 · Module 22: 28 · Module 23: 6 · Module 24: 15)
 
 _Note: `doc/` folder contains older per-feature docs (pre-Leads/Payments/Custom Objects). They are not counted here — they need to be audited against current code before being trusted._
+
+_Every module scoped for this deep dive is now documented except Module 4 (Explore), which the owner deliberately hasn't reached yet — same as Modules 1–2, which were skipped by owner request. This closes out the systematic module-by-module pass that began this project._

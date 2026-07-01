@@ -142,7 +142,8 @@ Contacts are the primary people object. They are separate from Leads. A Contact 
 - UTM parameters (utm_source, utm_medium, utm_campaign, utm_term, utm_content) — shown as code chips
 
 **Left panel — Deals panel**
-- "Deals · N" label + "New deal" quick-add link
+- "Deals · N" label + "New deal" quick-add link — the quick-add pre-links the new deal to this contact and its company (passes `contactId`/`companyId` plus the display names)
+- Shows this contact's real deals — matched by id (deals where the contact is Primary or an additional contact, or that share the contact's company) with a name fallback
 - Each deal shown as a clickable mini card: deal name, value, stage pill (coloured), stage progress bar
 
 **Right panel — AI Recommended Action card**
@@ -479,13 +480,13 @@ editOpen            — Edit drawer open/closed
 moreOpen            — More menu open/closed
 dnc                 — local DNC state (synced to contact on change)
 enriched            — whether AI enrichment has been triggered
-extra               — session-local activity items (notes logged, calls logged, meetings scheduled this session)
+extra               — this contact's logged activity items (notes, calls, meetings), read from the shared CrmDataContext.activities store — persists across navigation
 ```
 
 ### Key UI behaviours for the frontend dev
 - **New Contact split button**: primary click goes to add-contact (single). The dropdown chevron opens a 3-item menu. These are two separate `<button>` elements sharing the same container — the main button and the chevron button. Do not combine them into one.
 - **Inline property editing**: each field on the detail page is editable by click. Clicking transforms the display value into an input. On blur (or Enter): commit the change immediately via `updateContact(id, {field: value})`. On Escape: revert to the original value. There is no "Save" button for inline edits.
-- **Company field on detail page**: clicking opens an ARLookup component — a searchable dropdown of existing companies. Typing something not in the list offers "Create '[name]'" as an option. Selecting it calls `crm.setCompanies(a => [nrturNewCompany(name), ...a])` and sets the contact's `co` field to the new company name in one step.
+- **Company field on detail page**: clicking opens an ARLookup component — a searchable dropdown of existing companies. Typing something not in the list offers "Create '[name]'" as an option. Selecting it calls `crm.setCompanies(a => [nrturNewCompany(name), ...a])` and sets the contact's company in one step. The link is by id — `contact.companyId` points at the Company record (the `co` display name is kept alongside it); the "go to company" link resolves the company by `companyId` first, falling back to the name.
 - **DNC disabled state**: when `dnc=true` or a channel's specific suppression flag is true, the corresponding action button gets `disabled` attr, cursor:not-allowed, greyed opacity. The tooltip explains why. This must be calculated per-button, not globally.
 - **Dialer Popover**: the floating dialer appears inline below the profile card (not as a modal). It shows the phone number, a dial button, and a timer once started. On hang-up it captures outcome, reason, notes; then calls `onPopoverCall(data, seconds)` which logs the call to the activity timeline.
 - **RecordSheet (multiple-entry mode)**: this is a spreadsheet grid component. Tab key moves to the next cell in the row; at the last cell Tab creates a new row. Pressing Enter in a row also creates a new row below. Pasting a CSV block (Ctrl/Cmd+V on any cell) should parse the paste content and fill cells. Valid rows = rows with at least a name. The "Add N contacts" button count tracks valid rows in real time.
@@ -576,7 +577,7 @@ The prototype simulates the import entirely client-side. In production:
 The single add form validates that email is present (`/\S+@\S+\.\S+/`). The multi-entry RecordSheet and CSV import do not enforce this — contacts can be created without an email. The backend must decide: is email required? If not, the duplicate detection that relies on email matching will miss emailless duplicates.
 
 **"What happens to the contact if their company is deleted?"**
-The contact's `co` field is a plain string (the company name), not a foreign key reference. Deleting a company record does not remove that string from the contact. The company lookup link on the contact detail page would go to the deleted company's record — which would show as "not found" or be in the Recycle Bin. The backend needs to decide how to handle orphaned company references.
+The contact links to its company by id — `contact.companyId` — with the `co` name kept alongside as the display value. Joins are id-first (name only as a fallback), so renaming a company is rename-safe: `updateCompany` cascades the new name onto every linked contact and deal, and never orphans them. Deleting a company record, however, does not clear `companyId`/`co` on the contact; the "go to company" link would then point at the deleted (Recycle Bin) record. The backend still needs to decide how to handle a contact whose linked company was deleted.
 
 **"If a rep toggles DNC off, is there an audit trail?"**
 Not in the current design. The DNC toggle changes `contact.dnc` but there is no activity log entry created automatically for DNC state changes in the prototype. In production you would want a `dnc` activity type entry ("Marketing emails turned OFF" or "ON") created in the activity timeline whenever the DNC state changes, with the actor and timestamp. The activity type already exists in `ACT_META.dnc` — you just need to create the event.
@@ -590,7 +591,7 @@ Both are stored as separate datetime fields on the contact. The health dot uses 
 The prototype's single-add form detects duplicate emails against a hardcoded list and shows the Duplicate Detection Modal. The multi-entry and CSV import flows do not block duplicate emails — they skip duplicates during import (as noted in the Step 3 warning). In production, you need server-side uniqueness enforcement: decide whether email is a unique index, and what to do when a CSV row has an email that already exists (skip, merge, or flag).
 
 **"When a note is added on the detail page, does it save immediately?"**
-In the prototype, notes added via the "Add note" input are stored in local component state (`extra` array) and appear in the timeline immediately, but they don't persist to the backend in this prototype. In production, clicking "Add note" should POST a new activity item to the backend and optimistically render it in the timeline.
+In the prototype, notes added via the "Add note" input are written to the shared `CrmDataContext.activities` store (via `crm.addActivity('contact', id, …)`), keyed by the contact's id. They appear in the timeline immediately and now persist across navigation — leaving the record and coming back keeps the logged note (same for logged calls and scheduled meetings). In production, clicking "Add note" should POST that activity item to the backend and optimistically render it in the timeline.
 
 **"What happens if the user sorts by 'Last activity' while viewing a filtered list?"**
 The filter and sort are applied in sequence: filter first (`omApplyFilter`), then sort (`omSortRows`). The sort operates on the already-filtered list. The column header for "Last activity" sorts by `contact.days` (ascending = most recent = lowest `days` value first, which is counter-intuitive). You should verify that "asc" on a date field means "most recent first" vs "oldest first" and align the sort direction indicator accordingly.

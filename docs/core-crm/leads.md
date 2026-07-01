@@ -1,7 +1,7 @@
 # Leads
 _Module 5 · Verified from `index.html` lines 8571–8970 · 2026-06-30_
 
-Leads are a first-class object in nrtur — separate from Contacts. A Lead is an unqualified person of interest. Once qualified, it converts into a Contact (+ optionally a Company + optionally a Deal). After conversion the lead record stays but becomes read-only.
+Leads are a first-class object in nrtur — separate from Contacts. A Lead is an unqualified person of interest. Inbound capture channels feed this lifecycle: ad platforms, forms & funnels (unless a form is set to create a contact), and bookings all create a Lead in status **New** (with three-way dedupe — a matching Contact or Lead is updated in place, otherwise a new Lead is minted). Once qualified, a lead converts into a Contact (+ optionally a Company + optionally a Deal), all id-linked to each other. After conversion the lead record stays but becomes read-only.
 
 ---
 
@@ -17,7 +17,7 @@ Leads are a first-class object in nrtur — separate from Contacts. A Lead is an
 - New Lead button (permission-gated)
 
 **Left rail — View navigator (OmViewRail)**
-- System views: All Leads, New, Contacted, Nurturing, Qualified, Unqualified
+- System views: All Leads, My Leads, New, Contacted, Sales-Ready, Hot Score, This Week, No Owner
 - User-created views (private / shared / smart lists)
 - View folders: Team views, Sales, Marketing (views can be grouped into folders)
 - Favourites (star toggle per view)
@@ -27,8 +27,9 @@ Leads are a first-class object in nrtur — separate from Contacts. A Lead is an
 
 **Toolbar row** (below topbar)
 - Search input (searches name, company, email)
+- List / Board toggle — switches the leads between the table and a **status board** (kanban grouped by lead status). This is a view of the Leads page, NOT a "pipeline" — pipelines are Deals-only. Cards drag between status columns to change status (edit-gated); hidden on the Converted/Archived tabs
 - Filters button → opens filter builder panel (AND/OR conditions per field)
-- Columns control → toggle which columns show
+- Columns control → toggle which columns show (List view only)
 - Tools menu → includes Duplicates view shortcut
 
 **Active filter chips row** (shown only when filters/search/sort are active)
@@ -52,9 +53,12 @@ Leads are a first-class object in nrtur — separate from Contacts. A Lead is an
 - Archive button (hover-reveal) — on active leads
 - Restore button — on archived leads (replaces convert/archive)
 
-**Bulk action bar** (floating above footer, appears when rows are selected)
+**Bulk action bar** (appears when rows are selected)
 - Count badge + "selected" label
-- Reassign (dropdown: team members)
+- Assign owner (dropdown: team members)
+- Add tag
+- Status (set lead status on all selected)
+- Convert — really converts each selected lead into an id-linked Contact (+ Company + Deal where data allows) behind a confirm, then marks them converted/read-only (not a toast-only fake)
 - Archive
 - Delete
 - Clear selection (X)
@@ -96,8 +100,10 @@ Leads are a first-class object in nrtur — separate from Contacts. A Lead is an
 - Record Switcher (prev/next arrows to navigate to adjacent leads in the current list without going back)
 - Convert lead button (green, prominent) — only shown if not yet converted
 - "Converted" badge (replaces button after conversion — green, with checkmark)
-- Schedule button (opens calendar event form)
-- More menu (⋯): Edit lead, Delete lead
+- Schedule button (opens calendar event form — hidden once the lead is converted)
+- More menu (⋯): Edit lead (hidden once converted), Delete lead
+
+_Once a lead is converted it is read-only: the status dropdown, inline field editing, Schedule, Edit lead, and the add-note / schedule actions on the Activity Timeline are all disabled. Delete remains available. To change details, edit the Contact / Company / Deal it became._
 
 **Two-column layout** (35% left sticky / 65% right scrolling)
 
@@ -105,7 +111,7 @@ Leads are a first-class object in nrtur — separate from Contacts. A Lead is an
 - Avatar (large, 64px, colour-coded)
 - Name + Qualification badge (if lead has a qualification)
 - Job title · Company (subtitle)
-- Status dropdown (inline change)
+- Status dropdown (inline change — disabled once the lead is converted)
 - Lead Score card:
   - Coloured radial gradient background (colour matches score bucket)
   - "Lead score" label
@@ -159,7 +165,7 @@ Industry, Employees size, Additional emails, Additional phones, Converted to (li
 - Email (email input)
 - Phone (tel input)
 - Source (dropdown: Website / Referral / LinkedIn / Cold outreach / Event / Other)
-- Status (dropdown: New / Contacted / Nurturing / Qualified / Unqualified)
+- Status (dropdown: New / Contacted / Nurturing / Sales-Ready / Disqualified)
 - Estimated value (currency input)
 - Owner (dropdown: team members)
 
@@ -269,7 +275,7 @@ The detail page background gradient and score label colour change based on score
 - 90–100: brand purple — very high
 
 ### View types
-- **System views** (built-in): All, New, Contacted, Nurturing, Qualified, Unqualified — read-only, cannot be edited or deleted
+- **System views** (built-in): All Leads, My Leads, New, Contacted, Sales-Ready, Hot Score, This Week, No Owner — read-only, cannot be edited or deleted
 - **Private views**: created by the current user, visible only to them
 - **Shared views**: created by a user, visible to the whole team
 - **Smart lists**: filter-based views that auto-update; have a "smart" badge; can be private or shared
@@ -336,7 +342,7 @@ toast            — current toast message (auto-clears after 2500ms)
 ### State the Lead Detail manages
 ```
 status           — current status (local copy, synced to global on change)
-extra            — locally added activity items (notes, logged meetings)
+extra            — this lead's activity items (notes, logged calls/meetings/tasks), read from the shared CrmDataContext.activities store so they persist across navigation (not component-local)
 convertOpen      — Convert Modal open/closed
 schedOpen        — Schedule modal open/closed
 editOpen         — Edit drawer open/closed
@@ -417,7 +423,7 @@ _Compared to HubSpot, Salesforce, Pipedrive, GoHighLevel, Less Annoying CRM:_
 **Where competitors do it better:**
 - **Salesforce** has a richer convert modal — you can match to an existing Contact or Company rather than always creating new ones. Nrtur always creates new records, so if the company already exists in Companies, you'll create a duplicate.
 - **HubSpot** shows engagement data (email opens, page views) on the lead record automatically. Nrtur's activity timeline only shows what was manually logged or activity from its own inbox — no external engagement tracking.
-- **Pipedrive** has a Board view for leads (kanban by status). Nrtur's Leads module is list-only by default — no kanban for leads specifically (though the Pipeline board handles Deals).
+- **Pipedrive** has a Board view for leads (kanban by status). Nrtur now matches this: the Leads page has a List / Board toggle where Board is a kanban grouped by lead status (this is a status view of the Leads list, distinct from the Deals-only Pipeline board).
 
 ---
 
@@ -445,7 +451,7 @@ No. The Converted tab is read-only — no actions appear there except chip links
 It navigates through the same list the user came from — with whatever filters and sort were active at the time. If you were on a "Hot leads" view sorted by score, the switcher goes through those leads in that order. The list context is passed to the detail page.
 
 **"Can we bulk-convert leads?"**
-No. The current design does not include a bulk-convert action in the bulk bar. Bulk actions available are: Reassign, Archive, Delete. Convert is intentionally one-at-a-time because it requires a review step per lead.
+Yes. The bulk bar has a **Convert** action (leads only). Selecting leads and hitting Convert opens a confirm ("Convert N leads?"), then runs each selected lead through the same convert logic — minting an id-linked Contact (plus a Company and Deal where the data allows) and marking each lead converted/read-only. Because it runs in bulk there is no per-lead review step (unlike the single-lead Convert modal); the fields are auto-carried. Other bulk actions available: Assign owner, Add tag, Status, Archive, Delete.
 
 **"Does deleting a lead also delete the Contact/Company/Deal it was converted into?"**
 No. Deletion only marks the lead record itself as deleted. The Contact, Company, and Deal created from it are completely independent records and are not affected.

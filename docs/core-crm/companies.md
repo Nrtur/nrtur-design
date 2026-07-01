@@ -65,7 +65,7 @@ Seed favourites: `sh_key` (Key Accounts) is pinned by default. View folders seed
 | `website` | 150px | ❌ | Clickable brand-300 link |
 | `tags` | 1.2fr | ❌ | Tag chips, up to 3 shown |
 
-The `contacts` and `deals` columns are computed cross-object aggregates, not stored fields. They call `contactsForCompany(name)` and `dealsForCompany(name)` at render time on the in-memory data arrays.
+The `contacts` and `deals` columns are computed cross-object aggregates, not stored fields. They call `contactsForCompany(co)` and `dealsForCompany(co)` at render time on the in-memory data arrays. The join is now id-first: it matches contacts/deals whose `companyId === co.id`, falling back to the display-name string only when an id is missing. A one-time `migrateLinks()` at app start auto-creates any previously-missing companies and backfills the `companyId` / `primaryContactId` / `additionalContactIds` links, so the counts read live, id-linked state.
 
 ### Type system
 
@@ -150,7 +150,7 @@ Companies don't have email or phone as primary-identity fields in the list data.
 
 **Frontend**
 - `CompaniesPage` is structurally identical to `ContactsPage`; the same Om filter engine, view rail, and bulk bar are reused. The only structural differences are: `COMPANY_COLS` vs `CONTACT_COLS`, `coSeedViews` vs `ctSeedViews`, `object="company"` on `BulkBar` and `DuplicatesView`.
-- `contactsForCompany(name)` and `dealsForCompany(name)` run on every render for every visible row to populate the `contacts` and `deals` columns. At 50–100 rows these are fast linear scans over in-memory arrays, but they are O(n × m) across the whole dataset.
+- `contactsForCompany(co)` and `dealsForCompany(co)` run on every render for every visible row to populate the `contacts` and `deals` columns. They join id-first (`companyId === co.id`) with a name-string fallback. At 50–100 rows these are fast linear scans over in-memory arrays, but they are O(n × m) across the whole dataset.
 - The `useDashNavFilter` hook lets the Dashboard navigate to Companies with a pre-applied filter (e.g., the "Key Accounts" widget links directly to the keyaccts view).
 - Custom property columns from `PropertiesContext` are merged via `customColsFor(_propsCtx,'company')`.
 
@@ -180,8 +180,8 @@ Most CRMs (HubSpot, Salesforce, Pipedrive) treat companies/accounts as a separat
 
 ### Developer Q&A
 
-**Q: `contactsForCompany(name)` matches by company name string. What if two companies have the same name?**
-A: The current implementation uses string equality on `co.name`. Two companies with the same name would share contacts and deals in the panel. Production needs unique IDs: contacts should store a `companyId` (FK to `companies.id`), not just `co` (company name string). The `contactsForCompany` and `dealsForCompany` functions need to be updated to match by ID once real IDs exist.
+**Q: `contactsForCompany` matches by company. What if two companies have the same name?**
+A: The join is now id-first. `contactsForCompany(co)` and `dealsForCompany(co)` match records whose `companyId === co.id`, so two companies sharing a name no longer share contacts and deals — each resolves to its own id-linked records. The display-name string (`c.co` / `d.company`) is only used as a fallback when a record has no `companyId`, and `migrateLinks()` backfills those ids at app start (auto-creating any missing companies). Company IS the hub in this model: contacts carry `companyId`, deals carry `companyId`, and both keep the display name alongside the id.
 
 **Q: The `contacts` and `deals` columns scan all contacts and all deals on every render for every visible row. At what scale does this break?**
 A: At 100 visible rows × 10 000 contacts, that's 1 000 000 comparisons per render. Fine in a prototype, not fine in production. The backend should return `contactCount`, `openDealCount`, and `openDealValue` as pre-computed fields on the company summary object. Alternatively, compute these on scroll (virtualise) and cache per company ID in a memoisation map.
@@ -244,8 +244,8 @@ A: `dealsForCompany(name)` defines open as `stageKey !== 'won'`. Lost deals are 
 
 | Button | Value | Navigation |
 |---|---|---|
-| Contacts | `people.length` (from `contactsForCompany(co.name)`) | `goTo('contacts')` |
-| Open deals | `dl.open` (from `dealsForCompany(co.name).open`) | `goTo('pipeline')` |
+| Contacts | `people.length` (from `contactsForCompany(co)`) | `goTo('contacts')` |
+| Open deals | `dl.open` (from `dealsForCompany(co).open`) | `goTo('pipeline')` |
 | Pipeline | `fmtK(dl.openValue)` | `goTo('pipeline')` |
 
 Both "Open deals" and "Pipeline" navigate to the pipeline page without filters applied — the prototype does not deep-link to a filtered pipeline view. These buttons are also informational triggers: seeing 0 contacts alongside pipeline value tells you contacts haven't been linked yet.
@@ -296,10 +296,10 @@ Defined in `coSecondary` (line 8319):
 ### "People at [company]" panel
 
 - Header: company name + contact count sub-text; "Add contact" quick-add link (gated by `effCanObject('Contacts','create')`)
-- Rows: one per contact from `contactsForCompany(co.name)` — avatar (circle, not square) + name + email + status chip (`CSTATUS_CHIP[p.cstatus]`) + right arrow
+- Rows: one per contact from `contactsForCompany(co)` — avatar (circle, not square) + name + email + status chip (`CSTATUS_CHIP[p.cstatus]`) + right arrow
 - Click: `goTo('contact-detail', p.id)`
 - Empty state: "No contacts linked to this company yet."
-- **Matching logic**: `CONTACTS_DATA.filter(c => c.co === co.name && !c.deleted)` — same name-string matching issue as the list column.
+- **Matching logic**: `contactsForCompany(co)` resolves by id (`c.companyId === co.id`) against live contacts, with the name string (`c.co === co.name`) only as a fallback. This panel now reads the company's real linked contacts, not a name-string scan.
 
 ### Deals panel
 
@@ -308,7 +308,7 @@ Defined in `coSecondary` (line 8319):
 - Each deal card: company name + value (top row) + stage colour dot + stage name (bottom row). **No progress bar.**
 - Click: `goTo('deal-detail', d.id)`
 - Empty state: "No deals for this company yet."
-- All deals shown (both open and won/lost) — `dl.list` = `allDeals().filter(d => d.company === co.name)`
+- All deals shown (both open and won/lost) — `dl.list` comes from `dealsForCompany(co)`, which filters `allDeals()` id-first (`d.companyId === co.id`, name string as fallback). This is the company's real deal list, read from live state.
 
 ### RecordTasks
 
@@ -317,6 +317,8 @@ Filtered: `t.company === co.name`. Pre-fill on new task: `{ company: co.name }`.
 ### ActivityTimeline
 
 `kind="company"`, supports: `onAddNote` (gated by edit permission), `onSchedule` (opens CalEventFormModal). Note placeholder: "Add a note about [company name]…"
+
+Notes and scheduled activities now **persist across navigation**. They are written to a shared `CrmDataContext.activities` store via `crm.addActivity('company', co.id, …)` and read back with `crm.activities.filter(a => a.subjectType === 'company' && a.subjectId === co.id)`, keyed to the record. A note logged here survives leaving and returning to the company (it was component-local and lost on nav before).
 
 **Absent from Company ActivityTimeline** (present on Contact timeline):
 - Email compose button (companies don't send email directly)
@@ -385,7 +387,7 @@ Parent company lookup enables hierarchical account structures — common when se
 
 **Backend**
 - `/companies/:id` must return the full company record plus related summaries: `contactCount` / `openDealCount` / `openDealValue` (or the frontend fetches `/contacts?companyId=X` and `/deals?companyId=X` separately).
-- The "People at [company]" panel needs `/contacts?companyId={id}` — matching by company name string must be replaced by a proper FK relationship.
+- The "People at [company]" panel already joins id-first (`contact.companyId === company.id`), so `/contacts?companyId={id}` maps directly; the display-name match remains only as a fallback for un-migrated rows.
 - `annualRevenue` with `sensitive:true` requires field-level visibility enforcement on the API response — either omit the field entirely for roles below Team Lead, or return it null-masked.
 - `parent` (company lookup) introduces a self-referential FK. The backend must guard against circular parent chains (A → B → A).
 - Delete is a soft delete (`deleted:true`, `deletedAt`, `deletedBy`). The backend needs a Recycle Bin endpoint to restore it within 30 days.
@@ -409,8 +411,8 @@ Parent company lookup enables hierarchical account structures — common when se
 
 ### Developer Q&A
 
-**Q: `contactsForCompany` and `dealsForCompany` both match by `co.name` (string). What happens when a company is renamed?**
-A: Every linked contact's `co` field becomes stale. The People panel and Deals panel would show zero results for the renamed company until all linked records are also updated. Production must store a stable `companyId` FK on contacts and deals, and rename cascades must update the display name, not the FK. The `CONTACTS_DATA.filter(c => c.co === co.name)` pattern needs to become `filter(c => c.companyId === co.id)`.
+**Q: `contactsForCompany` and `dealsForCompany` resolve a company's records. What happens when a company is renamed?**
+A: Renaming is rename-safe now. `updateCompany(id, patch)` cascades: when `patch.name` changes, it rewrites the display name (`co` on contacts, `company` on deals) for every child that resolves to that company — and stamps `companyId` on any that were still name-linked — so children are never orphaned. Because the panels join id-first (`c.companyId === co.id` / `d.companyId === co.id`), the People and Deals panels keep resolving the same records across the rename; the display-name cascade only keeps the shown labels in sync. The join stays stable on the id even if a name-string were momentarily stale.
 
 **Q: The `annualRevenue` field has `sensitive:true`. Where is this enforced?**
 A: In `RecordProperties`, the renderer checks `field.sensitive && !effCanSeeField('annualRevenue')` (or a similar permission check) to either mask or omit the value. The prototype marks the field but the masking logic must be verified: at what role threshold does it show/hide? The summary says "below Team Lead" — confirm whether Sales Rep sees it masked or omitted entirely.
