@@ -1523,7 +1523,7 @@ function seedTagDefs(){const map={};let i=0;
 // Seed per-object status registries from the existing constant lists.
 function nrturMkStatusList(names){return names.map((n,idx)=>({id:'st_'+String(n).toLowerCase().replace(/[^a-z0-9]+/g,'_')+'_'+idx,name:n,color:NRTUR_TAG_PALETTE[idx%NRTUR_TAG_PALETTE.length]}));}
 function seedStatusDefs(){return {
-  lead:nrturMkStatusList(typeof LEAD_STATUSES!=='undefined'?LEAD_STATUSES:['New','Contacted','Nurturing','Qualified','Unqualified']),
+  lead:nrturMkStatusList(typeof LEAD_STATUSES!=='undefined'?LEAD_STATUSES:['New','Contacted','Nurturing','Sales-Ready','Disqualified']),
 
   cstatus:nrturMkStatusList(typeof CONTACT_STATUSES!=='undefined'?CONTACT_STATUSES:['Prospect','Customer','Lost']),
 };}
@@ -2144,7 +2144,7 @@ function arDefaultFields(object){
     F({id:'l_name',label:'Name',type:'Text',required:true}),F({id:'l_company',label:'Company name',type:'Text'}),
     F({id:'l_title',label:'Job title',type:'Text'}),F({id:'l_domain',label:'Company domain',type:'Text'}),
     F({id:'l_email',label:'Primary email',type:'Email'}),F({id:'l_phone',label:'Phone',type:'Phone'}),
-    F({id:'l_source',label:'Source',type:'Single select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'l_status',label:'Status',type:'Single select',options:['New','Contacted','Nurturing','Qualified','Unqualified']}),
+    F({id:'l_source',label:'Source',type:'Single select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'l_status',label:'Status',type:'Single select',options:['New','Contacted','Nurturing','Sales-Ready','Disqualified']}),
     F({id:'l_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'l_close',label:'Expected close date',type:'Date'}),
     F({id:'l_value',label:'Estimated value',type:'Currency',important:true}),F({id:'l_owner',label:'Owner',type:'Lookup'}),F({id:'l_tags',label:'Tags',type:'Multi select'}),
     F({id:'l_industry',label:'Industry',type:'Single select',detail:'secondary',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']}),F({id:'l_employees',label:'Employees size',type:'Number',detail:'secondary'}),
@@ -2640,7 +2640,7 @@ const NAV_DEST_META={
   dashboard:  {color:'#38bdf8', desc:'Your home overview & key metrics'},
   contacts:   {color:'#60a5fa', desc:'People & customer records'},
   companies:  {color:'#818cf8', desc:'Organizations & accounts'},
-  leads:      {color:'#fbbf24', desc:'Unqualified prospects to convert'},
+  leads:      {color:'#fbbf24', desc:'Prospects to qualify and convert'},
   pipeline:   {color:'#34d399', desc:'Track deals through your stages'},
   funnels:    {color:'#e879f9', desc:'Build landing pages & funnels'},
   tasks:      {color:'#fb7185', desc:'Your to-dos & reminders'},
@@ -3809,7 +3809,7 @@ const WIDGET_DEFS={
   'lead-funnel':{name:'Lead Funnel',desc:'Leads by status',Icon:I.Target,cat:'Leads',size:2,type:'lead-funnel',d:{}},
   'leads-by-source':{name:'Leads by Source',desc:'Where leads come from',Icon:I.Filter,cat:'Leads',size:2,type:'lead-source',d:{}},
   'ad-lead-sources':{name:'Ad Lead Sources',desc:'Ad leads by source & campaign, with conversion',Icon:I.Megaphone,cat:'Leads',size:2,defSize:'M',type:'ad-lead-source',d:{}},
-  'lead-conversion':{name:'Lead Conversion',desc:'Qualified share of leads',Icon:I.TrendUp,cat:'Leads',size:1,type:'lead-conversion',d:{}},
+  'lead-conversion':{name:'Lead Conversion',desc:'Sales-ready share of leads',Icon:I.TrendUp,cat:'Leads',size:1,type:'lead-conversion',d:{}},
   'top-accounts':{name:'Top Accounts',desc:'Companies by open pipeline',Icon:I.Building,cat:'Companies',size:2,type:'top-accounts',d:{}},
   'accounts-by-type':{name:'Accounts by Type',desc:'Customer / Prospect / …',Icon:I.Building,cat:'Companies',size:1,type:'accounts-type',d:{}},
   'team-leaderboard':{name:'Team Leaderboard',desc:'Revenue by rep',Icon:I.Trophy,cat:'Team',size:2,type:'leaderboard',d:[]},
@@ -3832,7 +3832,7 @@ const WIDGET_DEFS={
   'goal-progress':{name:'Goal Progress',desc:'Attainment vs a target you set',Icon:I.Target,cat:'Goals',size:1,defSize:'M',type:'goal-progress'},
   'stale-deals':{name:'Stale Deals',desc:'Open deals with no recent activity',Icon:I.AlertTriangle,cat:'Pipeline',size:2,defSize:'M',type:'stale-deals'},
   'engagement-trend':{name:'Email & SMS Engagement',desc:'Opens, clicks, replies over time',Icon:I.TrendUp,cat:'Activity',size:2,defSize:'L',type:'engagement-trend'},
-  'conversion-funnel':{name:'Conversion Funnel',desc:'Lead → Qualified → Won',Icon:I.Filter,cat:'Leads',size:2,defSize:'L',type:'conversion-funnel'},
+  'conversion-funnel':{name:'Conversion Funnel',desc:'Lead → Sales-Ready → Won',Icon:I.Filter,cat:'Leads',size:2,defSize:'L',type:'conversion-funnel'},
   'recently-created':{name:'Recently Created',desc:'Newest records of a chosen object',Icon:I.Sparkles,cat:'Activity',size:2,defSize:'M',type:'recently-created'},
   'recently-viewed':{name:'Recently Viewed',desc:'Records you opened recently',Icon:I.Eye,cat:'Activity',size:1,defSize:'M',type:'recently-viewed'},
 };
@@ -4065,7 +4065,7 @@ function dashMeta(id,def){return WIDGET_META[id]||{object:null,kind:(def&&['acti
 // Source lists per object (Data tab dropdown).
 const DASH_SOURCES={
   deal:['Sales Pipeline','Onboarding Pipeline','All pipelines'],
-  lead:['All leads','New & working','Qualified leads','My leads'],
+  lead:['All leads','New & working','Sales-Ready leads','My leads'],
   contact:['All contacts','Customers','Prospects','My contacts'],
   company:['All companies','Customers','Prospects','Partners'],
   activity:['All activity','My activity','Team activity'],
@@ -4098,7 +4098,7 @@ function dashMeasureFields(fields){return fields.filter(f=>['number','currency']
 function dashSourceFilter(object,rows,source){
   if(!source)return rows;
   if(object==='deal'){if(source==='Sales Pipeline')return rows.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');if(source==='Onboarding Pipeline')return rows.filter(d=>d.pipeline==='Onboarding Pipeline');return rows;}
-  if(object==='lead'){if(source==='New & working')return rows.filter(l=>['New','Contacted'].includes(l.status));if(source==='Qualified leads')return rows.filter(l=>l.status==='Qualified');if(source==='My leads')return rows.filter(l=>l.owner==='AM');return rows;}
+  if(object==='lead'){if(source==='New & working')return rows.filter(l=>['New','Contacted'].includes(l.status));if(source==='Sales-Ready leads')return rows.filter(l=>l.status==='Sales-Ready');if(source==='My leads')return rows.filter(l=>l.owner==='AM');return rows;}
   if(object==='contact'){if(source==='Customers')return rows.filter(c=>c.cstatus==='Customer');if(source==='Prospects')return rows.filter(c=>c.cstatus==='Prospect');if(source==='My contacts')return rows.filter(c=>c.owner==='AM');return rows;}
   if(object==='company'){if(source==='Customers')return rows.filter(c=>c.type==='Customer');if(source==='Prospects')return rows.filter(c=>c.type==='Prospect');if(source==='Partners')return rows.filter(c=>c.type==='Partner');return rows;}
   return rows;
@@ -4432,14 +4432,14 @@ function DashConversionFunnel({def,cfg,goTo,data}){
   const name=cfg.name||def.name;const view=cfg.funnelView||'funnel';
   const D=data||{};const leads=(D.leads||LEADS_DATA).filter(l=>!l.archived);
   let won=0;try{won=allDeals().filter(d=>d.stageKey==='won').length;}catch(e){won=0;}
-  const qualified=leads.filter(l=>l.status==='Qualified').length;
+  const qualified=leads.filter(l=>l.status==='Sales-Ready').length;
   const stages=[
     {name:'All leads',count:leads.length,color:'#60a5fa',go:()=>goTo('leads')},
-    {name:'Qualified',count:qualified,color:'#a78bfa',go:()=>goTo('leads',{wf:{match:'AND',conds:[{id:'cf'+Date.now(),fieldKey:'status',op:'is any of',value:['Qualified'],value2:''}]}})},
+    {name:'Sales-Ready',count:qualified,color:'#a78bfa',go:()=>goTo('leads',{wf:{match:'AND',conds:[{id:'cf'+Date.now(),fieldKey:'status',op:'is any of',value:['Sales-Ready'],value2:''}]}})},
     {name:'Won',count:won,color:'#34d399',go:()=>goTo('pipeline',{wf:{match:'AND',conds:[{id:'cf'+Date.now(),fieldKey:'stageName',op:'is any of',value:['Won'],value2:''}]}})},
   ];
   const max=Math.max(1,...stages.map(s=>s.count));const top=stages[0].count||1;
-  return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Lead → Qualified → Won" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+  return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Lead → Sales-Ready → Won" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
     <div className="p-5 flex-1 flex flex-col gap-3 justify-center">{stages.map((s,i)=>{const pct=Math.round(s.count/top*100);return(<button key={s.name} onClick={s.go} className="text-left group/f">
       <div className="flex items-center justify-between mb-1"><span className="text-[12px] font-medium text-white/70 group-hover/f:text-white">{s.name}</span><span className="text-[12px] font-semibold text-white tabular-nums">{s.count}{i>0?' · '+pct+'% of leads':''}</span></div>
       <div className="h-7 rounded-lg bg-white/[0.04] overflow-hidden flex items-center"><div className={view==='funnel'?'h-full rounded-lg flex items-center justify-center':'h-full rounded-lg'} style={{width:Math.max(8,s.count/max*100)+'%',background:s.color,opacity:0.85}}/></div>
@@ -4559,9 +4559,9 @@ function renderWidgetBody(def,cfg,goTo,data,id){
   const nav=()=>goTo&&goTo(meta.nav||'dashboard');
   if(t==='tasks')return(<DashTasksWidget goTo={goTo}/>);
   if(t==='lead-count'){const live=dashCfgActive(cfg);let wk;try{wk=live?dashLiveRows('lead',cfg,D):D.leads.filter(l=>!l.archived&&!l.converted&&l.days<7);}catch(e){wk=[];}return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-emerald-500/10 ring-emerald-500/20 text-emerald-300"><I.Target size={14}/></div></div><p className="text-white text-[30px] font-bold leading-none tabular-nums">{wk.length}</p><p className="text-[11px] text-white/45 mt-1">{live?'matching leads':'new leads this week'}</p>{cfg.sparkline&&<DashSparkline accent="emerald"/>}<div className="mt-3 flex flex-col gap-1.5">{wk.length===0&&<p className="text-[11px] text-white/35">No new leads.</p>}{wk.slice(0,3).map((l,i)=>(<button key={i} onClick={(e)=>{e.stopPropagation();goTo('lead-detail',l.id);}} className="text-left text-[11px] text-white/55 hover:text-white px-2 py-1 rounded-md bg-white/[0.03] hover:bg-brand-500/[0.08] border border-white/[0.05] hover:border-brand-500/30 truncate cursor-pointer transition-colors">{l.name} · {l.source}</button>))}</div></div>);}
-  if(t==='lead-conversion'){const active=D.leads.filter(l=>!l.archived);const qn=active.filter(l=>l.status==='Qualified').length;const pct=active.length?Math.round(qn/active.length*100):0;return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-bold leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{qn} qualified of {active.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)'}}/></div></div>);}
+  if(t==='lead-conversion'){const active=D.leads.filter(l=>!l.archived);const qn=active.filter(l=>l.status==='Sales-Ready').length;const pct=active.length?Math.round(qn/active.length*100):0;return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-bold leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{qn} sales-ready of {active.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)'}}/></div></div>);}
   if(t==='lead-source'){const src=LEAD_SOURCES.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.source===s).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const max=Math.max(1,...src.map(s=>s.count));const COLORS=['#818cf8','#34d399','#fbbf24','#f472b6','#60a5fa','#a78bfa','#f87171'];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Active leads" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5 flex flex-col gap-2.5">{src.map((s,i)=>(<div key={s.name}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/70">{s.name}</span><span className="text-[12px] font-semibold text-white tabular-nums">{s.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(s.count/max*100)+'%',background:COLORS[i%COLORS.length]}}/></div></div>))}</div></div>);}
-  if(t==='lead-funnel'){const order=['New','Contacted','Nurturing','Qualified','Unqualified'];const rows=order.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.status===s).length,color:LEAD_STATUS_DOT[s]}));const max=Math.max(1,...rows.map(r=>r.count));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Leads by status" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-5 flex flex-col gap-3">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.color}}/><span className="text-[12px] font-medium text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/max*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
+  if(t==='lead-funnel'){const order=LEAD_STATUSES;const rows=order.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.status===s).length,color:LEAD_STATUS_DOT[s]}));const max=Math.max(1,...rows.map(r=>r.count));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Leads by status" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-5 flex flex-col gap-3">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.color}}/><span className="text-[12px] font-medium text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/max*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
   if(t==='top-accounts'){const accts=D.companies.filter(c=>!c.archived).map(c=>({c,dl:dealsForCompany(c.name)})).sort((a,b)=>b.dl.openValue-a.dl.openValue).slice(0,5);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By open pipeline" action={<button onClick={()=>goTo('companies')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{accts.map(({c,dl},i)=>(<button key={c.id} onClick={()=>goTo('company-detail',c.id)} className={['w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-left',i<accts.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{dl.open} open · {contactsForCompany(c.name).length} contacts</p></div><span className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</span></button>))}</div></div>);}
   if(t==='accounts-type'){const rows=COMPANY_TYPES.map(tp=>({name:tp,count:D.companies.filter(c=>!c.archived&&c.type===tp).length,color:COMPANY_TYPE_DOT[tp]}));const tot=Math.max(1,rows.reduce((a,r)=>a+r.count,0));return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-blue-500/10 ring-blue-500/20 text-blue-300"><I.Building size={14}/></div></div><div className="flex flex-col gap-2 mt-1">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:r.color}}/><span className="text-[12px] text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/tot*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
   if(t==='stat'){const d=def.d;const cmp=cfg.compare!==false;let val=d.value;const _live=dashStatLive(id,D);if(_live!=null){val=_live;}else if(meta.object&&meta.measure&&meta.measure.agg==='sum'&&dashCfgActive(cfg)){try{const rows=dashLiveRows(meta.object,cfg,D);const f=dashFields(meta.object,rows);const mf=dashFieldByKey(f,meta.measure.field);val=fmtK(Math.round(rows.reduce((a,r)=>a+(omNum(mf?mf.get(r):0)||0),0)));}catch(e){}}return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><div className="flex items-end justify-between"><p className="text-white text-[28px] font-bold leading-none tabular-nums">{val}</p>{cmp&&<span className={['inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full',d.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{d.up?<I.TrendUp size={9} stroke={2.6}/>:<I.TrendDown size={9} stroke={2.6}/>}{d.delta}</span>}</div>{cfg.sparkline&&<DashSparkline accent={d.accent}/>}<div className="mt-auto flex items-center justify-between gap-2 pt-2"><p className="text-[10px] text-white/45 truncate">{range} · {filter}{cfg.target?' · target $'+cfg.target+'k':''}</p><span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-300 opacity-0 group-hover/m:opacity-100 transition-opacity shrink-0">View<I.ArrowRight size={10} stroke={2.4}/></span></div></div>);}
@@ -6404,7 +6404,7 @@ function ContactsPage({goTo,nav}){
 
 // ?? Record property field system (two-tier About / Show all properties / meta) ??
 function userByCode(code){return (typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(u=>u.avatar===code)||null;}
-const PILL_C={'Subscriber':'#94a3b8','Lead':'#60a5fa','Marketing Qualified Lead':'#a78bfa','Sales Qualified Lead':'#818cf8','Opportunity':'#fbbf24','Customer':'#34d399','Evangelist':'#f472b6','Other':'#94a3b8','New':'#60a5fa','Contacted':'#818cf8','Nurturing':'#a78bfa','Engaged':'#a78bfa','Qualified':'#34d399','Unqualified':'#94a3b8','Prospecting':'#94a3b8','Proposal':'#a78bfa','Negotiation':'#fbbf24','Won':'#34d399','Lost':'#f87171','Open':'#60a5fa','Prospect':'#818cf8','Partner':'#60a5fa','Competitor':'#f87171'};
+const PILL_C={'Subscriber':'#94a3b8','Lead':'#60a5fa','Marketing Qualified Lead':'#a78bfa','Sales Qualified Lead':'#818cf8','Opportunity':'#fbbf24','Customer':'#34d399','Evangelist':'#f472b6','Other':'#94a3b8','New':'#60a5fa','Contacted':'#818cf8','Nurturing':'#a78bfa','Engaged':'#a78bfa','Qualified':'#34d399','Unqualified':'#94a3b8','Sales-Ready':'#34d399','Disqualified':'#94a3b8','Prospecting':'#94a3b8','Proposal':'#a78bfa','Negotiation':'#fbbf24','Won':'#34d399','Lost':'#f87171','Open':'#60a5fa','Prospect':'#818cf8','Partner':'#60a5fa','Competitor':'#f87171'};
 function pillC(v){return PILL_C[v]||'#94a3b8';}
 function scoreC(n){n=Number(n)||0;if(n>=70)return'#34d399';if(n>=40)return'#fbbf24';return'#60a5fa';}
 function contactHeat(c){const s=Number(c&&c.score);if(!s)return null;return s>=70?'Hot':s>=40?'Warm':'Cold';}
@@ -7575,7 +7575,7 @@ function ObjectBoard({objKind,pipelines,activeId,onSwitch,onNewDeal,onDeletePipe
   const custom=(crm.customObjects||[]).find(o=>o.id===objKind);
   const STAGE_PAL=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
   const BUILT={
-    lead:{singular:'Lead',plural:'Leads',perm:'Leads',route:'lead-detail',recs:crm.leads,set:crm.setLeads,groups:[['status','Status',['New','Contacted','Nurturing','Qualified','Unqualified']],['source','Source',null],['owner','Owner',null]],sub:r=>r.company||r.email||''},
+    lead:{singular:'Lead',plural:'Leads',perm:'Leads',route:'lead-detail',recs:crm.leads,set:crm.setLeads,groups:[['status','Status',LEAD_STATUSES],['source','Source',null],['owner','Owner',null]],sub:r=>r.company||r.email||''},
     contact:{singular:'Contact',plural:'Contacts',perm:'Contacts',route:'contact-detail',recs:crm.contacts,set:crm.setContacts,groups:[['cstatus','Status',['Prospect','Customer','Lost']],['source','Source',null],['owner','Owner',null]],sub:r=>r.company||r.title||r.email||''},
     company:{singular:'Company',plural:'Companies',perm:'Companies',route:'company-detail',recs:crm.companies,set:crm.setCompanies,groups:[['type','Type',['Customer','Prospect','Partner','Vendor']],['industry','Industry',null],['owner','Owner',null]],sub:r=>r.industry||r.domain||''},
   };
@@ -7661,7 +7661,7 @@ function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
   const [obj,setObj]=React.useState('deal');
   const [name,setName]=React.useState('');
   useEscKey(onClose);
-  const OBJS=[{k:'deal',label:'Deals',Icon:I.GitBranch,color:'#818cf8',desc:'Sales opportunities'},{k:'lead',label:'Leads',Icon:I.UserPlus,color:'#34d399',desc:'Qualify by status'},{k:'contact',label:'Contacts',Icon:I.Users,color:'#60a5fa',desc:'Group by status'},{k:'company',label:'Companies',Icon:I.Building,color:'#fbbf24',desc:'Group by type'}].concat((customObjects||[]).map(o=>({k:o.id,label:o.plural,Icon:coIco(o.icon),color:o.color||'#a78bfa',desc:'Custom object',custom:true})));
+  const OBJS=[{k:'deal',label:'Deals',Icon:I.GitBranch,color:'#818cf8',desc:'Sales opportunities'}].concat((customObjects||[]).map(o=>({k:o.id,label:o.plural,Icon:coIco(o.icon),color:o.color||'#a78bfa',desc:'Custom object',custom:true})));
   const sel=OBJS.find(o=>o.k===obj)||OBJS[0];
   const create=()=>{if(obj==='deal'){onCreateDeal((name||'').trim()||'New Pipeline');}else{const pid=(customObjects||[]).some(o=>o.id===obj)?'cop_'+obj:'obj_'+obj;onSelect(pid);}onClose();};
   return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
@@ -7736,8 +7736,8 @@ function PipelinePage({goTo,nav}){
   const active=pipelines.find(p=>p.id===activeId)||pipelines[0];
   const [auxPipelines,setAuxPipelines]=React.useState([]);
   const deleteAuxPipeline=(pipeId)=>setAuxPipelines(ps=>ps.filter(p=>p.id!==pipeId));
-  const addAuxPipeline=(pipeId)=>{const BUILT={obj_lead:{object:'lead',name:'Leads'},obj_contact:{object:'contact',name:'Contacts'},obj_company:{object:'company',name:'Companies'}};if(auxPipelines.find(p=>p.id===pipeId)){setActiveId(pipeId);return;}const blt=BUILT[pipeId];if(blt){setAuxPipelines(ps=>[...ps,{id:pipeId,...blt}]);setActiveId(pipeId);return;}if(pipeId.startsWith('cop_')){const oid=pipeId.slice(4);const co=(_customObjects||[]).find(o=>o.id===oid);if(co){setAuxPipelines(ps=>[...ps,{id:pipeId,object:oid,name:co.plural}]);setActiveId(pipeId);}}};
-  const _auxPipes=auxPipelines.map(ap=>{if(['lead','contact','company'].includes(ap.object))return{id:ap.id,name:ap.name,object:ap.object};const o=(_customObjects||[]).find(x=>x.id===ap.object);return o?{id:ap.id,name:ap.name||o.plural,object:o.id,customObj:o}:null;}).filter(Boolean);
+  const addAuxPipeline=(pipeId)=>{if(auxPipelines.find(p=>p.id===pipeId)){setActiveId(pipeId);return;}if(pipeId.startsWith('cop_')){const oid=pipeId.slice(4);const co=(_customObjects||[]).find(o=>o.id===oid);if(co){setAuxPipelines(ps=>[...ps,{id:pipeId,object:oid,name:co.plural}]);setActiveId(pipeId);}}};
+  const _auxPipes=auxPipelines.map(ap=>{const o=(_customObjects||[]).find(x=>x.id===ap.object);return o?{id:ap.id,name:ap.name||o.plural,object:o.id,customObj:o}:null;}).filter(Boolean);
   const allPipelines=[...pipelines.map(p=>({...p,object:p.object||'deal'})),..._auxPipes];
   const [newPipeOpen,setNewPipeOpen]=React.useState(false);
   const selPipe=allPipelines.find(p=>p.id===activeId)||active;
@@ -8438,23 +8438,23 @@ function AddCompanyPage({goTo}){
   );
 }
 // ?? Leads data ????????????????????????????????????????????????????????????????
-const LEAD_STATUSES=['New','Contacted','Nurturing','Qualified','Unqualified'];
-const LEAD_STATUS_CHIP={New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Contacted:'bg-amber-500/12 text-amber-300 ring-amber-500/25',Nurturing:'bg-violet-500/12 text-violet-300 ring-violet-500/25',Qualified:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',Unqualified:'bg-white/[0.06] text-white/50 ring-white/[0.10]'};
-const LEAD_STATUS_DOT={New:'#60a5fa',Contacted:'#fbbf24',Nurturing:'#a78bfa',Qualified:'#34d399',Unqualified:'#94a3b8'};
+const LEAD_STATUSES=['New','Contacted','Nurturing','Sales-Ready','Disqualified'];
+const LEAD_STATUS_CHIP={New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Contacted:'bg-amber-500/12 text-amber-300 ring-amber-500/25',Nurturing:'bg-violet-500/12 text-violet-300 ring-violet-500/25','Sales-Ready':'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25','Disqualified':'bg-white/[0.06] text-white/50 ring-white/[0.10]'};
+const LEAD_STATUS_DOT={New:'#60a5fa',Contacted:'#fbbf24',Nurturing:'#a78bfa','Sales-Ready':'#34d399','Disqualified':'#94a3b8'};
 const LEAD_SOURCES=['Web form','Referral','Cold outreach','Event','Ad','LinkedIn','Import'];
 function leadScoreBucket(score){if(score>=70)return{k:'hot',c:'#f87171',l:'Hot'};if(score>=40)return{k:'warm',c:'#fbbf24',l:'Warm'};return{k:'cold',c:'#60a5fa',l:'Cold'};}
 const LEADS_DATA=[
-  {id:120,name:'Greg Mason',avatar:'GM',color:'#f59e0b',email:'greg@northpeak.io',phone:'+1 555-770-3321',company:'Northpeak Co',title:'Operations Lead',source:'Cold outreach',status:'Unqualified',score:28,estValue:'$4k',owner:'AM',ownerColor:'#3b82f6',created:'4 weeks ago',days:26,loc:'Boise, ID',tags:['cold'],archived:false,converted:false,deleted:true,deletedAt:Date.now()-26*864e5,deletedBy:'Alex Morgan',estValueNum:4000},
-  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'Qualified',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound','qualified'],archived:false,converted:false,estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Pipeline + automations for a 40-person team'}],event:'Product Demo',rep:'Sarah Chen'}},
+  {id:120,name:'Greg Mason',avatar:'GM',color:'#f59e0b',email:'greg@northpeak.io',phone:'+1 555-770-3321',company:'Northpeak Co',title:'Operations Lead',source:'Cold outreach',status:'Disqualified',score:28,estValue:'$4k',owner:'AM',ownerColor:'#3b82f6',created:'4 weeks ago',days:26,loc:'Boise, ID',tags:['cold'],archived:false,converted:false,deleted:true,deletedAt:Date.now()-26*864e5,deletedBy:'Alex Morgan',estValueNum:4000},
+  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'Sales-Ready',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound','qualified'],archived:false,converted:false,estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Pipeline + automations for a 40-person team'}],event:'Product Demo',rep:'Sarah Chen'}},
   {id:2,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'daniel@lumen.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Head of Growth',source:'Referral',status:'Contacted',score:74,estValue:'$32k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Austin, TX',tags:['referral'],archived:false,converted:false,estValueNum:32000,emails:[],phones:['+1 555-441-0000'],createdBy:'JK',createdAt:'1d ago',companyDomain:'lumen.io',industry:'Software',employeesSize:60},
   {id:3,name:'Sofia Marchetti',avatar:'SM',color:'#ec4899',email:'sofia@craftly.co',phone:'+1 555-228-6610',company:'Craftly',title:'Founder',source:'Event',status:'Nurturing',score:58,estValue:'$9k',owner:'SC',ownerColor:'#ec4899',created:'2d ago',days:2,loc:'New York, NY',tags:['saastr'],archived:false,converted:true,estValueNum:9000,emails:['sofia@craftly.co'],phones:[],createdBy:'SC',createdAt:'2d ago',convContact:'Sofia Marchetti',convCompany:'Craftly',convDeal:'Craftly · $9,000',companyDomain:'craftly.co',industry:'Retail',employeesSize:8},
   {id:4,name:'Marcus Webb',avatar:'MW',color:'#10b981',email:'marcus@northpeak.com',phone:'+1 555-770-4521',company:'Northpeak',title:'VP Sales',source:'Cold outreach',status:'New',score:41,estValue:'$15k',owner:'RL',ownerColor:'#10b981',created:'3d ago',days:3,loc:'Seattle, WA',tags:['outbound'],archived:false,converted:false},
-  {id:5,name:'Aisha Rahman',avatar:'AR',color:'#f59e0b',email:'aisha@vellum.io',phone:'+1 555-883-2290',company:'Vellum',title:'COO',source:'LinkedIn',status:'Qualified',score:88,estValue:'$45k',owner:'AM',ownerColor:'#3b82f6',created:'4d ago',days:4,loc:'Boston, MA',tags:['enterprise'],archived:false,converted:false,companyDomain:'vellum.io',industry:'Finance',employeesSize:140,estValueNum:45000,emails:[],phones:[]},
+  {id:5,name:'Aisha Rahman',avatar:'AR',color:'#f59e0b',email:'aisha@vellum.io',phone:'+1 555-883-2290',company:'Vellum',title:'COO',source:'LinkedIn',status:'Sales-Ready',score:88,estValue:'$45k',owner:'AM',ownerColor:'#3b82f6',created:'4d ago',days:4,loc:'Boston, MA',tags:['enterprise'],archived:false,converted:false,companyDomain:'vellum.io',industry:'Finance',employeesSize:140,estValueNum:45000,emails:[],phones:[]},
   {id:6,name:'Leo Fontaine',avatar:'LF',color:'#6366f1',email:'leo@pixelforge.co',phone:'+1 555-512-7740',company:'Pixelforge',title:'Creative Lead',source:'Ad',status:'Nurturing',score:36,estValue:'$6k',owner:'JK',ownerColor:'#8b5cf6',created:'1w ago',days:7,loc:'Miami, FL',tags:[],archived:false,converted:false},
-  {id:7,name:'Hannah Cole',avatar:'HC',color:'#a855f7',email:'hannah@switchgrid.com',phone:'+1 555-664-1180',company:'Switchgrid',title:'Operations Manager',source:'Web form',status:'Qualified',score:79,estValue:'$28k',owner:'SC',ownerColor:'#ec4899',created:'1w ago',days:9,loc:'Chicago, IL',tags:['inbound'],archived:false,converted:false,companyDomain:'switchgrid.com',industry:'Manufacturing',employeesSize:75,estValueNum:28000,emails:[],phones:[]},
+  {id:7,name:'Hannah Cole',avatar:'HC',color:'#a855f7',email:'hannah@switchgrid.com',phone:'+1 555-664-1180',company:'Switchgrid',title:'Operations Manager',source:'Web form',status:'Sales-Ready',score:79,estValue:'$28k',owner:'SC',ownerColor:'#ec4899',created:'1w ago',days:9,loc:'Chicago, IL',tags:['inbound'],archived:false,converted:false,companyDomain:'switchgrid.com',industry:'Manufacturing',employeesSize:75,estValueNum:28000,emails:[],phones:[]},
   {id:8,name:'Raj Patel',avatar:'RP',color:'#0ea5e9',email:'raj@cobaltworks.io',phone:'+1 555-901-3345',company:'Cobalt Works',title:'CTO',source:'Referral',status:'Contacted',score:63,estValue:'$22k',owner:'RL',ownerColor:'#10b981',created:'2w ago',days:14,loc:'Los Angeles, CA',tags:['referral'],archived:false,converted:false},
   {id:9,name:'Emma Lindqvist',avatar:'EL',color:'#14b8a6',email:'emma@fika.design',phone:'+1 555-330-7798',company:'Fika Design',title:'Principal',source:'Event',status:'Nurturing',score:48,estValue:'$11k',owner:'AM',ownerColor:'#3b82f6',created:'3w ago',days:21,loc:'Portland, OR',tags:['saastr'],archived:false,converted:false},
-  {id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Unqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
+  {id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Disqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
   {id:101,name:'Olivia Bennett',avatar:'OB',color:'#6366f1',email:'Olivia@Brightwave.io',phone:'+1 (555) 610-2210',company:'Brightwave Studio',title:'Head of Marketing',source:'Referral',status:'Contacted',score:78,estValue:'$18k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Denver, CO',tags:['inbound','duplicate-import'],archived:false,converted:false,estValueNum:18000,createdBy:'JK',createdAt:'1d ago',companyDomain:'brightwave.io'},
   {id:102,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'d.okonkwo@lumenlabs.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Growth Lead',source:'Event',status:'New',score:70,estValue:'$30k',owner:'AM',ownerColor:'#3b82f6',created:'2d ago',days:2,loc:'Austin, TX',tags:['event'],archived:false,converted:false,estValueNum:30000,createdBy:'AM',createdAt:'2d ago',companyDomain:'lumenlabs.io'},
 ];
@@ -8532,7 +8532,7 @@ const LEAD_DEFAULT_VIEWS=[
   {key:'mine',label:'My Leads',Icon:I.UserCog,pred:l=>l.owner==='AM',empty:'Leads assigned to you appear here.'},
   {key:'new',label:'New',Icon:I.Sparkles,pred:l=>l.status==='New',dot:'green',empty:'Brand-new, unworked leads appear here.'},
   {key:'contacted',label:'Contacted',Icon:I.Zap,pred:l=>l.status==='Contacted',empty:'Leads you have started contacting appear here.'},
-  {key:'qualified',label:'Qualified · Ready',Icon:I.CheckSquare,pred:l=>l.status==='Qualified',dot:'green',empty:'Qualified leads ready to convert appear here.'},
+  {key:'qualified',label:'Sales-Ready',Icon:I.CheckSquare,pred:l=>l.status==='Sales-Ready',dot:'green',empty:'Sales-ready leads ready to convert appear here.'},
   {key:'hot',label:'Hot Score',Icon:I.TrendUp,pred:l=>l.score>=70,dot:'red',empty:'Leads scoring 70+ appear here.'},
   {key:'week',label:'This Week',Icon:I.Clock,pred:l=>l.days<7,empty:'Leads created in the last 7 days appear here.'},
   {key:'unworked',label:'No Owner',Icon:I.Ban,pred:l=>!l.owner,dot:'red',empty:'Unassigned leads appear here so nothing slips.'},
@@ -8716,6 +8716,7 @@ function LeadsPage({goTo,nav}){
   const {leads:rows,setLeads:setRows,setContacts,setCompanies,setDeals}=React.useContext(CrmDataContext);
   const [views,setViews]=React.useState(ldSeedViews);
   const [activeKey,setActiveKey]=React.useState('all');
+  const [leadView,setLeadView]=React.useState('list'); // 'list' | 'board' — the Leads page's OWN status board (a view, not a pipeline)
   const [favs,setFavs]=React.useState(['pv_hot']);
   const viewFolders=useFolders('leads-views',{folders:[{id:'lf_team',name:'Team views',color:'#60a5fa',scope:'team'},{id:'lf_sales',name:'Sales',color:'#818cf8',scope:'personal'},{id:'lf_mkt',name:'Marketing',color:'#34d399',scope:'personal'}],members:{sh_inbound:'lf_team',pv_hot:'lf_sales'}});
   const DEFCOLS=omDefaultCols(LEAD_COLS,'Leads',_propsCtx);
@@ -8797,7 +8798,7 @@ function LeadsPage({goTo,nav}){
           {activeKey==='duplicates'?(<div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6"><DuplicatesView object='lead' showToolbar/></div></div>):(<React.Fragment>
             <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s925)'}}>
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search leads..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-44"/></div>
-              {!special&&<div className="ml-auto flex items-center gap-2"><OmFiltersButton object='lead' fields={fields} model={workFilter} onChange={setWorkFilter}/><ColumnsControl allCols={allLeadCols} object='lead' shown={cols} onChange={setCols}/><ObjectToolsMenu object='lead' goTo={goTo} onDuplicates={()=>selectView('duplicates')}/></div>}
+              {!special&&<div className="ml-auto flex items-center gap-2"><div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['list','List',I.List],['board','Board',I.LayoutDash]].map(([k,lbl,Ic])=>(<button key={k} onClick={()=>setLeadView(k)} title={lbl+' view'} aria-pressed={leadView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',leadView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/><span className="hidden sm:inline">{lbl}</span></button>))}</div><OmFiltersButton object='lead' fields={fields} model={workFilter} onChange={setWorkFilter}/>{leadView==='list'&&<ColumnsControl allCols={allLeadCols} object='lead' shown={cols} onChange={setCols}/>}<ObjectToolsMenu object='lead' goTo={goTo} onDuplicates={()=>selectView('duplicates')}/></div>}
               {special&&<div className="ml-auto"><span className="text-[11px] text-white/35">{activeKey==='converted'?'Read-only — converted leads':'Archived leads'}</span></div>}
             </div>
             {anyChips&&(<div className="shrink-0 flex items-center gap-2 flex-wrap px-7 py-2 border-b border-white/[0.04]" style={{background:'var(--s925)'}}>
@@ -8808,7 +8809,7 @@ function LeadsPage({goTo,nav}){
               {search&&chip('Search: '+search,()=>setSearch(''))}
               <button onClick={()=>{selectView('all');setWorkFilter({match:'AND',conds:[]});setWorkSort({key:null,dir:null});setSearch('');}} className="text-[11px] text-white/40 hover:text-white ml-1">Clear all</button>
             </div>)}
-            <div className="flex-1 overflow-y-auto scroll-area">
+            {(leadView==='board'&&!special)?(<div className="flex-1 overflow-hidden flex flex-col"><KanbanBoard wrapClass="flex-1 overflow-x-auto overflow-y-hidden scroll-area" boardClass="h-full p-4 flex gap-4 min-w-max" canDrag={()=>_lEdit} columns={LEAD_STATUSES.map(st=>{const crows=list.filter(l=>(l.status||'New')===st);return {key:st,rows:crows,header:(<div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10 flex items-center justify-between" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:LEAD_STATUS_DOT[st]||'#94a3b8'}}/><span className="text-[13px] font-medium text-white">{st}</span></div><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 shrink-0">{crows.length}</span></div>)};})} onMove={(id,fromKey,toKey)=>{if(!_lEdit)return;setStatus(id,toKey);}} renderCard={(l,col,dp,dragging)=>(<button {...dp} onClick={()=>goTo('lead-detail',l.id)} className={['w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragging?'opacity-50 scale-[0.97]':''].join(' ')}><p className="text-[13px] font-medium text-white leading-tight truncate">{l.name||'—'}</p>{(l.company||l.email)?<p className="text-[11px] text-white/45 truncate mt-0.5">{l.company||l.email}</p>:null}<div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-white/[0.04]">{l.owner?<div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:l.ownerColor||'#64748b'}}>{l.owner}</div>:<span/>}<span className="text-[10px] text-white/40 tabular-nums">{l.estValue||''}</span></div></button>)}/></div>):(<div className="flex-1 overflow-y-auto scroll-area">
               {selected.length>0&&!special&&(
                 <BulkBar object="lead" selected={selected} setSelected={setSelected} setRows={setRows} showToast={showToast} openConfirm={openConfirm}/>
               )}
@@ -8829,7 +8830,7 @@ function LeadsPage({goTo,nav}){
                 <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><ActiveIcon size={26}/></div><p className="text-[16px] font-semibold text-white">{activeKey==='all'?'No leads yet':'No leads match this view'}</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">{activeKey==='converted'?'Leads you convert into a Contact, Company, and Deal show up here as read-only records.':activeKey==='archived'?'Archived leads show up here.':((activeViewObj&&activeViewObj.empty)||'This view has no matching leads right now.')}</p>{activeKey==='all'?(effCanObject('Leads','create')?<div className="flex items-center justify-center gap-3"><button onClick={()=>setImportModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Upload size={14}/>Import CSV</button><button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('lead'):goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add lead</button></div>:null):(<button onClick={()=>selectView('all')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Target size={13}/>View all leads</button>)}</div></div>
               )}
               {list.map((l,i)=>activeKey==='converted'?(<ConvertedLeadRow key={l.id} l={l} goTo={goTo} last={i===list.length-1}/>):(<LeadRowDyn key={l.id} l={l} COL={COL} shownCols={shownCols} selected={selected.includes(l.id)} onSelect={toggleSelect} ctx={colCtx} last={i===list.length-1}/>))}
-            </div>
+            </div>)}
             </React.Fragment>)}
           </div>
         </div>
@@ -8869,7 +8870,8 @@ function LeadDetailPage({goTo,nav}){
   const [schedOpen,setSchedOpen]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
   const b=leadScoreBucket(l.score);
-  const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text'},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:['New','Contacted','Nurturing','Qualified','Unqualified']},{key:'estValueNum',label:'Estimated value',type:'currency',sensitive:true},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
+  const canEditLead=effCanObject('Leads','edit')&&!l.converted; // converted leads are locked read-only
+  const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text'},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:LEAD_STATUSES},{key:'estValueNum',label:'Estimated value',type:'currency',sensitive:true},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
   const leadSecondaryBase=[{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'employeesSize',label:'Employees size',type:'number'},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'}];
   const leadSecondary=l.converted?[...leadSecondaryBase,{key:'_conv',label:'Converted to',type:'converted'}]:leadSecondaryBase;
   const [editOpen,setEditOpen]=React.useState(false);
@@ -8893,11 +8895,11 @@ function LeadDetailPage({goTo,nav}){
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {l.converted?(<span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-emerald-300 bg-emerald-500/12 border border-emerald-500/25"><I.Check size={14} stroke={2.4}/>Converted</span>):(effCanObject('Leads','edit')&&<button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-emerald-500 hover:bg-emerald-400 border-none shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={14} stroke={2.4}/>Convert lead</button>)}
-            {effCanObject('Leads','edit')&&<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>}
+            {canEditLead&&<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>}
             {(effCanObject('Leads','edit')||effCanObject('Leads','delete'))&&<div className="relative" ref={moreRef}>
               <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-                {effCanObject('Leads','edit')&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit lead</button>}
+                {canEditLead&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit lead</button>}
                 {effCanObject('Leads','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete lead</button>}
               </div>}
             </div>}
@@ -8910,12 +8912,12 @@ function LeadDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:`radial-gradient(circle at top,${b.c}1a,transparent 70%)`}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-semibold ring-2 ring-white/[0.06]" style={{background:l.color}}>{l.avatar}</div>
-                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-semibold">{l.name}</h2>{l.qual&&<QualBadge status={l.qual.status}/>}</div><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={(s)=>{setStatusState(s);updateLead(l.id,{status:s});}} disabled={!effCanObject('Leads','edit')}/></div></div>
+                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-semibold">{l.name}</h2>{l.qual&&<QualBadge status={l.qual.status}/>}</div><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={(s)=>{setStatusState(s);updateLead(l.id,{status:s});}} disabled={!canEditLead}/></div></div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-bold tabular-nums" style={{color:b.c}}>{l.score}</span></div></div>
               </div>
               </div>
-              <RecordProperties record={l} primary={_ldLay.primary} secondary={_ldLay.secondary} onChange={onLeadField} goTo={goTo} readOnly={!effCanObject('Leads','edit')}/>
+              <RecordProperties record={l} primary={_ldLay.primary} secondary={_ldLay.secondary} onChange={onLeadField} goTo={goTo} readOnly={!canEditLead}/>
               {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
@@ -8931,7 +8933,7 @@ function LeadDetailPage({goTo,nav}){
                 </div>
               </div>
               <RecordTasks match={(t)=>t.contact===l.name&&t.linkType==='lead'} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
-              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Leads','edit')?addNote:undefined} onSchedule={effCanObject('Leads','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
+              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
           <RecordMetaFooter record={l} meta={leadMeta}/>
@@ -9685,7 +9687,7 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
         <div className="w-full max-w-[400px] flex flex-col gap-4">
           <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center"><I.Check size={16}/></span><div><p className="text-white text-[16px] font-semibold">Call ended — log it</p><p className="text-[12px] text-white/45">Auto-logged. Add details below.</p></div></div>
           {dialContact&&<div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit"><div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white" style={{background:dialContact.color||'#6366f1'}}>{ini(dialContact)}</div><span className="text-[13px] text-white">{dialContact.name}</span></div>}
-          <CallEnrichmentForm duration={seconds?fmtTimer(seconds):'—'} statusOptions={['New','Contacted','Nurturing','Qualified','Unqualified']} onSave={onSaveCallLog} onSkip={onSkipCallLog}/>
+          <CallEnrichmentForm duration={seconds?fmtTimer(seconds):'—'} statusOptions={LEAD_STATUSES} onSave={onSaveCallLog} onSkip={onSkipCallLog}/>
         </div>
       </div>)}
       {view==='detail'&&detail&&(<CallDetailView contact={detail} history={histFor(detail.name)} onBack={()=>{setView('dialer');setDetail(null);}} onCall={()=>{setDialContact(detail);setDigits('');setView('dialer');}} onViewHistory={()=>setOverlay(detail)} onSaveNotes={(id,d)=>{updateCall(detail.name,id,{outcome:d.outcome,reason:d.reason,notes:d.notes});onToast&&onToast('Call logged ✓','success');applyEnrichment(d);}}/>)}
@@ -10811,8 +10813,8 @@ const TRIGGER_CATS=[
     {name:'Birthday / anniversary',hint:'a saved date comes around'}]},
   {cat:'Lead',Icon:I.Target,color:'#34d399',triggers:[
     {name:'Lead created',hint:'a new lead is captured or imported'},
-    {name:'Lead status changed',hint:'New → Contacted → Qualified, etc.'},
-    {name:'Lead qualified',hint:'a lead is marked Qualified'},
+    {name:'Lead status changed',hint:'New → Contacted → Sales-Ready, etc.'},
+    {name:'Lead qualified',hint:'a lead is marked Sales-Ready'},
     {name:'Lead score reached',hint:'a lead crosses a score threshold'},
     {name:'Lead source is',hint:'a lead comes in from a chosen source'},
     {name:'Lead converted',hint:'a lead becomes a contact + company'},
@@ -13023,7 +13025,7 @@ function SettingsImportPage({goTo}){
   </SettingsShell>);
 }
 // PAGE — settings-export: object + saved view + fields → CSV, plus an export audit trail.
-const EXPORT_VIEWS={contact:['All contacts','My contacts','Active customers','Prospects'],lead:['All leads','New leads · last 30 days','Qualified leads','My leads'],company:['All companies','Customers','Prospects'],deal:['All deals','Open deals','Closing this quarter','Won this year']};
+const EXPORT_VIEWS={contact:['All contacts','My contacts','Active customers','Prospects'],lead:['All leads','New leads · last 30 days','Sales-Ready leads','My leads'],company:['All companies','Customers','Prospects'],deal:['All deals','Open deals','Closing this quarter','Won this year']};
 function SettingsExportPage({goTo}){
   const crm=React.useContext(CrmDataContext);
   const admin=settingsIsAdmin();
@@ -14085,7 +14087,7 @@ function propSeed(){
       ]},
       {g:'Qualification',open:true,fields:[
         F({id:'l_source',label:'Source',type:'Single select',create:true,detail:'primary',col:true,options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),
-        F({id:'l_status',label:'Status',type:'Single select',create:true,detail:'primary',col:true,options:['New','Contacted','Nurturing','Qualified','Unqualified']}),
+        F({id:'l_status',label:'Status',type:'Single select',create:true,detail:'primary',col:true,options:['New','Contacted','Nurturing','Sales-Ready','Disqualified']}),
         F({id:'l_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',col:true,options:['Sales Pipeline','Onboarding Pipeline']}),
         F({id:'l_close',label:'Expected close date',type:'Date',create:true,detail:'primary',col:true}),
         F({id:'l_value',label:'Estimated value',type:'Currency',create:true,detail:'primary',col:true,important:true}),
@@ -18355,12 +18357,12 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       if(qualRec&&crm.updateContact){const merged=Array.from(new Set([...(existing.tags||[]),...qualTags]));crm.updateContact(existing.id,{qual:qualRec,tags:merged,...(qualScore?{score:qualScore}:{})});}
     }
     else if(existingLead){recordKind='lead';leadId=existingLead.id;recordId=existingLead.id;
-      if(crm.updateLead){const merged=Array.from(new Set([...(existingLead.tags||[]),'booking',...qualTags]));crm.updateLead(existingLead.id,{qual:qualRec,tags:merged,...(qualScore!=null?{score:qualScore}:{}),owner:rep.avatar,ownerColor:rep.color,status:qEval.status==='qualified'?'Qualified':qEval.status==='disqualified'?'Unqualified':existingLead.status});}
+      if(crm.updateLead){const merged=Array.from(new Set([...(existingLead.tags||[]),'booking',...qualTags]));crm.updateLead(existingLead.id,{qual:qualRec,tags:merged,...(qualScore!=null?{score:qualScore}:{}),owner:rep.avatar,ownerColor:rep.color,status:qEval.status==='qualified'?'Sales-Ready':qEval.status==='disqualified'?'Disqualified':existingLead.status});}
     }
     else if(auto.autoContact&&crm&&crm.setLeads){
       // New, unknown invitee → enters the CRM as a LEAD; qualification sets the status
       leadId=Date.now();recordKind='lead';recordId=leadId;recordCreated=true;
-      const newLead={id:leadId,name:nm,avatar,color,email:form.email.trim(),phone:'',company:'',title:'',source:'Booking',status:qEval.status==='qualified'?'Qualified':qEval.status==='disqualified'?'Unqualified':'New',score:qualScore!=null?qualScore:null,estValue:'—',estValueNum:0,owner:rep.avatar,ownerColor:rep.color,days:0,loc:'',tags:['booking',...qualTags],archived:false,converted:false,createdBy:rep.avatar,createdAt:'Just now',qual:qualRec};
+      const newLead={id:leadId,name:nm,avatar,color,email:form.email.trim(),phone:'',company:'',title:'',source:'Booking',status:qEval.status==='qualified'?'Sales-Ready':qEval.status==='disqualified'?'Disqualified':'New',score:qualScore!=null?qualScore:null,estValue:'—',estValueNum:0,owner:rep.avatar,ownerColor:rep.color,days:0,loc:'',tags:['booking',...qualTags],archived:false,converted:false,createdBy:rep.avatar,createdAt:'Just now',qual:qualRec};
       crm.setLeads(arr=>[newLead,...arr]);
       addToast(qEval.status==='disqualified'?'Lead captured — flagged for review':'New lead captured from booking ✓');
     }
