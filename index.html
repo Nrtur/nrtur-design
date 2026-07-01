@@ -4074,7 +4074,7 @@ const DASH_SOURCES={
 // Column descriptors per object — reused by the Display tab checklist and the generic list renderer.
 const DASH_LIST_COLS={
   contact:[{key:'name',label:'Name',primary:true},{key:'co',label:'Company',get:c=>c.co},{key:'cstatus',label:'Status',pill:'cstatus',get:c=>c.cstatus},{key:'status',label:'Heat',pill:'heat',get:c=>contactHeat(c)},{key:'deal',label:'Deal value',val:true,get:c=>c.deal,num:c=>dealK(c)},{key:'owner',label:'Owner',owner:true,get:c=>c.owner},{key:'score',label:'Score',get:c=>c.score,num:c=>c.score||0},{key:'source',label:'Source',get:c=>c.source}],
-  company:[{key:'name',label:'Name',primary:true},{key:'type',label:'Type',pill:'ctype',get:c=>c.type},{key:'industry',label:'Industry',get:c=>c.industry},{key:'open',label:'Open pipeline',val:true,get:c=>{const d=dealsForCompany(c.name);return d.open?fmtK(d.openValue):'—';},num:c=>dealsForCompany(c.name).openValue},{key:'size',label:'Employees',get:c=>c.size,num:c=>c.size||0},{key:'owner',label:'Owner',owner:true,get:c=>c.owner},{key:'loc',label:'Location',get:c=>c.loc}],
+  company:[{key:'name',label:'Name',primary:true},{key:'type',label:'Type',pill:'ctype',get:c=>c.type},{key:'industry',label:'Industry',get:c=>c.industry},{key:'open',label:'Open pipeline',val:true,get:c=>{const d=dealsForCompany(c);return d.open?fmtK(d.openValue):'—';},num:c=>dealsForCompany(c).openValue},{key:'size',label:'Employees',get:c=>c.size,num:c=>c.size||0},{key:'owner',label:'Owner',owner:true,get:c=>c.owner},{key:'loc',label:'Location',get:c=>c.loc}],
   lead:[{key:'name',label:'Name',primary:true},{key:'company',label:'Company',get:l=>l.company},{key:'status',label:'Status',pill:'lstatus',get:l=>l.status},{key:'source',label:'Source',get:l=>l.source},{key:'estValue',label:'Est. value',val:true,get:l=>l.estValue,num:l=>l.estValueNum||parseMoney(l.estValue)},{key:'score',label:'Score',get:l=>l.score,num:l=>l.score||0},{key:'owner',label:'Owner',owner:true,get:l=>l.owner}],
   deal:[{key:'name',label:'Deal',primary:true,get:d=>d.name||d.company},{key:'company',label:'Company',get:d=>d.company},{key:'stageName',label:'Stage',pill:'stage',get:d=>d.stageName},{key:'value',label:'Amount',val:true,get:d=>d.value,num:d=>parseMoney(d.value)},{key:'owner',label:'Owner',owner:true,get:d=>d.owner}],
 };
@@ -4562,7 +4562,7 @@ function renderWidgetBody(def,cfg,goTo,data,id){
   if(t==='lead-conversion'){const active=D.leads.filter(l=>!l.archived);const qn=active.filter(l=>l.status==='Sales-Ready').length;const pct=active.length?Math.round(qn/active.length*100):0;return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-bold leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{qn} sales-ready of {active.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)'}}/></div></div>);}
   if(t==='lead-source'){const src=LEAD_SOURCES.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.source===s).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const max=Math.max(1,...src.map(s=>s.count));const COLORS=['#818cf8','#34d399','#fbbf24','#f472b6','#60a5fa','#a78bfa','#f87171'];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Active leads" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5 flex flex-col gap-2.5">{src.map((s,i)=>(<div key={s.name}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/70">{s.name}</span><span className="text-[12px] font-semibold text-white tabular-nums">{s.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(s.count/max*100)+'%',background:COLORS[i%COLORS.length]}}/></div></div>))}</div></div>);}
   if(t==='lead-funnel'){const order=LEAD_STATUSES;const rows=order.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.status===s).length,color:LEAD_STATUS_DOT[s]}));const max=Math.max(1,...rows.map(r=>r.count));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Leads by status" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-5 flex flex-col gap-3">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.color}}/><span className="text-[12px] font-medium text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/max*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
-  if(t==='top-accounts'){const accts=D.companies.filter(c=>!c.archived).map(c=>({c,dl:dealsForCompany(c.name)})).sort((a,b)=>b.dl.openValue-a.dl.openValue).slice(0,5);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By open pipeline" action={<button onClick={()=>goTo('companies')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{accts.map(({c,dl},i)=>(<button key={c.id} onClick={()=>goTo('company-detail',c.id)} className={['w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-left',i<accts.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{dl.open} open · {contactsForCompany(c.name).length} contacts</p></div><span className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</span></button>))}</div></div>);}
+  if(t==='top-accounts'){const accts=D.companies.filter(c=>!c.archived).map(c=>({c,dl:dealsForCompany(c)})).sort((a,b)=>b.dl.openValue-a.dl.openValue).slice(0,5);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By open pipeline" action={<button onClick={()=>goTo('companies')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{accts.map(({c,dl},i)=>(<button key={c.id} onClick={()=>goTo('company-detail',c.id)} className={['w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-left',i<accts.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{dl.open} open · {contactsForCompany(c).length} contacts</p></div><span className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</span></button>))}</div></div>);}
   if(t==='accounts-type'){const rows=COMPANY_TYPES.map(tp=>({name:tp,count:D.companies.filter(c=>!c.archived&&c.type===tp).length,color:COMPANY_TYPE_DOT[tp]}));const tot=Math.max(1,rows.reduce((a,r)=>a+r.count,0));return(<div className="p-4 h-full flex flex-col"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-blue-500/10 ring-blue-500/20 text-blue-300"><I.Building size={14}/></div></div><div className="flex flex-col gap-2 mt-1">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{background:r.color}}/><span className="text-[12px] text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/tot*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
   if(t==='stat'){const d=def.d;const cmp=cfg.compare!==false;let val=d.value;const _live=dashStatLive(id,D);if(_live!=null){val=_live;}else if(meta.object&&meta.measure&&meta.measure.agg==='sum'&&dashCfgActive(cfg)){try{const rows=dashLiveRows(meta.object,cfg,D);const f=dashFields(meta.object,rows);const mf=dashFieldByKey(f,meta.measure.field);val=fmtK(Math.round(rows.reduce((a,r)=>a+(omNum(mf?mf.get(r):0)||0),0)));}catch(e){}}return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><div className="flex items-end justify-between"><p className="text-white text-[28px] font-bold leading-none tabular-nums">{val}</p>{cmp&&<span className={['inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full',d.up?'bg-emerald-500/10 text-emerald-400':'bg-red-500/10 text-red-400'].join(' ')}>{d.up?<I.TrendUp size={9} stroke={2.6}/>:<I.TrendDown size={9} stroke={2.6}/>}{d.delta}</span>}</div>{cfg.sparkline&&<DashSparkline accent={d.accent}/>}<div className="mt-auto flex items-center justify-between gap-2 pt-2"><p className="text-[10px] text-white/45 truncate">{range} · {filter}{cfg.target?' · target $'+cfg.target+'k':''}</p><span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-300 opacity-0 group-hover/m:opacity-100 transition-opacity shrink-0">View<I.ArrowRight size={10} stroke={2.4}/></span></div></div>);}
   if(t==='count'){const d=def.d;let val=d.value,sub=d.sub;if(meta.object&&dashCfgActive(cfg)){try{val=dashLiveRows(meta.object,cfg,D).length;sub='matching records';}catch(e){}}return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className={['w-8 h-8 rounded-lg flex items-center justify-center ring-1',WACCENT[d.accent]].join(' ')}><d.Icon size={14}/></div></div><p className="text-white text-[30px] font-bold leading-none tabular-nums">{val}</p><p className="text-[11px] text-white/45 mt-1">{sub}</p>{cfg.sparkline&&<DashSparkline accent={d.accent}/>}<div className="mt-3 flex flex-col gap-1.5">{d.rows.map((r,i)=>{const nm=String(r).split(' · ')[0];return(<button key={i} onClick={(e)=>{e.stopPropagation();dashGoToRecord(goTo,nm)||nav();}} className="text-left text-[11px] text-white/55 hover:text-white px-2 py-1 rounded-md bg-white/[0.03] hover:bg-brand-500/[0.08] border border-white/[0.05] hover:border-brand-500/30 truncate cursor-pointer transition-colors">{r}</button>);})}</div></div>);}
@@ -5581,7 +5581,7 @@ function omFieldSchema(object,props,rows){
     fields=[F('name','Name','text'),F('domain','Website','text'),F('industry','Industry','select',INDUSTRIES),F('type','Type','select',COMPANY_TYPES),
       F('size','Employees','number',null,r=>r.size),F('annualRevenue','Annual revenue','currency',null,r=>r.annualRevenue),F('loc','Location','text'),
       F('owner','Owner','owner',ownerOpts,r=>r.owner),F('tags','Tags','multiselect',omUniqTags(rows,r=>r.tags||[]),r=>r.tags||[]),
-      F('opendeals','Open deals','number',null,r=>dealsForCompany(r.name).open),F('days','Days since activity','number',null,r=>r.days),F('website','Website','text'),F('createdAt','Created date','date',null,r=>r.createdAt)];
+      F('opendeals','Open deals','number',null,r=>dealsForCompany(r).open),F('days','Days since activity','number',null,r=>r.days),F('website','Website','text'),F('createdAt','Created date','date',null,r=>r.createdAt)];
   } else if(object==='lead'){
     fields=[F('name','Name','text'),F('company','Company name','text'),F('title','Job title','text'),F('companyDomain','Company domain','text'),F('email','Email','text'),F('phone','Phone','text'),
       F('source','Source','select',LEAD_SOURCES),F('status','Status','select',LEAD_STATUSES),F('pipeline','Pipeline','select',['Sales Pipeline','Onboarding Pipeline']),
@@ -5631,7 +5631,7 @@ function omCmp(a,b,t){
 function omColField(object,colKey,fields){
   const alias={contact:{last:'days',co:'co'},lead:{est:'estValueNum',loc:null},company:{revenue:'annualRevenue',deals:'opendeals',contacts:'__cc'},deal:{},task:{}}[object]||{};
   let fk=alias[colKey];if(fk===undefined)fk=colKey;
-  if(fk==='__cc')return {type:'number',get:r=>contactsForCompany(r.name).length};
+  if(fk==='__cc')return {type:'number',get:r=>contactsForCompany(r).length};
   if(fk===null)return {type:'text',get:r=>r[colKey]};
   const f=fields.find(x=>x.key===fk);if(f)return f;
   return {type:'text',get:r=>r[colKey]};
@@ -6764,22 +6764,22 @@ function buildActivityFeed(kind,rec,ctx){
   try{
     if(kind==='contact'&&rec){
       feed=actContactOwn(rec);
-      const myDeals=deals.filter(d=>d&&((d.primaryContact&&rec.name&&d.primaryContact===rec.name)||(d.company&&rec.co&&d.company===rec.co)));
+      const myDeals=deals.filter(d=>d&&((d.primaryContactId!=null&&d.primaryContactId===rec.id)||(rec.companyId!=null&&d.companyId===rec.companyId)||(d.primaryContact&&rec.name&&d.primaryContact===rec.name)||(d.company&&rec.co&&d.company===rec.co)));
       myDeals.forEach(d=>{feed=feed.concat(tagSrc(actDealOwn(d),{type:'deal',id:d.id,label:actLabelDeal(d),color:'#a78bfa'}));});
-      const co=companies.find(x=>x.name===rec.co);
+      const co=(rec.companyId!=null?companies.find(x=>x.id===rec.companyId):null)||companies.find(x=>x.name===rec.co);
       if(co)feed=feed.concat(tagSrc(actCompanyOwn(co),{type:'company',id:co.id,label:co.name,color:'#60a5fa'}));
       const lead=leads.find(L=>L&&(L.convertedToContactId===rec.id||(L.email&&rec.email&&L.email.toLowerCase()===rec.email.toLowerCase())));
       if(lead)feed=feed.concat(tagSrc(actLeadOwn(lead).slice(0,3),{type:'lead',id:lead.id,label:'from lead · '+lead.name,color:'#34d399'}));
       (ctx.invoices||[]).filter(v=>v&&(v.contact===rec.name||(v.company&&rec.co&&v.company===rec.co))).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
     } else if(kind==='company'&&rec){
       feed=actCompanyOwn(rec);
-      contacts.filter(c=>c.co===rec.name&&!c.deleted).slice(0,4).forEach(c=>{feed=feed.concat(tagSrc(actContactOwn(c).slice(0,4),{type:'contact',id:c.id,label:c.name,color:c.color||'#60a5fa'}));});
-      deals.filter(d=>d.company===rec.name).forEach(d=>{feed=feed.concat(tagSrc(actDealOwn(d),{type:'deal',id:d.id,label:actLabelDeal(d),color:'#a78bfa'}));});
+      contacts.filter(c=>!c.deleted&&((rec.id!=null&&c.companyId===rec.id)||c.co===rec.name)).slice(0,4).forEach(c=>{feed=feed.concat(tagSrc(actContactOwn(c).slice(0,4),{type:'contact',id:c.id,label:c.name,color:c.color||'#60a5fa'}));});
+      deals.filter(d=>(rec.id!=null&&d.companyId===rec.id)||d.company===rec.name).forEach(d=>{feed=feed.concat(tagSrc(actDealOwn(d),{type:'deal',id:d.id,label:actLabelDeal(d),color:'#a78bfa'}));});
     } else if(kind==='deal'&&rec){
       feed=actDealOwn(rec);
-      const person=contacts.find(c=>c.name===rec.primaryContact&&!c.deleted)||contacts.find(c=>c.co===rec.company&&!c.deleted);
+      const person=(rec.primaryContactId!=null?contacts.find(c=>c.id===rec.primaryContactId&&!c.deleted):null)||contacts.find(c=>c.name===rec.primaryContact&&!c.deleted)||(rec.companyId!=null?contacts.find(c=>c.companyId===rec.companyId&&!c.deleted):null)||contacts.find(c=>c.co===rec.company&&!c.deleted);
       if(person)feed=feed.concat(tagSrc(actContactOwn(person).slice(0,4),{type:'contact',id:person.id,label:person.name,color:person.color||'#60a5fa'}));
-      const co=companies.find(x=>x.name===rec.company);
+      const co=(rec.companyId!=null?companies.find(x=>x.id===rec.companyId):null)||companies.find(x=>x.name===rec.company);
       if(co)feed=feed.concat(tagSrc(actCompanyOwn(co).slice(0,2),{type:'company',id:co.id,label:co.name,color:'#60a5fa'}));
       (ctx.invoices||[]).filter(v=>v&&v.dealId===rec.id).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
     } else if(kind==='lead'&&rec){
@@ -7195,6 +7195,8 @@ function ContactDetailPage({goTo,nav}){
   const {contacts,updateContact}=crm;
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const c=contacts.find(x=>x.id===nav)||contacts[0];
+  // Wave 3: real deals for this contact — id-first (primary / additional / same-company) with name fallback. Non-memoized, matches CompanyDetailPage convention.
+  const myDeals=allDeals().filter(d=>{if(d.primaryContactId!=null&&d.primaryContactId===c.id)return true;if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.includes(c.id))return true;if(c.companyId!=null&&d.companyId!=null&&d.companyId===c.companyId)return true;if(d.primaryContact&&c.name&&d.primaryContact===c.name)return true;if(d.company&&c.co&&d.company===c.co)return true;return false;});
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
@@ -7230,7 +7232,7 @@ function ContactDetailPage({goTo,nav}){
   const _cp=(c.name||'').split(' ');const _cf0=_cp[0]||'';const _cl0=_cp.slice(1).join(' ');
   const crec={...c,first:c.first!=null?c.first:_cf0,last:c.last!=null?c.last:_cl0,tags:c.tags||(c.tag?[c.tag]:[])};
   const onFieldChange=(k,v)=>{if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else{updateContact(c.id,{[k]:v});}};
-  const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>g('company-detail')},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'},{key:'score',label:'Score',type:'score'}];
+  const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>{const co=(c.companyId!=null?crm.companies.find(x=>x.id===c.companyId):null)||crm.companies.find(x=>x.name===c.co);g('company-detail',co&&co.id);}},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'},{key:'score',label:'Score',type:'score'}];
   const cSecondary=[{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Meta Ads','Google Ads','Form','Manual','Import','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
   const cMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
   const [editOpen,setEditOpen]=React.useState(false);
@@ -7300,8 +7302,8 @@ function ContactDetailPage({goTo,nav}){
                   <p className="mt-3 text-[10.5px] text-white/30 flex items-center gap-1"><I.Megaphone size={10}/>Captured via {_s.name} · simulated sync</p>
                 </div>);})()}
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
-                <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · 2</p>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,company:c.co}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                {[{name:'Q3 Engagement',$:'$24k',stage:'Proposal',stageColor:'#a78bfa',p:65},{name:'Annual Retainer',$:'$48k',stage:'Qualified',stageColor:'#818cf8',p:40}].map(d=>(<button key={d.name} onClick={()=>goTo('deal-detail')} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white">{d.name}</p><span className="text-[14px] font-semibold text-white">{d.$}</span></div><div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stage}</span></div><div className="h-1 rounded-full bg-white/[0.05]"><div className="h-full rounded-full" style={{width:d.p+'%',background:d.stageColor}}/></div></button>))}
+                <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · {myDeals.length}</p>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {myDeals.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No deals linked to this contact yet.</p>):myDeals.map(d=>(<button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>))}
               </div>
             </div>
                         <div className="flex flex-col gap-5">
@@ -7976,12 +7978,13 @@ function DealDetailPage({goTo,nav}){
   const _deals=allDeals();
   const d=_deals.find(x=>x.id===nav)||_deals.find(x=>x.stageKey!=='won')||_deals[0];
   const ownerM=TEAM_MEMBERS.find(m=>m.avatar===d.owner)||{name:'—',avatar:d.owner,color:d.ownerColor};
-  const dealContact=contactsForCompany(d.company)[0];
-  const companyRec=COMPANIES_DATA.find(c=>c.name===d.company);
   const [stage,setStage]=React.useState(d.stageName);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const crm=React.useContext(CrmDataContext);
   const {updateDeal}=crm;
+  // Wave 3: resolve id-first from LIVE state, fall back to name; dealContact honors d.primaryContact (not just first-at-company).
+  const companyRec=(d.companyId!=null?crm.companies.find(c=>c.id===d.companyId):null)||crm.companies.find(c=>c.name===d.company)||null;
+  const dealContact=(d.primaryContactId!=null?crm.contacts.find(c=>c.id===d.primaryContactId&&!c.deleted):null)||(d.primaryContact?crm.contacts.find(c=>c.name===d.primaryContact&&!c.deleted):null)||contactsForCompany(companyRec||d.company)[0]||null;
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const {confirmNode,openConfirm}=useConfirm();
   const dealName=d.name||(d.company+' · '+d.value);
@@ -8085,10 +8088,11 @@ const fmtK=(n)=>n>=1000?'$'+(n/1000).toFixed(n%1000?1:0).replace(/\.0$/,'')+'k':
 const companyHealth=(d)=>contactHealth(d);
 const STAGE_BY_KEY=Object.fromEntries(STAGES_DATA.map(s=>[s.key,s]));
 let _liveDeals=null; // live deals array, set by App on each render; falls back to the STAGES_DATA seed
+let _liveContacts=null; // Wave 3: live contacts array, set by App on each render; falls back to the CONTACTS_DATA seed
 function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key})));}
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||{};return {...d,stageName:s.name,stageColor:s.color};});}
-function contactsForCompany(name){return CONTACTS_DATA.filter(c=>c.co===name&&!c.deleted);}
-function dealsForCompany(name){const list=allDeals().filter(d=>d.company===name);const open=list.filter(d=>d.stageKey!=='won');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
+function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
+function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
 // Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
 function ChipSelect({value,options,chipMap,dotMap,onChange,width=148,disabled}){
   const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
@@ -8125,14 +8129,14 @@ const COMPANY_DEFAULT_VIEWS=[
   {key:'mine',label:'My Companies',Icon:I.UserCog,pred:co=>co.owner==='AM',empty:'Companies you own will appear here.'},
   {key:'customers',label:'Customers',Icon:I.Star,pred:co=>co.type==='Customer',empty:'Accounts marked Customer show up here.'},
   {key:'prospects',label:'Prospects',Icon:I.Target,pred:co=>co.type==='Prospect',empty:'Open prospect accounts appear here.'},
-  {key:'withdeals',label:'With Open Deals',Icon:I.GitBranch,pred:co=>dealsForCompany(co.name).open>0,dot:'green',empty:'Companies with at least one open deal appear here.'},
+  {key:'withdeals',label:'With Open Deals',Icon:I.GitBranch,pred:co=>dealsForCompany(co).open>0,dot:'green',empty:'Companies with at least one open deal appear here.'},
   {key:'active',label:'Recently Active',Icon:I.Sparkles,pred:co=>co.days<7,empty:'Accounts active in the last week appear here.'},
   {key:'atrisk',label:'Going Cold',Icon:I.Clock,pred:co=>co.days>30,dot:'red',empty:'Accounts with no activity in 30+ days appear here.'},
   {key:'noowner',label:'No Owner',Icon:I.Ban,pred:co=>!co.owner,dot:'red',empty:'Unassigned accounts appear here.'},
 ];
 function CompanyTypeDropdown({value,onChange,disabled}){return <ChipSelect value={value} options={COMPANY_TYPES} chipMap={COMPANY_TYPE_CHIP} dotMap={COMPANY_TYPE_DOT} onChange={onChange} disabled={disabled}/>;}
 function CompanyRow({co,COL,selected,onSelect,onType,onOwner,onArchive,onRestore,goTo,last}){
-  const h=companyHealth(co.days);const dl=dealsForCompany(co.name);const cc=contactsForCompany(co.name).length;
+  const h=companyHealth(co.days);const dl=dealsForCompany(co);const cc=contactsForCompany(co).length;
   return(
     <div className={['crm-list-row w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
       <button onClick={()=>onSelect(co.id)} className={['w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0',selected?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/50 opacity-0 group-hover:opacity-100'].join(' ')}>{selected&&<I.Check size={9} stroke={3} style={{color:'white'}}/>}</button>
@@ -8150,8 +8154,8 @@ const COMPANY_COLS=[
   {key:'name',label:'Company',w:'2fr',def:true,cell:(co,x)=>(<button onClick={()=>x.goTo('company-detail',co.id)} className="flex items-center gap-3 min-w-0 text-left w-full"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:co.color}}>{co.avatar}</div><div className="min-w-0"><p className="text-[13px] font-medium text-white leading-tight truncate">{co.name}</p><p className="text-[11px] text-white/45 truncate mt-0.5">{co.domain}</p></div></button>)},
   {key:'type',label:'Type',w:'120px',def:true,cell:(co,x)=>(<CompanyTypeDropdown value={co.type} onChange={t=>x.onType(co.id,t)} disabled={x.readOnly}/>)},
   {key:'industry',label:'Industry',w:'1.4fr',def:true,cell:(co)=>(<p className="text-[13px] text-white/75 truncate">{co.industry}</p>)},
-  {key:'contacts',label:'Contacts',w:'90px',def:true,cell:(co)=>{const cc=contactsForCompany(co.name).length;return(<div className="flex items-center gap-1.5 text-white/70" title={cc+' linked contact'+(cc!==1?'s':'')}><I.Users size={12} className="text-white/40"/><span className="text-[13px] tabular-nums">{cc}</span></div>);}},
-  {key:'deals',label:'Open deals',w:'120px',def:true,cell:(co)=>{const dl=dealsForCompany(co.name);return(<div title={dl.open+' open deal'+(dl.open!==1?'s':'')}><p className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</p>{dl.open>0&&<p className="text-[10px] text-white/40 -mt-0.5">{dl.open} open</p>}</div>);}},
+  {key:'contacts',label:'Contacts',w:'90px',def:true,cell:(co)=>{const cc=contactsForCompany(co).length;return(<div className="flex items-center gap-1.5 text-white/70" title={cc+' linked contact'+(cc!==1?'s':'')}><I.Users size={12} className="text-white/40"/><span className="text-[13px] tabular-nums">{cc}</span></div>);}},
+  {key:'deals',label:'Open deals',w:'120px',def:true,cell:(co)=>{const dl=dealsForCompany(co);return(<div title={dl.open+' open deal'+(dl.open!==1?'s':'')}><p className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</p>{dl.open>0&&<p className="text-[10px] text-white/40 -mt-0.5">{dl.open} open</p>}</div>);}},
   {key:'owner',label:'Owner',w:'120px',def:true,cell:(co,x)=>(<ContactOwnerDropdown owner={{avatar:co.owner,color:co.ownerColor}} onChange={m=>x.onOwner(co.id,m)} disabled={x.readOnly}/>)},
   {key:'revenue',label:'Annual revenue',w:'130px',def:false,cell:(co)=>(<p className="text-[12.5px] text-white/80 tabular-nums">{co.annualRevenue!=null?fmtMoney(co.annualRevenue):'—'}</p>)},
   {key:'size',label:'Employees',w:'100px',def:false,cell:(co)=>(<p className="text-[12.5px] text-white/70 tabular-nums">{co.size!=null?co.size:'—'}</p>)},
@@ -8319,8 +8323,8 @@ function CompanyDetailPage({goTo,nav}){
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const co=companies.find(x=>x.id===nav)||companies[0];
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
-  const people=contactsForCompany(co.name);
-  const dl=dealsForCompany(co.name);
+  const people=contactsForCompany(co);
+  const dl=dealsForCompany(co);
   const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Website',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency',sensitive:true},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
   const coSecondary=[{key:'type',label:'Company type',type:'select',options:['Prospect','Customer','Partner','Competitor','Other']},{key:'website',label:'Website',type:'url',linkKind:'url'},{key:'parent',label:'Parent company',type:'lookup',go:(g)=>g('company-detail')},{key:'linkedin',label:'LinkedIn',type:'url',linkKind:'url'},{key:'desc',label:'Description',type:'text'},{key:'billing',label:'Billing address',type:'address'},{key:'shipping',label:'Shipping address',type:'address'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   const coMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
@@ -8559,15 +8563,16 @@ function leadEstNum(l){if(l&&l.estValueNum!=null)return l.estValueNum;const str=
 // Build the Contact / Company / Deal records a lead converts into, applying the field mapping.
 function buildConvertRecords(lead,payload){
   const base=Date.now()+Math.floor(Math.random()*1000);
+  const contactId=base+1,companyId=base+2,dealId=base+3; // Wave 3: precompute ids so the three records are born id-linked
   const owner=lead.owner||'AM';const ownerColor=lead.ownerColor||arOwnerColor(owner);
   const tags=Array.isArray(lead.tags)?lead.tags.slice():[];
   const c=payload.contact||{};
   const cname=((c.first||'')+' '+(c.last||'')).trim()||lead.name||'Unnamed';
-  const contact={id:base+1,name:cname,first:c.first||'',last:c.last||'',co:lead.company||'',email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,score:lead.score!=null?lead.score:null,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id};
+  const contact={id:contactId,name:cname,first:c.first||'',last:c.last||'',co:lead.company||'',companyId:(payload.company?companyId:null),email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,score:lead.score!=null?lead.score:null,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id};
   let company=null;
-  if(payload.company){const cc=payload.company;const coName=(cc.name||'').trim()||lead.company||'Untitled';company={id:base+2,name:coName,domain:cc.domain||'',industry:cc.industry||'',size:(cc.employees!==''&&cc.employees!=null)?(parseInt(cc.employees,10)||null):null,type:'Prospect',owner,ownerColor,avatar:arInitials(coName),color:lead.color||arPick(),days:0,tags:tags.slice(),desc:'',archived:false,last:'Just now',createdBy:owner,createdAt:'Just now',fromLeadId:lead.id};}
+  if(payload.company){const cc=payload.company;const coName=(cc.name||'').trim()||lead.company||'Untitled';company={id:companyId,name:coName,domain:cc.domain||'',industry:cc.industry||'',size:(cc.employees!==''&&cc.employees!=null)?(parseInt(cc.employees,10)||null):null,type:'Prospect',owner,ownerColor,avatar:arInitials(coName),color:lead.color||arPick(),days:0,tags:tags.slice(),desc:'',archived:false,last:'Just now',createdBy:owner,createdAt:'Just now',fromLeadId:lead.id};}
   let deal=null;
-  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:base+3,company:lead.company||cname,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',pipeline,closeDate:d.close||'',primaryContact:cname,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id};}
+  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:lead.company||cname,companyId:(payload.company?companyId:null),name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id};}
   return {contact,company,deal};
 }
 function CvtField({label,children,wide}){return(<div className={wide?'col-span-2':''}><label className="text-[11px] text-white/45 block mb-1.5">{label}</label>{children}</div>);}
@@ -21143,20 +21148,56 @@ function ExplorePage({goTo}){
     </div>
   );
 }
+// ── Wave 3: seed-migrate — auto-create missing companies + backfill stable id links (companyId / primaryContactId / additionalContactIds).
+// Pure & idempotent: rows that already carry the id field are skipped. Deterministic company ids (Math.max+1), NEVER Date.now.
+function migrateLinks(companiesSeed,contactsSeed,dealsSeed){
+  const companies=companiesSeed.map(c=>({...c}));
+  const contacts=contactsSeed.map(c=>({...c}));
+  const deals=dealsSeed.map(d=>({...d}));
+  const norm=(s)=>(s||'').trim().toLowerCase();
+  const coByName={};
+  companies.forEach(c=>{const k=norm(c.name);if(k&&!(k in coByName))coByName[k]=c.id;});
+  let nextId=Math.max(0,...companies.map(c=>c.id||0));
+  function resolveCo(name){
+    const k=norm(name);
+    if(!k)return null;
+    if(k in coByName)return coByName[k];
+    nextId+=1;
+    const rec=nrturNewCompany(name);rec.id=nextId;
+    companies.push(rec);coByName[k]=nextId;
+    return nextId;
+  }
+  function contactByName(name,preferCoId){
+    const k=norm(name);
+    if(!k)return null;
+    let hit=null;
+    for(const ct of contacts){if(ct.deleted)continue;if(norm(ct.name)!==k)continue;if(preferCoId!=null&&ct.companyId===preferCoId)return ct.id;if(hit==null)hit=ct.id;}
+    return hit;
+  }
+  contacts.forEach(c=>{if(c.companyId==null)c.companyId=resolveCo(c.co);});
+  deals.forEach(d=>{
+    if(d.companyId==null)d.companyId=resolveCo(d.company);
+    if(d.primaryContactId==null)d.primaryContactId=contactByName(d.primaryContact,d.companyId);
+    if(d.additionalContactIds==null)d.additionalContactIds=(d.additionalContacts||[]).map(a=>contactByName(a&&a.contact,d.companyId)).filter(x=>x!=null);
+  });
+  return {companies,contacts,deals};
+}
 function App(){
+  const _seed=migrateLinks(COMPANIES_DATA,CONTACTS_DATA,dealsSeed());
   const [page,setPage]=React.useState('landing');
   const [nav,setNav]=React.useState(null);
   const [searchOpen,setSearchOpen]=React.useState(false);
   const [cmdOpen,setCmdOpen]=React.useState(false);
-  const [contacts,setContacts]=React.useState(CONTACTS_DATA);
+  const [contacts,setContacts]=React.useState(_seed.contacts);
   const [leads,setLeads]=React.useState(LEADS_DATA);
-  const [companies,setCompanies]=React.useState(COMPANIES_DATA);
+  const [companies,setCompanies]=React.useState(_seed.companies);
   const [propData,setPropData]=React.useState(propSeed);
   const propsCtx=React.useMemo(()=>({props:propData,setProps:setPropData}),[propData]);
   const [conns,setConns]=React.useState({stripe:true});
   const integCtx=React.useMemo(()=>({conns,connect:(k)=>setConns(c=>({...c,[k]:true})),disconnect:(k)=>setConns(c=>({...c,[k]:false}))}),[conns]);
-  const [deals,setDeals]=React.useState(()=>STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))));
+  const [deals,setDeals]=React.useState(()=>_seed.deals);
   _liveDeals=deals; // keep the module-level pointer in sync so allDeals()/dealsForCompany() read live data
+  _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21216,9 +21257,9 @@ function App(){
     setCustomRecords:(objId,fn)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(typeof fn==='function'?fn(o.records||[]):fn)}:o)),
     updateCustomRecord:(objId,recId,patch)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(o.records||[]).map(r=>r.id===recId?{...r,...patch}:r)}:o)),
     addCustomRecord:(objId,rec)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:[rec,...(o.records||[])]}:o)),
-    updateContact:(id,patch)=>setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
+    updateContact:(id,patch)=>{setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){setDeals(a=>a.map(d=>d.primaryContactId===id?{...d,primaryContact:patch.name}:d));}},
     updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
-    updateCompany:(id,patch)=>setCompanies(a=>a.map(c=>c.id===id?{...c,...patch}:c)),
+    updateCompany:(id,patch)=>{setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
   }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
