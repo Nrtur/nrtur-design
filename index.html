@@ -2342,7 +2342,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const secondary=fields.filter(f=>f.detail==='secondary');
   // Build initial values, then apply any association prefill (company/contact) coming from a
   // detail-page adder so the canonical drawer opens already linked to that record.
-  const buildInitial=React.useCallback(()=>{const o=arBuildInitial(fields,object);if(prefill){fields.forEach(f=>{const l=(f.label||'').toLowerCase();if(prefill.company&&f.type==='Lookup'&&/company/.test(l))o[f.id]=prefill.company;if(prefill.contact&&f.type==='Lookup'&&/contact/.test(l))o[f.id]=prefill.contact;if(prefill.stage&&f.type==='Single select'&&/stage/.test(l)&&(f.options||[]).includes(prefill.stage))o[f.id]=prefill.stage;});}return o;},[fields,object,prefill]);
+  const buildInitial=React.useCallback(()=>{const o=arBuildInitial(fields,object);if(prefill){fields.forEach(f=>{const l=(f.label||'').toLowerCase();if(prefill.company&&f.type==='Lookup'&&/company/.test(l))o[f.id]=prefill.company;if(prefill.contact&&f.type==='Lookup'&&/contact/.test(l))o[f.id]=prefill.contact;if(prefill.stage&&f.type==='Single select'&&/stage/.test(l)&&(f.options||[]).includes(prefill.stage))o[f.id]=prefill.stage;});if(prefill.companyId!=null)o._companyId=prefill.companyId;if(prefill.contactId!=null)o._contactId=prefill.contactId;}return o;},[fields,object,prefill]);
   const [mode,setMode]=React.useState(initialMode==='multiple'?'multiple':'single');
   const [vals,setVals]=React.useState(buildInitial);
   const [showMore,setShowMore]=React.useState(false);
@@ -2358,8 +2358,8 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const _companyFld=fields.find(f=>f.type==='Lookup'&&/company/.test((f.label||'').toLowerCase()));
   const _contactCompanyName=(name)=>{const ct=(crm.contacts||[]).find(c=>c.name===name&&!c.deleted);if(!ct)return'';const co=(ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null)||(ct.co?(crm.companies||[]).find(c=>c.name===ct.co):null);return co?co.name:(ct.co||'');};
   const onFieldChange=(f,v)=>{
-    if(_companyFld&&f.id===_companyFld.id){_coAuto.current=false;return set(f.id,v);} // user chose the company manually → respect it
-    if(_contactFld&&_companyFld&&f.id===_contactFld.id){return setVals(s=>{const next={...s,[f.id]:v};const coName=_contactCompanyName(v);const cur=String(s[_companyFld.id]||'').trim();if(coName&&(!cur||_coAuto.current)){next[_companyFld.id]=coName;_coAuto.current=true;}return next;});}
+    if(_companyFld&&f.id===_companyFld.id){_coAuto.current=false;return setVals(s=>({...s,[f.id]:v,_companyId:null}));} // user chose the company manually → respect it, drop any prefilled id
+    if(_contactFld&&_companyFld&&f.id===_contactFld.id){return setVals(s=>{const next={...s,[f.id]:v,_contactId:null};const coName=_contactCompanyName(v);const cur=String(s[_companyFld.id]||'').trim();if(coName&&(!cur||_coAuto.current)){next[_companyFld.id]=coName;next._companyId=null;_coAuto.current=true;}return next;});}
     return set(f.id,v);
   };
   const emailRe=/\S+@\S+\.\S+/;
@@ -2372,7 +2372,13 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const doCreate=(another)=>{
     setSubmitted(true);
     if(!allValid){const firstErr=fields.find(f=>errorFor(f));if(firstErr&&secondary.includes(firstErr))setShowMore(true);return;}
-    const rec=arBuildRecord(object,vals,fields);persist(rec);
+    const rec=arBuildRecord(object,vals,fields);
+    // Link new records by id (prefer the prefilled id, else resolve the picked name) — completes Wave 3 id-linking for live-created records.
+    const _findCo=(id,name)=>(id!=null&&(crm.companies||[]).find(c=>c.id===id))||(name&&(crm.companies||[]).find(c=>c.name===name&&!c.deleted))||null;
+    const _findCt=(id,name)=>(id!=null&&(crm.contacts||[]).find(c=>c.id===id&&!c.deleted))||(name&&(crm.contacts||[]).find(c=>c.name===name&&!c.deleted))||null;
+    if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];}
+    else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
+    persist(rec);
     onToast&&onToast((rec.name||cfg.label)+' created');
     if(another){setVals(buildInitial());setSubmitted(false);setCreateOpen(false);}
     else close();
