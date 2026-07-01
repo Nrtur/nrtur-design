@@ -7232,7 +7232,8 @@ function ContactDetailPage({goTo,nav}){
     calls:dnc||['+1 628 555 0190','+1 212 555 0177'].includes(_supPhone),
   };
   const [enriched,setEnriched]=React.useState(false);
-  const [extra,setExtra]=React.useState([]); // session-added activities (notes, logged calls, scheduled meetings)
+  const extra=(crm.activities||[]).filter(a=>a.subjectType==='contact'&&a.subjectId===(c||{}).id); // R3: persisted, keyed by record
+  const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('contact',(c||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:'AM',title:'Note added',body:text}),...x]);
   const {confirmNode,openConfirm}=useConfirm();
   const doDelete=()=>openConfirm({title:`Delete ${c.name}?`,body:`This moves ${c.name} to the Recycle Bin. You can restore it within 30 days.`,confirmLabel:'Delete contact',danger:true,requireText:c.name,onConfirm:()=>{crm.setContacts(a=>a.map(x=>x.id===c.id?{...x,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'}:x));window.__nrturToast&&window.__nrturToast(`${c.name} moved to Recycle Bin`,'success');goTo('contacts');}});
@@ -8009,7 +8010,8 @@ function DealDetailPage({goTo,nav}){
   const dealName=d.name||(d.company+' · '+d.value);
   const doDelete=()=>openConfirm({title:`Delete ${dealName}?`,body:`This moves ${dealName} to the Recycle Bin. You can restore it within 30 days.`,confirmLabel:'Delete deal',danger:true,requireText:(d.name||d.company),onConfirm:()=>{crm.setDeals(a=>a.map(x=>x.id===d.id?{...x,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'}:x));window.__nrturToast&&window.__nrturToast(`${dealName} moved to Recycle Bin`,'success');goTo('pipeline');}});
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
-  const [extra,setExtra]=React.useState([]);
+  const extra=(crm.activities||[]).filter(a=>a.subjectType==='deal'&&a.subjectId===(d||{}).id); // R3: persisted, keyed by record
+  const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('deal',(d||{}).id,_a[0]);};
   const addDealNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:d.owner||'AM',title:'Note added',body:text}),...x]);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
@@ -8347,7 +8349,8 @@ function CompanyDetailPage({goTo,nav}){
   const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Website',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency',sensitive:true},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
   const coSecondary=[{key:'type',label:'Company type',type:'select',options:['Prospect','Customer','Partner','Competitor','Other']},{key:'website',label:'Website',type:'url',linkKind:'url'},{key:'parent',label:'Parent company',type:'lookup',go:(g)=>g('company-detail')},{key:'linkedin',label:'LinkedIn',type:'url',linkKind:'url'},{key:'desc',label:'Description',type:'text'},{key:'billing',label:'Billing address',type:'address'},{key:'shipping',label:'Shipping address',type:'address'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   const coMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
-  const [extra,setExtra]=React.useState([]);
+  const extra=(crm.activities||[]).filter(a=>a.subjectType==='company'&&a.subjectId===(co||{}).id); // R3: persisted, keyed by record
+  const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('company',(co||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:co.owner||'AM',title:'Note added',body:text}),...x]);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
@@ -8886,7 +8889,8 @@ function LeadDetailPage({goTo,nav}){
   const l=leads.find(x=>x.id===nav)||leads[0];
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const [status,setStatusState]=React.useState(l.status);
-  const [extra,setExtra]=React.useState([]);
+  const extra=(crm.activities||[]).filter(a=>a.subjectType==='lead'&&a.subjectId===(l||{}).id); // R3: persisted, keyed by record
+  const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('lead',(l||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:l.owner||'AM',title:'Note added',body:text}),...x]);
   const [convertOpen,setConvertOpen]=React.useState(false);
   const [convToast,setConvToast]=React.useState('');
@@ -20797,7 +20801,8 @@ function CustomRecordDetailPage({goTo,nav}){
   else if(nav!=null){for(const o of objs){const r=(o.records||[]).find(x=>x.id===nav);if(r){def=o;rec=r;break;}}}
   if(!def){def=objs[0];rec=def&&(def.records||[])[0];}
   const {confirmNode,openConfirm}=useConfirm();
-  const [extra,setExtra]=React.useState([]);
+  const extra=(crm.activities||[]).filter(a=>a.subjectType==='custom'&&a.subjectId===(rec||{}).id); // R3: persisted, keyed by record
+  const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('custom',(rec||{}).id,_a[0]);};
   const [editOpen,setEditOpen]=React.useState(false);
   if(!def||!rec)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Record"/><div className="flex-1 flex items-center justify-center text-[13px] text-white/40">Record not found.</div></div></div>);
   if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.singular}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">Restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view {def.plural}.</p></div></div></div></div>);
@@ -21217,6 +21222,7 @@ function App(){
   const [deals,setDeals]=React.useState(()=>_seed.deals);
   _liveDeals=deals; // keep the module-level pointer in sync so allDeals()/dealsForCompany() read live data
   _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
+  const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21280,7 +21286,9 @@ function App(){
     updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
     updateCompany:(id,patch)=>{setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects]);
+    activities,
+    addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
