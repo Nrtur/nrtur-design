@@ -15052,9 +15052,9 @@ function SettingsAdLeadsPage({goTo}){
       <div className="flex items-start gap-3.5"><div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/25 flex items-center justify-center shrink-0"><I.Zap size={16}/></div><div className="flex-1 min-w-0"><p className="text-[10px] font-medium text-amber-300 uppercase tracking-[0.14em]">Recommended automation</p><p className="text-[14px] font-semibold text-white mt-0.5">Speed-to-lead</p><p className="text-[12px] text-white/60 mt-1 leading-relaxed">New ad lead → instant SMS + a task for the owner + enrol in a follow-up sequence. <span className="text-white/85 font-medium">Responding in the first 5 minutes can lift conversion roughly 8×</span> versus an hour later — speed is the single biggest lever on ad-lead ROI.</p><button onClick={()=>goTo('automation-builder',{recipe:'speed-to-lead'})} className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-[#1a1206] bg-amber-500/90 hover:bg-amber-400 transition-all"><I.Zap size={12}/>Use recipe</button></div></div>
     </div>
     <div>
-      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap"><div><p className="text-[13px] font-semibold text-white">Incoming ad leads</p><p className="text-[11.5px] text-white/45">{ads.leads.length} captured · each creates or updates a contact with attribution.</p></div><button onClick={simulate} disabled={!anyConnected} className={['inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all',anyConnected?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')} title={anyConnected?'':'Connect a source first'}><I.Plus size={13} stroke={2.4}/>Simulate new lead</button></div>
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap"><div><p className="text-[13px] font-semibold text-white">Incoming ad leads</p><p className="text-[11.5px] text-white/45">{ads.leads.length} captured · each creates or updates a lead with attribution.</p></div><button onClick={simulate} disabled={!anyConnected} className={['inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all',anyConnected?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')} title={anyConnected?'':'Connect a source first'}><I.Plus size={13} stroke={2.4}/>Simulate new lead</button></div>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">{ads.leads.length===0?(<div className="px-4 py-10 text-center text-[12px] text-white/40">No ad leads yet — connect a source and click “Simulate new lead”.</div>):ads.leads.slice(0,12).map((l,i,arr)=>{const src=adSourceByKey(l.sourceKey);const stC=ST_C[l.status]||'#94a3b8';return(
-        <button key={l.id} onClick={()=>l.contactId&&goTo('contact-detail',l.contactId)} className={['w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.025] transition-colors',i<Math.min(12,arr.length)-1?'border-b border-white/[0.04]':''].join(' ')}>
+        <button key={l.id} onClick={()=>{if(l.leadId)goTo('lead-detail',l.leadId);else if(l.contactId)goTo('contact-detail',l.contactId);}} className={['w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.025] transition-colors',i<Math.min(12,arr.length)-1?'border-b border-white/[0.04]':''].join(' ')}>
           <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0" style={{background:src.color+'26',color:src.color,border:'1px solid '+src.color+'40'}}>{src.short[0]}</span>
           <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{l.name} <span className="text-white/35 font-normal">· {l.email}</span></p><p className="text-[11px] text-white/45 truncate">{src.sourceLabel} · {l.campaign}</p></div>
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 capitalize" style={{background:stC+'1f',color:stC,boxShadow:'inset 0 0 0 1px '+stC+'40'}}>{l.status}</span>
@@ -17033,7 +17033,7 @@ function FormBuilderPage({goTo,initial}){
   const [headerLayout,setHeaderLayout]=React.useState(seed&&seed.headerLayout||'none');
   const [btn,setBtn]=React.useState(seed&&seed.btn||'Submit');
   const [blocks,setBlocks]=React.useState(()=>seed?toBlocks(seed):[{id:newBlockId(),kind:'field',type:'text',label:'Full name',map:'First name',required:true,width:'full'},{id:newBlockId(),kind:'field',type:'email',label:'Work email',map:'Email',required:true,width:'full'}]);
-  const OS_DEFAULTS={recordType:'contact',applyTag:'lead',createDeal:false,dealPipeline:PROP_PIPELINES[0],dealStage:FORM_DEAL_STAGES[0],dealName:'{{company}} — inbound',createTask:false,taskTitle:'Follow up on {{form}} submission',taskAssignee:'Contact owner',automations:[],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! We will be in touch soon.',thankBtn:'',thankBtnUrl:'',redirect:''};
+  const OS_DEFAULTS={recordType:'lead',applyTag:'lead',createDeal:false,dealPipeline:PROP_PIPELINES[0],dealStage:FORM_DEAL_STAGES[0],dealName:'{{company}} — inbound',createTask:false,taskTitle:'Follow up on {{form}} submission',taskAssignee:'Contact owner',automations:[],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! We will be in touch soon.',thankBtn:'',thankBtnUrl:'',redirect:''};
   const [onSub,setOnSub]=React.useState(()=>{
     const s=seed&&seed.onSubmit;
     if(!s)return {...OS_DEFAULTS};
@@ -19867,18 +19867,30 @@ function runFunnelSubmit(opts){
   const qual={funnel:true,formName:funnel.name+(step?(' — '+step.name):''),status:'qualified',answers:rec.answers,source:srcLabel,rep:'AM'};
   // register any new tags so they render with a color
   if(crm.setTagDefs)crm.setTagDefs(d=>{let nd=d;tags.forEach(t=>{if(!nd.some(x=>x.name===t))nd=[...nd,{id:'tag_'+fnId('t'),name:t,color:arHashColor(t)}];});return nd;});
-  // 1. create / update CONTACT — dedupe by email
-  let existing=emailLc?crm.contacts.find(c=>String(c.email||'').toLowerCase()===emailLc):null;
-  let contactName=rec.name,created=false;
-  if(existing){
-    const mergedTags=Array.from(new Set([...(existing.tags||[]),...tags]));
-    crm.updateContact(existing.id,{tags:mergedTags,qual:qual,phone:existing.phone||rec.phone,co:existing.co||rec.company,title:existing.title||rec.title,utm:utm,source:existing.source||'Funnel',lastActivity:'Just now',last:'Just now'});
-    contactName=existing.name;
-  }else{
-    created=true;
+  // 1. create / update the captured PERSON. D4: a stranger becomes a LEAD (status New) unless the form
+  //    explicitly targets a Contact (os.recordType==='contact'). A known Contact is updated in place
+  //    (never downgraded); a known non-converted Lead is updated; otherwise a new Lead (or Contact) is created.
+  const wantContact=os.recordType==='contact';
+  const existingContact=emailLc?crm.contacts.find(c=>String(c.email||'').toLowerCase()===emailLc):null;
+  const existingLead=emailLc?(crm.leads||[]).find(l=>!l.converted&&!l.deleted&&String(l.email||'').toLowerCase()===emailLc):null;
+  const nm=rec.name;
+  let contactName=rec.name,created=false,personKind='lead';
+  if(existingContact){
+    const mergedTags=Array.from(new Set([...(existingContact.tags||[]),...tags]));
+    crm.updateContact(existingContact.id,{tags:mergedTags,qual:qual,phone:existingContact.phone||rec.phone,co:existingContact.co||rec.company,title:existingContact.title||rec.title,utm:utm,source:existingContact.source||'Funnel',lastActivity:'Just now',last:'Just now'});
+    contactName=existingContact.name;personKind='contact';
+  }else if(wantContact){
+    created=true;personKind='contact';
     const nid=Date.now()+Math.floor(Math.random()*1e6);
-    const nm=rec.name;
     crm.setContacts(a=>[{id:nid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,co:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'Active',owner:'AM',ownerColor:'#6366f1',cstatus:'Prospect',tags:tags,source:'Funnel',utm:utm,score:null,days:0,archived:false,dnc:false,createdAt:'Just now',last:'Just now',lastActivity:'Just now',qual:qual},...a]);
+  }else if(existingLead){
+    const mergedTags=Array.from(new Set([...(existingLead.tags||[]),...tags]));
+    crm.updateLead(existingLead.id,{tags:mergedTags,qual:qual,phone:existingLead.phone||rec.phone,company:existingLead.company||rec.company,title:existingLead.title||rec.title,utm:utm,source:existingLead.source||'Funnel',lastActivity:'Just now'});
+    contactName=existingLead.name;personKind='lead';
+  }else{
+    created=true;personKind='lead';
+    const lid=Date.now()+Math.floor(Math.random()*1e6);
+    crm.setLeads(a=>[{id:lid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,company:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'New',owner:'AM',ownerColor:'#6366f1',source:'Funnel',utm:utm,score:null,estValue:'—',estValueNum:0,days:0,loc:'',archived:false,converted:false,tags:tags,createdBy:'AM',createdAt:'Just now',created:'Just now',lastActivity:'Just now',qual:qual},...a]);
   }
   // 3a. optional DEAL (stage + pipeline)
   let dealMade=false;
@@ -19897,7 +19909,7 @@ function runFunnelSubmit(opts){
   }
   // 4. attached AUTOMATION(s) — names live on the form's onSubmit wiring (single source of truth)
   const autos=formAutoNames(os);
-  return {created:created,contactName:contactName,tags:tags,dealMade:dealMade,taskMade:taskMade,autos:autos,utm:utm,redirect:os.after==='redirect'?os.redirect:null};
+  return {created:created,personKind:personKind,contactName:contactName,tags:tags,dealMade:dealMade,taskMade:taskMade,autos:autos,utm:utm,redirect:os.after==='redirect'?os.redirect:null};
 }
 function funnelSimUtm(funnel){return {utm_source:funnel.utmSource||'facebook',utm_medium:'paid',utm_campaign:funnelSlugify(funnel.name),click_id:'clk_'+Math.random().toString(36).slice(2,10)};}
 function funnelPrimaryForm(funnel){for(const s of (funnel.steps||[])){for(const b of (s.blocks||[])){if(b.type==='form')return qualFormById(b.formId)||FORMS_DATA[0];}}return null;}
@@ -20255,7 +20267,7 @@ function FunnelBuilderPage({goTo,nav}){
     updateFunnel(funnel.id,f=>({...f,steps:f.steps.map((s,i)=>i===pvIdx?{...s,stats:{views:(s.stats.views||0)+1,submits:(s.stats.submits||0)+1}}:s)}));
     setTimeout(()=>{
       setSubmitting(false);
-      const parts=[res.created?'Contact created':'Contact updated'];
+      const parts=[res.personKind==='lead'?(res.created?'Lead created':'Lead updated'):(res.created?'Contact created':'Contact updated')];
       if(res.tags.length)parts.push('tagged '+res.tags.join(', '));
       if(res.dealMade)parts.push('deal added');
       if(res.taskMade)parts.push('task added');
@@ -20339,7 +20351,7 @@ function FunnelBuilderPage({goTo,nav}){
           <div className="flex items-center gap-1.5 mr-auto flex-wrap">
             {funnel.steps.map((s,i)=>(<button key={s.id} onClick={()=>{setPvIdx(i);setPvDone(false);}} className={['px-2.5 py-1 rounded-lg text-[11.5px] font-medium transition-all',i===pvIdx&&!pvDone?'bg-brand-500 text-white':'text-white/50 hover:text-white bg-white/[0.04]'].join(' ')}>{i+1}. {s.name}</button>))}
           </div>
-          <span className="text-[11px] text-white/40 hidden sm:flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>Submitting really creates a contact</span>
+          <span className="text-[11px] text-white/40 hidden sm:flex items-center gap-1.5"><I.Zap size={11} className="text-brand-300"/>Submitting really creates a lead</span>
           <FunnelDeviceToggle device={device} setDevice={setDevice}/>
           <button onClick={restartPreview} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium text-white/60 bg-white/[0.04] border border-white/[0.08] hover:text-white transition-all"><I.History size={12}/>Restart</button>
         </div>
@@ -20349,7 +20361,7 @@ function FunnelBuilderPage({goTo,nav}){
               {pvDone?(<div style={{background:pvStep.bg||'#fff'}}><div style={{maxWidth:520,margin:'0 auto',padding:'70px 24px',textAlign:'center',fontFamily:'Inter,system-ui'}}>
                 <div style={{width:60,height:60,borderRadius:'50%',background:'#dcfce7',color:'#16a34a',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px'}}><I.Check size={28} stroke={2.4}/></div>
                 <p style={{fontSize:22,fontWeight:700,color:'#0f172a'}}>All steps complete</p>
-                <p style={{fontSize:14,color:'#64748b',marginTop:8,lineHeight:1.5}}>This visitor moved through the whole funnel. Each submit created/updated a contact and ran the wiring. Check the contact’s timeline for “Funnel submitted”.</p>
+                <p style={{fontSize:14,color:'#64748b',marginTop:8,lineHeight:1.5}}>This visitor moved through the whole funnel. Each submit created/updated a lead and ran the wiring. Check the contact’s timeline for “Funnel submitted”.</p>
                 <button onClick={restartPreview} style={{marginTop:18,padding:'11px 20px',borderRadius:10,border:'none',background:funnel.accent||'#4f46e5',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>Run again</button>
               </div></div>):(
                 <FunnelRender funnel={funnel} step={pvStep} device={device} live={true} submitting={submitting} onSubmit={onPreviewSubmit}/>
@@ -21247,7 +21259,7 @@ function App(){
       const sourceKey=opts.sourceKey||connected[0]||'meta-ads';
       const src=adSourceByKey(sourceKey);
       const form=adForms.find(f=>f.id===opts.formId)||adForms.find(f=>f.sourceKey===sourceKey)||{id:'lf_x',name:src.short+' lead form',campaign:(src.assets[0]||{}).name||'Campaign',stage:'New',pipeline:'Sales Pipeline',tag:adSlug(src.short)+'-lead',owner:'Round-robin'};
-      const used={};contacts.forEach(c=>{if(c.email)used[c.email.toLowerCase()]=1;});
+      const used={};contacts.forEach(c=>{if(c.email)used[c.email.toLowerCase()]=1;});leads.forEach(l=>{if(l.email)used[l.email.toLowerCase()]=1;});
       const pool=AD_SIM_POOL.filter(p=>!used[p.email.toLowerCase()]);
       const person=opts.person||pool[Math.floor(Math.random()*pool.length)]||AD_SIM_POOL[Math.floor(Math.random()*AD_SIM_POOL.length)];
       const campaign=form.campaign||(src.assets[0]||{}).name||'Campaign';
@@ -21259,12 +21271,12 @@ function App(){
       const attr={source:src.crmSource,adPlatform:src.platform,adSourceKey:sourceKey,adSourceLabel:adSourceLabel(sourceKey,campaign),adCampaign:campaign,adAdset:(src.platform==='google'?'Search — exact':'Lookalike 1% — US'),adFormName:form.name,utmSource:src.platform==='google'?'google':'fb',utmMedium:src.platform==='google'?'cpc':'paid_social',utmCampaign:adSlug(campaign),[src.clickId]:clickVal,adTs:0,adSms:speedy,adEnrolled:speedy};
       const tags=[form.tag||(adSlug(src.short)+'-lead'),'ad-lead',adSlug(campaign)].filter(Boolean);
       const existing=contacts.find(c=>c.email&&person.email&&c.email.toLowerCase()===person.email.toLowerCase());
-      let contactId,deduped=false;
+      let contactId=null,leadId=null,deduped=false;
       if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0}:c));}
-      else{contactId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setContacts(a=>[{id:contactId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),co:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,last:'Just now',deal:'-',tag:tags[0],loc:person.loc||'',cstatus:'Prospect',days:0,dnc:false,archived:false,title:'',score:Math.floor(Math.random()*30)+45,tags,createdBy:'nrtur',createdAt:'Just now',lastActivity:'Just now',lastContacted:'Just now',...attr},...a]);}
-      setAdLeads(a=>[{id:'al_'+contactId,ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
+      else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:Math.floor(Math.random()*30)+45,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
+      setAdLeads(a=>[{id:'al_'+contactId,ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
       if(window.__nrturToast)window.__nrturToast('New '+src.short+' lead'+(campaign?(' · '+campaign):'')+': '+person.name+(deduped?' (updated existing)':'')+(speedy?' · Speed-to-lead fired ⚡':''),'success');
-      return {contactId,deduped,sourceKey};
+      return {contactId,leadId,deduped,sourceKey};
     };
     return {sources:AD_SOURCE_DEFS,adState,forms:adForms,leads:adLeads,setForms:setAdForms,
       isConnected:(k)=>!!(adState[k]&&adState[k].connected),
