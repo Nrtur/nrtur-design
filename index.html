@@ -7871,7 +7871,7 @@ function PipelinePage({goTo,nav}){
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
-  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key,dStage:toStage.name};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key,dStage:toStage.name};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
@@ -8110,7 +8110,7 @@ function DealDetailPage({goTo,nav}){
   const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
-  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const low=(stageName||'').toLowerCase();const kind=/lost/.test(low)?'lost':/won|live/.test(low)?'won':null;if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k});};
+  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const low=(stageName||'').toLowerCase();const kind=/lost/.test(low)?'lost':/won|live/.test(low)?'won':null;if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
@@ -8169,7 +8169,7 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
-        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
@@ -11615,7 +11615,16 @@ function AutomationBuilderPage({goTo,nav}){
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
   const mark=()=>setDirty(true);
   const setFlow=(v)=>{setNodes(v);mark();};
-  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-automations'),650);};
+  const crm=React.useContext(CrmDataContext);
+  const [savedId,setSavedId]=React.useState(null);
+  const save=(msg)=>{ // P0-1: Save persists a runnable automation into the shared store (the runtime engine matches on its trigger)
+    const draft=/draft/i.test(msg);
+    const flat=[];const walk=(arr)=>(arr||[]).forEach(n=>{if(n&&n.label&&n.Icon)flat.push({label:n.label,Icon:n.Icon,bg:n.bg,fg:n.fg,meta:n.meta});if(n&&n.yes)walk(n.yes);if(n&&n.no)walk(n.no);if(n&&n.branches)n.branches.forEach(b=>walk((b&&b.nodes)||b));});walk(nodes);
+    const rec={name:(name||'').trim()||'Untitled automation',trigger,status:draft?'draft':(activated?'active':'paused'),steps:flat};
+    if(savedId!=null){crm.setAutomations(list=>list.map(a=>a.id===savedId?{...a,...rec}:a));}
+    else{const _id=Date.now();setSavedId(_id);crm.setAutomations(list=>[{id:_id,runs:0,success:100,lastRun:'Never run',...rec},...list]);}
+    showToast(msg);setTimeout(()=>goTo('settings-automations'),650);
+  };
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this automation will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-automations')});else goTo('settings-automations');};
   const tm=TRIGGER_META(trigger);
   const counts=countFlow(nodes);
@@ -16358,6 +16367,29 @@ const AUTO_INIT=[
   {id:9,name:'Payment Received → Onboarding',trigger:'Payment received',status:'active',runs:58,success:100,lastRun:'2h ago',spark:[1,2,2,3,3,4,5,5,6,7,7,8,9,10],steps:[STEP_PRESETS_A.welcome,STEP_PRESETS_A.task,STEP_PRESETS_A.slack]},
 ];
 const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',label:'Active'},paused:{dot:'#fbbf24',badge:'bg-amber-500/12 text-amber-300 ring-amber-500/25',label:'Paused'},error:{dot:'#f87171',badge:'bg-red-500/12 text-red-300 ring-red-500/25',label:'Error'},draft:{dot:'#94a3b8',badge:'bg-white/[0.06] text-white/55 ring-white/[0.10]',label:'Draft'}};
+// ── AUTOMATION RUNTIME ── P0-1: deal stage changes actually execute matching active automations.
+// _autoRt is registered by App on every render (mirrors the _liveDeals pattern) so the engine can
+// read live automations and write real effects: a follow-up task (calendar store), a ⚡ timeline
+// entry on the deal, an incremented run count + lastRun, and a live Logs row. Fired from EVERY
+// real stage transition: board drag (applyMove), list/bulk moves (via applyMove), and the deal
+// detail's commitStage / outcome confirm.
+let _autoRt=null; // {automations,setAutomations,addAutoLog,addActivity,addTask}
+function runDealAutomations(deal,toName,kind){ // kind: 'won' | 'lost' | null
+  if(!_autoRt||!deal)return [];
+  const evs=['Deal stage changed','Deal moved to '+toName];
+  if(kind==='won')evs.push('Deal won');
+  if(kind==='lost')evs.push('Deal lost');
+  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&evs.indexOf(a.trigger)>=0);
+  fired.forEach(a=>{
+    const stepLabels=(a.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);
+    if(stepLabels.some(l=>/task|remind|follow/i.test(l)))_autoRt.addTask({title:a.name+': follow up on '+(deal.name||deal.company),deal,auto:a});
+    _autoRt.addActivity('deal',deal.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+a.name+'" ran',body:(stepLabels.length?stepLabels.join(' → ')+' · ':'')+'Trigger: '+a.trigger}));
+    _autoRt.setAutomations(list=>list.map(x=>x.id===a.id?{...x,runs:(x.runs||0)+1,lastRun:'Just now',success:x.success==null?100:x.success}:x));
+    _autoRt.addAutoLog({auto:a.name,contact:deal.name||deal.company||'Deal',avatar:arInitials(deal.name||deal.company||'D'),color:'#6366f1',status:'success',steps:(a.steps||[]).length+'/'+(a.steps||[]).length,time:'Just now'});
+  });
+  if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
+  return fired;
+}
 const LOG_ST={success:{c:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',dot:'#34d399',l:'Success'},failed:{c:'bg-red-500/12 text-red-300 ring-red-500/25',dot:'#f87171',l:'Failed'},warning:{c:'bg-amber-500/12 text-amber-300 ring-amber-500/25',dot:'#fbbf24',l:'Warning'}};
 // Per-automation run log: filter the global feed for this automation, or synthesize plausible runs
 const LOG_SAMPLE_NAMES=[['Olivia Park','OP','#3b82f6'],['Daniel Cho','DC','#8b5cf6'],['Mia Russo','MR','#10b981'],['Noah Kim','NK','#f59e0b'],['Ava Nguyen','AN','#ec4899']];
@@ -16565,7 +16597,7 @@ function SettingsAutomationsPage({goTo}){
   const [newSeq,setNewSeq]=React.useState(null);
   const [sub,setSub]=React.useState('workflows');
   const [subView,setSubView]=React.useState('list');
-  const [autos,setAutos]=React.useState(AUTO_INIT);
+  const {automations:autos,setAutomations:setAutos,autoLogs}=React.useContext(CrmDataContext); // P0-1: shared store — cards reflect REAL runtime runs
   const fldAuto=useFolders('automations',{folders:[{id:'af_sales',name:'Sales',color:'#818cf8',scope:'team'},{id:'af_life',name:'Lifecycle',color:'#34d399',scope:'personal'}],members:{9501:'af_sales',2:'af_sales',5:'af_life'}});
   const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active]),...PUSH_SEQ_DATA.map(s=>['push'+s.id,s.active]),...INAPP_SEQ_DATA.map(s=>['inapp'+s.id,s.active])]));
   const [menu,setMenu]=React.useState(null);
@@ -16592,7 +16624,7 @@ function SettingsAutomationsPage({goTo}){
       <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-semibold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo(channel+'-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
     </div>);};
   const LCOL='1.7fr 1.5fr 120px 110px 110px';
-  const filteredLogs=AUTO_LOGS.filter(l=>(logAuto==='All'||l.auto===logAuto)&&(logStatus==='All'||l.status===logStatus));
+  const filteredLogs=[...(autoLogs||[]),...AUTO_LOGS].filter(l=>(logAuto==='All'||l.auto===logAuto)&&(logStatus==='All'||l.status===logStatus)); // live runtime rows first, seeded history after
   const readOnly=!settingsIsAdmin();
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
@@ -21425,6 +21457,8 @@ function App(){
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
+  const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
+  const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21495,7 +21529,8 @@ function App(){
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     teamInvites,setTeamInvites,
     personalConns,setPersonalConns,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns]);
+    automations,setAutomations,autoLogs,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -21510,6 +21545,11 @@ function App(){
   const disconnectMail=React.useCallback((addr)=>setMailAccounts(a=>a.filter(x=>x.addr!==addr)),[]);
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
+  // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
+  _autoRt={automations,setAutomations,
+    addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
+    addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
+    addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
   const calUpdateItem=React.useCallback((ev)=>setCalItems(a=>a.map(x=>x.id===ev.id?{...x,...ev}:x)),[]);
   const calDeleteItem=React.useCallback((id)=>setCalItems(a=>a.filter(x=>x.id!==id)),[]);
   const calToggleDone=React.useCallback((id)=>setCalItems(a=>a.map(x=>x.id===id?{...x,done:!x.done}:x)),[]);
