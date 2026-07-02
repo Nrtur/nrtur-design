@@ -8513,6 +8513,16 @@ function CompanyDetailPage({goTo,nav}){
               </div>
               </div>
               <RecordProperties record={co} primary={_coLay.primary} secondary={_coLay.secondary} onChange={(k,v)=>updateCompany(co.id,{[k]:v})} goTo={goTo} readOnly={!effCanObject('Companies','edit')}/>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
+                <div className={['px-5 py-4 flex items-center justify-between',coDealsOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setCoDealsOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:coDealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {coDealsOpen&&<div className="p-4 grid grid-cols-1 gap-2.5">
+                  {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):(showAllCoDeals?dl.list:dl.list.slice(0,6)).map(d=>(
+                    <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
+                  ))}
+                  {dl.list.length>6&&<button onClick={()=>setShowAllCoDeals(s=>!s)} className="col-span-full text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 text-left">{showAllCoDeals?'Show less':'Show all '+dl.list.length+' deals'}</button>}
+                </div>}
+              </div>
+              <RelatedRecordsPanel crm={crm} targetType="company" rec={co} goTo={goTo}/>
             </div>
                         <div className="flex flex-col gap-5">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
@@ -8524,16 +8534,6 @@ function CompanyDetailPage({goTo,nav}){
                   {people.length>6&&<button onClick={()=>setShowAllPeople(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-2.5 py-1.5">{showAllPeople?'Show less':'Show all '+people.length+' contacts'}</button>}
                 </div>}
               </div>
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-                <div className={['px-5 py-4 flex items-center justify-between',coDealsOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setCoDealsOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:coDealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                {coDealsOpen&&<div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):(showAllCoDeals?dl.list:dl.list.slice(0,6)).map(d=>(
-                    <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
-                  ))}
-                  {dl.list.length>6&&<button onClick={()=>setShowAllCoDeals(s=>!s)} className="col-span-full text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 text-left">{showAllCoDeals?'Show less':'Show all '+dl.list.length+' deals'}</button>}
-                </div>}
-              </div>
-              <RelatedRecordsPanel crm={crm} targetType="company" rec={co} goTo={goTo}/>
               <RecordTasks recId={co.id} match={(t)=>t.companyId!=null?t.companyId===co.id:t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Companies','edit')?addNote:undefined} onSchedule={effCanObject('Companies','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
