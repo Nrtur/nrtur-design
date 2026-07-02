@@ -7478,7 +7478,7 @@ function AddContactPage({goTo,nav}){
 const STAGES_DATA=[
   {key:'prospecting',name:'Prospecting',color:'#94a3b8',count:8,value:'$42k',deals:[
     {id:120,company:'Northpeak Co',value:'$4,000',owner:'AM',ownerColor:'#3b82f6',tag:'Lost',tagBg:'bg-red-500/15',tagFg:'text-red-300',age:'4w',score:'cold',name:'Northpeak — Pilot',amount:4000,pipeline:'Sales Pipeline',primaryContact:'Greg Mason',dealTags:['cold'],deleted:true,deletedAt:Date.now()-14*864e5,deletedBy:'Jamie Kim'},
-    {id:1,company:'Meridian Agency',value:'$8,400',owner:'SC',ownerColor:'#3b82f6',tag:'Follow up',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'5d',score:'cold',name:'Meridian — Managed CRM',amount:8400,pipeline:'Sales Pipeline',probability:30,closeDate:'2026-07-15',primaryContact:'Sarah Chen',nextAction:'Send follow-up email',dealTags:['inbound'],source:'Referral',amountType:'One-time',forecast:'Pipeline',additionalContacts:[{contact:'James Rivera',role:'Champion'}],createdBy:'SC',createdAt:'Apr 1, 2026',lastActivity:'5d ago'},
+    {id:1,company:'Meridian Agency',value:'$8,400',owner:'SC',ownerColor:'#3b82f6',tag:'Follow up',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'5d',score:'cold',name:'Meridian — Managed CRM',amount:8400,pipeline:'Sales Pipeline',probability:30,closeDate:'2026-07-15',primaryContact:'Sarah Chen',nextAction:'Send follow-up email',dealTags:['inbound'],source:'Meta Ads',amountType:'One-time',forecast:'Pipeline',additionalContacts:[{contact:'James Rivera',role:'Champion'}],createdBy:'SC',createdAt:'Apr 1, 2026',lastActivity:'5d ago',adSourceKey:'meta-ads',adPlatform:'meta',adCampaign:'Spring Promo 2026',fbclid:'IwAR2_a91kZ_demo_fbclid_8x2'},
     {id:2,company:'Bloom Creative',value:'$12,000',owner:'JK',ownerColor:'#8b5cf6',tag:'New lead',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'2d',score:'warm'},
     {id:3,company:'Vertex Labs',value:'$6,200',owner:'RL',ownerColor:'#10b981',tag:'Call booked',tagBg:'bg-violet-500/15',tagFg:'text-violet-300',age:'1d',score:'hot'}]},
   {key:'qualified',name:'Qualified',color:'#818cf8',count:5,value:'$81k',deals:[
@@ -7786,6 +7786,7 @@ function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
   const {deals:_deals,setDeals,customObjects:_customObjects}=React.useContext(CrmDataContext);
+  const ads=React.useContext(AdsContext);
   const [pipeObject,setPipeObject]=React.useState((nav&&nav.objectType)||'deal');
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const dealFields=React.useMemo(()=>omFieldSchema('deal',_propsCtx,_deals),[_propsCtx,_deals]);
@@ -8035,7 +8036,7 @@ function PipelinePage({goTo,nav}){
         <AppFooter note={boardView==='board'?"Drag deals between stages to move them":undefined}/>
         {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={addAuxPipeline}/>}
       </div>
-      {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const dd=outcomePrompt.dd,ts=outcomePrompt.toStage,kind=outcomePrompt.kind;applyMove(dd,ts);setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast('Deal marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setOutcomePrompt(null);}}/>);})()}
+      {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const dd=outcomePrompt.dd,ts=outcomePrompt.toStage,kind=outcomePrompt.kind;applyMove(dd,ts);setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast('Deal marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);setOutcomePrompt(null);}}/>);})()}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
       {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveDealView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={dealSmartMgr.canShare}/>}
       {/* Edit-stages drawer (right side) */}
@@ -8088,6 +8089,7 @@ function DealDetailPage({goTo,nav}){
   const d=_deals.find(x=>x.id===nav)||_deals.find(x=>x.stageKey!=='won')||_deals[0];
   const ownerM=TEAM_MEMBERS.find(m=>m.avatar===d.owner)||{name:'—',avatar:d.owner,color:d.ownerColor};
   const [stage,setStage]=React.useState(d.stageName);
+  const ads=React.useContext(AdsContext);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const crm=React.useContext(CrmDataContext);
   const {updateDeal}=crm;
@@ -8167,7 +8169,7 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
-        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setDealOutcome(null);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
@@ -8715,7 +8717,7 @@ function buildConvertRecords(lead,payload){
   const coNameFinal=coName||lead.company||'';
   const contact={id:contactId,name:cname,first:c.first||'',last:c.last||'',co:coNameFinal,companyId:effCompanyId,email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,score:lead.score!=null?lead.score:null,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id};
   let deal=null;
-  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id};}
+  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,...(lead.adSourceKey?{adSourceKey:lead.adSourceKey,adPlatform:lead.adPlatform,adCampaign:lead.adCampaign,adFormName:lead.adFormName,fbclid:lead.fbclid,gclid:lead.gclid}:{})};}
   return {contact,company,deal,companyId:effCompanyId};
 }
 function CvtField({label,children,wide}){return(<div className={wide?'col-span-2':''}><label className="text-[11px] text-white/45 block mb-1.5">{label}</label>{children}</div>);}
