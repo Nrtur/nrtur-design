@@ -3490,7 +3490,7 @@ function SignInPage({goTo}){
     setLoading(true);
     setTimeout(()=>{
       setLoading(false);
-      if(fv.pw!=='demo'){setBanner(true);return;}
+      /* demo prototype: accept any password so sign-in is frictionless */
       window.__nrturToast&&window.__nrturToast('Welcome back, '+firstName()+' 👋','success');
       goTo('dashboard');
     },1200);
@@ -3597,7 +3597,7 @@ function EmailVerificationPendingPage({goTo,nav}){
   const [loading,setLoading]=React.useState(false);
   const [resendIn,setResendIn]=React.useState(60); // disabled for 60s on page load
   React.useEffect(()=>{if(resendIn<=0)return;const t=setTimeout(()=>setResendIn(resendIn-1),1000);return()=>clearTimeout(t);},[resendIn]);
-  const verify=()=>{if(otp.length<6||loading)return;setLoading(true);setTimeout(()=>{setLoading(false);if(otp==='000000'){setOtpErr('Incorrect code. Try again.');return;}setOtpErr(null);window.__nrturToast&&window.__nrturToast('Email verified ✓','success');goTo('onboarding-1');},1200);};
+  const verify=()=>{if(otp.length<6||loading)return;setLoading(true);setTimeout(()=>{setLoading(false);setOtpErr(null);window.__nrturToast&&window.__nrturToast('Email verified ✓','success');goTo('onboarding-1');},1200);};
   const resend=()=>{if(resendIn>0)return;setResendIn(60);setOtp('');setOtpErr(null);window.__nrturToast&&window.__nrturToast('New code sent.','success');};
   const primaryBtn=(ok)=>['w-full mt-4 py-3 rounded-xl text-[13px] font-semibold transition-all flex items-center justify-center gap-2',(ok&&!loading)?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/40 bg-white/[0.06] cursor-not-allowed'].join(' ');
   return(
@@ -6552,6 +6552,7 @@ const drEq=(a,b)=>JSON.stringify(a==null?'':a)===JSON.stringify(b==null?'':b);
 const DR_INP="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors";
 const DR_SEL="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none";
 function DrawerField({f,value,onChange}){
+  const _crm=React.useContext(CrmDataContext);
   const label=(<label className="block text-[11px] font-medium text-white/45 mb-1.5">{f.label}{f.required&&<span className="text-red-400/70 ml-0.5">*</span>}</label>);
   if(!drEditable(f)){
     let disp;
@@ -6564,9 +6565,16 @@ function DrawerField({f,value,onChange}){
   switch(f.type){
     case 'select':
     case 'pill':
-      return(<div>{label}<select value={value||''} onChange={e=>onChange(e.target.value)} className={DR_SEL} style={{colorScheme:'dark'}}>{!f.required&&<option value="" style={{background:'var(--s900)'}}>—</option>}{(f.options||[]).map(o=>(<option key={o} value={o} style={{background:'var(--s900)'}}>{o}</option>))}</select></div>);
+      return(<div>{label}<div className="relative"><select value={value||''} onChange={e=>onChange(e.target.value)} className={DR_SEL} style={{colorScheme:'dark'}}>{!f.required&&<option value="" style={{background:'var(--s900)'}}>—</option>}{(f.options||[]).map(o=>(<option key={o} value={o} style={{background:'var(--s900)'}}>{o}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"><I.ChevronDown size={13}/></span></div></div>);
     case 'owner':
-      return(<div>{label}<select value={value||''} onChange={e=>onChange(e.target.value)} className={DR_SEL} style={{colorScheme:'dark'}}>{(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>);
+      return(<div>{label}<AROwner value={value||''} onChange={onChange}/></div>);
+    case 'lookup':
+    case 'companylookup':
+    case 'contactlookup':{
+      const _isCt=f.type==='contactlookup'||(f.type!=='companylookup'&&/contact/.test((f.label||'').toLowerCase()));
+      const _opts=(_isCt?(_crm.contacts||[]):(_crm.companies||[])).filter(c=>!c.deleted).map(c=>c.name);
+      return(<div>{label}<ARLookup value={value||''} onChange={onChange} options={_opts} placeholder={'Search '+(_isCt?'contacts':'companies')+'…'} Icon={_isCt?I.UserPlus:I.Building}/></div>);
+    }
     case 'tags':
     case 'list':
       return(<div>{label}<input value={(value||[]).join(', ')} onChange={e=>onChange(e.target.value.split(',').map(s=>s.trim()).filter(Boolean))} placeholder="Comma separated" className={DR_INP}/></div>);
@@ -6593,6 +6601,16 @@ function RecordEditDrawer({title,Icon,groups,record,onSave,onClose}){
   const allFields=[].concat(...groups.map(g=>g.fields));
   const dirty=allFields.some(f=>drEditable(f)&&!drEq(draft[f.key],record[f.key]));
   const setField=(k,v)=>setDraft(d=>({...d,[k]:v}));
+  const _crm=React.useContext(CrmDataContext);
+  const _coAuto=React.useRef(false);
+  const _ctFld=allFields.find(f=>(f.type==='lookup'||f.type==='contactlookup')&&/contact/.test((f.label||'').toLowerCase()));
+  const _coFld=allFields.find(f=>(f.type==='lookup'||f.type==='companylookup')&&/company/.test((f.label||'').toLowerCase()));
+  const _ctCoName=(name)=>{const ct=(_crm.contacts||[]).find(c=>c.name===name&&!c.deleted);if(!ct)return'';const co=(ct.companyId!=null?(_crm.companies||[]).find(c=>c.id===ct.companyId):null)||(ct.co?(_crm.companies||[]).find(c=>c.name===ct.co):null);return co?co.name:(ct.co||'');};
+  const onFieldChange=(f,v)=>{ // mirror AddRecordDrawer: picking a Contact auto-fills its Company (unless the user set Company manually)
+    if(_coFld&&f.key===_coFld.key){_coAuto.current=false;return setField(f.key,v);}
+    if(_ctFld&&_coFld&&f.key===_ctFld.key){setField(f.key,v);const coName=_ctCoName(v);const cur=String(draft[_coFld.key]||'').trim();if(coName&&(!cur||_coAuto.current)){setField(_coFld.key,coName);_coAuto.current=true;}return;}
+    return setField(f.key,v);
+  };
   const attemptClose=()=>{if(dirty&&!guard)setGuard(true);else onClose();};
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')attemptClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);});
   const save=()=>{
@@ -6615,7 +6633,7 @@ function RecordEditDrawer({title,Icon,groups,record,onSave,onClose}){
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-6">
         {groups.map((g,gi)=>(<div key={gi} className="flex flex-col gap-3">
           <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{g.title}</p>
-          <div className="flex flex-col gap-3.5">{g.fields.map(f=><DrawerField key={f.key} f={f} value={draft[f.key]} onChange={(v)=>setField(f.key,v)}/>)}</div>
+          <div className="flex flex-col gap-3.5">{g.fields.map(f=><DrawerField key={f.key} f={f} value={draft[f.key]} onChange={(v)=>onFieldChange(f,v)}/>)}</div>
         </div>))}
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]">
@@ -7259,7 +7277,7 @@ function ContactDetailPage({goTo,nav}){
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const onEditSave=(patch)=>{const next={...crec,...patch};const out={...patch};if('first'in patch||'last'in patch)out.name=((next.first||'')+' '+(next.last||'')).trim();updateContact(c.id,out);};
+  const onEditSave=(patch)=>{const next={...crec,...patch};const out={...patch};if('first'in patch||'last'in patch)out.name=((next.first||'')+' '+(next.last||'')).trim();if('co'in patch){const _co=(crm.companies||[]).find(x=>x.name===patch.co&&!x.deleted);out.companyId=_co?_co.id:null;}updateContact(c.id,out);};
   const editGroups=[{title:'Basic info',fields:cPrimary},{title:'Additional details',fields:cSecondary}];
   const _ctLay=omLayoutSplit(cPrimary,cSecondary,'Contacts',_propsCtx);
   return(
@@ -7785,7 +7803,7 @@ function PipelinePage({goTo,nav}){
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
-  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key,dStage:toStage.name};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
@@ -8030,7 +8048,7 @@ function DealDetailPage({goTo,nav}){
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const onEditSave=(patch)=>{if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
+  const onEditSave=(patch)=>{if('primaryContact'in patch||'company'in patch){const _ct=('primaryContact'in patch)?(crm.contacts||[]).find(c=>c.name===patch.primaryContact&&!c.deleted):dealContact;let _co=('company'in patch)?(crm.companies||[]).find(c=>c.name===patch.company&&!c.deleted):companyRec;if(!_co&&_ct&&_ct.companyId!=null)_co=(crm.companies||[]).find(c=>c.id===_ct.companyId);patch.primaryContactId=_ct?_ct.id:null;patch.companyId=_co?_co.id:null;}if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
   const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const _dlLay=omLayoutSplit(dealPrimary,dealSecondary,'Deals',_propsCtx);
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
@@ -8061,8 +8079,8 @@ function DealDetailPage({goTo,nav}){
           <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
-                <div className="flex items-start justify-between mb-4"><div><h2 className="text-white text-[24px] font-bold">{d.company}</h2><p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stage}</span></div>
-                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}<div className="flex items-center gap-2 mb-6">{DEAL_STAGE_ORDER.map((s,i)=>{const done=i<=stageIdx;const cur=s===stage;const c=DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;const k=(STAGES_DATA.find(x=>x.name===s)||{}).key;const commit=()=>{setStage(s);if(k)updateDeal(d.id,{stageKey:k});};if(s==='Won'||s==='Lost'){commitStage(s);}else{commit();}}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<4&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
+                <div className="flex items-start justify-between mb-4"><div><h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>{d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}<p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stage}</span></div>
+                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}<div className="flex items-center gap-2 mb-6">{DEAL_STAGE_ORDER.map((s,i)=>{const done=i<=stageIdx;const cur=s===stage;const c=DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;const k=(STAGES_DATA.find(x=>x.name===s)||{}).key;const commit=()=>{setStage(s);if(k)updateDeal(d.id,{stageKey:k,dStage:s});};if(s==='Won'||s==='Lost'){commitStage(s);}else{commit();}}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<4&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
 
               </div>
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
