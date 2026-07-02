@@ -3702,6 +3702,7 @@ function onbExtraPipeline(){
 function OnboardingPage({step,goTo}){
   const crm=React.useContext(CrmDataContext);
   const {connect:connectReal}=React.useContext(IntegrationsContext);
+  const ma=React.useContext(MailAccountsContext);
   const REAL_INTEG_KEY={twilio:'twilio',slack:'slack'}; // onboarding keys that map to real workspace integrations (reflected on Settings → Integrations)
   const [company,setCompany]=React.useState('');
   const [industry,setIndustry]=React.useState('');
@@ -3711,7 +3712,7 @@ function OnboardingPage({step,goTo}){
   const [inviteEmail,setInviteEmail]=React.useState('');
   const [inviteRole,setInviteRole]=React.useState('Sales Rep');
   const [sentInvites,setSentInvites]=React.useState([]);
-  const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>{setInteg(m=>({...m,[key]:'connected'}));const rk=REAL_INTEG_KEY[key];if(rk)connectReal(rk);},1200);};
+  const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>{setInteg(m=>({...m,[key]:'connected'}));const rk=REAL_INTEG_KEY[key];if(rk)connectReal(rk);if(key==='calendar')crm.setPersonalConns(m=>({...m,'google-calendar':true}));if(key==='gmail')ma.connect({addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'});},1200);};
   const disconnectInteg=(key)=>setInteg(m=>({...m,[key]:'idle'}));
   // Add one or many invites at once — splits on commas, semicolons, spaces, and newlines.
   const addInvites=(raw,role)=>{const parts=String(raw||'').split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return;setSentInvites(a=>{const next=[...a];parts.forEach(em=>{if(!next.some(x=>x.email.toLowerCase()===em.toLowerCase()))next.push({email:em,role:role||inviteRole});});return next;});};
@@ -14977,7 +14978,7 @@ function SettingsMyIntegrationsPage({goTo}){
   const ma=React.useContext(MailAccountsContext);
   const [mailboxModal,setMailboxModal]=React.useState(false);
   const [genModal,setGenModal]=React.useState(null);
-  const [myConns,setMyConns]=React.useState({}); // personal app connections — per user, not shared
+  const {personalConns:myConns,setPersonalConns:setMyConns}=React.useContext(CrmDataContext); // personal app connections — shared so onboarding + Settings agree (persist across nav)
   const [detail,setDetail]=React.useState(null);
   const mailboxIntg={name:'My inbox sync',desc:"Connect your own Gmail, Outlook / Microsoft 365, or IMAP mailbox so the email you send & receive logs to the CRM automatically — your personal inbox, not the org's sending domain.",cat:'Communication',scope:'user',iconColor:'#6366f1',Icon:I.Mail,scopes:['Read & send email from your mailbox','Log sent & received mail to contacts']};
   const userIntgs=INTG_DEFS.filter(i=>i.scope==='user');
@@ -21312,6 +21313,7 @@ function App(){
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
+  const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21380,7 +21382,8 @@ function App(){
     activities,
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     teamInvites,setTeamInvites,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites]);
+    personalConns,setPersonalConns,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);

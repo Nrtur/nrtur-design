@@ -5,9 +5,10 @@ _Status: fixed & render-verified · 2026-07-02_
 Following the coherent pipeline wiring (steps 1–2), the "impactful" remaining steps now persist into the real app instead of being discarded.
 
 ## Step 3 — Integrations connect for real
-Onboarding's integration cards used a local fake-connect. `OnboardingPage` now consumes `IntegrationsContext`, and `connectInteg` maps the onboarding key to the real workspace integration and calls `connect(realKey)`. Wired keys that the Settings → Integrations page actually reads from the shared `conns` store: **Slack** and **Twilio** (`REAL_INTEG_KEY={twilio,slack}`).
-- Verified: connecting Slack + Twilio in onboarding sets `conns.slack=true` / `conns.twilio=true` — the exact state Settings reads (`!!conns[key]`).
-- Left onboarding-local (different stores, out of scope): **Gmail** (MailAccountsContext) and **Google Calendar** (user-scope personal-integrations page), which don't map to `conns`.
+Onboarding's integration cards used a local fake-connect. `OnboardingPage` now consumes `IntegrationsContext` + `MailAccountsContext`, and `connectInteg` routes each onboarding key to its **real** store:
+- **Slack / Twilio** (workspace) → `connect(realKey)` on the shared `conns` store that Settings → Integrations reads (`!!conns[key]`). Verified: `conns.slack=true` / `conns.twilio=true`.
+- **Google Calendar** (personal) → sets `personalConns['google-calendar']=true`. To make this real, the personal-integrations page's connection map was **lifted from local `myConns` to a shared `personalConns` on `CrmDataContext`** (which also fixes that page's own connections not surviving navigation). Verified: connecting Calendar in onboarding shows it **Connected** on Settings → My integrations.
+- **Gmail** (personal inbox) → `MailAccountsContext.connect(...)`. The inbox is already connected via the seeded mail accounts, so this reinforces rather than changes it; verified the inbox shows **Connected**.
 
 ## Step 4 — Contacts persist
 `RecordSheet` never wrote to the CRM itself — it delegates to an `onCreateRows` prop, which the onboarding call site didn't pass, so added contacts were silently dropped. Now the call site passes `onCreateRows={rows => crm.setContacts([...rows.map(r=>arBuildFromSheet('contact',r)), ...])}` (same normalizer every create path uses), with `crm` read from `CrmDataContext`.
