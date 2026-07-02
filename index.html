@@ -2397,7 +2397,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     // Link new records by id (prefer the prefilled id, else resolve the picked name) — completes Wave 3 id-linking for live-created records.
     const _findCo=(id,name)=>(id!=null&&(crm.companies||[]).find(c=>c.id===id))||(name&&(crm.companies||[]).find(c=>c.name===name&&!c.deleted))||null;
     const _findCt=(id,name)=>(id!=null&&(crm.contacts||[]).find(c=>c.id===id&&!c.deleted))||(name&&(crm.contacts||[]).find(c=>c.name===name&&!c.deleted))||null;
-    if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];}
+    if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
     persist(rec);
     onToast&&onToast((rec.name||cfg.label)+' created');
@@ -7797,7 +7797,7 @@ function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
 }
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
-  const {deals:_deals,setDeals,customObjects:_customObjects}=React.useContext(CrmDataContext);
+  const {deals:_deals,setDeals,customObjects:_customObjects,pipelines,setPipelines}=React.useContext(CrmDataContext); // P1-1: pipelines shared + persistent
   const ads=React.useContext(AdsContext);
   const [pipeObject,setPipeObject]=React.useState((nav&&nav.objectType)||'deal');
   const {props:_propsCtx}=React.useContext(PropertiesContext);
@@ -7830,17 +7830,8 @@ function PipelinePage({goTo,nav}){
   const [importDeals,setImportDeals]=React.useState(false);
   const [viewOptsOpen,setViewOptsOpen]=React.useState(false);
   const viewOptsRef=React.useRef(null);
-  const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100,lost:0};
+  // SALES_PROB hoisted to module scope (defaultPipelinesSeed needs it) — see next to STAGE_BY_KEY.
   const STAGE_COLORS=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
-  const [pipelines,setPipelines]=React.useState(()=>{const _base=[
-    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50}))},
-    {id:2,name:'Customer Onboarding',stages:[
-      {id:'ob1',key:'ob1',name:'Kickoff',color:'#60a5fa',prob:20,demo:[{id:'o1',company:'Acme Inc',value:'$12,000',owner:'AM',ownerColor:'#6366f1',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'2d',score:'cold'},{id:'o2',company:'Bloom Studio',value:'$8,500',owner:'SC',ownerColor:'#3b82f6',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'4d',score:'cold'}]},
-      {id:'ob2',key:'ob2',name:'In setup',color:'#818cf8',prob:50,demo:[{id:'o3',company:'Vertex Co',value:'$24,000',owner:'JK',ownerColor:'#8b5cf6',tag:'Active',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'6d',score:'warm'}]},
-      {id:'ob3',key:'ob3',name:'Training',color:'#a78bfa',prob:75,demo:[{id:'o4',company:'Forge & Co',value:'$18,000',owner:'AM',ownerColor:'#6366f1',tag:'Active',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'1d',score:'warm'}]},
-      {id:'ob4',key:'ob4',name:'Live',color:'#34d399',prob:100,demo:[{id:'o5',company:'Northwind',value:'$31,000',owner:'JR',ownerColor:'#ec4899',tag:'Live',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'3d',score:'won'}]},
-    ]},
-  ];const _onbEx=onbExtraPipeline();return _onbEx?[..._base,_onbEx]:_base;});
   const [activeId,setActiveId]=React.useState(()=>onbExtraPipeline()?3:1);
   const [pipeMenu,setPipeMenu]=React.useState(false);
   const [mobStage,setMobStage]=React.useState(0);
@@ -7866,10 +7857,13 @@ function PipelinePage({goTo,nav}){
   const dealSmartMgr=useSmartListMgr({views:dealViews,setViews:setDealViews,object:'deal',fields:dealFields,rows:_deals,activeKey:activeViewKey,setActiveKey:setActiveViewKey,applyModel:(f)=>setWorkFilter(JSON.parse(JSON.stringify(f))),showToast:(m)=>{try{window.__nrturToast&&window.__nrturToast(m,'success');}catch(e){}},openConfirm,canShare:effCanObject('Deals','edit')});
   const countForDeal=(v)=>omApplyFilter((_deals||[]).filter(d=>!d.archived),v.filter||{conds:[]},dealFields).length;
   const setStages=(updater)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,stages:typeof updater==='function'?updater(p.stages):updater}:p));
-  const renamePipeline=(name)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,name}:p));
-  const addPipeline=(name)=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:name||'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',name:'Lead in',color:'#94a3b8',prob:10,demo:[]},{id:'s'+id+'b',key:'s'+id+'b',name:'Won',color:'#34d399',prob:100,demo:[]}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);};
-  const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:false,demo:[]}))}]);setActiveId(id);};
-  const delPipeline=()=>{if(pipelines.length<=1)return;openConfirm({title:'Delete "'+active.name+'" pipeline?',body:'All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.',confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{const next=pipelines.find(p=>p.id!==active.id);setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
+  const renamePipeline=(name)=>{const old=active.name;setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,name}:p));if(old&&name&&old!==name)setDeals(ds=>ds.map(d=>d.pipeline===old?{...d,pipeline:name}:d));}; // rename cascades to deals so membership never breaks
+  const addPipeline=(name)=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:name||'New Pipeline',stages:[{id:'s'+id+'a',key:'s'+id+'a',real:true,name:'New',color:'#94a3b8',prob:10},{id:'s'+id+'b',key:'s'+id+'b',real:true,name:'In progress',color:'#818cf8',prob:50},{id:'s'+id+'c',key:'s'+id+'c',real:true,name:'Done',color:'#34d399',prob:100}]}]);setActiveId(id);setPipeMenu(false);setEditStages(true);setFocusName(true);}; // P1-1: new pipelines hold REAL deals (no more demo props)
+  const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:s.real===true,demo:undefined}))}]);setActiveId(id);};
+  const delPipeline=()=>{if(pipelines.length<=1)return;const _inPipe=_deals.filter(d=>!d.deleted&&(d.pipeline||pipelines[0].name)===active.name);const next=pipelines.find(p=>p.id!==active.id);const _first=(next.stages||[]).filter(s=>s.real)[0];
+    openConfirm({title:'Delete "'+active.name+'" pipeline?',body:_inPipe.length?('This pipeline holds '+_inPipe.length+' deal'+(_inPipe.length>1?'s':'')+' — they will be moved to "'+next.name+'"'+(_first?(' ('+_first.name+' stage)'):'')+' so nothing is orphaned.'):('All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.'),confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{
+      if(_inPipe.length&&_first){const _at=Date.now();setDeals(ds=>ds.map(d=>(!d.deleted&&(d.pipeline||pipelines[0].name)===active.name)?{...d,pipeline:next.name,stageKey:_first.key,dStage:_first.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_first.key,at:_at,by:'AM'}],...dealPlacement(next.name,_first.key)}:d));} // D4: delete never orphans — block-or-reassign
+      setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
   const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
@@ -7883,7 +7877,7 @@ function PipelinePage({goTo,nav}){
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
-  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}]};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}],...dealPlacement(mv.pipeline||pipelines[0].name,toStage.key)};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
@@ -8126,22 +8120,36 @@ function DealDetailPage({goTo,nav}){
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('deal',(d||{}).id,_a[0]);};
   const addDealNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:d.owner||'AM',title:'Note added',body:text}),...x]);
   const [schedOpen,setSchedOpen]=React.useState(false);
-  const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
+  // P1-1: the stage UI follows the DEAL'S pipeline — switching Pipeline switches the ladder + pill options.
+  const _pipe=pipelineFor(d);
+  const _pipeStages=realStagesOf(_pipe);
+  const _stageNames=_pipeStages.map(s=>s.name);
+  const _keyByName=Object.fromEntries(_pipeStages.map(s=>[s.name,s.key]));
+  const _colorByName=Object.fromEntries(_pipeStages.map(s=>[s.name,s.color]));
+  const _ladder=_pipeStages.filter(s=>s.key!=='lost').map(s=>s.name);
+  const stageIdx=_ladder.indexOf(stage);const nextStage=_ladder[stageIdx+1];const color=_colorByName[stage]||DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
-  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}]});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
+  const commitStage=(stageName)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
+    if(k==='pipeline'){ // P1-1: switching pipeline re-homes the deal into that pipeline's stages
+      const _t=livePipelines().find(p=>p.name===v);const _ts=realStagesOf(_t||{});
+      if(!_t||!_ts.length){updateDeal(d.id,{pipeline:v});return;}
+      const _keep=_ts.find(s=>s.key===d.stageKey);const _ns=_keep||_ts[0];const _at=Date.now();
+      setStage(_ns.name);
+      updateDeal(d.id,{pipeline:v,stageKey:_ns.key,dStage:_ns.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_ns.key,at:_at,by:'AM'}],...dealPlacement(v,_ns.key)});
+      window.__nrturToast&&window.__nrturToast('Moved to '+v+(_keep?'':' · enters at '+_ns.name),'success');return;}
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
     updateDeal(d.id,{[k]:v});
   };
-  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Customer Onboarding']},{key:'dStage',label:'Stage',type:'pill',options:DEAL_STAGES_ALL},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
+  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:livePipelines().filter(p=>realStagesOf(p).length).map(p=>p.name)},{key:'dStage',label:'Stage',type:'pill',options:_stageNames},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const onEditSave=(patch)=>{if('primaryContact'in patch||'company'in patch){const _ct=('primaryContact'in patch)?(crm.contacts||[]).find(c=>c.name===patch.primaryContact&&!c.deleted):dealContact;let _co=('company'in patch)?(crm.companies||[]).find(c=>c.name===patch.company&&!c.deleted):companyRec;if(!_co&&_ct&&_ct.companyId!=null)_co=(crm.companies||[]).find(c=>c.id===_ct.companyId);patch.primaryContactId=_ct?_ct.id:null;patch.companyId=_co?_co.id:null;}if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
+  const onEditSave=(patch)=>{if('pipeline'in patch&&patch.pipeline!==d.pipeline){const _pv=patch.pipeline;delete patch.pipeline;onDealField('pipeline',_pv);}if('primaryContact'in patch||'company'in patch){const _ct=('primaryContact'in patch)?(crm.contacts||[]).find(c=>c.name===patch.primaryContact&&!c.deleted):dealContact;let _co=('company'in patch)?(crm.companies||[]).find(c=>c.name===patch.company&&!c.deleted):companyRec;if(!_co&&_ct&&_ct.companyId!=null)_co=(crm.companies||[]).find(c=>c.id===_ct.companyId);patch.primaryContactId=_ct?_ct.id:null;patch.companyId=_co?_co.id:null;}if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
   const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const _dlLay=omLayoutSplit(dealPrimary,dealSecondary,'Deals',_propsCtx);
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
@@ -8173,7 +8181,7 @@ function DealDetailPage({goTo,nav}){
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
                 <div className="flex items-start justify-between mb-4"><div><h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>{d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}<p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stage}</span></div>
-                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}{d.stageEnteredAt!=null&&!d.outcome&&<p className="text-[10.5px] text-white/35 mb-3 flex items-center gap-1"><I.Clock size={10}/>In {stage} for {(()=>{const _d=Math.max(0,Math.floor((Date.now()-d.stageEnteredAt)/864e5));return _d===0?'less than a day':_d+(_d===1?' day':' days');})()}{(d.stageHistory||[]).length>1?' · '+d.stageHistory.length+' stage moves':''}</p>}<div className="flex items-center gap-2 mb-6">{DEAL_STAGE_ORDER.map((s,i)=>{const done=i<=stageIdx;const cur=s===stage;const c=DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;const k=(STAGES_DATA.find(x=>x.name===s)||{}).key;const commit=()=>{setStage(s);if(k)updateDeal(d.id,{stageKey:k,dStage:s});};if(s==='Won'||s==='Lost'){commitStage(s);}else{commit();}}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<4&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
+                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}{d.stageEnteredAt!=null&&!d.outcome&&<p className="text-[10.5px] text-white/35 mb-3 flex items-center gap-1"><I.Clock size={10}/>In {stage} for {(()=>{const _d=Math.max(0,Math.floor((Date.now()-d.stageEnteredAt)/864e5));return _d===0?'less than a day':_d+(_d===1?' day':' days');})()}{(d.stageHistory||[]).length>1?' · '+d.stageHistory.length+' stage moves':''}</p>}<div className="flex items-center gap-2 mb-6">{_ladder.map((s,i)=>{const done=i<=stageIdx;const cur=s===stage;const c=_colorByName[s]||DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;commitStage(s);}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<_ladder.length-1&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
 
               </div>
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
@@ -8188,7 +8196,7 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
-        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],...dealPlacement(d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
@@ -8229,6 +8237,40 @@ const parseMoney=(s)=>{const m=(s||'').replace(/[,\s]/g,'').match(/([\d.]+)\s*([
 const fmtK=(n)=>n>=1000?'$'+(n/1000).toFixed(n%1000?1:0).replace(/\.0$/,'')+'k':'$'+n;
 const companyHealth=(d)=>contactHealth(d);
 const STAGE_BY_KEY=Object.fromEntries(STAGES_DATA.map(s=>[s.key,s]));
+const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100,lost:0}; // hoisted from PipelinePage — defaultPipelinesSeed needs module scope
+// ── P1-1 MULTI-PIPELINE (decisions D2/D3/D4) ──────────────────────────────────────────────
+// Pipelines are shared App state (persist across navigation), mirrored here so module helpers and
+// the deal detail can resolve ANY pipeline's stages. 'Customer Onboarding' is now a REAL board.
+const CO_STAGE_DEFS=[
+  {id:'ob1',key:'ob_kickoff',real:true,name:'Kickoff',color:'#60a5fa',prob:20},
+  {id:'ob2',key:'ob_setup',real:true,name:'In setup',color:'#818cf8',prob:50},
+  {id:'ob3',key:'ob_training',real:true,name:'Training',color:'#a78bfa',prob:75},
+  {id:'ob4',key:'ob_live',real:true,name:'Live',color:'#34d399',prob:100},
+];
+function defaultPipelinesSeed(){
+  const base=[
+    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50}))},
+    {id:2,name:'Customer Onboarding',stages:CO_STAGE_DEFS.map(s=>({...s}))},
+  ];
+  const ex=onbExtraPipeline();return ex?[...base,ex]:base;
+}
+let _livePipelines=null; // set by App each render (mirrors _liveDeals)
+function livePipelines(){return _livePipelines||defaultPipelinesSeed();}
+function realStagesOf(p){return ((p&&p.stages)||[]).filter(s=>s.real);}
+function pipelineFor(deal){const ps=livePipelines();const real=ps.filter(p=>realStagesOf(p).length);const dp=deal&&deal.pipeline;return real.find(p=>p.name===dp)||real[0]||ps[0];}
+function pipelineStageByKey(key){const ps=livePipelines();for(const p of ps){const s=(p.stages||[]).find(x=>x.key===key);if(s)return s;}return STAGE_BY_KEY[key]||null;}
+// D3 storage: stagePlacements[{pipelineId,stageKey,primary}] — single primary placement today; the
+// decided multi-placement model extends this array without changing the shape.
+function dealPlacement(pipelineName,stageKey){const ps=livePipelines();const p=ps.find(x=>x.name===pipelineName)||ps[0];return {stagePlacements:[{pipelineId:p?p.id:1,stageKey,primary:true}]};}
+// New deals created into a non-default pipeline must enter one of ITS stages (not a Sales stageKey).
+function normalizeDealPipeline(rec,by){const p=livePipelines().find(x=>x.name===rec.pipeline);const first=p?realStagesOf(p)[0]:null;if(p&&first&&!realStagesOf(p).some(s=>s.key===rec.stageKey)){rec.stageKey=first.key;rec.dStage=first.name;const st=dealStageStamp(first.key,by);rec.stageEnteredAt=st.stageEnteredAt;rec.stageHistory=st.stageHistory;}Object.assign(rec,dealPlacement(rec.pipeline||(livePipelines()[0]||{}).name,rec.stageKey));return rec;}
+const CO_SEED_DEALS=[
+  {id:9101,name:'Acme Inc — Onboarding',company:'Acme Inc',value:'$12,000',amount:12000,owner:'AM',ownerColor:'#6366f1',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'2d',score:'cold',pipeline:'Customer Onboarding',stageKey:'ob_kickoff',dStage:'Kickoff',createdAt:'Jun 30, 2026'},
+  {id:9102,name:'Bloom Studio — Onboarding',company:'Bloom Studio',value:'$8,500',amount:8500,owner:'SC',ownerColor:'#3b82f6',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'4d',score:'cold',pipeline:'Customer Onboarding',stageKey:'ob_kickoff',dStage:'Kickoff',createdAt:'Jun 28, 2026'},
+  {id:9103,name:'Vertex Co — Onboarding',company:'Vertex Co',value:'$24,000',amount:24000,owner:'JK',ownerColor:'#8b5cf6',tag:'Active',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'6d',score:'warm',pipeline:'Customer Onboarding',stageKey:'ob_setup',dStage:'In setup',createdAt:'Jun 26, 2026'},
+  {id:9104,name:'Forge & Co — Onboarding',company:'Forge & Co',value:'$18,000',amount:18000,owner:'AM',ownerColor:'#6366f1',tag:'Active',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'1d',score:'warm',pipeline:'Customer Onboarding',stageKey:'ob_training',dStage:'Training',createdAt:'Jul 1, 2026'},
+  {id:9105,name:'Northwind — Onboarding',company:'Northwind',value:'$31,000',amount:31000,owner:'JR',ownerColor:'#ec4899',tag:'Live',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'3d',score:'won',pipeline:'Customer Onboarding',stageKey:'ob_live',dStage:'Live',createdAt:'Jun 29, 2026'},
+];
 let _liveDeals=null; // live deals array, set by App on each render; falls back to the STAGES_DATA seed
 let _liveContacts=null; // Wave 3: live contacts array, set by App on each render; falls back to the CONTACTS_DATA seed
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
@@ -8239,8 +8281,8 @@ function calLinkIds(relType,name){const n=(name||'').trim();let contactId=null,l
   else if(n&&relType==='lead'){const l=(_liveLeads||[]).find(x=>!x.deleted&&x.name===n);if(l)leadId=l.id;}
   else if(n&&relType==='company'){const c=(_liveCompanies||[]).find(x=>!x.deleted&&x.name===n);if(c)companyId=c.id;}
   return {contactId,leadId,companyId};} // always emit all three keys so re-linking / clearing overwrites a stale id (calUpdateItem shallow-merges)
-function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key})));}
-function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||{};return {...d,stageName:s.name,stageColor:s.color};});}
+function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).concat(CO_SEED_DEALS.map(d=>({...d})));} // P1-1: Customer Onboarding deals are REAL seed records now
+function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
 function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
 // Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
@@ -8736,7 +8778,7 @@ function buildConvertRecords(lead,payload){
   const coNameFinal=coName||lead.company||'';
   const contact={id:contactId,name:cname,first:c.first||'',last:c.last||'',co:coNameFinal,companyId:effCompanyId,email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,score:lead.score!=null?lead.score:null,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id};
   let deal=null;
-  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',...dealStageStamp('prospecting',owner),pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,...(lead.adSourceKey?{adSourceKey:lead.adSourceKey,adPlatform:lead.adPlatform,adCampaign:lead.adCampaign,adFormName:lead.adFormName,fbclid:lead.fbclid,gclid:lead.gclid}:{})};}
+  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',...dealStageStamp('prospecting',owner),pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,...(lead.adSourceKey?{adSourceKey:lead.adSourceKey,adPlatform:lead.adPlatform,adCampaign:lead.adCampaign,adFormName:lead.adFormName,fbclid:lead.fbclid,gclid:lead.gclid}:{})};normalizeDealPipeline(deal,owner);}
   return {contact,company,deal,companyId:effCompanyId};
 }
 function CvtField({label,children,wide}){return(<div className={wide?'col-span-2':''}><label className="text-[11px] text-white/45 block mb-1.5">{label}</label>{children}</div>);}
@@ -21454,6 +21496,7 @@ function migrateLinks(companiesSeed,contactsSeed,dealsSeed){
     if(d.additionalContactIds==null)d.additionalContactIds=(d.additionalContacts||[]).map(a=>contactByName(a&&a.contact,d.companyId)).filter(x=>x!=null);
     if(d.stageEnteredAt==null)d.stageEnteredAt=Date.now()-(dashDealAgeDays(d)||0)*864e5; // P0-2 backfill: derive the stamp from the seeded age string once
     if(!Array.isArray(d.stageHistory))d.stageHistory=[{stageKey:d.stageKey,at:d.stageEnteredAt,by:d.owner||'AM'}];
+    if(!Array.isArray(d.stagePlacements))d.stagePlacements=dealPlacement(d.pipeline||'Sales Pipeline',d.stageKey).stagePlacements; // D3 storage backfill
   });
   return {companies,contacts,deals};
 }
@@ -21475,6 +21518,8 @@ function App(){
   _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
+  const [pipelines,setPipelines]=React.useState(defaultPipelinesSeed); // P1-1: pipelines are SHARED state — config persists across navigation
+  _livePipelines=pipelines; // mirror so module helpers + the deal detail resolve any pipeline's stages
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
@@ -21551,7 +21596,8 @@ function App(){
     teamInvites,setTeamInvites,
     personalConns,setPersonalConns,
     automations,setAutomations,autoLogs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs]);
+    pipelines,setPipelines,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
