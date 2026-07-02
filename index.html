@@ -8156,6 +8156,7 @@ function DealDetailPage({goTo,nav}){
 
               </div>
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
+              <RelatedRecordsPanel crm={crm} targetType="deal" rec={d} goTo={goTo}/>
             </div>
             <div className="flex flex-col gap-5 min-w-0">
               <RecordTasks recId={d.id} match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
@@ -9066,6 +9067,7 @@ function LeadDetailPage({goTo,nav}){
               </div>
               </div>
               <RecordProperties record={l} primary={_ldLay.primary} secondary={_ldLay.secondary} onChange={onLeadField} goTo={goTo} readOnly={!canEditLead}/>
+              <RelatedRecordsPanel crm={crm} targetType="lead" rec={l} goTo={goTo}/>
               {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
