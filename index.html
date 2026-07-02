@@ -7651,6 +7651,59 @@ function DealOutcomeModal({kind,dealName,stageName,onConfirm,onClose}){
     </div>
   </div>);
 }
+// P1-3: per-stage required fields (stage gates). Stages carry required:[fieldKeys]; every move
+// path (board drag, list dropdown, bulk, detail ladder/pill/edit-drawer) checks dealMissingFor()
+// and blocks with StageGateModal until the fields are filled inline — then the move continues.
+const DEAL_REQ_FIELDS=[
+  {key:'amount',label:'Amount',type:'currency'},
+  {key:'closeDate',label:'Expected close date',type:'date'},
+  {key:'primaryContact',label:'Primary contact',type:'contact'},
+  {key:'company',label:'Company',type:'companylookup'},
+  {key:'nextAction',label:'Next action',type:'text'},
+  {key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},
+];
+function dealFieldEmpty(d,k){
+  if(k==='amount')return !((typeof d.amount==='number'&&d.amount>0)||parseMoney(d.value)>0);
+  const v=d[k];return v==null||String(v).trim()==='';
+}
+function dealMissingFor(d,stage){return ((stage&&stage.required)||[]).filter(k=>dealFieldEmpty(d,k));}
+function StageGateModal({deal,stage,missing,onSave,onClose}){
+  const crm=React.useContext(CrmDataContext);
+  const defs=missing.map(k=>DEAL_REQ_FIELDS.find(f=>f.key===k)||{key:k,label:k,type:'text'});
+  const [vals,setVals]=React.useState(()=>{const o={};defs.forEach(f=>{o[f.key]='';});return o;});
+  useEscKey(onClose);
+  const set=(k,v)=>setVals(x=>({...x,[k]:v}));
+  const ok=defs.every(f=>String(vals[f.key]||'').trim());
+  // patches carry id links too (primaryContactId / companyId) — never name-strings alone
+  const buildPatch=()=>{const p={};defs.forEach(f=>{const v=String(vals[f.key]||'').trim();
+    if(f.key==='amount'){const n=parseMoney(v)||0;p.value='$'+n.toLocaleString('en-US');p.amount=n;}
+    else if(f.key==='primaryContact'){const c=(crm.contacts||[]).find(x=>x.name===v&&!x.deleted);p.primaryContact=v;p.primaryContactId=c?c.id:null;}
+    else if(f.key==='company'){const co=(crm.companies||[]).find(x=>x.name===v&&!x.deleted);p.company=v;p.companyId=co?co.id:null;}
+    else p[f.key]=v;});return p;};
+  const IN='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40';
+  const SELSTYLE={colorScheme:'dark'};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-amber-500/12 text-amber-300 ring-amber-500/25"><I.ShieldCheck size={16}/></div>
+        <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Required for {stage.name}</p><p className="text-white/45 text-[12px] truncate">{(deal.name||deal.company||'This deal')+' needs '+defs.length+' field'+(defs.length>1?'s':'')+' before it can move.'}</p></div>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-4 max-h-[55vh] overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+        {defs.map(f=>(<div key={f.key}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{f.label}</label>
+          {f.type==='date'?(<input type="date" value={vals[f.key]} onChange={e=>set(f.key,e.target.value)} className={IN} style={SELSTYLE}/>)
+          :f.type==='select'?(<select value={vals[f.key]} onChange={e=>set(f.key,e.target.value)} className={IN+' appearance-none'} style={SELSTYLE}><option value="">Select...</option>{f.options.map(o=>(<option key={o}>{o}</option>))}</select>)
+          :f.type==='contact'?(<select value={vals[f.key]} onChange={e=>set(f.key,e.target.value)} className={IN+' appearance-none'} style={SELSTYLE}><option value="">Select a contact...</option>{(crm.contacts||[]).filter(c=>!c.deleted&&!c.archived).map(c=>(<option key={c.id}>{c.name}</option>))}</select>)
+          :f.type==='companylookup'?(<select value={vals[f.key]} onChange={e=>set(f.key,e.target.value)} className={IN+' appearance-none'} style={SELSTYLE}><option value="">Select a company...</option>{(crm.companies||[]).filter(c=>!c.deleted&&!c.archived).map(c=>(<option key={c.id}>{c.name}</option>))}</select>)
+          :(<input value={vals[f.key]} onChange={e=>set(f.key,e.target.value)} placeholder={f.key==='amount'?'$12,000':''} className={IN}/>)}
+        </div>))}
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={()=>ok&&onSave(buildPatch())} disabled={!ok} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',ok?'text-white bg-brand-500 hover:bg-brand-400':'text-white/35 bg-white/[0.05] cursor-not-allowed'].join(' ')}>Save & move</button>
+      </div>
+    </div>
+  </div>);
+}
 // ── Pipeline LIST view ── reuses the Contacts/Companies list infra (cols, sort, bulk, column-manager) ──
 // Inline stage dropdown for the list (stages are dynamic per pipeline, so colors come from the stage object).
 function DealStageDropdown({stage,stages,onChange,disabled}){
@@ -7879,6 +7932,8 @@ function PipelinePage({goTo,nav}){
   const [mobStage,setMobStage]=React.useState(0);
   const [cfgOpen,setCfgOpen]=React.useState(false);
   const [reasonsOpen,setReasonsOpen]=React.useState(false); // P1-2: win/loss reason lists editor (opened from the edit-stages toolbar)
+  const [reqEdit,setReqEdit]=React.useState(null); // P1-3: which stage's required-fields popover is open
+  React.useEffect(()=>{if(reqEdit===null)return;const fn=e=>{if(!e.target.closest('[data-req-pop]'))setReqEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[reqEdit]);
   const [colorEdit,setColorEdit]=React.useState(null);
   const [newStage,setNewStage]=React.useState('');
   const [editStages,setEditStages]=React.useState(false);
@@ -7911,6 +7966,7 @@ function PipelinePage({goTo,nav}){
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
   const setRot=(id,v)=>setStages(s=>s.map(x=>x.id===id?{...x,rotDays:v===''?null:Math.max(0,parseInt(v,10)||0)}:x));
+  const toggleReq=(id,key)=>setStages(s=>s.map(x=>{if(x.id!==id)return x;const cur=x.required||[];return{...x,required:cur.includes(key)?cur.filter(k=>k!==key):[...cur,key]};})); // P1-3
   const setColor=(id,color)=>{setStages(s=>s.map(x=>x.id===id?{...x,color}:x));setColorEdit(null);};
   const delStage=(stage)=>{if(active.stages.length<=1)return;openConfirm({title:'Delete "'+stage.name+'" stage?',body:'Deals in this stage will be moved to the previous stage.',confirmLabel:'Delete stage',danger:true,onConfirm:()=>setStages(s=>s.filter(x=>x.id!==stage.id))});};
   const onDropStage=(to)=>{const from=dragRef.current;dragRef.current=null;setDragOver(null);if(from==null||from===to)return;setStages(s=>{const a=[...s];const[m]=a.splice(from,1);a.splice(from<to?to-1:to,0,m);return a;});};
@@ -7921,7 +7977,9 @@ function PipelinePage({goTo,nav}){
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
   const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const _term=dealTerminalKind(toStage);if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}],outcome:_term?mv.outcome:null,...dealPlacement(mv.pipeline||pipelines[0].name,toStage.key)};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
-  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
+  const [gatePrompt,setGatePrompt]=React.useState(null); // P1-3: {dd,toStage,missing,deal} — move blocked until required fields are filled
+  const gateCheck=(dd,toStage)=>{const _d=_deals.find(x=>x.id===dd.id);const missing=_d?dealMissingFor(_d,toStage):[];if(missing.length){setGatePrompt({dd,toStage,missing,deal:_d});return true;}return false;};
+  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(gateCheck(dd,toStage))return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
   const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal carrying a legacy/renamed pipeline value with no real board falls back to the default pipeline so it is never invisible
@@ -7970,10 +8028,16 @@ function PipelinePage({goTo,nav}){
   const allChecked=listIds.length>0&&listIds.every(id=>selected.includes(id));
   const toggleAll=()=>setSelected(allChecked?[]:listIds.slice());
   const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
-  const lvStage=(d,toStage)=>{if(!_dEdit||!d._stage||d._stage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd:{id:d.id,fromStageId:d._stage.id},toStage,kind});return;}applyMove({id:d.id,fromStageId:d._stage.id},toStage);lvToast('Moved “'+(d.name||d.company)+'” to '+toStage.name);};
+  const lvStage=(d,toStage)=>{if(!_dEdit||!d._stage||d._stage.id===toStage.id)return;if(gateCheck({id:d.id,fromStageId:d._stage.id},toStage))return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd:{id:d.id,fromStageId:d._stage.id},toStage,kind});return;}applyMove({id:d.id,fromStageId:d._stage.id},toStage);lvToast('Moved “'+(d.name||d.company)+'” to '+toStage.name);};
   const lvOwner=(d,m)=>{if(!_dEdit)return;const patch={owner:m.avatar,ownerColor:m.color};if(_deals.some(x=>x.id===d.id))setDeals(ds=>ds.map(x=>x.id===d.id?{...x,...patch}:x));else setStages(ss=>ss.map(s=>s.demo?{...s,demo:s.demo.map(x=>x.id===d.id?{...x,...patch}:x)}:s));lvToast('Owner set to '+m.name);};
   const lvOpen=(d)=>{if(d._stage&&d._stage.real)goTo('deal-detail',d.id);};
-  const onBulkStage=(toStage)=>{const ids=selected.slice();const moves=ids.map(id=>{const d=listFlat.find(x=>x.id===id);return (d&&d._stage&&d._stage.id!==toStage.id)?{id,fromStageId:d._stage.id}:null;}).filter(Boolean);if(!moves.length){setSelected([]);return;}const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({bulk:moves,toStage,kind});return;}moves.forEach(m=>applyMove(m,toStage));lvToast(moves.length+' deal'+(moves.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
+  const onBulkStage=(toStage)=>{const ids=selected.slice();const moves=ids.map(id=>{const d=listFlat.find(x=>x.id===id);return (d&&d._stage&&d._stage.id!==toStage.id)?{id,fromStageId:d._stage.id}:null;}).filter(Boolean);if(!moves.length){setSelected([]);return;}
+    // P1-3: bulk moves skip (never silently force) deals missing this stage's required fields
+    const blocked=moves.filter(m=>{const d=listFlat.find(x=>x.id===m.id);return d&&dealMissingFor(d,toStage).length;});
+    const okMoves=moves.filter(m=>!blocked.includes(m));
+    if(!okMoves.length){lvToast('No deals moved — '+blocked.length+' missing required fields for '+toStage.name);setSelected([]);return;}
+    const _skipNote=blocked.length?' · '+blocked.length+' skipped (missing required fields)':'';
+    const kind=dealTerminalKind(toStage);if(kind){if(blocked.length)lvToast(blocked.length+' deal'+(blocked.length>1?'s':'')+' skipped — missing required fields');setOutcomePrompt({bulk:okMoves,toStage,kind});return;}okMoves.forEach(m=>applyMove(m,toStage));lvToast(okMoves.length+' deal'+(okMoves.length>1?'s':'')+' moved to '+toStage.name+_skipNote);setSelected([]);};
   const dealColCtx={goTo,onOpen:lvOpen,onStage:lvStage,onOwner:lvOwner,stages:active.stages,readOnly:!_dEdit,canEdit:_dEdit,canDelete:_dDel};
   if(selPipe&&selPipe.object&&selPipe.object!=='deal')return(<ObjectBoard objKind={selPipe.object} pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNewDeal={addPipeline} onDeletePipeline={()=>deleteAuxPipeline(activeId)} goTo={goTo}/>);
   return(
@@ -8037,6 +8101,12 @@ function PipelinePage({goTo,nav}){
                   {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.slice(0,3).map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}<CustomColorWheel value={stage.color} onPick={(c)=>setColor(stage.id,c)}/></div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
                   <div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span>{editStages?(<label className="flex items-center gap-1.5 shrink-0" title="Win probability at this stage"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:stage.color,width:64}}/><span className="text-[10px] text-white/55 tabular-nums w-8 text-right">{stage.prob}%</span></label>):(<span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span>)}</div>
                   {editStages&&!/won|lost|closed|live/i.test(stage.name||'')&&<div className="flex items-center gap-1.5 mt-1.5" title="Flag deals as stale after this many days without activity"><I.AlertTriangle size={10} className="text-amber-300/70 shrink-0"/><span className="text-[10px] text-white/45">Rot after</span><input type="number" min="0" value={stage.rotDays!=null?stage.rotDays:DEAL_ROT_DEFAULT} onChange={e=>setRot(stage.id,e.target.value)} className="w-12 bg-white/[0.05] border border-white/[0.10] rounded-md px-1.5 py-0.5 text-[10px] text-white text-center outline-none focus:border-brand-500/40"/><span className="text-[10px] text-white/45">days</span></div>}
+                  {editStages&&<div className="relative flex items-center gap-1.5 mt-1.5" title="Fields a deal must have filled before it can enter this stage" data-req-pop><I.ShieldCheck size={10} className="text-brand-300/70 shrink-0"/><span className="text-[10px] text-white/45">Requires</span><button onClick={()=>setReqEdit(reqEdit===stage.id?null:stage.id)} className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.10] text-white/70 hover:text-white hover:border-brand-500/40 transition-all">{(stage.required||[]).length?((stage.required||[]).length+' field'+((stage.required||[]).length>1?'s':'')):'None'}</button>
+                    {reqEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-1.5 rounded-xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] w-[200px] flex flex-col" style={{background:'var(--pop)'}} data-req-pop>
+                      <p className="px-2 pt-1 pb-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-white/40">Required to enter {stage.name}</p>
+                      {DEAL_REQ_FIELDS.map(f=>{const on=(stage.required||[]).includes(f.key);return(<button key={f.key} onClick={()=>toggleReq(stage.id,f.key)} className={['w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] transition-colors text-left',on?'text-brand-200 bg-brand-500/[0.10]':'text-white/70 hover:bg-white/[0.05] hover:text-white'].join(' ')}><span className={['w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0 transition-all',on?'bg-brand-500 border-brand-500':'border-white/25'].join(' ')}>{on&&<I.Check size={9} stroke={3} style={{color:'#fff'}}/>}</span><span className="flex-1 truncate">{f.label}</span></button>);})}
+                    </div>)}
+                  </div>}
                 </div>),
             footer:(effCanObject('Deals','create')?<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{stage:stage.name}):goTo('add-deal')} className="border border-dashed border-white/[0.10] hover:border-white/[0.22] hover:bg-white/[0.02] rounded-xl py-3 text-[11px] text-white/35 hover:text-white/65 transition-all flex items-center justify-center gap-1.5"><I.Plus size={11} stroke={2.4}/>Add deal</button>:null)});})}
           colClass={(col,ci,ov)=>['pipe-col '+(col.si===Math.min(mobStage,active.stages.length-1)?'pipe-col-active ':'')+'w-[290px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border overflow-hidden transition-colors',editStages&&dragOver===col.si?'border-brand-500/50 ring-1 ring-brand-500/30':'border-white/[0.05]'].join(' ')}
@@ -8094,6 +8164,8 @@ function PipelinePage({goTo,nav}){
         {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={addAuxPipeline}/>}
       </div>
       {outcomePrompt&&(()=>{const _bulk=outcomePrompt.bulk||null;const od=_bulk?{}:(allVisible.find(x=>x.id===outcomePrompt.dd.id)||{});return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={_bulk?(_bulk.length+' deal'+(_bulk.length>1?'s':'')):(od.name||od.company)} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const ts=outcomePrompt.toStage,kind=outcomePrompt.kind;const moves=_bulk||[outcomePrompt.dd];moves.forEach(m=>applyMove(m,ts));const _ids=new Set(moves.map(m=>m.id));setDeals(ds=>ds.map(x=>_ids.has(x.id)?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast((moves.length>1?moves.length+' deals':'Deal')+' marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&!_bulk&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);if(_bulk)setSelected([]);setOutcomePrompt(null);}}/>);})()}
+      {/* P1-3: stage gate — fill the missing required fields inline, then the move continues (incl. into the outcome modal for terminal stages) */}
+      {gatePrompt&&<StageGateModal deal={gatePrompt.deal} stage={gatePrompt.toStage} missing={gatePrompt.missing} onClose={()=>setGatePrompt(null)} onSave={(patch)=>{const {dd,toStage}=gatePrompt;setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,...patch}:x));setGatePrompt(null);const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);window.__nrturToast&&window.__nrturToast('Saved & moved to '+toStage.name,'success');}}/>}
       {/* P1-2: workspace win/loss reason lists — feed the Mark Won/Lost modal + the Win/Loss Analysis report */}
       {reasonsOpen&&(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setReasonsOpen(false)}>
         <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
@@ -8200,7 +8272,8 @@ function DealDetailPage({goTo,nav}){
   const stageIdx=_ladder.indexOf(stage);const nextStage=_ladder[stageIdx+1];const color=_colorByName[stage]||DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
-  const commitStage=(stageName)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],outcome:null,...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
+  const [stageGate,setStageGate]=React.useState(null); // P1-3: {stageName,stage,missing} — stage move blocked until required fields are filled
+  const commitStage=(stageName,skipGate)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],outcome:null,...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='pipeline'){ // P1-1: switching pipeline re-homes the deal into that pipeline's stages
@@ -8266,6 +8339,7 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
+        {stageGate&&<StageGateModal deal={d} stage={stageGate.stage} missing={stageGate.missing} onClose={()=>setStageGate(null)} onSave={(patch)=>{updateDeal(d.id,patch);const _sn=stageGate.stageName;setStageGate(null);commitStage(_sn,true);}}/>}
         {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],...dealPlacement(d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
@@ -8317,9 +8391,10 @@ const CO_STAGE_DEFS=[
   {id:'ob3',key:'ob_training',real:true,name:'Training',color:'#a78bfa',prob:75},
   {id:'ob4',key:'ob_live',real:true,name:'Live',color:'#34d399',prob:100},
 ];
+const SALES_REQ={proposal:['amount'],negotiation:['amount','closeDate'],won:['amount','closeDate']}; // P1-3: default stage gates — deals need these filled to enter the stage
 function defaultPipelinesSeed(){
   const base=[
-    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50}))},
+    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50,required:SALES_REQ[s.key]||[]}))},
     {id:2,name:'Customer Onboarding',stages:CO_STAGE_DEFS.map(s=>({...s}))},
   ];
   const ex=onbExtraPipeline();return ex?[...base,ex]:base;
