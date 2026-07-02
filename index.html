@@ -8008,7 +8008,9 @@ function DealDetailPage({goTo,nav}){
   const {updateDeal}=crm;
   // Wave 3: resolve id-first from LIVE state, fall back to name; dealContact honors d.primaryContact (not just first-at-company).
   const companyRec=(d.companyId!=null?crm.companies.find(c=>c.id===d.companyId):null)||crm.companies.find(c=>c.name===d.company)||null;
-  const dealContact=(d.primaryContactId!=null?crm.contacts.find(c=>c.id===d.primaryContactId&&!c.deleted):null)||(d.primaryContact?crm.contacts.find(c=>c.name===d.primaryContact&&!c.deleted):null)||contactsForCompany(companyRec||d.company)[0]||null;
+  const dealContact=(d.primaryContactId!=null
+    ?(crm.contacts.find(c=>c.id===d.primaryContactId&&!c.deleted)||null) // id-linked deal: use that contact only (null if removed) — never substitute a company sibling
+    :((d.primaryContact?crm.contacts.find(c=>c.name===d.primaryContact&&!c.deleted):null)||contactsForCompany(companyRec||d.company)[0]||null));
   const {props:_propsCtx}=React.useContext(PropertiesContext);
   const {confirmNode,openConfirm}=useConfirm();
   const dealName=d.name||(d.company+' · '+d.value);
@@ -18405,7 +18407,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       const amt=parseFloat(String(auto.dealValue).replace(/[^0-9.]/g,''))||0;
       dealValue='$'+amt.toLocaleString('en-US');
       const stageKey=auto.dealStage||'qualified';
-      crm.setDeals(arr=>[{id:Date.now()+1,company:nm,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,probability:50,primaryContact:nm,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},...arr]);
+      crm.setDeals(arr=>[{id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,probability:50,primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},...arr]);
       dealCreated=true;
       addToast('Deal created from booking ✓');
     }
@@ -21275,8 +21277,10 @@ function App(){
       const attr={source:src.crmSource,adPlatform:src.platform,adSourceKey:sourceKey,adSourceLabel:adSourceLabel(sourceKey,campaign),adCampaign:campaign,adAdset:(src.platform==='google'?'Search — exact':'Lookalike 1% — US'),adFormName:form.name,utmSource:src.platform==='google'?'google':'fb',utmMedium:src.platform==='google'?'cpc':'paid_social',utmCampaign:adSlug(campaign),[src.clickId]:clickVal,adTs:0,adSms:speedy,adEnrolled:speedy};
       const tags=[form.tag||(adSlug(src.short)+'-lead'),'ad-lead',adSlug(campaign)].filter(Boolean);
       const existing=contacts.find(c=>c.email&&person.email&&c.email.toLowerCase()===person.email.toLowerCase());
+      const existingLead=!existing?leads.find(l=>!l.converted&&!l.deleted&&l.email&&person.email&&l.email.toLowerCase()===person.email.toLowerCase()):null;
       let contactId=null,leadId=null,deduped=false;
       if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0}:c));}
+      else if(existingLead){deduped=true;leadId=existingLead.id;setLeads(a=>a.map(l=>l.id===existingLead.id?{...l,...attr,tags:Array.from(new Set([...(l.tags||[]),...tags])),lastActivity:'Just now',days:0}:l));}
       else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:Math.floor(Math.random()*30)+45,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
       setAdLeads(a=>[{id:'al_'+(contactId||leadId),ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
       if(window.__nrturToast)window.__nrturToast('New '+src.short+' lead'+(campaign?(' · '+campaign):'')+': '+person.name+(deduped?' (updated existing)':'')+(speedy?' · Speed-to-lead fired ⚡':''),'success');
@@ -21298,7 +21302,7 @@ function App(){
     setCustomRecords:(objId,fn)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(typeof fn==='function'?fn(o.records||[]):fn)}:o)),
     updateCustomRecord:(objId,recId,patch)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(o.records||[]).map(r=>r.id===recId?{...r,...patch}:r)}:o)),
     addCustomRecord:(objId,rec)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:[rec,...(o.records||[])]}:o)),
-    updateContact:(id,patch)=>{setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){setDeals(a=>a.map(d=>d.primaryContactId===id?{...d,primaryContact:patch.name}:d));}},
+    updateContact:(id,patch)=>{setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){const _o=(_liveContacts||[]).find(c=>c.id===id);const oldName=_o&&_o.name;setDeals(a=>a.map(d=>{let nd=d.primaryContactId===id?{...d,primaryContact:patch.name}:d;if(oldName&&Array.isArray(nd.additionalContacts)&&nd.additionalContacts.some(ac=>ac&&ac.contact===oldName))nd={...nd,additionalContacts:nd.additionalContacts.map(ac=>ac&&ac.contact===oldName?{...ac,contact:patch.name}:ac)};return nd;}));}},
     updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
     updateCompany:(id,patch)=>{setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
