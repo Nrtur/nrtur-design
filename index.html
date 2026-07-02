@@ -2134,7 +2134,7 @@ function arDefaultFields(object){
   ];
   if(object==='deal')return[
     F({id:'d_name',label:'Name',type:'Text',required:true}),F({id:'d_amount',label:'Amount',type:'Currency'}),
-    F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Qualified','Proposal','Negotiation','Won','Lost']}),
+    F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
     F({id:'d_close',label:'Expected close date',type:'Date'}),F({id:'d_owner',label:'Owner',type:'Lookup'}),
     F({id:'d_contact',label:'Primary contact',type:'Lookup'}),F({id:'d_company',label:'Company',type:'Lookup'}),
     F({id:'d_next',label:'Next action',type:'Text'}),F({id:'d_tags',label:'Tags',type:'Multi select'}),
@@ -4420,7 +4420,7 @@ function DashCallStats({def,cfg,goTo}){
 // 8 — Stale Deals / At-Risk
 function DashStaleDeals({def,cfg,goTo}){
   const name=cfg.name||def.name;const thresh=parseInt(cfg.staleDays||'14',10);const limit=parseInt(cfg.rows||'5',10);
-  let deals;try{deals=allDeals().filter(d=>d.stageKey!=='won');}catch(e){deals=[];}
+  let deals;try{deals=allDeals().filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');}catch(e){deals=[];}
   if(cfg.source==='Sales Pipeline')deals=deals.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');else if(cfg.source==='Onboarding Pipeline')deals=deals.filter(d=>d.pipeline==='Onboarding Pipeline');
   if(cfg.owner&&cfg.owner!=='any')deals=deals.filter(d=>cfg.owner==='me'?d.owner==='AM':d.owner===cfg.owner);
   const rows=deals.map(d=>({d,age:dashDealAgeDays(d)})).filter(x=>x.age>=thresh).sort((a,b)=>b.age-a.age);
@@ -7788,7 +7788,8 @@ function PipelinePage({goTo,nav}){
   const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const upd={...mv,stageKey:toStage.key};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
-  const dealInActivePipe=(d)=>(d.pipeline||_defPipe)===active.name; // R2: scope the board to its pipeline, not just stageKey
+  const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
+  const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal whose pipeline has no real board (e.g. legacy 'Onboarding Pipeline') falls back to the default pipeline so it is never invisible
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key&&!d.deleted&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
@@ -8116,7 +8117,7 @@ let _liveContacts=null; // Wave 3: live contacts array, set by App on each rende
 function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key})));}
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||{};return {...d,stageName:s.name,stageColor:s.color};});}
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
-function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
+function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
 // Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
 function ChipSelect({value,options,chipMap,dotMap,onChange,width=148,disabled}){
   const [open,setOpen]=React.useState(false);const btnRef=React.useRef(null);
@@ -14089,7 +14090,7 @@ function propSeed(){
         F({id:'d_name',label:'Name',type:'Text',create:true,detail:'primary',col:true,required:true,system:true}),
         F({id:'d_amount',label:'Amount',type:'Currency',create:true,detail:'primary',col:true,important:true}),
         F({id:'d_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',system:true,options:['Sales Pipeline','Onboarding Pipeline']}),
-        F({id:'d_stage',label:'Stage',type:'Single select',create:true,detail:'primary',col:true,system:true,options:['Qualified','Proposal','Negotiation','Won','Lost']}),
+        F({id:'d_stage',label:'Stage',type:'Single select',create:true,detail:'primary',col:true,system:true,options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
         F({id:'d_prob',label:'Probability',type:'Number',detail:'primary',col:true}),
         F({id:'d_close',label:'Expected close date',type:'Date',create:true,detail:'primary',col:true}),
       ]},
@@ -19877,22 +19878,22 @@ function runFunnelSubmit(opts){
   const existingContact=emailLc?crm.contacts.find(c=>String(c.email||'').toLowerCase()===emailLc):null;
   const existingLead=emailLc?(crm.leads||[]).find(l=>!l.converted&&!l.deleted&&String(l.email||'').toLowerCase()===emailLc):null;
   const nm=rec.name;
-  let contactName=rec.name,created=false,personKind='lead';
+  let contactName=rec.name,created=false,personKind='lead',personId=null;
   if(existingContact){
     const mergedTags=Array.from(new Set([...(existingContact.tags||[]),...tags]));
     crm.updateContact(existingContact.id,{tags:mergedTags,qual:qual,phone:existingContact.phone||rec.phone,co:existingContact.co||rec.company,title:existingContact.title||rec.title,utm:utm,source:existingContact.source||'Funnel',lastActivity:'Just now',last:'Just now'});
-    contactName=existingContact.name;personKind='contact';
+    contactName=existingContact.name;personKind='contact';personId=existingContact.id;
   }else if(wantContact){
     created=true;personKind='contact';
-    const nid=Date.now()+Math.floor(Math.random()*1e6);
+    const nid=Date.now()+Math.floor(Math.random()*1e6);personId=nid;
     crm.setContacts(a=>[{id:nid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,co:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'Active',owner:'AM',ownerColor:'#6366f1',cstatus:'Prospect',tags:tags,source:'Funnel',utm:utm,score:null,days:0,archived:false,dnc:false,createdAt:'Just now',last:'Just now',lastActivity:'Just now',qual:qual},...a]);
   }else if(existingLead){
     const mergedTags=Array.from(new Set([...(existingLead.tags||[]),...tags]));
     crm.updateLead(existingLead.id,{tags:mergedTags,qual:qual,phone:existingLead.phone||rec.phone,company:existingLead.company||rec.company,title:existingLead.title||rec.title,utm:utm,source:existingLead.source||'Funnel',lastActivity:'Just now'});
-    contactName=existingLead.name;personKind='lead';
+    contactName=existingLead.name;personKind='lead';personId=existingLead.id;
   }else{
     created=true;personKind='lead';
-    const lid=Date.now()+Math.floor(Math.random()*1e6);
+    const lid=Date.now()+Math.floor(Math.random()*1e6);personId=lid;
     crm.setLeads(a=>[{id:lid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,company:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'New',owner:'AM',ownerColor:'#6366f1',source:'Funnel',utm:utm,score:null,estValue:'—',estValueNum:0,days:0,loc:'',archived:false,converted:false,tags:tags,createdBy:'AM',createdAt:'Just now',created:'Just now',lastActivity:'Just now',qual:qual},...a]);
   }
   // 3a. optional DEAL (stage + pipeline)
@@ -19901,7 +19902,7 @@ function runFunnelSubmit(opts){
     dealMade=true;
     const stageName=os.dealStage||FORM_DEAL_STAGES[0];
     const nmD=(os.dealName||'{{company}} — inbound').replace('{{company}}',rec.company||rec.name);
-    crm.setDeals(a=>[{id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,pipeline:os.dealPipeline||PROP_PIPELINES[0],probability:20,primaryContact:contactName,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Follow up on funnel lead'},...a]);
+    crm.setDeals(a=>[{id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,pipeline:os.dealPipeline||PROP_PIPELINES[0],probability:20,primaryContact:contactName,primaryContactId:personKind==='contact'?personId:null,fromLeadId:personKind==='lead'?personId:null,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Follow up on funnel lead'},...a]);
   }
   // 3b. optional TASK
   let taskMade=false;
@@ -21277,7 +21278,7 @@ function App(){
       let contactId=null,leadId=null,deduped=false;
       if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0}:c));}
       else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:Math.floor(Math.random()*30)+45,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
-      setAdLeads(a=>[{id:'al_'+contactId,ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
+      setAdLeads(a=>[{id:'al_'+(contactId||leadId),ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
       if(window.__nrturToast)window.__nrturToast('New '+src.short+' lead'+(campaign?(' · '+campaign):'')+': '+person.name+(deduped?' (updated existing)':'')+(speedy?' · Speed-to-lead fired ⚡':''),'success');
       return {contactId,leadId,deduped,sourceKey};
     };
