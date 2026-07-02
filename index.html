@@ -8022,13 +8022,15 @@ function DealDetailPage({goTo,nav}){
   const [schedOpen,setSchedOpen]=React.useState(false);
   const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
-  const onDealField=(k,v)=>{if(k==='dStage'){setStage(v);updateDeal(d.id,{dStage:v,stageKey:DEAL_STAGE_KEY_BY_NAME[v]||d.stageKey});}else{updateDeal(d.id,{[k]:v});}};
+  const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
+  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const low=(stageName||'').toLowerCase();const kind=/lost/.test(low)?'lost':/won|live/.test(low)?'won':null;if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k});};
+  const onDealField=(k,v)=>{if(k==='dStage'){commitStage(v);}else{updateDeal(d.id,{[k]:v});}};
   const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'dStage',label:'Stage',type:'pill',options:DEAL_STAGES_ALL},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const onEditSave=(patch)=>{const out={...patch};if('dStage'in patch){out.stageKey=DEAL_STAGE_KEY_BY_NAME[patch.dStage]||d.stageKey;setStage(patch.dStage);}updateDeal(d.id,out);};
+  const onEditSave=(patch)=>{if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
   const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const _dlLay=omLayoutSplit(dealPrimary,dealSecondary,'Deals',_propsCtx);
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
@@ -8042,7 +8044,7 @@ function DealDetailPage({goTo,nav}){
             <RecordSwitcher obj="deal" page="deal-detail" currentId={d.id} goTo={goTo} items={_deals.filter(x=>!x.deleted)} railTitle="Deals"/>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {nextStage&&effCanObject('Deals','edit')&&<button onClick={()=>{setStage(nextStage);const k=(STAGES_DATA.find(s=>s.name===nextStage)||{}).key;if(k)updateDeal(d.id,{stageKey:k});}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}
+            {nextStage&&effCanObject('Deals','edit')&&<button onClick={()=>commitStage(nextStage)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Move to {nextStage}<I.ArrowRight size={13} stroke={2.4}/></button>}
             {effCanObject('Deals','edit')&&<button onClick={()=>setSchedOpen(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={13}/> Schedule</button>}
             {(effCanObject('Deals','edit')||effCanObject('Deals','delete'))&&<div className="relative" ref={moreRef}>
               <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
@@ -8074,6 +8076,7 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}});window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
