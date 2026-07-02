@@ -1320,8 +1320,8 @@ function useFolders(surfaceKey,seed){
     canTeam:settingsIsAdmin(),
     folderById:(id)=>st.folders.find(f=>f.id===id)||null,
     folderOf:(itemId)=>st.members[String(itemId)]||null,
-    isOpen:(key)=>!st.collapsed[key],
-    toggle:(key)=>{st.collapsed[key]=!st.collapsed[key];commit();},
+    isOpen:(key)=>st.collapsed[key]!==undefined?!st.collapsed[key]:key==='__ungrouped__', // folders start collapsed (counts show on the header); Ungrouped stays open; the user's toggle persists
+    toggle:(key)=>{const open=st.collapsed[key]!==undefined?!st.collapsed[key]:key==='__ungrouped__';st.collapsed[key]=open;commit();}, // collapsed = was-open (handles the untouched default-collapsed state)
     move:(itemId,folderId)=>{const k=String(itemId);if(folderId)st.members[k]=folderId;else delete st.members[k];commit();},
     add:(a)=>{const id=_folderNewId();st.folders=st.folders.concat([{id,name:(a&&a.name)||'New folder',color:(a&&a.color)||FOLDER_PALETTE[st.folders.length%FOLDER_PALETTE.length],scope:(a&&a.scope)||'personal'}]);commit();return id;},
     update:(id,patch)=>{st.folders=st.folders.map(f=>f.id===id?Object.assign({},f,patch):f);commit();},
@@ -1355,6 +1355,25 @@ function FolderEditModal({initial,canTeam,onSave,onClose}){
         {canTeam&&<div><label className={L}>Visibility</label><div className="grid grid-cols-2 gap-2">{[['personal','Personal',I.Lock],['team','Team',I.Users]].map(([k,lb,Ic])=>{const a=scope===k;return(<button key={k} type="button" onClick={()=>setScope(k)} className={['flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[12.5px] font-medium transition-all',a?'bg-brand-500/12 border-brand-500/40 text-white':'bg-white/[0.02] border-white/[0.08] text-white/55 hover:text-white'].join(' ')}><Ic size={13}/>{lb}</button>);})}</div><p className="text-[11px] text-white/35 mt-1.5">{scope==='team'?'Visible to everyone; only Owners & Admins can manage it.':'Only you can see and manage this folder.'}</p></div>}
       </div>
       <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{initial?'Save folder':'Create folder'}</button></div>
+    </div>
+  </div>);
+}
+// Delete-folder flow: choose what happens to the items inside — keep them (move to another folder / Ungrouped) or, where the surface supports it, delete them too.
+function FolderDeleteModal({folder,count,otherFolders,canDeleteItems,onConfirm,onClose}){
+  const [mode,setMode]=React.useState('move');
+  const [target,setTarget]=React.useState('');
+  useEscKey(onClose);
+  const OPT=(k,Icon,title,desc,danger)=>{const a=mode===k;return(<button key={k} type="button" onClick={()=>setMode(k)} className={['w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all',a?(danger?'bg-red-500/[0.08] border-red-500/40':'bg-brand-500/10 border-brand-500/40'):'bg-white/[0.02] border-white/[0.08] hover:border-white/[0.16]'].join(' ')}><span className={['w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ring-1',a?(danger?'bg-red-500/15 text-red-300 ring-red-500/30':'bg-brand-500/15 text-brand-300 ring-brand-500/30'):'bg-white/[0.04] text-white/40 ring-white/[0.06]'].join(' ')}><Icon size={14}/></span><span className="min-w-0 flex-1"><span className={['block text-[13px] font-semibold',danger?'text-red-200':'text-white'].join(' ')}>{title}</span><span className="block text-[11.5px] text-white/45 mt-0.5 leading-relaxed">{desc}</span></span><span className={['w-[18px] h-[18px] rounded-full border flex items-center justify-center shrink-0 mt-0.5',a?(danger?'bg-red-500 border-red-500':'bg-brand-500 border-brand-500'):'border-white/20'].join(' ')}>{a&&<I.Check size={10} stroke={3} style={{color:'white'}}/>}</span></button>);};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden max-w-full">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><p className="text-white text-[15px] font-semibold flex items-center gap-2"><I.Trash size={14} className="text-red-300"/>Delete “{folder.name}”?</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="px-6 py-5 flex flex-col gap-3" style={{background:'var(--s850)'}}>
+        <p className="text-[12.5px] text-white/55">This folder holds <span className="text-white font-semibold">{count} item{count>1?'s':''}</span>. What should happen to {count>1?'them':'it'}?</p>
+        {OPT('move',I.Folder,'Keep the items','Move them to another folder, or leave them Ungrouped.',false)}
+        {mode==='move'&&<div className="relative"><select value={target} onChange={e=>setTarget(e.target.value)} className="w-full appearance-none px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}><option value="" style={{background:'var(--s900)'}}>Ungrouped (no folder)</option>{otherFolders.map(f=>(<option key={f.id} value={f.id} style={{background:'var(--s900)'}}>{f.name}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"><I.ChevronDown size={13}/></span></div>}
+        {canDeleteItems&&OPT('delete',I.Trash,'Delete the items too','Permanently deletes the '+count+' item'+(count>1?'s':'')+' inside along with the folder.',true)}
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>onConfirm({mode,target})} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all',mode==='delete'?'bg-red-500 hover:bg-red-400':'bg-brand-500 hover:bg-brand-400 shadow-brand'].join(' ')}>{mode==='delete'?'Delete folder & items':'Delete folder'}</button></div>
     </div>
   </div>);
 }
@@ -1400,18 +1419,19 @@ function MoveToFolderButton({api,itemId,sm,className}){
 // THE shared collapsible folder group: header (drag · chevron · color · name · count · ⋯) + body.
 // variant 'card' (wide pages) or 'rail' (narrow 220px view rail). Self-contains rename/recolor/
 // delete (confirm → items to Ungrouped) + folder-reorder & item-drop drag-and-drop.
-function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,children}){
+function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,getId,onDeleteItems,children}){
   const folder=group.folder;const isUng=!folder;const manage=!isUng&&canManage;const rail=variant==='rail';
   const menuRef=React.useRef(null);
   const [menuOpen,setMenuOpen]=React.useState(false);
   const [editOpen,setEditOpen]=React.useState(false);
+  const [delOpen,setDelOpen]=React.useState(false);
   const [over,setOver]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
   const accept=()=>(_fldItemDrag&&_fldItemDrag.surface===surface)||(_fldDrag&&_fldDrag.surface===surface&&folder&&_fldDrag.fromId!==folder.id);
   const onDrop=(e)=>{e.preventDefault();setOver(false);
     if(_fldItemDrag&&_fldItemDrag.surface===surface){const it=_fldItemDrag.itemId;const was=api.folderOf(it);_fldItemDrag=null;api.move(it,folder?folder.id:null);if(was!==(folder?folder.id:null))_ftoast(folder?('Moved to “'+folder.name+'”'):'Moved to Ungrouped');return;}
     if(_fldDrag&&_fldDrag.surface===surface&&folder){if(_fldDrag.fromId!==folder.id)api.reorder(_fldDrag.fromId,folder.id);_fldDrag=null;}};
-  const del=()=>{setMenuOpen(false);openConfirm({title:'Delete “'+folder.name+'” folder?',body:'The folder is removed and its items move to Ungrouped. No items are deleted.',confirmLabel:'Delete folder',danger:true,onConfirm:()=>{api.remove(folder.id);_ftoast('Folder deleted — items moved to Ungrouped');}});};
+  const del=()=>{setMenuOpen(false);if(count===0){openConfirm({title:'Delete “'+folder.name+'” folder?',body:'The folder is empty — nothing else is affected.',confirmLabel:'Delete folder',danger:true,onConfirm:()=>{api.remove(folder.id);_ftoast('Folder deleted');}});return;}setDelOpen(true);};
   const dndProps={draggable:manage,onDragStart:()=>{if(manage)_fldDrag={surface,fromId:folder.id};},onDragEnd:()=>{_fldDrag=null;},onDragOver:(e)=>{if(accept()){e.preventDefault();if(!over)setOver(true);}},onDragLeave:()=>{if(over)setOver(false);},onDrop};
   const hdr=rail?(
     <div {...dndProps} className={['group/fh flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors',over?'bg-brand-500/[0.12] ring-1 ring-brand-500/30':'hover:bg-white/[0.03]'].join(' ')}>
@@ -1446,11 +1466,12 @@ function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,ch
       <button onClick={del} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete folder</button>
     </AnchoredMenu>}
     {editOpen&&<FolderEditModal initial={folder} canTeam={api.canTeam} onSave={(a)=>{api.update(folder.id,a);setEditOpen(false);_ftoast('Folder updated');}} onClose={()=>setEditOpen(false)}/>}
+    {delOpen&&<FolderDeleteModal folder={folder} count={count} otherFolders={api.folders.filter(f=>f.id!==folder.id)} canDeleteItems={!!onDeleteItems} onClose={()=>setDelOpen(false)} onConfirm={(choice)=>{const gid=getId||((x)=>x.id);if(choice.mode==='delete'&&onDeleteItems){onDeleteItems((group.items||[]).map(gid));api.remove(folder.id);_ftoast('Folder and '+count+' item'+(count>1?'s':'')+' deleted');}else{(group.items||[]).forEach(it=>api.move(gid(it),choice.target||null));api.remove(folder.id);_ftoast(choice.target?'Folder deleted — items moved':'Folder deleted — items moved to Ungrouped');}setDelOpen(false);}}/>}
     {confirmNode}
   </div>);
 }
 // Orchestrator for wide "card"/list surfaces: folders + Ungrouped + New-folder, given a renderItem.
-function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint}){
+function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint,onDeleteItems}){
   const groups=api.group(items,getId);
   const {newFolderNode,openNewFolder}=useFolderCreate(api);
   return(<div className="flex flex-col gap-3">
@@ -1461,7 +1482,7 @@ function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint}){
     {groups.map(g=>{
       const folder=g.folder;const key=folder?folder.id:'__ungrouped__';
       if(!folder&&g.items.length===0&&api.folders.length>0)return null;
-      return(<FolderGroup key={key} surface={surface} api={api} group={g} count={g.items.length} open={api.isOpen(key)} onToggle={()=>api.toggle(key)} variant="card" canManage={folderCanManage(folder,api.canTeam)}>
+      return(<FolderGroup key={key} surface={surface} api={api} group={g} count={g.items.length} open={api.isOpen(key)} onToggle={()=>api.toggle(key)} variant="card" canManage={folderCanManage(folder,api.canTeam)} getId={getId} onDeleteItems={onDeleteItems}>
         {g.items.length?<div className={itemsClass||'flex flex-col gap-3'}>{g.items.map(renderItem)}</div>:<p className="text-[12px] text-white/30 px-1 py-3">Empty folder — drag items here or use “Move to folder”.</p>}
       </FolderGroup>);
     })}
@@ -7169,14 +7190,22 @@ function publishRecordCtx(obj,ids){_recordCtx[obj]=ids;}
 // One source of truth: reads the shared CalendarContext task store, filtered to this record via
 // `match`. "Add task" opens the same TaskFormModal drawer (prefilled with the record link).
 // Creating/completing logs to the record activity timeline through onLog.
-function RecordTasks({match,prefill,goTo,onLog,canEdit}){
+function RecordTasks({match,prefill,goTo,onLog,canEdit,recId}){
   const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
   const [modal,setModal]=React.useState(null);
   const [showDone,setShowDone]=React.useState(false);
+  const [panelOpen,setPanelOpen]=React.useState(false); // collapsed by default — header count tells the story (consistent with the other record panels)
+  const [prio,setPrio]=React.useState('All');           // priority filter: All | High | Medium | Low
+  const [sortMode,setSortMode]=React.useState('due');   // 'due' (due date) | 'recent' (newest added first)
+  const [showAllOpen,setShowAllOpen]=React.useState(false); // volume: show 2, expandable
+  React.useEffect(()=>{setPanelOpen(false);setPrio('All');setSortMode('due');setShowAllOpen(false);setShowDone(false);},[recId]);
   const now=new Date();const sod=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const all=items.filter(e=>e.type==='task'&&!e.deleted&&match(e));
   const open=all.filter(t=>!t.done).sort((a,b)=>a.date-b.date);
   const done=all.filter(t=>t.done).sort((a,b)=>b.date-a.date);
+  const filteredOpen=prio==='All'?open:open.filter(t=>(t.priority||'Medium')===prio);
+  const sortedOpen=sortMode==='recent'?[...filteredOpen].sort((a,b)=>items.indexOf(b)-items.indexOf(a)):filteredOpen; // addItem appends, so array position = recency
+  const visibleOpen=showAllOpen?sortedOpen:sortedOpen.slice(0,2);
   const due=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(!t.done&&t.date<sod)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
   const save=(ev)=>{const isNew=!ev.id;if(isNew)addItem(ev);else updateItem(ev);setModal(null);if(window.__nrturToast)window.__nrturToast(isNew?'Task created':'Task saved','success');if(isNew&&onLog)onLog('Task created',ev.title);};
   const complete=(t)=>{const becomingDone=!t.done;toggleDone(t.id);if(window.__nrturToast)window.__nrturToast(becomingDone?'Task completed':'Task reopened','success');if(becomingDone&&onLog)onLog('Task completed',t.title);};
@@ -7187,11 +7216,17 @@ function RecordTasks({match,prefill,goTo,onLog,canEdit}){
       {u&&<span title={u.name} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:u.color}}>{t.assignee||t.owner||'AM'}</span>}
     </div>);};
   return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-    <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.CheckSquare size={14}/></span><div><p className="text-white font-medium leading-tight">Tasks</p><p className="text-[11px] text-white/45 mt-0.5">{open.length} open{done.length?' · '+done.length+' done':''}</p></div></div>{canEdit&&<button onClick={()=>setModal({task:{type:'task',allDay:true,priority:'Medium',assignee:'AM',...prefill}})} className="inline-flex items-center gap-1 text-[11px] text-white/45 hover:text-brand-300 transition-colors"><I.Plus size={11} stroke={2.4}/>Add task</button>}</div>
-    <div className="p-3">
-      {open.length===0?<p className="text-[12px] text-white/40 px-2 py-6 text-center">No open tasks{canEdit?' — add one to stay on track.':'.'}</p>:open.map(t=><TaskRow key={t.id} t={t}/>)}
+    <div className={['px-5 py-4 flex items-center justify-between',panelOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setPanelOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:panelOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.CheckSquare size={14}/></span><div><p className="text-white font-medium leading-tight">Tasks</p><p className="text-[11px] text-white/45 mt-0.5">{open.length} open{done.length?' · '+done.length+' done':''}</p></div></button>{canEdit&&<button onClick={()=>setModal({task:{type:'task',allDay:true,priority:'Medium',assignee:'AM',...prefill}})} className="inline-flex items-center gap-1 text-[11px] text-white/45 hover:text-brand-300 transition-colors"><I.Plus size={11} stroke={2.4}/>Add task</button>}</div>
+    {panelOpen&&<div className="p-3">
+      {open.length>0&&<div className="flex items-center gap-1.5 flex-wrap px-1 pb-2.5">
+        {['All','High','Medium','Low'].map(p=>{const a=prio===p;const n=p==='All'?open.length:open.filter(t=>(t.priority||'Medium')===p).length;return(<button key={p} onClick={()=>{setPrio(p);setShowAllOpen(false);}} className={['inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/30':'text-white/45 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}>{p!=='All'&&<span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[p]||'#64748b'}}/>}{p}<span className="text-[9.5px] font-mono opacity-70">{n}</span></button>);})}
+        <span className="flex-1"/>
+        <div className="flex items-center rounded-lg bg-white/[0.04] border border-white/[0.07] p-0.5">{[['due','Due date'],['recent','Recent']].map(([k,l])=>{const a=sortMode===k;return(<button key={k} onClick={()=>setSortMode(k)} className={['px-2 py-0.5 rounded-md text-[10.5px] font-medium transition-all',a?'bg-white/[0.08] text-white':'text-white/40 hover:text-white/70'].join(' ')}>{l}</button>);})}</div>
+      </div>}
+      {sortedOpen.length===0?<p className="text-[12px] text-white/40 px-2 py-6 text-center">{open.length===0?('No open tasks'+(canEdit?' — add one to stay on track.':'.')):('No '+prio.toLowerCase()+'-priority tasks open.')}</p>:visibleOpen.map(t=><TaskRow key={t.id} t={t}/>)}
+      {sortedOpen.length>2&&<button onClick={()=>setShowAllOpen(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-2.5 py-1.5">{showAllOpen?'Show less':'Show all '+sortedOpen.length+' tasks'}</button>}
       {done.length>0&&<div className="mt-1 pt-2 border-t border-white/[0.05]"><button onClick={()=>setShowDone(s=>!s)} className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-white/45 hover:text-white/70 transition-colors"><span>Completed ({done.length})</span><I.ChevronDown size={13} style={{transform:showDone?'rotate(180deg)':'none',transition:'transform .15s'}}/></button>{showDone&&done.map(t=><TaskRow key={t.id} t={t}/>)}</div>}
-    </div>
+    </div>}
     {modal&&<TaskFormModal initial={modal.task} onClose={()=>setModal(null)} onSave={save} onDelete={(t)=>{updateItem({id:t.id,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});setModal(null);if(window.__nrturToast)window.__nrturToast('Task moved to Recycle Bin','success');}}/>}
   </div>);
 }
@@ -7263,6 +7298,9 @@ function ContactDetailPage({goTo,nav}){
   // Wave 3: real deals for this contact — id-first (primary / additional / same-company) with name fallback. Non-memoized, matches CompanyDetailPage convention.
   const myDeals=allDeals().filter(d=>{if(d.primaryContactId!=null&&d.primaryContactId===c.id)return true;if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.includes(c.id))return true;if(c.companyId!=null&&d.companyId!=null&&d.companyId===c.companyId)return true;if(d.primaryContact&&c.name&&d.primaryContact===c.name)return true;if(d.company&&c.co&&d.company===c.co)return true;return false;});
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
+  const [showAllDeals,setShowAllDeals]=React.useState(false); // volume: deals panel shows 5, expandable
+  const [dealsOpen,setDealsOpen]=React.useState(false); // panel collapsed by default — header count tells the story
+  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);},[c&&c.id]);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const [tab,setTab]=React.useState('all');
@@ -7338,7 +7376,7 @@ function ContactDetailPage({goTo,nav}){
               <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(59,130,246,0.10),transparent 70%)'}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative"><div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-semibold ring-2 ring-white/[0.06]" style={{background:c.color}}>{c.avatar}</div><span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-[#0c0c1a]"/></div>
-                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-semibold">{c.name}</h2></div><p className="text-[13px] text-white/55 mt-1">CEO - {c.co}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span>{suppressed.email&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not email</span>}{suppressed.sms&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not SMS</span>}{suppressed.calls&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not call</span>}</div>
+                  <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-semibold">{c.name}</h2></div><p className="text-[13px] text-white/55 mt-1">{[c.title,c.co].filter(Boolean).join(' · ')||'Independent'}</p><span className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Active</span>{suppressed.email&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not email</span>}{suppressed.sms&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not SMS</span>}{suppressed.calls&&<span className="inline-flex items-center mt-2 ml-1.5 px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/25 text-[11px] font-medium">Do not call</span>}</div>
                 </div>
                 {effCanObject('Contacts','edit')&&<div className="grid grid-cols-4 gap-2">
                   {[{Icon:I.Send,l:'Send Email',fn:()=>setComposeOpen(true),accent:true,comm:true,chan:'email'},{Icon:I.Phone,l:'Make call',fn:()=>setDialerOpen(o=>!o),comm:true,chan:'calls'},{Icon:I.Note,l:'Add Note',fn:()=>{const el=document.getElementById('cd-note');if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}}},{Icon:I.Hash,l:'Send SMS',fn:()=>goTo('inbox',{channel:'sms',contactId:c.id}),comm:true,chan:'sms'}].map((b,i)=>{const supc=b.chan&&suppressed[b.chan];const off=(b.comm&&dnc)||supc;return(
@@ -7351,6 +7389,12 @@ function ContactDetailPage({goTo,nav}){
               {dialerOpen&&!dnc&&<ContactDialerPopover contact={{name:c.name,phone:c.phone,avatar:c.avatar,color:c.color}} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
               </div>
               <RecordProperties record={crec} primary={_ctLay.primary} secondary={_ctLay.secondary} onChange={onFieldChange} goTo={goTo} readOnly={!effCanObject('Contacts','edit')}/>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
+                <div className={['flex items-center justify-between',dealsOpen?'mb-3':''].join(' ')}><button onClick={()=>setDealsOpen(o=>!o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0"><I.ChevronDown size={12} className="text-white/35 shrink-0" style={{transform:dealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · {myDeals.length}</p></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {dealsOpen&&(myDeals.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No deals linked to this contact yet.</p>):(showAllDeals?myDeals:myDeals.slice(0,5)).map(d=>(<button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>)))}
+                {dealsOpen&&myDeals.length>5&&<button onClick={()=>setShowAllDeals(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 pb-1">{showAllDeals?'Show less':'Show all '+myDeals.length+' deals'}</button>}
+              </div>
+              <RelatedRecordsPanel crm={crm} targetType="contact" rec={c} goTo={goTo}/>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4 flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Blocks all email, SMS, and calls.</p></div><Toggle on={dnc} onChange={effCanObject('Contacts','edit')?setDnc:()=>{}}/></div>
               <ContactFreqIndicator contact={c} goTo={goTo}/>
               {c.adPlatform&&(()=>{const _s=adSourceByKey(c.adSourceKey);const _utm=[['utm_source',c.utmSource],['utm_medium',c.utmMedium],['utm_campaign',c.utmCampaign],['utm_term',c.utmTerm],['utm_content',c.utmContent]].filter(x=>x[1]);return(
@@ -7367,10 +7411,6 @@ function ContactDetailPage({goTo,nav}){
                   {_utm.length>0&&<div className="mt-3 pt-3 border-t border-white/[0.06] flex flex-wrap gap-1.5">{_utm.map(([k,v])=>(<span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-mono bg-white/[0.05] border border-white/[0.08] text-white/60"><span className="text-white/35">{k}=</span>{v}</span>))}</div>}
                   <p className="mt-3 text-[10.5px] text-white/30 flex items-center gap-1"><I.Megaphone size={10}/>Captured via {_s.name} · simulated sync</p>
                 </div>);})()}
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
-                <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · {myDeals.length}</p>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                {myDeals.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No deals linked to this contact yet.</p>):myDeals.map(d=>(<button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>))}
-              </div>
             </div>
                         <div className="flex flex-col gap-5">
             <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
@@ -7384,7 +7424,7 @@ function ContactDetailPage({goTo,nav}){
                 </div>
               </div>
             </div>
-            <RecordTasks match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+            <RecordTasks recId={c.id} match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
@@ -8116,9 +8156,10 @@ function DealDetailPage({goTo,nav}){
 
               </div>
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
+              <RelatedRecordsPanel crm={crm} targetType="deal" rec={d} goTo={goTo}/>
             </div>
             <div className="flex flex-col gap-5 min-w-0">
-              <RecordTasks match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
+              <RecordTasks recId={d.id} match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
               <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
             </div>
           </div>
@@ -8413,6 +8454,11 @@ function CompanyDetailPage({goTo,nav}){
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const people=contactsForCompany(co);
   const dl=dealsForCompany(co);
+  const [showAllPeople,setShowAllPeople]=React.useState(false); // volume: panels show 6, expandable
+  const [showAllCoDeals,setShowAllCoDeals]=React.useState(false);
+  const [peopleOpen,setPeopleOpen]=React.useState(false); // panels collapsed by default — header counts tell the story
+  const [coDealsOpen,setCoDealsOpen]=React.useState(false);
+  React.useEffect(()=>{setShowAllPeople(false);setShowAllCoDeals(false);setPeopleOpen(false);setCoDealsOpen(false);},[co&&co.id]);
   const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Website',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency',sensitive:true},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
   const coSecondary=[{key:'type',label:'Company type',type:'select',options:['Prospect','Customer','Partner','Competitor','Other']},{key:'website',label:'Website',type:'url',linkKind:'url'},{key:'parent',label:'Parent company',type:'lookup',go:(g)=>g('company-detail')},{key:'linkedin',label:'LinkedIn',type:'url',linkKind:'url'},{key:'desc',label:'Description',type:'text'},{key:'billing',label:'Billing address',type:'address'},{key:'shipping',label:'Shipping address',type:'address'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   const coMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
@@ -8468,25 +8514,28 @@ function CompanyDetailPage({goTo,nav}){
               </div>
               </div>
               <RecordProperties record={co} primary={_coLay.primary} secondary={_coLay.secondary} onChange={(k,v)=>updateCompany(co.id,{[k]:v})} goTo={goTo} readOnly={!effCanObject('Companies','edit')}/>
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
+                <div className={['px-5 py-4 flex items-center justify-between',coDealsOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setCoDealsOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:coDealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {coDealsOpen&&<div className="p-4 grid grid-cols-1 gap-2.5">
+                  {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):(showAllCoDeals?dl.list:dl.list.slice(0,6)).map(d=>(
+                    <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
+                  ))}
+                  {dl.list.length>6&&<button onClick={()=>setShowAllCoDeals(s=>!s)} className="col-span-full text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 text-left">{showAllCoDeals?'Show less':'Show all '+dl.list.length+' deals'}</button>}
+                </div>}
+              </div>
+              <RelatedRecordsPanel crm={crm} targetType="company" rec={co} goTo={goTo}/>
             </div>
                         <div className="flex flex-col gap-5">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-medium">People at {co.name}</p><p className="text-[11px] text-white/45 mt-0.5">{people.length} contact{people.length!==1?'s':''}</p></div>{effCanObject('Contacts','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact','single',{company:co.name}):goTo('add-contact')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>Add contact</button>}</div>
-                <div className="p-3">
-                  {people.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No contacts linked to this company yet.</p>):people.map(p=>(
+                <div className={['px-5 py-4 flex items-center justify-between',peopleOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setPeopleOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:peopleOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">People at {co.name}</p><p className="text-[11px] text-white/45 mt-0.5">{people.length} contact{people.length!==1?'s':''}</p></div></button>{effCanObject('Contacts','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact','single',{company:co.name}):goTo('add-contact')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>Add contact</button>}</div>
+                {peopleOpen&&<div className="p-3">
+                  {people.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No contacts linked to this company yet.</p>):(showAllPeople?people:people.slice(0,6)).map(p=>(
                     <button key={p.id} onClick={()=>goTo('contact-detail',p.id)} className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-white/[0.04] transition-colors text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{p.name}</p><p className="text-[11px] text-white/45 truncate">{p.email}</p></div><span className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 shrink-0',CSTATUS_CHIP[p.cstatus]].join(' ')}>{p.cstatus}</span><I.ArrowRight size={12} className="text-white/20 shrink-0"/></button>
                   ))}
-                </div>
+                  {people.length>6&&<button onClick={()=>setShowAllPeople(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-2.5 py-1.5">{showAllPeople?'Show less':'Show all '+people.length+' contacts'}</button>}
+                </div>}
               </div>
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):dl.list.map(d=>(
-                    <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
-                  ))}
-                </div>
-              </div>
-              <RecordTasks match={(t)=>t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={co.id} match={(t)=>t.companyId!=null?t.companyId===co.id:t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Companies','edit')?addNote:undefined} onSchedule={effCanObject('Companies','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
           </div>
@@ -9018,6 +9067,7 @@ function LeadDetailPage({goTo,nav}){
               </div>
               </div>
               <RecordProperties record={l} primary={_ldLay.primary} secondary={_ldLay.secondary} onChange={onLeadField} goTo={goTo} readOnly={!canEditLead}/>
+              <RelatedRecordsPanel crm={crm} targetType="lead" rec={l} goTo={goTo}/>
               {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
@@ -9032,7 +9082,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>
-              <RecordTasks match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={l.id} match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
@@ -14076,21 +14126,31 @@ function SettingsTeamPage({goTo}){
     {name:'Marcus Rios',email:'marcus@bloom.co',role:'Sales Rep',avatar:'MR',color:'#ec4899',status:'Pending'},
   ]);
   const setRole=(email,role)=>setMembers(ms=>ms.map(x=>x.email===email?{...x,role}:x));
-  const {teamInvites}=React.useContext(CrmDataContext);
-  const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending'}));
+  const {teamInvites,setTeamInvites}=React.useContext(CrmDataContext);
+  const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending',_invite:true}));
   const allMembers=[...members,...inviteRows];
+  const [inviteEmail,setInviteEmail]=React.useState('');
+  const _tToast=(m,k)=>window.__nrturToast&&window.__nrturToast(m,k||'success');
+  const sendTeamInvite=()=>{const em=inviteEmail.trim();if(!em)return;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){_tToast('Enter a valid email address','warning');return;}if(allMembers.some(x=>(x.email||'').toLowerCase()===em.toLowerCase())){_tToast(em+' is already a member or has a pending invite','warning');return;}setTeamInvites(a=>[...a,{email:em,role:inviteRole,invitedAt:'Just now'}]);setInviteEmail('');setInviteModal(false);_tToast('Invite sent to '+em);};
+  const resendInvite=(m)=>openConfirm({title:'Resend invite to '+m.email+'?',body:"We'll email them a fresh invite link to join the workspace.",confirmLabel:'Resend invite',danger:false,onConfirm:()=>_tToast('Invite resent to '+m.email)});
+  const setInviteRoleFor=(email,role)=>setTeamInvites(a=>a.map(x=>x.email===email?{...x,role}:x));
+  const revokeInvite=(m)=>openConfirm({title:'Revoke invite for '+m.email+'?',body:'They will no longer be able to join with this invite. You can invite them again any time.',confirmLabel:'Revoke invite',danger:true,onConfirm:()=>{setTeamInvites(a=>a.filter(x=>(x.email||'').toLowerCase()!==(m.email||'').toLowerCase()));_tToast('Invite revoked');}});
+  const removeMember=(m)=>openConfirm({title:`Remove ${m.name}?`,body:'They will lose access immediately. You can re-invite them at any time.',confirmLabel:'Remove',danger:true,onConfirm:()=>{setMembers(ms=>ms.filter(x=>x.email!==m.email));_tToast(m.name+' removed from the workspace');}});
   const COL='1.5fr 1.5fr 110px 110px 80px';
   return(
-    <SettingsShell active="settings-team" goTo={goTo} subtitle="5 of 5 seats used - Pro plan"
+    <SettingsShell active="settings-team" goTo={goTo} subtitle={allMembers.filter(m=>m.status==='Active').length+' active · '+allMembers.filter(m=>m.status==='Pending').length+' pending — Pro plan'}
       actions={<button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button>}>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Member</span><span>Email</span><span>Role</span><span>Status</span><span/></div>
         {allMembers.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<allMembers.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
           <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</div><p className="text-[13px] font-medium text-white truncate">{m.name}</p></div>
           <p className="text-[12px] text-white/55 truncate">{m.email}</p>
-          <RoleSelect compact value={m.role} onChange={v=>setRole(m.email,v)}/>
+          <RoleSelect compact value={m.role} onChange={v=>m._invite?setInviteRoleFor(m.email,v):setRole(m.email,v)}/>
           <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 w-fit',m.status==='Active'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-amber-500/12 text-amber-300 ring-amber-500/25'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',m.status==='Active'?'bg-emerald-400':'bg-amber-400'].join(' ')}/>{m.status}</span>
-          <button onClick={()=>openConfirm({title:`Remove ${m.name}?`,body:'They will lose access immediately. You can re-invite them at any time.',confirmLabel:'Remove',danger:true})} className="text-white/40 hover:text-red-400 transition-colors ml-auto"><I.Trash size={13}/></button>
+          <div className="flex items-center gap-1.5 justify-end ml-auto">
+            {m.status==='Pending'&&<button onClick={()=>resendInvite(m)} title="Resend invite" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"><I.Send size={13}/></button>}
+            <button onClick={()=>m._invite?revokeInvite(m):removeMember(m)} title={m._invite?'Revoke invite':'Remove member'} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/></button>
+          </div>
         </div>))}
       </div>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -14098,7 +14158,7 @@ function SettingsTeamPage({goTo}){
         {[{who:'Alex Morgan',color:'#3b82f6',action:'moved deal',target:'Forge & Co → Won',time:'2h ago'},{who:'Sarah Chen',color:'#8b5cf6',action:'sent email to',target:'James Rivera',time:'4h ago'},{who:'Jamie Kim',color:'#10b981',action:'created contact',target:'Barrett Digital',time:'Yesterday 3:12 PM'},{who:'Alex Morgan',color:'#3b82f6',action:'invited member',target:'marcus@bloom.co',time:'Yesterday 11:40 AM'},{who:'Ravi Lee',color:'#f59e0b',action:'deleted contact',target:'old@company.net',time:'May 30, 2:05 PM'},{who:'Sarah Chen',color:'#8b5cf6',action:'logged call with',target:'Priya Nair',time:'May 29, 4:33 PM'}].map((a,i,arr)=>(<div key={i} className={['flex items-center gap-3 px-6 py-3',i<arr.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:a.color}}>{a.who.split(' ').map(w=>w[0]).join('')}</div><p className="text-[12.5px] text-white/70 flex-1 min-w-0"><span className="font-medium text-white">{a.who}</span> {a.action} <span className="text-white/85">{a.target}</span></p><span className="text-[11px] text-white/35 shrink-0">{a.time}</span></div>))}
       </div>
       {confirmNode}
-      {inviteModal&&(<div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}}><div className="w-full max-w-md rounded-2xl border border-white/[0.10] p-7" style={{background:'var(--s850)'}}><div className="flex items-center justify-between mb-5"><p className="text-white text-[18px] font-semibold">Invite teammate</p><button onClick={()=>setInviteModal(false)} className="text-white/45 hover:text-white"><I.X size={16}/></button></div><input type="email" placeholder="Email address" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-3"/><div className="mb-5"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><div className="flex gap-3"><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Send invite</button></div></div></div>)}
+      {inviteModal&&(<div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}}><div className="w-full max-w-md rounded-2xl border border-white/[0.10] p-7" style={{background:'var(--s850)'}}><div className="flex items-center justify-between mb-5"><p className="text-white text-[18px] font-semibold">Invite teammate</p><button onClick={()=>setInviteModal(false)} className="text-white/45 hover:text-white"><I.X size={16}/></button></div><input type="email" autoFocus value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendTeamInvite();}} placeholder="Email address" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-3"/><div className="mb-5"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><div className="flex gap-3"><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={sendTeamInvite} disabled={!inviteEmail.trim()} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Send invite</button></div></div></div>)}
     </SettingsShell>
   );
 }
@@ -16501,6 +16561,7 @@ function SettingsAutomationsPage({goTo}){
   const [sub,setSub]=React.useState('workflows');
   const [subView,setSubView]=React.useState('list');
   const [autos,setAutos]=React.useState(AUTO_INIT);
+  const fldAuto=useFolders('automations',{folders:[{id:'af_sales',name:'Sales',color:'#818cf8',scope:'team'},{id:'af_life',name:'Lifecycle',color:'#34d399',scope:'personal'}],members:{9501:'af_sales',2:'af_sales',5:'af_life'}});
   const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active]),...PUSH_SEQ_DATA.map(s=>['push'+s.id,s.active]),...INAPP_SEQ_DATA.map(s=>['inapp'+s.id,s.active])]));
   const [menu,setMenu]=React.useState(null);
   const [tplOpen,setTplOpen]=React.useState(false);
@@ -16557,11 +16618,11 @@ function SettingsAutomationsPage({goTo}){
               </div>
             ):(<div className="flex flex-col gap-4">
               <div className="flex items-center justify-end -mb-1"><button onClick={()=>setTplOpen(true)} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200"><I.Layers size={12}/>Browse templates</button></div>
-              {autos.map(a=>{const st=AUTO_ST[a.status];const isErr=a.status==='error',isDraft=a.status==='draft',muted=a.status==='paused'||isDraft;return(
-                <div key={a.id} className={['rounded-2xl border p-5 transition-all',muted?'bg-white/[0.02] opacity-90':'bg-white/[0.035]',isErr?'':muted?'border-white/[0.05]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')} style={isErr?{borderColor:'rgba(239,68,68,0.3)',boxShadow:'0 0 0 1px rgba(239,68,68,0.12),0 0 30px rgba(239,68,68,0.08)'}:{}}>
+              <FolderedCards surface="automations" api={fldAuto} items={autos} itemsClass="flex flex-col gap-4" onDeleteItems={(ids)=>{const _s=new Set(ids.map(String));setAutos(a=>a.filter(x=>!_s.has(String(x.id))));}} renderItem={(a)=>{const st=AUTO_ST[a.status];const isErr=a.status==='error',isDraft=a.status==='draft',muted=a.status==='paused'||isDraft;return(
+                <div key={a.id} draggable onDragStart={()=>folderBeginItemDrag('automations',a.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',muted?'bg-white/[0.02] opacity-90':'bg-white/[0.035]',isErr?'':muted?'border-white/[0.05]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')} style={isErr?{borderColor:'rgba(239,68,68,0.3)',boxShadow:'0 0 0 1px rgba(239,68,68,0.12),0 0 30px rgba(239,68,68,0.08)'}:{}}>
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',a.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':isErr?'bg-red-500/10 text-red-300 ring-red-500/20':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><div className="flex items-center gap-2 mt-1 flex-wrap">{(()=>{const m=TRIGGER_META(a.trigger);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:m.color+'24',color:m.color}}><m.Icon size={10} stroke={2.4}/>{m.cat}</span>);})()}<p className="text-[12px] text-white/55"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div></div>
-                    <div className="flex items-center gap-2 shrink-0">{!isDraft&&<Toggle on={a.status==='active'} onChange={()=>toggleAuto(a.id)}/>}{!isDraft&&<button onClick={()=>setEnrModal(autoFlow(a))} className={EDIT}><I.Users size={12}/>Enrolled</button>}{!isDraft&&<button onClick={()=>setLogModal(a)} className={EDIT}><I.History size={12}/>Logs</button>}<button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button>
+                    <div className="flex items-center gap-2 shrink-0">{!isDraft&&<Toggle on={a.status==='active'} onChange={()=>toggleAuto(a.id)}/>}{!isDraft&&<button onClick={()=>setEnrModal(autoFlow(a))} className={EDIT}><I.Users size={12}/>Enrolled</button>}{!isDraft&&<button onClick={()=>setLogModal(a)} className={EDIT}><I.History size={12}/>Logs</button>}<MoveToFolderButton api={fldAuto} itemId={a.id} sm/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button>
                       <div data-automenu className="relative"><button onClick={()=>setMenu(menu===a.id?null:a.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                         {menu===a.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
                           <button onClick={()=>duplicateAuto(a)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button>
@@ -16574,7 +16635,7 @@ function SettingsAutomationsPage({goTo}){
                   {!isDraft&&<div className="flex items-center justify-between gap-4"><div className="flex items-center gap-5 text-[12px] text-white/45"><span className="flex items-center gap-1.5"><I.Play size={9}/>Runs <span className="text-white font-semibold tabular-nums">{a.runs}</span></span>{a.status==='active'?<span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Success <span className="text-emerald-300 font-semibold tabular-nums">{a.success}%</span></span>:a.status==='paused'?<span className="italic">Paused since {a.pausedSince}</span>:<span className="flex items-center gap-1.5 text-red-300/80"><span className="w-1.5 h-1.5 rounded-full bg-red-400"/>{a.success}% success</span>}<span className="flex items-center gap-1"><I.Clock size={10}/>Last {a.lastRun}</span></div><MiniSparkA data={a.spark} color={a.status==='error'?'#f87171':a.status==='active'?'#818cf8':'#64748b'}/></div>}
                   {isDraft&&<p className="text-[12px] text-white/35 italic">Draft — not yet activated.</p>}
                   {isErr&&<div className="mt-3 pt-3 border-t border-red-500/15 flex items-center justify-between gap-3"><p className="text-[12px] text-red-300/90 flex items-center gap-1.5 min-w-0"><I.Ban size={11} className="shrink-0"/><span className="truncate">Last run failed — {a.errStep}</span></p><button onClick={()=>setLogModal(a)} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1 shrink-0">View log<I.ArrowRight size={11} stroke={2.4}/></button></div>}
-                </div>);})}
+                </div>);}}/>
             </div>))}
             {sub==='sms'&&(<div className="flex flex-col gap-4">
               <div className="flex items-center justify-end gap-3 flex-wrap"><button onClick={()=>setNewSeq('sms')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New SMS sequence</button>
@@ -17330,6 +17391,7 @@ function FormBuilderPage({goTo,initial}){
 function SettingsFormsPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   const [forms,setForms]=React.useState(FORMS_DATA);
+  const fldForm=useFolders('forms',{folders:[{id:'ff_lead',name:'Lead capture',color:'#34d399',scope:'team'},{id:'ff_event',name:'Events & webinars',color:'#818cf8',scope:'personal'}],members:{1:'ff_lead'}});
   const [subModal,setSubModal]=React.useState(null);
   const [menu,setMenu]=React.useState(null);
   const [toast,setToast]=React.useState('');
@@ -17357,11 +17419,11 @@ function SettingsFormsPage({goTo}){
                 {[{Icon:I.Note,c:'#60a5fa',t:'Form',d:'visitor submits'},{Icon:I.UserPlus,c:'#34d399',t:'Contact',d:'created / updated'},{Icon:I.Zap,c:'#fbbf24',t:'Automation',d:'trigger + sequence'}].map((s,i,arr)=>(<React.Fragment key={s.t}><div className="inline-flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={13} stroke={2.2}/></span><div><p className="text-[12px] font-semibold text-white leading-none">{s.t}</p><p className="text-[11px] text-white/45 mt-0.5">{s.d}</p></div></div>{i!==arr.length-1&&<I.ArrowRight size={14} className="text-white/25"/>}</React.Fragment>))}
               </div>
             </div>
-            {forms.map(f=>{const st=FORM_ST[f.status]||FORM_ST.draft;const chips=onSubmitChips(f.onSubmit);return(
-              <div key={f.id} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
+            <FolderedCards surface="forms" api={fldForm} items={forms} onDeleteItems={(ids)=>{const _s=new Set(ids.map(String));setForms(a=>a.filter(f=>!_s.has(String(f.id))));}} renderItem={(f)=>{const st=FORM_ST[f.status]||FORM_ST.draft;const chips=onSubmitChips(f.onSubmit);return(
+              <div key={f.id} draggable onDragStart={()=>folderBeginItemDrag('forms',f.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',f.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Note size={17} stroke={2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{f.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><p className="text-[12px] text-white/55 mt-1">{f.fields.length} fields · {f.submissions} submissions · {f.conversion}% conversion</p></div></div>
-                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>{const link='https://forms.nrtur.com/f/'+f.id;if(navigator.clipboard)navigator.clipboard.writeText(link);showToast('Share link copied — forms.nrtur.com/f/'+f.id);}} className={EDIT} title="Copy share / embed link"><I.ExternalLink size={12}/><span className="crm-hide-sm">Share</span></button><button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/><span className="crm-hide-sm">Submissions</span></button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/><span className="crm-hide-sm">Edit</span></button>
+                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>{const link='https://forms.nrtur.com/f/'+f.id;if(navigator.clipboard)navigator.clipboard.writeText(link);showToast('Share link copied — forms.nrtur.com/f/'+f.id);}} className={EDIT} title="Copy share / embed link"><I.ExternalLink size={12}/><span className="crm-hide-sm">Share</span></button><button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/><span className="crm-hide-sm">Submissions</span></button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/><span className="crm-hide-sm">Edit</span></button><MoveToFolderButton api={fldForm} itemId={f.id} sm/>
                     <div data-formmenu className="relative"><button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                       {menu===f.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}><button onClick={()=>dupForm(f)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button><button onClick={()=>{setMenu(null);openConfirm({title:'Delete this form?',body:`"${f.name}" and its embed will stop collecting submissions.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{delForm(f.id);showToast('Form deleted');}});}} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete</button></div>)}
                     </div>
@@ -17372,7 +17434,7 @@ function SettingsFormsPage({goTo}){
                   <ConnectedAutomations names={formAutoNames(f.onSubmit)} goTo={goTo} compact onCreate={()=>{showToast('Opening automation builder — '+f.name+' set as trigger');setTimeout(()=>goTo('automation-builder'),450);}}/>
                 </div>
               </div>
-            );})}
+            );}}/>
             <div className="flex items-center justify-between mb-1 mt-2"><p className="text-white text-[15px] font-medium">Templates</p></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{FORM_TEMPLATES.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-semibold">{t.name}</h4><p className="text-[12px] text-white/50 mt-1 mb-4">{t.desc}</p><button onClick={()=>{setFormSeed(t);goTo('form-builder');}} className="w-full py-2 rounded-xl text-[12px] font-medium text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
             </fieldset>
@@ -20152,6 +20214,7 @@ function FunnelTemplatePicker({onClose,onCreate}){
 // ── Funnels list page ──
 function FunnelsPage({goTo,nav}){
   const {funnels,addFunnel,removeFunnel}=useFunnels();
+  const fldFunnel=useFolders('funnels',{folders:[{id:'fnf_lead',name:'Lead gen',color:'#818cf8',scope:'team'},{id:'fnf_event',name:'Events',color:'#34d399',scope:'personal'}],members:{}});
   const [picker,setPicker]=React.useState(false);
   const [menu,setMenu]=React.useState(null);
   const [confirmDel,setConfirmDel]=React.useState(null);
@@ -20173,10 +20236,9 @@ function FunnelsPage({goTo,nav}){
         {funnels.length===0?(
           <FeatureEmpty Icon={I.Filter} title="No funnels yet" desc="Build a multi-step landing page that captures leads and wires them straight into your CRM — no Zapier needed." actions={canEdit?<button onClick={()=>setPicker(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Create funnel</button>:<p className="text-[12px] text-white/35">Your role can’t create funnels.</p>}/>
         ):(
-          <div className="px-7 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {funnels.map(f=>{
+          <div className="px-7 py-5"><FolderedCards surface="funnels" api={fldFunnel} items={funnels} itemsClass="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" onDeleteItems={(ids)=>{ids.forEach(id=>removeFunnel(id));}} renderItem={(f)=>{
               const v=(f.steps[0]&&f.steps[0].stats.views)||0;const sub=(f.steps[f.steps.length-1]&&f.steps[f.steps.length-1].stats.submits)||0;const conv=funnelConv(v,sub);const tpl=FUNNEL_TEMPLATES.find(t=>t.key===f.template)||FUNNEL_TEMPLATES[0];
-              return(<div key={f.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14] transition-all overflow-hidden flex flex-col">
+              return(<div key={f.id} draggable onDragStart={()=>folderBeginItemDrag('funnels',f.id)} onDragEnd={folderEndItemDrag} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14] transition-all overflow-hidden flex flex-col">
                 <div className="p-4 flex items-start gap-3">
                   <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:f.accent+'22',color:f.accent}}><tpl.Icon size={18}/></span>
                   <div className="min-w-0 flex-1">
@@ -20186,6 +20248,7 @@ function FunnelsPage({goTo,nav}){
                       <span className="text-[11px] text-white/40">{f.steps.length} step{f.steps.length!==1?'s':''}</span>
                     </div>
                   </div>
+                  <MoveToFolderButton api={fldFunnel} itemId={f.id} sm/>
                   <div className="relative shrink-0">
                     <button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={15}/></button>
                     {menu===f.id&&<><div className="fixed inset-0 z-40" onClick={()=>setMenu(null)}/><div className="absolute right-0 top-[calc(100%+4px)] w-44 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
@@ -20208,7 +20271,7 @@ function FunnelsPage({goTo,nav}){
                   <button onClick={()=>goTo('funnel-builder',{id:f.id})} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-brand-500/90 hover:bg-brand-500 transition-all"><I.Edit size={13}/>{canEdit?'Edit':'Open'}</button>
                 </div>
               </div>);
-            })}
+            }}/>
           </div>
         )}
       </div>
@@ -20593,6 +20656,19 @@ const CO_MAX_FIELDS=25;
 const CO_MAX_RELS=5;
 // Per-object visibility lock: an 'admins' object is hidden from non-admins everywhere it surfaces.
 function coCanView(def){return !def||def.visibility!=='admins'||settingsIsAdmin();}
+// Reverse lookup: all custom-object records linked TO a given contact/company/lead/deal.
+// Link values at rest are MIXED (drawer saves ids, seeds hold names) so match id OR name — mirrors coResolveLink.
+function coReverseLinks(crm,targetType,targetRec){
+  if(!targetRec)return [];
+  const out=[];
+  (crm.customObjects||[]).filter(coCanView).forEach(def=>{
+    const rels=(def.relationships||[]).filter(rel=>rel.target===targetType);
+    if(!rels.length)return;
+    const records=(def.records||[]).filter(r=>!r.deleted&&!r.archived&&rels.some(rel=>{const vals=rel.many?(r[rel.key]||[]):(r[rel.key]?[r[rel.key]]:[]);return vals.some(v=>v===targetRec.id||v===targetRec.name);}));
+    if(records.length)out.push({def,records});
+  });
+  return out;
+}
 function CoRelForm({crm,selfId,onClose,onAdd}){
   const [label,setLabel]=React.useState('');
   const [target,setTarget]=React.useState('company');
@@ -20775,6 +20851,36 @@ function CoLinksPanel({def,rec,crm,goTo}){
     </div>
   </div>);
 }
+// ── Related records: the REVERSE of CoLinksPanel — shown on Contact/Company detail, listing every
+//    custom-object record (Project, Contract…) attached to this record. Grouped per object type with
+//    counts; capped at 3 per group with a "Show all N" expander (ActivityTimeline pattern) so heavy
+//    accounts stay scannable. Renders nothing when no records link here.
+function RelatedRecordsPanel({crm,targetType,rec,goTo}){
+  const groups=coReverseLinks(crm,targetType,rec);
+  const [exp,setExp]=React.useState({});
+  const [open,setOpen]=React.useState(false); // collapsed by default — the header count tells the story
+  React.useEffect(()=>{setExp({});setOpen(false);},[rec&&rec.id]);
+  if(!groups.length)return null;
+  const LIMIT=3;
+  return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+    <div className={['px-4 py-3 flex items-center justify-between',open?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setOpen(o=>!o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0"><I.ChevronDown size={13} className="text-white/35 shrink-0" style={{transform:open?'none':'rotate(-90deg)',transition:'transform .15s'}}/><p className="text-[12px] font-semibold text-white uppercase tracking-[0.12em]">Related records</p></button><span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/45">{groups.reduce((a,g)=>a+g.records.length,0)}</span></div>
+    {open&&<div className="p-3.5 flex flex-col gap-4">
+      {groups.map(({def,records})=>{const Ic=coIco(def.icon);const open=!!exp[def.id];const visible=open?records:records.slice(0,LIMIT);const hidden=records.length-visible.length;
+        const primFields=(def.fields||[]).filter(f=>f.detail==='primary').slice(0,2);
+        return(<div key={def.id}>
+          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-1.5 flex items-center gap-1.5"><Ic size={11} style={{color:def.color}}/>{def.plural||def.name} · {records.length}</p>
+          <div className="flex flex-col gap-2">
+            {visible.map(r=>{const sub=primFields.map(f=>{const v=r[f.key];return (v!==''&&v!=null)?String(v):null;}).filter(Boolean).join(' · ');return(
+              <button key={r.id} onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] hover:border-white/[0.12] p-3 text-left transition-all">
+                <div className="flex items-center gap-2.5 min-w-0"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:(def.color||'#818cf8')+'1f',color:def.color||'#818cf8'}}><Ic size={13}/></span><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-white truncate">{r.name}</span>{sub&&<span className="block text-[11px] text-white/45 truncate mt-0.5">{sub}</span>}</span><I.ArrowRight size={11} className="text-white/25 shrink-0"/></div>
+              </button>);})}
+          </div>
+          {hidden>0&&<button onClick={()=>setExp(e=>({...e,[def.id]:true}))} className="mt-1.5 text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors">Show all {records.length}</button>}
+          {!!exp[def.id]&&records.length>LIMIT&&<button onClick={()=>setExp(e=>({...e,[def.id]:false}))} className="mt-1.5 text-[11.5px] font-medium text-white/40 hover:text-white/70 transition-colors">Show less</button>}
+        </div>);})}
+    </div>}
+  </div>);
+}
 // ── Generic list page for one custom object ──
 function CustomObjectListPage({goTo,nav}){
   const crm=React.useContext(CrmDataContext);
@@ -20922,7 +21028,7 @@ function CustomRecordDetailPage({goTo,nav}){
             </div>
             <div className="flex flex-col gap-5 min-w-0">
               <CoLinksPanel def={def} rec={rec} crm={crm} goTo={goTo}/>
-              <RecordTasks match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:rec.r_company||''}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={rec.id} match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:rec.r_company||''}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             </div>
           </div>
         </div>
