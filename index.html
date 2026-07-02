@@ -14103,7 +14103,7 @@ function SettingsTeamPage({goTo}){
   const [inviteEmail,setInviteEmail]=React.useState('');
   const _tToast=(m,k)=>window.__nrturToast&&window.__nrturToast(m,k||'success');
   const sendTeamInvite=()=>{const em=inviteEmail.trim();if(!em)return;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){_tToast('Enter a valid email address','warning');return;}if(allMembers.some(x=>(x.email||'').toLowerCase()===em.toLowerCase())){_tToast(em+' is already a member or has a pending invite','warning');return;}setTeamInvites(a=>[...a,{email:em,role:inviteRole,invitedAt:'Just now'}]);setInviteEmail('');setInviteModal(false);_tToast('Invite sent to '+em);};
-  const resendInvite=(m)=>_tToast('Invite resent to '+m.email);
+  const resendInvite=(m)=>openConfirm({title:'Resend invite to '+m.email+'?',body:"We'll email them a fresh invite link to join the workspace.",confirmLabel:'Resend invite',danger:false,onConfirm:()=>_tToast('Invite resent to '+m.email)});
   const setInviteRoleFor=(email,role)=>setTeamInvites(a=>a.map(x=>x.email===email?{...x,role}:x));
   const revokeInvite=(m)=>openConfirm({title:'Revoke invite for '+m.email+'?',body:'They will no longer be able to join with this invite. You can invite them again any time.',confirmLabel:'Revoke invite',danger:true,onConfirm:()=>{setTeamInvites(a=>a.filter(x=>(x.email||'').toLowerCase()!==(m.email||'').toLowerCase()));_tToast('Invite revoked');}});
   const removeMember=(m)=>openConfirm({title:`Remove ${m.name}?`,body:'They will lose access immediately. You can re-invite them at any time.',confirmLabel:'Remove',danger:true,onConfirm:()=>{setMembers(ms=>ms.filter(x=>x.email!==m.email));_tToast(m.name+' removed from the workspace');}});
@@ -17362,6 +17362,7 @@ function FormBuilderPage({goTo,initial}){
 function SettingsFormsPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   const [forms,setForms]=React.useState(FORMS_DATA);
+  const fldForm=useFolders('forms',{folders:[{id:'ff_lead',name:'Lead capture',color:'#34d399',scope:'team'},{id:'ff_event',name:'Events & webinars',color:'#818cf8',scope:'personal'}],members:{1:'ff_lead'}});
   const [subModal,setSubModal]=React.useState(null);
   const [menu,setMenu]=React.useState(null);
   const [toast,setToast]=React.useState('');
@@ -17389,11 +17390,11 @@ function SettingsFormsPage({goTo}){
                 {[{Icon:I.Note,c:'#60a5fa',t:'Form',d:'visitor submits'},{Icon:I.UserPlus,c:'#34d399',t:'Contact',d:'created / updated'},{Icon:I.Zap,c:'#fbbf24',t:'Automation',d:'trigger + sequence'}].map((s,i,arr)=>(<React.Fragment key={s.t}><div className="inline-flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={13} stroke={2.2}/></span><div><p className="text-[12px] font-semibold text-white leading-none">{s.t}</p><p className="text-[11px] text-white/45 mt-0.5">{s.d}</p></div></div>{i!==arr.length-1&&<I.ArrowRight size={14} className="text-white/25"/>}</React.Fragment>))}
               </div>
             </div>
-            {forms.map(f=>{const st=FORM_ST[f.status]||FORM_ST.draft;const chips=onSubmitChips(f.onSubmit);return(
-              <div key={f.id} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
+            <FolderedCards surface="forms" api={fldForm} items={forms} onDeleteItems={(ids)=>{const _s=new Set(ids.map(String));setForms(a=>a.filter(f=>!_s.has(String(f.id))));}} renderItem={(f)=>{const st=FORM_ST[f.status]||FORM_ST.draft;const chips=onSubmitChips(f.onSubmit);return(
+              <div key={f.id} draggable onDragStart={()=>folderBeginItemDrag('forms',f.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',f.status==='active'?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05]'].join(' ')}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',f.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Note size={17} stroke={2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{f.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><p className="text-[12px] text-white/55 mt-1">{f.fields.length} fields · {f.submissions} submissions · {f.conversion}% conversion</p></div></div>
-                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>{const link='https://forms.nrtur.com/f/'+f.id;if(navigator.clipboard)navigator.clipboard.writeText(link);showToast('Share link copied — forms.nrtur.com/f/'+f.id);}} className={EDIT} title="Copy share / embed link"><I.ExternalLink size={12}/><span className="crm-hide-sm">Share</span></button><button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/><span className="crm-hide-sm">Submissions</span></button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/><span className="crm-hide-sm">Edit</span></button>
+                  <div className="flex items-center gap-2 shrink-0">{f.status!=='draft'&&<Toggle on={f.status==='active'} onChange={()=>toggleForm(f.id)}/>}<button onClick={()=>{const link='https://forms.nrtur.com/f/'+f.id;if(navigator.clipboard)navigator.clipboard.writeText(link);showToast('Share link copied — forms.nrtur.com/f/'+f.id);}} className={EDIT} title="Copy share / embed link"><I.ExternalLink size={12}/><span className="crm-hide-sm">Share</span></button><button onClick={()=>setSubModal(f)} className={EDIT}><I.History size={12}/><span className="crm-hide-sm">Submissions</span></button><button onClick={()=>{setFormSeed(f);goTo('form-builder');}} className={EDIT}><I.Edit size={12}/><span className="crm-hide-sm">Edit</span></button><MoveToFolderButton api={fldForm} itemId={f.id} sm/>
                     <div data-formmenu className="relative"><button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                       {menu===f.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}><button onClick={()=>dupForm(f)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button><button onClick={()=>{setMenu(null);openConfirm({title:'Delete this form?',body:`"${f.name}" and its embed will stop collecting submissions.`,confirmLabel:'Delete',danger:true,onConfirm:()=>{delForm(f.id);showToast('Form deleted');}});}} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete</button></div>)}
                     </div>
@@ -17404,7 +17405,7 @@ function SettingsFormsPage({goTo}){
                   <ConnectedAutomations names={formAutoNames(f.onSubmit)} goTo={goTo} compact onCreate={()=>{showToast('Opening automation builder — '+f.name+' set as trigger');setTimeout(()=>goTo('automation-builder'),450);}}/>
                 </div>
               </div>
-            );})}
+            );}}/>
             <div className="flex items-center justify-between mb-1 mt-2"><p className="text-white text-[15px] font-medium">Templates</p></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{FORM_TEMPLATES.map(t=>(<div key={t.name} className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-5 transition-all"><div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={18} stroke={2}/></div><h4 className="text-white text-[14px] font-semibold">{t.name}</h4><p className="text-[12px] text-white/50 mt-1 mb-4">{t.desc}</p><button onClick={()=>{setFormSeed(t);goTo('form-builder');}} className="w-full py-2 rounded-xl text-[12px] font-medium text-white/70 hover:text-brand-200 bg-white/[0.04] hover:bg-brand-500/15 border border-white/[0.08] hover:border-brand-500/30 transition-all flex items-center justify-center gap-1.5">Use template<I.ArrowRight size={11} stroke={2.4}/></button></div>))}</div>
             </fieldset>
@@ -20184,6 +20185,7 @@ function FunnelTemplatePicker({onClose,onCreate}){
 // ── Funnels list page ──
 function FunnelsPage({goTo,nav}){
   const {funnels,addFunnel,removeFunnel}=useFunnels();
+  const fldFunnel=useFolders('funnels',{folders:[{id:'fnf_lead',name:'Lead gen',color:'#818cf8',scope:'team'},{id:'fnf_event',name:'Events',color:'#34d399',scope:'personal'}],members:{}});
   const [picker,setPicker]=React.useState(false);
   const [menu,setMenu]=React.useState(null);
   const [confirmDel,setConfirmDel]=React.useState(null);
@@ -20205,10 +20207,9 @@ function FunnelsPage({goTo,nav}){
         {funnels.length===0?(
           <FeatureEmpty Icon={I.Filter} title="No funnels yet" desc="Build a multi-step landing page that captures leads and wires them straight into your CRM — no Zapier needed." actions={canEdit?<button onClick={()=>setPicker(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Create funnel</button>:<p className="text-[12px] text-white/35">Your role can’t create funnels.</p>}/>
         ):(
-          <div className="px-7 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {funnels.map(f=>{
+          <div className="px-7 py-5"><FolderedCards surface="funnels" api={fldFunnel} items={funnels} itemsClass="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" onDeleteItems={(ids)=>{ids.forEach(id=>removeFunnel(id));}} renderItem={(f)=>{
               const v=(f.steps[0]&&f.steps[0].stats.views)||0;const sub=(f.steps[f.steps.length-1]&&f.steps[f.steps.length-1].stats.submits)||0;const conv=funnelConv(v,sub);const tpl=FUNNEL_TEMPLATES.find(t=>t.key===f.template)||FUNNEL_TEMPLATES[0];
-              return(<div key={f.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14] transition-all overflow-hidden flex flex-col">
+              return(<div key={f.id} draggable onDragStart={()=>folderBeginItemDrag('funnels',f.id)} onDragEnd={folderEndItemDrag} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:border-white/[0.14] transition-all overflow-hidden flex flex-col">
                 <div className="p-4 flex items-start gap-3">
                   <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:f.accent+'22',color:f.accent}}><tpl.Icon size={18}/></span>
                   <div className="min-w-0 flex-1">
@@ -20218,6 +20219,7 @@ function FunnelsPage({goTo,nav}){
                       <span className="text-[11px] text-white/40">{f.steps.length} step{f.steps.length!==1?'s':''}</span>
                     </div>
                   </div>
+                  <MoveToFolderButton api={fldFunnel} itemId={f.id} sm/>
                   <div className="relative shrink-0">
                     <button onClick={()=>setMenu(menu===f.id?null:f.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={15}/></button>
                     {menu===f.id&&<><div className="fixed inset-0 z-40" onClick={()=>setMenu(null)}/><div className="absolute right-0 top-[calc(100%+4px)] w-44 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
@@ -20240,7 +20242,7 @@ function FunnelsPage({goTo,nav}){
                   <button onClick={()=>goTo('funnel-builder',{id:f.id})} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-brand-500/90 hover:bg-brand-500 transition-all"><I.Edit size={13}/>{canEdit?'Edit':'Open'}</button>
                 </div>
               </div>);
-            })}
+            }}/>
           </div>
         )}
       </div>
