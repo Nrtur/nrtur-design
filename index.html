@@ -3700,6 +3700,9 @@ function onbExtraPipeline(){
   return null;
 }
 function OnboardingPage({step,goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const {connect:connectReal}=React.useContext(IntegrationsContext);
+  const REAL_INTEG_KEY={twilio:'twilio',slack:'slack'}; // onboarding keys that map to real workspace integrations (reflected on Settings → Integrations)
   const [company,setCompany]=React.useState('');
   const [industry,setIndustry]=React.useState('');
   const [teamSize,setTeamSize]=React.useState('');
@@ -3708,7 +3711,7 @@ function OnboardingPage({step,goTo}){
   const [inviteEmail,setInviteEmail]=React.useState('');
   const [inviteRole,setInviteRole]=React.useState('Sales Rep');
   const [sentInvites,setSentInvites]=React.useState([]);
-  const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>setInteg(m=>({...m,[key]:'connected'})),1200);};
+  const connectInteg=(key)=>{setInteg(m=>({...m,[key]:'connecting'}));setTimeout(()=>{setInteg(m=>({...m,[key]:'connected'}));const rk=REAL_INTEG_KEY[key];if(rk)connectReal(rk);},1200);};
   const disconnectInteg=(key)=>setInteg(m=>({...m,[key]:'idle'}));
   // Add one or many invites at once — splits on commas, semicolons, spaces, and newlines.
   const addInvites=(raw,role)=>{const parts=String(raw||'').split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return;setSentInvites(a=>{const next=[...a];parts.forEach(em=>{if(!next.some(x=>x.email.toLowerCase()===em.toLowerCase()))next.push({email:em,role:role||inviteRole});});return next;});};
@@ -3769,7 +3772,7 @@ function OnboardingPage({step,goTo}){
                     {step===4&&(<div className="flex flex-col gap-4">
                       <div>
                         <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2.5">Add contacts manually</p>
-                        <RecordSheet variant="panel" onToast={()=>{}} onCreate={()=>goTo(next)}/>
+                        <RecordSheet variant="panel" type="contact" onToast={()=>{}} onCreateRows={(rows)=>{const recs=rows.map(r=>arBuildFromSheet('contact',r));if(recs.length)crm.setContacts(a=>[...recs,...a]);}} onCreate={()=>goTo(next)}/>
                       </div>
                       <div className="flex items-center gap-3"><div className="flex-1 h-px bg-white/[0.06]"/><span className="text-[11px] text-white/35">or bring them in</span><div className="flex-1 h-px bg-white/[0.06]"/></div>
                       <div className="grid grid-cols-2 gap-3">
@@ -3785,7 +3788,7 @@ function OnboardingPage({step,goTo}){
                     {step!==6&&<button onClick={()=>goTo('dashboard')} className="text-[13px] text-white/50 hover:text-white transition-colors">I’ll do this later</button>}
                     <div className="flex items-center gap-2.5">
                       {prev&&<button onClick={()=>goTo(prev)} className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">Back</button>}
-                      <button onClick={()=>{if(step===1)_onb.workspace=company.trim();if(step===2)_onb.pipeline=pipeline;goTo(next);}} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{step===6?'Go to Dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
+                      <button onClick={()=>{if(step===1)_onb.workspace=company.trim();if(step===2)_onb.pipeline=pipeline;if(step===5&&sentInvites.length)crm.setTeamInvites(a=>{const next=[...a];sentInvites.forEach(inv=>{if(!next.some(x=>(x.email||'').toLowerCase()===(inv.email||'').toLowerCase()))next.push(inv);});return next;});goTo(next);}} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{step===6?'Go to Dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
                     </div>
                   </div>
                 </div>
@@ -14072,13 +14075,16 @@ function SettingsTeamPage({goTo}){
     {name:'Marcus Rios',email:'marcus@bloom.co',role:'Sales Rep',avatar:'MR',color:'#ec4899',status:'Pending'},
   ]);
   const setRole=(email,role)=>setMembers(ms=>ms.map(x=>x.email===email?{...x,role}:x));
+  const {teamInvites}=React.useContext(CrmDataContext);
+  const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending'}));
+  const allMembers=[...members,...inviteRows];
   const COL='1.5fr 1.5fr 110px 110px 80px';
   return(
     <SettingsShell active="settings-team" goTo={goTo} subtitle="5 of 5 seats used - Pro plan"
       actions={<button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button>}>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Member</span><span>Email</span><span>Role</span><span>Status</span><span/></div>
-        {members.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<members.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
+        {allMembers.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<allMembers.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
           <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</div><p className="text-[13px] font-medium text-white truncate">{m.name}</p></div>
           <p className="text-[12px] text-white/55 truncate">{m.email}</p>
           <RoleSelect compact value={m.role} onChange={v=>setRole(m.email,v)}/>
@@ -21305,6 +21311,7 @@ function App(){
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
+  const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21372,7 +21379,8 @@ function App(){
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
     activities,
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities]);
+    teamInvites,setTeamInvites,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
