@@ -8023,12 +8023,10 @@ function PipelinePage({goTo,nav}){
   const [activeId,setActiveId]=React.useState(()=>onbExtraPipeline()?3:1);
   const [pipeMenu,setPipeMenu]=React.useState(false);
   const [mobStage,setMobStage]=React.useState(0);
-  const [cfgOpen,setCfgOpen]=React.useState(false);
   const [reasonsOpen,setReasonsOpen]=React.useState(false); // P1-2: win/loss reason lists editor (opened from the edit-stages toolbar)
   const [reqEdit,setReqEdit]=React.useState(null); // P1-3: which stage's required-fields popover is open
   React.useEffect(()=>{if(reqEdit===null)return;const fn=e=>{if(!e.target.closest('[data-req-pop]'))setReqEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[reqEdit]);
   const [colorEdit,setColorEdit]=React.useState(null);
-  const [newStage,setNewStage]=React.useState('');
   const [editStages,setEditStages]=React.useState(false);
   const [focusStageId,setFocusStageId]=React.useState(null);
   const [focusName,setFocusName]=React.useState(false);
@@ -8054,8 +8052,7 @@ function PipelinePage({goTo,nav}){
   const delPipeline=()=>{if(pipelines.length<=1)return;const _inPipe=_deals.filter(d=>!d.deleted&&(d.pipeline||pipelines[0].name)===active.name);const next=pipelines.find(p=>p.id!==active.id);const _first=(next.stages||[]).filter(s=>s.real)[0];
     openConfirm({title:'Delete "'+active.name+'" pipeline?',body:_inPipe.length?('This pipeline holds '+_inPipe.length+' deal'+(_inPipe.length>1?'s':'')+' — they will be moved to "'+next.name+'"'+(_first?(' ('+_first.name+' stage)'):'')+' so nothing is orphaned.'):('All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.'),confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{
       if(_inPipe.length&&_first){const _at=Date.now();setDeals(ds=>ds.map(d=>(!d.deleted&&(d.pipeline||pipelines[0].name)===active.name)?{...d,pipeline:next.name,stageKey:_first.key,dStage:_first.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_first.key,at:_at,by:CURRENT_USER.avatar}],...dealPlacement(next.name,_first.key)}:d));} // D4: delete never orphans — block-or-reassign
-      setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);setCfgOpen(false);}});};
-  const addStage=()=>{if(!newStage.trim())return;setStages(s=>[...s,{id:'st'+Date.now(),key:'st'+Date.now(),name:newStage.trim(),color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]}]);setNewStage('');};
+      setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);}});};
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
   const setRot=(id,v)=>setStages(s=>s.map(x=>x.id===id?{...x,rotDays:v===''?null:Math.max(0,parseInt(v,10)||0)}:x));
@@ -8093,7 +8090,6 @@ function PipelinePage({goTo,nav}){
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
-  React.useEffect(()=>{const fn=e=>{if(e.key==='Escape')setCfgOpen(false);};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   if(loading)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="pipeline" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Pipeline"/><div className="flex-1 p-6 flex gap-4">{[...Array(5)].map((_,col)=>(<div key={col} className="flex-1 rounded-2xl bg-white/[0.025] border border-white/[0.05] p-3 flex flex-col gap-3"><Skel w="70px" h="11px"/>{[...Array(3)].map((_,card)=>(<div key={card} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col gap-2.5"><Skel w="80%" h="12px"/><Skel w="55%" h="10px"/></div>))}</div>))}</div><AppFooter/></div></div>);
   const allVisible=active.stages.flatMap(dealsFor);
   publishRecordCtx('deal',allVisible.map(d=>d.id));
@@ -8111,7 +8107,6 @@ function PipelinePage({goTo,nav}){
     {label:'Avg deal',value:_openBd.length?fmtK(_openVal/_openBd.length):'—',delta:'open avg',up:null,Icon:I.BarChart,colors:'bg-violet-500/10 border-violet-500/20 text-violet-300'},
     {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostBd.length+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
   ];
-  const GC='28px 1fr 132px 64px 34px';
   // Stage rollups shared by the List + Forecast views and the topbar weighted total.
   const fc_stageRows=active.stages.map(s=>{const sd=dealsFor(s);const val=sd.reduce((a,d)=>a+parseMoney(d.value),0);return{stage:s,deals:sd,val,weighted:val*((s.prob||0)/100)};});
   // P2-1: the forecast is OPEN deals only (won = booked, lost = gone — neither is "forecast"),
@@ -8309,39 +8304,6 @@ function PipelinePage({goTo,nav}){
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
       {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveDealView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={dealSmartMgr.canShare}/>}
       {/* Edit-stages drawer (right side) */}
-      {cfgOpen&&(<React.Fragment>
-        <div className="fixed inset-0 z-[140] bg-black/40" onClick={()=>setCfgOpen(false)}/>
-        <div className="fixed right-0 top-0 bottom-0 z-[150] w-[420px] flex flex-col border-l border-white/[0.08]" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)'}}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Settings size={15} className="text-brand-300"/>Edit pipeline</p><button onClick={()=>setCfgOpen(false)} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
-          <div className="flex-1 overflow-y-auto scroll-area px-5 py-4">
-            <label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Pipeline name</label>
-            <div className="flex items-center gap-2 mb-3">
-              <input value={active.name} onChange={e=>renamePipeline(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renamePipeline('Untitled pipeline');}} className="flex-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40"/>
-            </div>
-            <div className="flex items-center gap-2 mb-5">
-              <button onClick={dupPipeline} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={12}/>Duplicate</button>
-              <button onClick={delPipeline} disabled={pipelines.length<=1} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border transition-all',pipelines.length<=1?'text-white/25 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={12}/>Delete pipeline</button>
-            </div>
-            <div className="flex items-center justify-between mb-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em]">Stages</label><span className="text-[11px] text-white/35">{active.stages.length} stages · drag to reorder</span></div>
-            <div className="flex flex-col gap-1.5">
-              {active.stages.map((stage,i)=>(
-                <div key={stage.id} draggable onDragStart={()=>{dragRef.current=i;}} onDragOver={e=>{e.preventDefault();if(dragOver!==i)setDragOver(i);}} onDrop={e=>{e.preventDefault();onDropStage(i);}} onDragEnd={()=>{dragRef.current=null;setDragOver(null);}} className={['grid items-center gap-2 px-2 py-2 rounded-xl border transition-colors',dragOver===i?'border-brand-500/40 bg-brand-500/[0.06]':'border-white/[0.07] bg-white/[0.02]'].join(' ')} style={{gridTemplateColumns:GC}}>
-                  <div className="text-white/25 cursor-grab active:cursor-grabbing hover:text-white/50 transition-colors flex justify-center" title="Drag to reorder"><I.Grip size={14}/></div>
-                  <input value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 w-full min-w-0"/>
-                  <div className="flex items-center gap-1.5"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:'#6366f1',width:64}}/><span className="text-[10px] text-white/45 tabular-nums w-7">{stage.prob}%</span></div>
-                  <div className="relative flex justify-center" data-color-pop>
-                    <button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} className="w-5 h-5 rounded-full ring-1 ring-white/15 hover:scale-110 transition-transform" style={{background:stage.color}}/>
-                    {colorEdit===stage.id&&(<div className="absolute z-30 top-7 right-0 p-2 rounded-xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[168px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.slice(0,3).map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={11} stroke={3} className="text-white"/>}</button>))}<CustomColorWheel value={stage.color} onPick={(c)=>setColor(stage.id,c)}/></div>)}
-                  </div>
-                  <button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} className={['flex justify-center transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/25 hover:text-red-400'].join(' ')} title="Delete stage"><I.Trash size={13}/></button>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 mt-3"><input value={newStage} onChange={e=>setNewStage(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addStage()} placeholder="New stage name..." className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40"/><button onClick={addStage} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={13} stroke={2.4}/>Add</button></div>
-          </div>
-          <div className="px-5 py-4 border-t border-white/[0.06] shrink-0"><button onClick={()=>setCfgOpen(false)} className="w-full py-2.5 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Done</button></div>
-        </div>
-      </React.Fragment>)}
       {confirmNode}
     </div>
   );
@@ -18919,7 +18881,11 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       const amt=parseFloat(String(auto.dealValue).replace(/[^0-9.]/g,''))||0;
       dealValue='$'+amt.toLocaleString('en-US');
       const stageKey=auto.dealStage||'qualified';
-      crm.setDeals(arr=>[{id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,...dealStageStamp(stageKey,rep.avatar),probability:50,primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},...arr]);
+      // P2-3: normalize like every other create path — a booking config pointing at a non-default
+      // pipeline re-homes the deal into that pipeline's first stage instead of carrying a foreign stageKey.
+      const _bkRec=normalizeDealPipeline({id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,...dealStageStamp(stageKey,rep.avatar),probability:50,primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},rep.avatar);
+      if(!_bkRec.dStage){const _s=pipelineStageByKey(_bkRec.stageKey);if(_s)_bkRec.dStage=_s.name;}
+      crm.setDeals(arr=>[_bkRec,...arr]);
       dealCreated=true;
       addToast('Deal created from booking ✓');
     }
@@ -20416,7 +20382,9 @@ function runFunnelSubmit(opts){
     dealMade=true;
     const stageName=os.dealStage||FORM_DEAL_STAGES[0];
     const nmD=(os.dealName||'{{company}} — inbound').replace('{{company}}',rec.company||rec.name);
-    crm.setDeals(a=>[{id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,...dealStageStamp(funnelSlugify(stageName),'AM'),pipeline:os.dealPipeline||PROP_PIPELINES[0],probability:20,primaryContact:contactName,primaryContactId:personKind==='contact'?personId:null,fromLeadId:personKind==='lead'?personId:null,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Follow up on funnel lead'},...a]);
+    // P2-3: normalized — a funnel configured to a non-Sales pipeline lands its deal in that
+    // pipeline's first stage instead of carrying a slugified Sales stage name as a foreign key.
+    crm.setDeals(a=>[normalizeDealPipeline({id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,...dealStageStamp(funnelSlugify(stageName),'AM'),pipeline:os.dealPipeline||PROP_PIPELINES[0],probability:20,primaryContact:contactName,primaryContactId:personKind==='contact'?personId:null,fromLeadId:personKind==='lead'?personId:null,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Follow up on funnel lead'},'AM'),...a]);
   }
   // 3b. optional TASK
   let taskMade=false;
