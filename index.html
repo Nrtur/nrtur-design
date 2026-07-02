@@ -6484,10 +6484,16 @@ function POwner({value,onCommit}){
   return(<button onClick={()=>setEd(true)} className="flex items-center gap-2 py-0.5 min-h-[28px] group/edit">{u?<><span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{background:u.color}}>{u.avatar}</span><span className="text-[13px] text-white/85">{u.name}</span></>:<span className="text-white/25 text-[13px]">Unassigned</span>}<I.ChevronDown size={11} className="text-white/0 group-hover/edit:text-white/30"/></button>);
 }
 function PTags({value,onCommit}){return(<div className="py-1"><ARTags value={value} onChange={onCommit}/></div>);}
-function PLookup({value,onCommit,onOpen,icon}){
-  const [ed,setEd]=React.useState(false);const [v,setV]=React.useState(value||'');const Ic=icon||I.Building;
-  if(ed)return(<input autoFocus value={v} onChange={e=>setV(e.target.value)} onBlur={()=>{setEd(false);onCommit(v);}} onKeyDown={e=>{if(e.key==='Enter'){setEd(false);onCommit(v);}if(e.key==='Escape'){setEd(false);setV(value||'');}}} className={PF_INP}/>);
-  return(<div className="flex items-center gap-2 group/edit min-h-[28px] py-0.5">{value?<button onClick={onOpen} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.05] border border-white/[0.08] text-[12px] text-brand-300 hover:bg-white/[0.08] transition-colors max-w-full truncate"><Ic size={11} className="shrink-0"/><span className="truncate">{value}</span></button>:<span className="text-white/25 text-[13px]">None</span>}<button onClick={()=>setEd(true)} className="shrink-0 text-white/0 group-hover/edit:text-white/30"><I.Edit size={11}/></button></div>);
+function PLookup({value,onCommit,onOpen,icon,lookupType}){
+  const crm=React.useContext(CrmDataContext);
+  const isCt=lookupType==='contact';
+  const Ic=icon||(isCt?I.UserPlus:I.Building);
+  const opts=(isCt?(crm.contacts||[]):(crm.companies||[])).filter(c=>!c.deleted).map(c=>c.name);
+  const createNew=(name)=>{if(!isCt&&crm.setCompanies&&!(crm.companies||[]).some(c=>(c.name||'').toLowerCase()===name.toLowerCase()))crm.setCompanies(a=>[nrturNewCompany(name),...a]);};
+  return(<div className="flex items-center gap-1.5 py-0.5">
+    <div className="flex-1 min-w-0"><ARLookup value={value} onChange={onCommit} options={opts} placeholder={'Search '+(isCt?'contacts':'companies')+'…'} onCreateNew={isCt?undefined:createNew} Icon={Ic}/></div>
+    {value&&onOpen&&<button type="button" onClick={onOpen} title="Open" className="shrink-0 text-white/30 hover:text-brand-300 p-1"><I.ExternalLink size={12}/></button>}
+  </div>);
 }
 function PScore({value}){const c=scoreC(value);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-semibold" style={{background:c+'1f',color:c,boxShadow:'inset 0 0 0 1px '+c+'40'}}>{value==null?'—':value}</span>);}
 function PDate({value,onCommit,readOnly}){
@@ -6521,7 +6527,7 @@ function PField({f,record,onChange,goTo}){
     case 'pill': ctrl=f.readOnly?(function(){const _c=pillC(val);return(<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium" style={{background:_c+'1f',color:_c,boxShadow:'inset 0 0 0 1px '+_c+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:_c}}/>{val||'—'}</span>);})():<PInlineSelect value={val} options={f.options} onCommit={commit} pill/>;break;
     case 'owner': ctrl=<POwner value={val} onCommit={commit}/>;break;
     case 'tags': ctrl=<PTags value={val} onCommit={commit}/>;break;
-    case 'lookup': ctrl=<PLookup value={val} onCommit={commit} onOpen={()=>f.go&&f.go(goTo)} icon={f.icon}/>;break;
+    case 'lookup': ctrl=<PLookup value={val} onCommit={commit} onOpen={()=>f.go&&f.go(goTo)} icon={f.icon} lookupType={/contact/.test((f.label||'').toLowerCase())?'contact':'company'}/>;break;
     case 'companylookup': ctrl=<PCompanyLookup value={val} onCommit={commit} onOpen={()=>f.go&&f.go(goTo)}/>;break;
     case 'score': ctrl=<PScore value={val}/>;break;
     case 'date': ctrl=<PDate value={val} onCommit={commit} readOnly={f.readOnly}/>;break;
@@ -7286,7 +7292,7 @@ function ContactDetailPage({goTo,nav}){
   };
   const _cp=(c.name||'').split(' ');const _cf0=_cp[0]||'';const _cl0=_cp.slice(1).join(' ');
   const crec={...c,first:c.first!=null?c.first:_cf0,last:c.last!=null?c.last:_cl0,tags:c.tags||(c.tag?[c.tag]:[])};
-  const onFieldChange=(k,v)=>{if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else{updateContact(c.id,{[k]:v});}};
+  const onFieldChange=(k,v)=>{if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else if(k==='co'){const _co=(crm.companies||[]).find(x=>x.name===v&&!x.deleted);updateContact(c.id,{co:v,companyId:_co?_co.id:null});}else{updateContact(c.id,{[k]:v});}};
   const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>{const co=(c.companyId!=null?crm.companies.find(x=>x.id===c.companyId):null)||crm.companies.find(x=>x.name===c.co);g('company-detail',co&&co.id);}},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'},{key:'score',label:'Score',type:'score'}];
   const cSecondary=[{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Meta Ads','Google Ads','Form','Manual','Import','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
   const cMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
@@ -8058,7 +8064,12 @@ function DealDetailPage({goTo,nav}){
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
   const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const low=(stageName||'').toLowerCase();const kind=/lost/.test(low)?'lost':/won|live/.test(low)?'won':null;if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k});};
-  const onDealField=(k,v)=>{if(k==='dStage'){commitStage(v);}else{updateDeal(d.id,{[k]:v});}};
+  const onDealField=(k,v)=>{
+    if(k==='dStage'){commitStage(v);return;}
+    if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
+    if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
+    updateDeal(d.id,{[k]:v});
+  };
   const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'dStage',label:'Stage',type:'pill',options:DEAL_STAGES_ALL},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
