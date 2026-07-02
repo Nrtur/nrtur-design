@@ -7285,7 +7285,8 @@ function ContactDetailPage({goTo,nav}){
   const myDeals=allDeals().filter(d=>{if(d.primaryContactId!=null&&d.primaryContactId===c.id)return true;if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.includes(c.id))return true;if(c.companyId!=null&&d.companyId!=null&&d.companyId===c.companyId)return true;if(d.primaryContact&&c.name&&d.primaryContact===c.name)return true;if(d.company&&c.co&&d.company===c.co)return true;return false;});
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const [showAllDeals,setShowAllDeals]=React.useState(false); // volume: deals panel shows 5, expandable
-  React.useEffect(()=>{setShowAllDeals(false);},[c&&c.id]);
+  const [dealsOpen,setDealsOpen]=React.useState(false); // panel collapsed by default — header count tells the story
+  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);},[c&&c.id]);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const [tab,setTab]=React.useState('all');
@@ -7391,9 +7392,9 @@ function ContactDetailPage({goTo,nav}){
                   <p className="mt-3 text-[10.5px] text-white/30 flex items-center gap-1"><I.Megaphone size={10}/>Captured via {_s.name} · simulated sync</p>
                 </div>);})()}
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
-                <div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · {myDeals.length}</p>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                {myDeals.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No deals linked to this contact yet.</p>):(showAllDeals?myDeals:myDeals.slice(0,5)).map(d=>(<button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>))}
-                {myDeals.length>5&&<button onClick={()=>setShowAllDeals(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 pb-1">{showAllDeals?'Show less':'Show all '+myDeals.length+' deals'}</button>}
+                <div className={['flex items-center justify-between',dealsOpen?'mb-3':''].join(' ')}><button onClick={()=>setDealsOpen(o=>!o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0"><I.ChevronDown size={12} className="text-white/35 shrink-0" style={{transform:dealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Deals · {myDeals.length}</p></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {dealsOpen&&(myDeals.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No deals linked to this contact yet.</p>):(showAllDeals?myDeals:myDeals.slice(0,5)).map(d=>(<button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 mb-2 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>)))}
+                {dealsOpen&&myDeals.length>5&&<button onClick={()=>setShowAllDeals(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 pb-1">{showAllDeals?'Show less':'Show all '+myDeals.length+' deals'}</button>}
               </div>
               <RelatedRecordsPanel crm={crm} targetType="contact" rec={c} goTo={goTo}/>
             </div>
@@ -8440,7 +8441,9 @@ function CompanyDetailPage({goTo,nav}){
   const dl=dealsForCompany(co);
   const [showAllPeople,setShowAllPeople]=React.useState(false); // volume: panels show 6, expandable
   const [showAllCoDeals,setShowAllCoDeals]=React.useState(false);
-  React.useEffect(()=>{setShowAllPeople(false);setShowAllCoDeals(false);},[co&&co.id]);
+  const [peopleOpen,setPeopleOpen]=React.useState(false); // panels collapsed by default — header counts tell the story
+  const [coDealsOpen,setCoDealsOpen]=React.useState(false);
+  React.useEffect(()=>{setShowAllPeople(false);setShowAllCoDeals(false);setPeopleOpen(false);setCoDealsOpen(false);},[co&&co.id]);
   const coPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'domain',label:'Website',type:'text',required:true},{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'owner',label:'Owner',type:'owner'},{key:'size',label:'Employees size',type:'number'},{key:'annualRevenue',label:'Annual revenue',type:'currency',sensitive:true},{key:'loc',label:'Location / HQ',type:'text'},{key:'tags',label:'Tags',type:'tags'}];
   const coSecondary=[{key:'type',label:'Company type',type:'select',options:['Prospect','Customer','Partner','Competitor','Other']},{key:'website',label:'Website',type:'url',linkKind:'url'},{key:'parent',label:'Parent company',type:'lookup',go:(g)=>g('company-detail')},{key:'linkedin',label:'LinkedIn',type:'url',linkKind:'url'},{key:'desc',label:'Description',type:'text'},{key:'billing',label:'Billing address',type:'address'},{key:'shipping',label:'Shipping address',type:'address'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
   const coMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
@@ -8499,22 +8502,22 @@ function CompanyDetailPage({goTo,nav}){
             </div>
                         <div className="flex flex-col gap-5">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-medium">People at {co.name}</p><p className="text-[11px] text-white/45 mt-0.5">{people.length} contact{people.length!==1?'s':''}</p></div>{effCanObject('Contacts','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact','single',{company:co.name}):goTo('add-contact')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>Add contact</button>}</div>
-                <div className="p-3">
+                <div className={['px-5 py-4 flex items-center justify-between',peopleOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setPeopleOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:peopleOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">People at {co.name}</p><p className="text-[11px] text-white/45 mt-0.5">{people.length} contact{people.length!==1?'s':''}</p></div></button>{effCanObject('Contacts','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('contact','single',{company:co.name}):goTo('add-contact')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>Add contact</button>}</div>
+                {peopleOpen&&<div className="p-3">
                   {people.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center">No contacts linked to this company yet.</p>):(showAllPeople?people:people.slice(0,6)).map(p=>(
                     <button key={p.id} onClick={()=>goTo('contact-detail',p.id)} className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-white/[0.04] transition-colors text-left"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{p.name}</p><p className="text-[11px] text-white/45 truncate">{p.email}</p></div><span className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 shrink-0',CSTATUS_CHIP[p.cstatus]].join(' ')}>{p.cstatus}</span><I.ArrowRight size={12} className="text-white/20 shrink-0"/></button>
                   ))}
                   {people.length>6&&<button onClick={()=>setShowAllPeople(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-2.5 py-1.5">{showAllPeople?'Show less':'Show all '+people.length+' contacts'}</button>}
-                </div>
+                </div>}
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-                <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
-                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className={['px-5 py-4 flex items-center justify-between',coDealsOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setCoDealsOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:coDealsOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><div><p className="text-white font-medium">Deals</p><p className="text-[11px] text-white/45 mt-0.5">{dl.list.length} total · {fmtK(dl.openValue)} open</p></div></button>{effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{company:co.name}):goTo('add-deal')} className="text-[11px] text-white/45 hover:text-brand-300 flex items-center gap-1"><I.Plus size={10} stroke={2.4}/>New deal</button>}</div>
+                {coDealsOpen&&<div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {dl.list.length===0?(<p className="text-[12px] text-white/40 px-2 py-6 text-center col-span-full">No deals for this company yet.</p>):(showAllCoDeals?dl.list:dl.list.slice(0,6)).map(d=>(
                     <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="rounded-xl bg-white/[0.025] border border-white/[0.05] p-3.5 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all text-left"><div className="flex justify-between mb-1.5"><p className="text-[13px] font-medium text-white truncate">{d.name||d.company}</p><span className="text-[14px] font-semibold text-white tabular-nums">{d.value}</span></div><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:d.stageColor}}/><span className="text-[11px] text-white/55">{d.stageName}</span></div></button>
                   ))}
                   {dl.list.length>6&&<button onClick={()=>setShowAllCoDeals(s=>!s)} className="col-span-full text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 text-left">{showAllCoDeals?'Show less':'Show all '+dl.list.length+' deals'}</button>}
-                </div>
+                </div>}
               </div>
               <RelatedRecordsPanel crm={crm} targetType="company" rec={co} goTo={goTo}/>
               <RecordTasks match={(t)=>t.companyId!=null?t.companyId===co.id:t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
@@ -20839,12 +20842,13 @@ function CoLinksPanel({def,rec,crm,goTo}){
 function RelatedRecordsPanel({crm,targetType,rec,goTo}){
   const groups=coReverseLinks(crm,targetType,rec);
   const [exp,setExp]=React.useState({});
-  React.useEffect(()=>{setExp({});},[rec&&rec.id]);
+  const [open,setOpen]=React.useState(false); // collapsed by default — the header count tells the story
+  React.useEffect(()=>{setExp({});setOpen(false);},[rec&&rec.id]);
   if(!groups.length)return null;
   const LIMIT=3;
   return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
-    <div className="px-4 py-3 border-b border-white/[0.05] flex items-center justify-between"><p className="text-[12px] font-semibold text-white uppercase tracking-[0.12em]">Related records</p><span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/45">{groups.reduce((a,g)=>a+g.records.length,0)}</span></div>
-    <div className="p-3.5 flex flex-col gap-4">
+    <div className={['px-4 py-3 flex items-center justify-between',open?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setOpen(o=>!o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0"><I.ChevronDown size={13} className="text-white/35 shrink-0" style={{transform:open?'none':'rotate(-90deg)',transition:'transform .15s'}}/><p className="text-[12px] font-semibold text-white uppercase tracking-[0.12em]">Related records</p></button><span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/45">{groups.reduce((a,g)=>a+g.records.length,0)}</span></div>
+    {open&&<div className="p-3.5 flex flex-col gap-4">
       {groups.map(({def,records})=>{const Ic=coIco(def.icon);const open=!!exp[def.id];const visible=open?records:records.slice(0,LIMIT);const hidden=records.length-visible.length;
         const primFields=(def.fields||[]).filter(f=>f.detail==='primary').slice(0,2);
         return(<div key={def.id}>
@@ -20856,9 +20860,9 @@ function RelatedRecordsPanel({crm,targetType,rec,goTo}){
               </button>);})}
           </div>
           {hidden>0&&<button onClick={()=>setExp(e=>({...e,[def.id]:true}))} className="mt-1.5 text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors">Show all {records.length}</button>}
-          {open&&records.length>LIMIT&&<button onClick={()=>setExp(e=>({...e,[def.id]:false}))} className="mt-1.5 text-[11.5px] font-medium text-white/40 hover:text-white/70 transition-colors">Show less</button>}
+          {!!exp[def.id]&&records.length>LIMIT&&<button onClick={()=>setExp(e=>({...e,[def.id]:false}))} className="mt-1.5 text-[11.5px] font-medium text-white/40 hover:text-white/70 transition-colors">Show less</button>}
         </div>);})}
-    </div>
+    </div>}
   </div>);
 }
 // ── Generic list page for one custom object ──
