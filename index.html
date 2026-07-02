@@ -7339,7 +7339,7 @@ function ContactDetailPage({goTo,nav}){
                 </div>
               </div>
             </div>
-            <RecordTasks match={(t)=>t.contact===c.name&&t.linkType!=='lead'} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+            <RecordTasks match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
@@ -8120,6 +8120,13 @@ const STAGE_BY_KEY=Object.fromEntries(STAGES_DATA.map(s=>[s.key,s]));
 let _liveDeals=null; // live deals array, set by App on each render; falls back to the STAGES_DATA seed
 let _liveContacts=null; // Wave 3: live contacts array, set by App on each render; falls back to the CONTACTS_DATA seed
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
+let _liveLeads=null; // live leads array, set by App on each render; used to resolve calendar task/event links to lead ids
+// Resolve a calendar task/event's selected link (by current name) to a record id, so record→task joins survive renames / duplicate names.
+function calLinkIds(relType,name){const n=(name||'').trim();if(!n)return {};
+  if(relType==='contact'){const c=(_liveContacts||[]).find(x=>!x.deleted&&x.name===n);return c?{contactId:c.id}:{};}
+  if(relType==='lead'){const l=(_liveLeads||[]).find(x=>!x.deleted&&x.name===n);return l?{leadId:l.id}:{};}
+  if(relType==='company'){const c=(_liveCompanies||[]).find(x=>!x.deleted&&x.name===n);return c?{companyId:c.id}:{};}
+  return {};}
 function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key})));}
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||{};return {...d,stageName:s.name,stageColor:s.color};});}
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
@@ -8975,7 +8982,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>
-              <RecordTasks match={(t)=>t.contact===l.name&&t.linkType==='lead'} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
@@ -17671,7 +17678,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
     const [Y,M,D]=date.split('-').map(Number);
     const mk=()=>{const [h,mi]=time.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
     const isCompany=relType==='company';
-    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,reminder,emailReminder:reminder?emailReminder:false,assignee,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
+    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,...calLinkIds(relType,relRecord),reminder,emailReminder:reminder?emailReminder:false,assignee,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
     onSave(ev);
   };
   const PRIOS=[
@@ -17790,7 +17797,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
     const [Y,M,D]=date.split('-').map(Number);
     const mk=(ts)=>{const [h,mi]=ts.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
     const isCompany=relType==='company';
-    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,reminder,repeat,notes,done:!!ed.done,priority};
+    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,...calLinkIds(relType,relRecord),reminder,repeat,notes,done:!!ed.done,priority};
     onSave(ev);
   };
   return(<div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -21250,6 +21257,7 @@ function App(){
   _liveDeals=deals; // keep the module-level pointer in sync so allDeals()/dealsForCompany() read live data
   _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
+  _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
