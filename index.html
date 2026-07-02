@@ -7190,14 +7190,22 @@ function publishRecordCtx(obj,ids){_recordCtx[obj]=ids;}
 // One source of truth: reads the shared CalendarContext task store, filtered to this record via
 // `match`. "Add task" opens the same TaskFormModal drawer (prefilled with the record link).
 // Creating/completing logs to the record activity timeline through onLog.
-function RecordTasks({match,prefill,goTo,onLog,canEdit}){
+function RecordTasks({match,prefill,goTo,onLog,canEdit,recId}){
   const {items,addItem,updateItem,deleteItem,toggleDone}=React.useContext(CalendarContext);
   const [modal,setModal]=React.useState(null);
   const [showDone,setShowDone]=React.useState(false);
+  const [panelOpen,setPanelOpen]=React.useState(false); // collapsed by default — header count tells the story (consistent with the other record panels)
+  const [prio,setPrio]=React.useState('All');           // priority filter: All | High | Medium | Low
+  const [sortMode,setSortMode]=React.useState('due');   // 'due' (due date) | 'recent' (newest added first)
+  const [showAllOpen,setShowAllOpen]=React.useState(false); // volume: show 2, expandable
+  React.useEffect(()=>{setPanelOpen(false);setPrio('All');setSortMode('due');setShowAllOpen(false);setShowDone(false);},[recId]);
   const now=new Date();const sod=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const all=items.filter(e=>e.type==='task'&&!e.deleted&&match(e));
   const open=all.filter(t=>!t.done).sort((a,b)=>a.date-b.date);
   const done=all.filter(t=>t.done).sort((a,b)=>b.date-a.date);
+  const filteredOpen=prio==='All'?open:open.filter(t=>(t.priority||'Medium')===prio);
+  const sortedOpen=sortMode==='recent'?[...filteredOpen].sort((a,b)=>items.indexOf(b)-items.indexOf(a)):filteredOpen; // addItem appends, so array position = recency
+  const visibleOpen=showAllOpen?sortedOpen:sortedOpen.slice(0,2);
   const due=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(!t.done&&t.date<sod)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
   const save=(ev)=>{const isNew=!ev.id;if(isNew)addItem(ev);else updateItem(ev);setModal(null);if(window.__nrturToast)window.__nrturToast(isNew?'Task created':'Task saved','success');if(isNew&&onLog)onLog('Task created',ev.title);};
   const complete=(t)=>{const becomingDone=!t.done;toggleDone(t.id);if(window.__nrturToast)window.__nrturToast(becomingDone?'Task completed':'Task reopened','success');if(becomingDone&&onLog)onLog('Task completed',t.title);};
@@ -7208,11 +7216,17 @@ function RecordTasks({match,prefill,goTo,onLog,canEdit}){
       {u&&<span title={u.name} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:u.color}}>{t.assignee||t.owner||'AM'}</span>}
     </div>);};
   return(<div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md">
-    <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.CheckSquare size={14}/></span><div><p className="text-white font-medium leading-tight">Tasks</p><p className="text-[11px] text-white/45 mt-0.5">{open.length} open{done.length?' · '+done.length+' done':''}</p></div></div>{canEdit&&<button onClick={()=>setModal({task:{type:'task',allDay:true,priority:'Medium',assignee:'AM',...prefill}})} className="inline-flex items-center gap-1 text-[11px] text-white/45 hover:text-brand-300 transition-colors"><I.Plus size={11} stroke={2.4}/>Add task</button>}</div>
-    <div className="p-3">
-      {open.length===0?<p className="text-[12px] text-white/40 px-2 py-6 text-center">No open tasks{canEdit?' — add one to stay on track.':'.'}</p>:open.map(t=><TaskRow key={t.id} t={t}/>)}
+    <div className={['px-5 py-4 flex items-center justify-between',panelOpen?'border-b border-white/[0.05]':''].join(' ')}><button onClick={()=>setPanelOpen(o=>!o)} className="flex items-center gap-2 text-left flex-1 min-w-0"><I.ChevronDown size={14} className="text-white/35 shrink-0" style={{transform:panelOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.CheckSquare size={14}/></span><div><p className="text-white font-medium leading-tight">Tasks</p><p className="text-[11px] text-white/45 mt-0.5">{open.length} open{done.length?' · '+done.length+' done':''}</p></div></button>{canEdit&&<button onClick={()=>setModal({task:{type:'task',allDay:true,priority:'Medium',assignee:'AM',...prefill}})} className="inline-flex items-center gap-1 text-[11px] text-white/45 hover:text-brand-300 transition-colors"><I.Plus size={11} stroke={2.4}/>Add task</button>}</div>
+    {panelOpen&&<div className="p-3">
+      {open.length>0&&<div className="flex items-center gap-1.5 flex-wrap px-1 pb-2.5">
+        {['All','High','Medium','Low'].map(p=>{const a=prio===p;const n=p==='All'?open.length:open.filter(t=>(t.priority||'Medium')===p).length;return(<button key={p} onClick={()=>{setPrio(p);setShowAllOpen(false);}} className={['inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all',a?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/30':'text-white/45 hover:text-white/70 hover:bg-white/[0.04]'].join(' ')}>{p!=='All'&&<span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[p]||'#64748b'}}/>}{p}<span className="text-[9.5px] font-mono opacity-70">{n}</span></button>);})}
+        <span className="flex-1"/>
+        <div className="flex items-center rounded-lg bg-white/[0.04] border border-white/[0.07] p-0.5">{[['due','Due date'],['recent','Recent']].map(([k,l])=>{const a=sortMode===k;return(<button key={k} onClick={()=>setSortMode(k)} className={['px-2 py-0.5 rounded-md text-[10.5px] font-medium transition-all',a?'bg-white/[0.08] text-white':'text-white/40 hover:text-white/70'].join(' ')}>{l}</button>);})}</div>
+      </div>}
+      {sortedOpen.length===0?<p className="text-[12px] text-white/40 px-2 py-6 text-center">{open.length===0?('No open tasks'+(canEdit?' — add one to stay on track.':'.')):('No '+prio.toLowerCase()+'-priority tasks open.')}</p>:visibleOpen.map(t=><TaskRow key={t.id} t={t}/>)}
+      {sortedOpen.length>2&&<button onClick={()=>setShowAllOpen(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-2.5 py-1.5">{showAllOpen?'Show less':'Show all '+sortedOpen.length+' tasks'}</button>}
       {done.length>0&&<div className="mt-1 pt-2 border-t border-white/[0.05]"><button onClick={()=>setShowDone(s=>!s)} className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-medium text-white/45 hover:text-white/70 transition-colors"><span>Completed ({done.length})</span><I.ChevronDown size={13} style={{transform:showDone?'rotate(180deg)':'none',transition:'transform .15s'}}/></button>{showDone&&done.map(t=><TaskRow key={t.id} t={t}/>)}</div>}
-    </div>
+    </div>}
     {modal&&<TaskFormModal initial={modal.task} onClose={()=>setModal(null)} onSave={save} onDelete={(t)=>{updateItem({id:t.id,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});setModal(null);if(window.__nrturToast)window.__nrturToast('Task moved to Recycle Bin','success');}}/>}
   </div>);
 }
@@ -7410,7 +7424,7 @@ function ContactDetailPage({goTo,nav}){
                 </div>
               </div>
             </div>
-            <RecordTasks match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+            <RecordTasks recId={c.id} match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
           </div>
@@ -8144,7 +8158,7 @@ function DealDetailPage({goTo,nav}){
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
             </div>
             <div className="flex flex-col gap-5 min-w-0">
-              <RecordTasks match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
+              <RecordTasks recId={d.id} match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
               <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
             </div>
           </div>
@@ -8520,7 +8534,7 @@ function CompanyDetailPage({goTo,nav}){
                 </div>}
               </div>
               <RelatedRecordsPanel crm={crm} targetType="company" rec={co} goTo={goTo}/>
-              <RecordTasks match={(t)=>t.companyId!=null?t.companyId===co.id:t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={co.id} match={(t)=>t.companyId!=null?t.companyId===co.id:t.company===co.name} prefill={{company:co.name}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="company" rec={co} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Companies','edit')?addNote:undefined} onSchedule={effCanObject('Companies','edit')?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+co.name+'...'}/>
             </div>
           </div>
@@ -9066,7 +9080,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>
-              <RecordTasks match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={l.id} match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
@@ -21012,7 +21026,7 @@ function CustomRecordDetailPage({goTo,nav}){
             </div>
             <div className="flex flex-col gap-5 min-w-0">
               <CoLinksPanel def={def} rec={rec} crm={crm} goTo={goTo}/>
-              <RecordTasks match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:rec.r_company||''}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={rec.id} match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:rec.r_company||''}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             </div>
           </div>
         </div>
