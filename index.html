@@ -3890,6 +3890,7 @@ const WIDGET_DEFS={
   'rep-leaderboard':{name:'Rep Leaderboard',desc:'Reps ranked by deals won',Icon:I.Trophy,cat:'Team',size:2,defSize:'L',type:'bars'},
   'goal-progress':{name:'Goal Progress',desc:'Attainment vs a target you set',Icon:I.Target,cat:'Goals',size:1,defSize:'M',type:'goal-progress'},
   'stale-deals':{name:'Stale Deals',desc:'Open deals with no recent activity',Icon:I.AlertTriangle,cat:'Pipeline',size:2,defSize:'M',type:'stale-deals'},
+  'win-loss':{name:'Win / Loss Analysis',desc:'Closed-deal outcomes and the reasons behind them',Icon:I.Trophy,cat:'Pipeline',size:2,defSize:'M',type:'win-loss'},
   'engagement-trend':{name:'Email & SMS Engagement',desc:'Opens, clicks, replies over time',Icon:I.TrendUp,cat:'Activity',size:2,defSize:'L',type:'engagement-trend'},
   'conversion-funnel':{name:'Conversion Funnel',desc:'Lead → Sales-Ready → Won',Icon:I.Filter,cat:'Leads',size:2,defSize:'L',type:'conversion-funnel'},
   'recently-created':{name:'Recently Created',desc:'Newest records of a chosen object',Icon:I.Sparkles,cat:'Activity',size:2,defSize:'M',type:'recently-created'},
@@ -3899,7 +3900,7 @@ const WIDGET_DEFS={
 const WIDGET_LIBRARY=[
   {cat:'Metrics',ids:['pipeline-value','weighted-forecast','win-rate','avg-cycle','lead-conversion','new-leads','new-this-week','needs-followup','uncontacted-count','call-stats','goal-progress','monthly-goal','quota-attainment','pipeline-coverage','team-goal']},
   {cat:'Lists',ids:['tasks-due','tasks','activity-feed','recent-activity','team-activity','top-contacts','top-accounts','stale-deals','recently-created','recently-viewed']},
-  {cat:'Charts',ids:['deals-by-stage','deals-donut','lead-funnel','conversion-funnel','leads-by-source','ad-lead-sources','accounts-by-type','contact-growth','rep-leaderboard','team-leaderboard','rep-performance','sequence-perf','engagement-trend']},
+  {cat:'Charts',ids:['deals-by-stage','deals-donut','win-loss','lead-funnel','conversion-funnel','leads-by-source','ad-lead-sources','accounts-by-type','contact-growth','rep-leaderboard','team-leaderboard','rep-performance','sequence-perf','engagement-trend']},
   {cat:'Calendar',ids:['upcoming-meetings']},
   {cat:'Quick actions',ids:['quick-actions','quick-add-deal','quick-import']},
 ];
@@ -4108,6 +4109,9 @@ const WIDGET_META={
   'stale-deals':{object:'deal',kind:'list',custom:true,nav:'pipeline',detail:'deal-detail',controls:[
     {key:'staleDays',label:'No activity for',type:'select',tab:'Data',default:'14',options:[{value:'7',label:'7+ days'},{value:'14',label:'14+ days'},{value:'30',label:'30+ days'},{value:'60',label:'60+ days'}]},
     {key:'rows',label:'Rows to preview',type:'seg',default:'5',options:['3','5','10']}]},
+  'win-loss':{object:'deal',kind:'metric',custom:true,nav:'pipeline',controls:[
+    {key:'wlView',label:'Show',type:'seg',tab:'Data',default:'both',options:[{value:'both',label:'Both'},{value:'won',label:'Won'},{value:'lost',label:'Lost'}]},
+    {key:'rows',label:'Reasons to show',type:'seg',default:'4',options:['3','4','6']}]},
   'engagement-trend':{object:null,kind:'metric',custom:true,nav:'reports',controls:[
     {key:'engRange',label:'Range',type:'seg',tab:'Data',default:'8w',options:[{value:'8w',label:'8 weeks'},{value:'12w',label:'12 weeks'}]},
     {key:'engMetrics',label:'Series',type:'select',default:'all',options:[{value:'all',label:'Opens, clicks, replies'},{value:'opens',label:'Opens only'},{value:'replies',label:'Replies only'}]},
@@ -4487,6 +4491,34 @@ function DashStaleDeals({def,cfg,goTo}){
       <span className="text-[13px] font-semibold text-white tabular-nums shrink-0">{d.value}</span>
     </button>))}</div></div>);
 }
+// Win / Loss Analysis (P1-2) — aggregates deal.outcome (captured by the close modal on every
+// Won/Lost path) into per-reason breakdowns with counts + value. Deals closed before outcome
+// capture existed group under "No reason recorded" — honest, not hidden.
+function DashWinLoss({def,cfg,goTo}){
+  const name=cfg.name||def.name;const view=cfg.wlView||'both';const limit=parseInt(cfg.rows||'4',10);
+  let deals;try{deals=effScopeRows('Deals',allDeals(),d=>d.owner);}catch(e){deals=[];}
+  const amt=(d)=>(typeof d.amount==='number'?d.amount:parseMoney(d.value))||0;
+  const won=deals.filter(d=>d.stageKey==='won'),lost=deals.filter(d=>d.stageKey==='lost');
+  if(!won.length&&!lost.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No closed deals yet"/>);
+  const rate=Math.round(won.length*100/(won.length+lost.length));
+  const group=(list)=>{const m={};list.forEach(d=>{const r=(d.outcome&&d.outcome.reason)||'No reason recorded';if(!m[r])m[r]={reason:r,n:0,val:0};m[r].n++;m[r].val+=amt(d);});return Object.keys(m).map(k=>m[k]).sort((a,b)=>b.n-a.n);};
+  const col=(title,list,color)=>{const rows=group(list);const max=Math.max(1,...rows.map(r=>r.n));const tot=list.reduce((a,d)=>a+amt(d),0);
+    return(<div key={title} className="min-w-0 flex-1">
+      <div className="flex items-center justify-between mb-2.5"><span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{color}}><span className="w-1.5 h-1.5 rounded-full" style={{background:color}}/>{title}</span><span className="text-[11px] text-white/40 tabular-nums">{list.length} · {fmtK(tot)}</span></div>
+      <div className="flex flex-col gap-2">
+        {rows.slice(0,limit).map(r=>(<div key={r.reason}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/65 truncate pr-2">{r.reason}</span><span className="text-[11px] font-mono text-white/40 shrink-0 tabular-nums">{r.n} · {fmtK(r.val)}</span></div><div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.n/max*100)+'%',background:color}}/></div></div>))}
+        {rows.length>limit&&<p className="text-[11px] text-white/30">+{rows.length-limit} more reason{rows.length-limit>1?'s':''}</p>}
+        {!rows.length&&<p className="text-[11px] text-white/30">None yet.</p>}
+      </div>
+    </div>);};
+  return(<div className="flex flex-col h-full">
+    <DashHdr name={name} sub={rate+'% win rate · '+won.length+' won / '+lost.length+' lost'} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+    <div className={view==='both'?'p-5 flex-1 flex gap-6':'p-5 flex-1 flex flex-col gap-6'}>
+      {(view==='both'||view==='won')&&col('Won',won,'#34d399')}
+      {(view==='both'||view==='lost')&&col('Lost',lost,'#f87171')}
+    </div>
+  </div>);
+}
 // 9 — Email & SMS Engagement (synthetic weekly trend)
 function DashEngagement({def,cfg,goTo}){
   const name=cfg.name||def.name;const weeks=cfg.engRange==='12w'?12:8;const area=cfg.engView!=='line';
@@ -4617,6 +4649,7 @@ function renderWidgetBody(def,cfg,goTo,data,id){
     if(t==='sequence-perf')return(<DashSequencePerf def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='call-stats')return(<DashCallStats def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='stale-deals')return(<DashStaleDeals def={def} cfg={cfg} goTo={goTo}/>);
+    if(t==='win-loss')return(<DashWinLoss def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='engagement-trend')return(<DashEngagement def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='conversion-funnel')return(<DashConversionFunnel def={def} cfg={cfg} goTo={goTo} data={D}/>);
     if(t==='ad-lead-source')return(<DashAdLeadSources def={def} cfg={cfg} goTo={goTo}/>);
@@ -7581,12 +7614,21 @@ function OmViewMenu({views,activeKey,onSelect,favs,onToggleFav,onSaveView,dirty,
     </div>}
   </div>);
 }
+// P1-2: workspace-level win/loss reason lists. Defaults seed the shared state; the live lists are
+// edited in the pipeline settings drawer and mirrored here so the modal (rendered from the board,
+// list AND deal detail) reads one source of truth.
+const DEFAULT_DEAL_REASONS={
+  won:['Best fit / value','Competitive price','Strong relationship','Product capabilities','Good timing','Other'],
+  lost:['Price too high','Chose a competitor','No budget','No decision / timing','Went silent','Not a fit']
+};
+let _liveDealReasons=null; // set by App each render (mirrors _liveDeals)
+function liveDealReasons(){return _liveDealReasons||DEFAULT_DEAL_REASONS;}
 // Lightweight reason capture when a deal is dragged into a Won/Lost stage.
 function DealOutcomeModal({kind,dealName,stageName,onConfirm,onClose}){
   const won=kind==='won';
-  const REASONS=won
-    ?['Best fit / value','Competitive price','Strong relationship','Product capabilities','Good timing','Other']
-    :['Price too high','Chose a competitor','No budget','No decision / timing','Went silent','Not a fit'];
+  const _R=liveDealReasons();
+  const _list=((won?_R.won:_R.lost)||[]).filter(r=>r&&String(r).trim());
+  const REASONS=_list.length?_list:['Other'];
   const [reason,setReason]=React.useState(REASONS[0]);
   const [note,setNote]=React.useState('');
   useEscKey(onClose);
@@ -7797,7 +7839,7 @@ function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
 }
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
-  const {deals:_deals,setDeals,customObjects:_customObjects,pipelines,setPipelines}=React.useContext(CrmDataContext); // P1-1: pipelines shared + persistent
+  const {deals:_deals,setDeals,customObjects:_customObjects,pipelines,setPipelines,dealReasons,setDealReasons}=React.useContext(CrmDataContext); // P1-1: pipelines shared + persistent; P1-2: win/loss reason lists
   const ads=React.useContext(AdsContext);
   const [pipeObject,setPipeObject]=React.useState((nav&&nav.objectType)||'deal');
   const {props:_propsCtx}=React.useContext(PropertiesContext);
@@ -7836,6 +7878,7 @@ function PipelinePage({goTo,nav}){
   const [pipeMenu,setPipeMenu]=React.useState(false);
   const [mobStage,setMobStage]=React.useState(0);
   const [cfgOpen,setCfgOpen]=React.useState(false);
+  const [reasonsOpen,setReasonsOpen]=React.useState(false); // P1-2: win/loss reason lists editor (opened from the edit-stages toolbar)
   const [colorEdit,setColorEdit]=React.useState(null);
   const [newStage,setNewStage]=React.useState('');
   const [editStages,setEditStages]=React.useState(false);
@@ -7877,7 +7920,7 @@ function PipelinePage({goTo,nav}){
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
-  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}],...dealPlacement(mv.pipeline||pipelines[0].name,toStage.key)};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const _term=dealTerminalKind(toStage);if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}],outcome:_term?mv.outcome:null,...dealPlacement(mv.pipeline||pipelines[0].name,toStage.key)};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
@@ -7952,6 +7995,7 @@ function PipelinePage({goTo,nav}){
               {editStages&&(<React.Fragment>
                 <button onClick={dupPipeline} title="Duplicate this pipeline" aria-label="Duplicate pipeline" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={14}/></button>
                 <button onClick={delPipeline} disabled={pipelines.length<=1} title={pipelines.length<=1?'Only pipeline — cannot delete':'Delete this pipeline'} aria-label="Delete pipeline" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',pipelines.length<=1?'text-white/20 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={14}/></button>
+                <button onClick={()=>setReasonsOpen(true)} title="Win & loss reasons" aria-label="Win and loss reasons" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Trophy size={14}/></button>
               </React.Fragment>)}
             </div>
             <p className="text-white/45 text-[12.5px] pl-0.5">{_openBd.length} open deal{_openBd.length!==1?'s':''} · {fmtK(_openVal)} pipeline</p>
@@ -8050,6 +8094,32 @@ function PipelinePage({goTo,nav}){
         {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={addAuxPipeline}/>}
       </div>
       {outcomePrompt&&(()=>{const _bulk=outcomePrompt.bulk||null;const od=_bulk?{}:(allVisible.find(x=>x.id===outcomePrompt.dd.id)||{});return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={_bulk?(_bulk.length+' deal'+(_bulk.length>1?'s':'')):(od.name||od.company)} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const ts=outcomePrompt.toStage,kind=outcomePrompt.kind;const moves=_bulk||[outcomePrompt.dd];moves.forEach(m=>applyMove(m,ts));const _ids=new Set(moves.map(m=>m.id));setDeals(ds=>ds.map(x=>_ids.has(x.id)?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast((moves.length>1?moves.length+' deals':'Deal')+' marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&!_bulk&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);if(_bulk)setSelected([]);setOutcomePrompt(null);}}/>);})()}
+      {/* P1-2: workspace win/loss reason lists — feed the Mark Won/Lost modal + the Win/Loss Analysis report */}
+      {reasonsOpen&&(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setReasonsOpen(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.Trophy size={16}/></div>
+            <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Win & loss reasons</p><p className="text-white/45 text-[12px]">Asked whenever a deal is closed · shared across all pipelines · reported in Win / Loss Analysis</p></div>
+          </div>
+          <div className="px-6 py-5 grid grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+            {[['won','Win reasons','#34d399'],['lost','Loss reasons','#f87171']].map(([rk,rl,rc])=>(
+              <div key={rk} className="min-w-0">
+                <div className="flex items-center gap-1.5 mb-2"><span className="w-1.5 h-1.5 rounded-full" style={{background:rc}}/><span className="text-[12px] font-medium text-white/70">{rl}</span><span className="text-[11px] text-white/30 ml-auto">{(dealReasons[rk]||[]).length}</span></div>
+                <div className="flex flex-col gap-1.5">
+                  {(dealReasons[rk]||[]).map((r,i)=>(
+                    <div key={rk+'-'+i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-white/[0.07] bg-white/[0.02]">
+                      <input value={r} onChange={e=>setDealReasons(cur=>({...cur,[rk]:cur[rk].map((x,xi)=>xi===i?e.target.value:x)}))} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())setDealReasons(cur=>({...cur,[rk]:cur[rk].map((x,xi)=>xi===i?'Other':x)}));}} className="flex-1 bg-transparent text-[12.5px] text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 min-w-0"/>
+                      <button onClick={()=>setDealReasons(cur=>({...cur,[rk]:cur[rk].filter((_,xi)=>xi!==i)}))} disabled={(dealReasons[rk]||[]).length<=1} className={(dealReasons[rk]||[]).length<=1?'text-white/15 cursor-not-allowed':'text-white/25 hover:text-red-400 transition-colors'} title="Remove reason"><I.X size={12}/></button>
+                    </div>))}
+                </div>
+                <button onClick={()=>setDealReasons(cur=>({...cur,[rk]:[...(cur[rk]||[]),'New reason']}))} className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12} stroke={2.4}/>Add reason</button>
+              </div>))}
+          </div>
+          <div className="flex px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <button onClick={()=>setReasonsOpen(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-all">Done</button>
+          </div>
+        </div>
+      </div>)}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
       {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveDealView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={dealSmartMgr.canShare}/>}
       {/* Edit-stages drawer (right side) */}
@@ -8130,7 +8200,7 @@ function DealDetailPage({goTo,nav}){
   const stageIdx=_ladder.indexOf(stage);const nextStage=_ladder[stageIdx+1];const color=_colorByName[stage]||DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
-  const commitStage=(stageName)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
+  const commitStage=(stageName)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}],outcome:null,...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='pipeline'){ // P1-1: switching pipeline re-homes the deal into that pipeline's stages
@@ -8138,7 +8208,7 @@ function DealDetailPage({goTo,nav}){
       if(!_t||!_ts.length){updateDeal(d.id,{pipeline:v});return;}
       const _keep=_ts.find(s=>s.key===d.stageKey);const _ns=_keep||_ts[0];const _at=Date.now();
       setStage(_ns.name);
-      updateDeal(d.id,{pipeline:v,stageKey:_ns.key,dStage:_ns.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_ns.key,at:_at,by:'AM'}],...dealPlacement(v,_ns.key)});
+      updateDeal(d.id,{pipeline:v,stageKey:_ns.key,dStage:_ns.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_ns.key,at:_at,by:'AM'}],outcome:dealTerminalKind(_ns)?d.outcome:null,...dealPlacement(v,_ns.key)});
       window.__nrturToast&&window.__nrturToast('Moved to '+v+(_keep?'':' · enters at '+_ns.name),'success');return;}
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
@@ -8281,7 +8351,10 @@ function calLinkIds(relType,name){const n=(name||'').trim();let contactId=null,l
   else if(n&&relType==='lead'){const l=(_liveLeads||[]).find(x=>!x.deleted&&x.name===n);if(l)leadId=l.id;}
   else if(n&&relType==='company'){const c=(_liveCompanies||[]).find(x=>!x.deleted&&x.name===n);if(c)companyId=c.id;}
   return {contactId,leadId,companyId};} // always emit all three keys so re-linking / clearing overwrites a stale id (calUpdateItem shallow-merges)
-function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).concat(CO_SEED_DEALS.map(d=>({...d})));} // P1-1: Customer Onboarding deals are REAL seed records now
+// P1-2: seeded closed deals get a deterministic demo outcome (reason cycled by id, closedAt from
+// closeDate) so Win/Loss Analysis has data day one instead of a wall of "No reason recorded".
+function seedOutcomeFor(d){const k=d.stageKey==='won'?'won':d.stageKey==='lost'?'lost':null;if(!k||d.outcome)return d;const R=DEFAULT_DEAL_REASONS[k];const _dt=omDate(d.closeDate);return{...d,outcome:{result:k,reason:R[(d.id||0)%R.length],note:'',closedAt:_dt?_dt.getTime():Date.now(),closedBy:'Alex Morgan'}};}
+function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).map(seedOutcomeFor).concat(CO_SEED_DEALS.map(d=>({...d})));} // P1-1: Customer Onboarding deals are REAL seed records now
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
 function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
@@ -11934,10 +12007,10 @@ function reportRolePresetKey(role){return 'nrtur-report-role-'+String(role).repl
 const REPORT_ROLE_PRESETS={
   'Sales Rep':    [{id:'call-stats',size:'M'},{id:'emails-sent',size:'S'},{id:'lead-conversion',size:'S'},{id:'goal-progress',size:'M'},{id:'deals-by-stage',size:'M'},{id:'engagement-trend',size:'M'},{id:'tasks-due',size:'M'}],
   'Read Only':    [{id:'pipeline-value',size:'S'},{id:'win-rate',size:'S'},{id:'deals-by-stage',size:'M'},{id:'lead-funnel',size:'M'},{id:'recent-activity',size:'M'}],
-  'Team Lead':    [{id:'team-leaderboard',size:'M'},{id:'rep-performance',size:'M'},{id:'deals-by-stage',size:'M'},{id:'conversion-funnel',size:'M'},{id:'team-activity',size:'M'},{id:'stale-deals',size:'M'}],
-  'Sales Manager':[{id:'weighted-forecast',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'win-rate',size:'S'},{id:'team-leaderboard',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'rep-performance',size:'M'}],
-  'Admin':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-leaderboard',size:'M'},{id:'rep-leaderboard',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'engagement-trend',size:'M'},{id:'activity-feed',size:'M'}],
-  'Owner':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-goal',size:'S'},{id:'team-leaderboard',size:'M'},{id:'conversion-funnel',size:'M'},{id:'sequence-perf',size:'M'},{id:'contact-growth',size:'M'},{id:'activity-feed',size:'M'}],
+  'Team Lead':    [{id:'team-leaderboard',size:'M'},{id:'rep-performance',size:'M'},{id:'deals-by-stage',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'team-activity',size:'M'},{id:'stale-deals',size:'M'}],
+  'Sales Manager':[{id:'weighted-forecast',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'win-rate',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'rep-performance',size:'M'}],
+  'Admin':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'rep-leaderboard',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'engagement-trend',size:'M'},{id:'activity-feed',size:'M'}],
+  'Owner':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-goal',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'sequence-perf',size:'M'},{id:'contact-growth',size:'M'},{id:'activity-feed',size:'M'}],
 };
 function reportBuiltinPreset(role){const p=REPORT_ROLE_PRESETS[role]||REPORT_ROLE_PRESETS['Sales Rep'];return {layout:p.map(x=>({...x})),configs:{}};}
 // Saved admin role preset → built-in role preset.
@@ -21525,6 +21598,8 @@ function App(){
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
+  const [dealReasons,setDealReasons]=React.useState(DEFAULT_DEAL_REASONS); // P1-2: workspace win/loss reason lists — edited in pipeline settings, read by the close modal + Win/Loss report
+  _liveDealReasons=dealReasons; // mirror so DealOutcomeModal reads the live lists from any page
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
   const [statusDefs,setStatusDefs]=React.useState(seedStatusDefs);
   _liveTags=tagDefs; // mirror for tagColorOf() chip rendering
@@ -21597,7 +21672,8 @@ function App(){
     personalConns,setPersonalConns,
     automations,setAutomations,autoLogs,
     pipelines,setPipelines,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines]);
+    dealReasons,setDealReasons,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
