@@ -3891,6 +3891,8 @@ const WIDGET_DEFS={
   'goal-progress':{name:'Goal Progress',desc:'Attainment vs a target you set',Icon:I.Target,cat:'Goals',size:1,defSize:'M',type:'goal-progress'},
   'stale-deals':{name:'Stale Deals',desc:'Open deals with no recent activity',Icon:I.AlertTriangle,cat:'Pipeline',size:2,defSize:'M',type:'stale-deals'},
   'win-loss':{name:'Win / Loss Analysis',desc:'Closed-deal outcomes and the reasons behind them',Icon:I.Trophy,cat:'Pipeline',size:2,defSize:'M',type:'win-loss'},
+  'deal-funnel':{name:'Deal Funnel',desc:'Stage-to-stage conversion from real stage history',Icon:I.Filter,cat:'Pipeline',size:2,defSize:'M',type:'deal-funnel'},
+  'time-in-stage':{name:'Time in Stage',desc:'Average days deals spend in each stage',Icon:I.Clock,cat:'Pipeline',size:2,defSize:'M',type:'time-in-stage'},
   'engagement-trend':{name:'Email & SMS Engagement',desc:'Opens, clicks, replies over time',Icon:I.TrendUp,cat:'Activity',size:2,defSize:'L',type:'engagement-trend'},
   'conversion-funnel':{name:'Conversion Funnel',desc:'Lead → Sales-Ready → Won',Icon:I.Filter,cat:'Leads',size:2,defSize:'L',type:'conversion-funnel'},
   'recently-created':{name:'Recently Created',desc:'Newest records of a chosen object',Icon:I.Sparkles,cat:'Activity',size:2,defSize:'M',type:'recently-created'},
@@ -3900,7 +3902,7 @@ const WIDGET_DEFS={
 const WIDGET_LIBRARY=[
   {cat:'Metrics',ids:['pipeline-value','weighted-forecast','win-rate','avg-cycle','lead-conversion','new-leads','new-this-week','needs-followup','uncontacted-count','call-stats','goal-progress','monthly-goal','quota-attainment','pipeline-coverage','team-goal']},
   {cat:'Lists',ids:['tasks-due','tasks','activity-feed','recent-activity','team-activity','top-contacts','top-accounts','stale-deals','recently-created','recently-viewed']},
-  {cat:'Charts',ids:['deals-by-stage','deals-donut','win-loss','lead-funnel','conversion-funnel','leads-by-source','ad-lead-sources','accounts-by-type','contact-growth','rep-leaderboard','team-leaderboard','rep-performance','sequence-perf','engagement-trend']},
+  {cat:'Charts',ids:['deals-by-stage','deals-donut','win-loss','deal-funnel','time-in-stage','lead-funnel','conversion-funnel','leads-by-source','ad-lead-sources','accounts-by-type','contact-growth','rep-leaderboard','team-leaderboard','rep-performance','sequence-perf','engagement-trend']},
   {cat:'Calendar',ids:['upcoming-meetings']},
   {cat:'Quick actions',ids:['quick-actions','quick-add-deal','quick-import']},
 ];
@@ -4112,6 +4114,10 @@ const WIDGET_META={
   'win-loss':{object:'deal',kind:'metric',custom:true,nav:'pipeline',controls:[
     {key:'wlView',label:'Show',type:'seg',tab:'Data',default:'both',options:[{value:'both',label:'Both'},{value:'won',label:'Won'},{value:'lost',label:'Lost'}]},
     {key:'rows',label:'Reasons to show',type:'seg',default:'4',options:['3','4','6']}]},
+  'deal-funnel':{object:'deal',kind:'metric',custom:true,nav:'pipeline',controls:[
+    {key:'pipe',label:'Pipeline',type:'select',tab:'Data',default:'Sales Pipeline',options:[{value:'Sales Pipeline',label:'Sales Pipeline'},{value:'Customer Onboarding',label:'Customer Onboarding'}]}]},
+  'time-in-stage':{object:'deal',kind:'metric',custom:true,nav:'pipeline',controls:[
+    {key:'pipe',label:'Pipeline',type:'select',tab:'Data',default:'Sales Pipeline',options:[{value:'Sales Pipeline',label:'Sales Pipeline'},{value:'Customer Onboarding',label:'Customer Onboarding'}]}]},
   'engagement-trend':{object:null,kind:'metric',custom:true,nav:'reports',controls:[
     {key:'engRange',label:'Range',type:'seg',tab:'Data',default:'8w',options:[{value:'8w',label:'8 weeks'},{value:'12w',label:'12 weeks'}]},
     {key:'engMetrics',label:'Series',type:'select',default:'all',options:[{value:'all',label:'Opens, clicks, replies'},{value:'opens',label:'Opens only'},{value:'replies',label:'Replies only'}]},
@@ -4519,6 +4525,61 @@ function DashWinLoss({def,cfg,goTo}){
     </div>
   </div>);
 }
+// Shared: per-stage reach counts + completed dwell intervals from real deal.stageHistory (P2).
+function dashStageIntervals(deals,stageKeys){
+  const reach={},dur={};stageKeys.forEach(k=>{reach[k]=0;dur[k]=[];});
+  deals.forEach(d=>{const h=d.stageHistory||[];const seen={};h.forEach((e,i)=>{if(reach[e.stageKey]==null)return;if(!seen[e.stageKey]){reach[e.stageKey]++;seen[e.stageKey]=1;}const nxt=h[i+1];dur[e.stageKey].push(Math.max(0,(nxt?nxt.at:Date.now())-e.at));});});
+  return{reach,dur};
+}
+function dashPipeDeals(pipeName){
+  const pipes=livePipelines().filter(p=>realStagesOf(p).length);
+  const pipe=pipes.find(p=>p.name===pipeName)||pipes[0];
+  let deals;try{deals=effScopeRows('Deals',allDeals(),d=>d.owner).filter(d=>(d.pipeline||(pipes[0]||{}).name)===pipe.name);}catch(e){deals=[];}
+  return{pipe,deals};
+}
+// Deal Funnel (P2) — stage-to-stage conversion computed from stage HISTORY (a deal counts for a
+// stage only if it actually entered it), Won as the last rung, lost deals dropping off where they died.
+function DashDealFunnel({def,cfg,goTo}){
+  const name=cfg.name||def.name;
+  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline');
+  const stages=realStagesOf(pipe).filter(s=>dealTerminalKind(s)!=='lost');
+  const keys=stages.map(s=>s.key);
+  const {reach}=dashStageIntervals(deals,keys);
+  if(!deals.length||!stages.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No deals in this pipeline yet"/>);
+  const rows=stages.map((s,i)=>{const n=reach[s.key]||0;const prev=i>0?(reach[keys[i-1]]||0):null;return{s,n,conv:(i>0&&prev)?Math.round(n*100/prev):null};});
+  const max=Math.max(1,...rows.map(r=>r.n));
+  const first=rows[0]?rows[0].n:0;const last=rows[rows.length-1]?rows[rows.length-1].n:0;
+  const thru=first?Math.round(last*100/first):0;
+  return(<div className="flex flex-col h-full">
+    <DashHdr name={name} sub={pipe.name+' · '+thru+'% make it end-to-end'} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+    <div className="p-5 flex flex-col gap-1">
+      {rows.map((r,i)=>(<React.Fragment key={r.s.key}>
+        {i>0&&<div className="pl-1 py-0.5 flex items-center gap-1.5 text-[10px] text-white/35"><I.ArrowRight size={9} className="rotate-90"/>{r.conv!=null?r.conv+'% advance':'—'}</div>}
+        <div><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.s.color}}/><span className="text-[12px] font-medium text-white/70">{r.s.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.n}</span></div>
+        <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.n/max*100)+'%',background:r.s.color}}/></div></div>
+      </React.Fragment>))}
+    </div>
+  </div>);
+}
+// Time in Stage (P2) — average/max days per open stage from real history intervals (incl. the
+// current, still-running dwell), the metric behind "where do deals get stuck".
+function DashTimeInStage({def,cfg,goTo}){
+  const name=cfg.name||def.name;
+  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline');
+  const stages=realStagesOf(pipe).filter(s=>!dealTerminalKind(s));
+  const {dur}=dashStageIntervals(deals,stages.map(s=>s.key));
+  const fmtD=(ms)=>{const dd=ms/864e5;return dd<1?'<1d':Math.round(dd)+'d';};
+  const rows=stages.map(s=>{const arr=dur[s.key]||[];const avg=arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;const mx=arr.length?Math.max.apply(null,arr):0;return{s,n:arr.length,avg,mx};});
+  if(!rows.some(r=>r.n))return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No stage history yet"/>);
+  const maxAvg=Math.max(1,...rows.map(r=>r.avg));
+  return(<div className="flex flex-col h-full">
+    <DashHdr name={name} sub={pipe.name+' · avg days per stage'} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+    <div className="p-5 flex flex-col gap-2.5">
+      {rows.map(r=>(<div key={r.s.key}><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.s.color}}/><span className="text-[12px] font-medium text-white/70">{r.s.name}</span></div><span className="text-[11px] font-mono text-white/40 tabular-nums">{r.n?('avg '+fmtD(r.avg)+' · max '+fmtD(r.mx)+' · '+r.n):'—'}</span></div>
+      <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.avg/maxAvg*100)+'%',background:r.s.color}}/></div></div>))}
+    </div>
+  </div>);
+}
 // 9 — Email & SMS Engagement (synthetic weekly trend)
 function DashEngagement({def,cfg,goTo}){
   const name=cfg.name||def.name;const weeks=cfg.engRange==='12w'?12:8;const area=cfg.engView!=='line';
@@ -4650,6 +4711,8 @@ function renderWidgetBody(def,cfg,goTo,data,id){
     if(t==='call-stats')return(<DashCallStats def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='stale-deals')return(<DashStaleDeals def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='win-loss')return(<DashWinLoss def={def} cfg={cfg} goTo={goTo}/>);
+    if(t==='deal-funnel')return(<DashDealFunnel def={def} cfg={cfg} goTo={goTo}/>);
+    if(t==='time-in-stage')return(<DashTimeInStage def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='engagement-trend')return(<DashEngagement def={def} cfg={cfg} goTo={goTo}/>);
     if(t==='conversion-funnel')return(<DashConversionFunnel def={def} cfg={cfg} goTo={goTo} data={D}/>);
     if(t==='ad-lead-source')return(<DashAdLeadSources def={def} cfg={cfg} goTo={goTo}/>);
@@ -8429,7 +8492,26 @@ function calLinkIds(relType,name){const n=(name||'').trim();let contactId=null,l
 // P1-2: seeded closed deals get a deterministic demo outcome (reason cycled by id, closedAt from
 // closeDate) so Win/Loss Analysis has data day one instead of a wall of "No reason recorded".
 function seedOutcomeFor(d){const k=d.stageKey==='won'?'won':d.stageKey==='lost'?'lost':null;if(!k||d.outcome)return d;const R=DEFAULT_DEAL_REASONS[k];const _dt=omDate(d.closeDate);return{...d,outcome:{result:k,reason:R[(d.id||0)%R.length],note:'',closedAt:_dt?_dt.getTime():Date.now(),closedBy:'Alex Morgan'}};}
-function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).map(seedOutcomeFor).concat(CO_SEED_DEALS.map(d=>({...d})));} // P1-1: Customer Onboarding deals are REAL seed records now
+// P2: deterministic stage-history backfill for seeded deals. The funnel and time-in-stage reports
+// aggregate real stageHistory intervals; seeds predate P0-2 stamping, so synthesize a plausible
+// path — won deals walked every open stage, lost deals died at an id-cycled stage, open deals
+// walked up to their current stage — with timestamps spread evenly createdAt → close/now.
+function seedHistoryFor(d,stageOrder){
+  if(d.stageHistory&&d.stageHistory.length)return d;
+  const openKeys=stageOrder.filter(k=>k!=='won'&&k!=='lost');
+  let path;
+  if(d.stageKey==='won')path=[...openKeys,'won'];
+  else if(d.stageKey==='lost')path=[...openKeys.slice(0,((d.id||0)%openKeys.length)||1),'lost'];
+  else{const i=stageOrder.indexOf(d.stageKey);path=i>=0?stageOrder.slice(0,i+1):[d.stageKey];}
+  const _cd=omDate(d.createdAt);const startT=_cd?_cd.getTime():Date.now()-30*864e5;
+  const _terminal=d.stageKey==='won'||d.stageKey==='lost';
+  const _ed=_terminal?omDate(d.closeDate):null;const endT=_ed?_ed.getTime():Date.now();
+  const span=Math.max(864e5,endT-startT);
+  const hist=path.map((k,i)=>({stageKey:k,at:Math.round(startT+span*i/path.length),by:d.owner||'AM'}));
+  return{...d,stageHistory:hist,stageEnteredAt:hist[hist.length-1].at};
+}
+const SALES_KEY_ORDER=STAGES_DATA.map(s=>s.key);
+function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).map(seedOutcomeFor).map(d=>seedHistoryFor(d,SALES_KEY_ORDER)).concat(CO_SEED_DEALS.map(d=>seedHistoryFor({...d},CO_STAGE_DEFS.map(s=>s.key))));} // P1-1: Customer Onboarding deals are REAL seed records now
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
 function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
@@ -12083,9 +12165,9 @@ const REPORT_ROLE_PRESETS={
   'Sales Rep':    [{id:'call-stats',size:'M'},{id:'emails-sent',size:'S'},{id:'lead-conversion',size:'S'},{id:'goal-progress',size:'M'},{id:'deals-by-stage',size:'M'},{id:'engagement-trend',size:'M'},{id:'tasks-due',size:'M'}],
   'Read Only':    [{id:'pipeline-value',size:'S'},{id:'win-rate',size:'S'},{id:'deals-by-stage',size:'M'},{id:'lead-funnel',size:'M'},{id:'recent-activity',size:'M'}],
   'Team Lead':    [{id:'team-leaderboard',size:'M'},{id:'rep-performance',size:'M'},{id:'deals-by-stage',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'team-activity',size:'M'},{id:'stale-deals',size:'M'}],
-  'Sales Manager':[{id:'weighted-forecast',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'win-rate',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'rep-performance',size:'M'}],
-  'Admin':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'rep-leaderboard',size:'M'},{id:'conversion-funnel',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'engagement-trend',size:'M'},{id:'activity-feed',size:'M'}],
-  'Owner':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-goal',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'conversion-funnel',size:'M'},{id:'sequence-perf',size:'M'},{id:'contact-growth',size:'M'},{id:'activity-feed',size:'M'}],
+  'Sales Manager':[{id:'weighted-forecast',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'win-rate',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'deal-funnel',size:'M'},{id:'time-in-stage',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'rep-performance',size:'M'}],
+  'Admin':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'deal-funnel',size:'M'},{id:'time-in-stage',size:'M'},{id:'rep-leaderboard',size:'M'},{id:'deals-by-stage',size:'M'},{id:'sequence-perf',size:'M'},{id:'engagement-trend',size:'M'},{id:'activity-feed',size:'M'}],
+  'Owner':        [{id:'weighted-forecast',size:'S'},{id:'win-rate',size:'S'},{id:'pipeline-coverage',size:'S'},{id:'team-goal',size:'S'},{id:'team-leaderboard',size:'M'},{id:'win-loss',size:'M'},{id:'deal-funnel',size:'M'},{id:'conversion-funnel',size:'M'},{id:'sequence-perf',size:'M'},{id:'contact-growth',size:'M'},{id:'activity-feed',size:'M'}],
 };
 function reportBuiltinPreset(role){const p=REPORT_ROLE_PRESETS[role]||REPORT_ROLE_PRESETS['Sales Rep'];return {layout:p.map(x=>({...x})),configs:{}};}
 // Saved admin role preset → built-in role preset.
