@@ -2155,7 +2155,7 @@ function arDefaultFields(object){
   ];
   if(object==='deal')return[
     F({id:'d_name',label:'Name',type:'Text',required:true}),F({id:'d_amount',label:'Amount',type:'Currency'}),
-    F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
+    F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Customer Onboarding']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
     F({id:'d_close',label:'Expected close date',type:'Date'}),F({id:'d_owner',label:'Owner',type:'Lookup'}),
     F({id:'d_contact',label:'Primary contact',type:'Lookup'}),F({id:'d_company',label:'Company',type:'Lookup'}),
     F({id:'d_next',label:'Next action',type:'Text'}),F({id:'d_tags',label:'Tags',type:'Multi select'}),
@@ -2166,7 +2166,7 @@ function arDefaultFields(object){
     F({id:'l_title',label:'Job title',type:'Text'}),F({id:'l_domain',label:'Company domain',type:'Text'}),
     F({id:'l_email',label:'Primary email',type:'Email'}),F({id:'l_phone',label:'Phone',type:'Phone'}),
     F({id:'l_source',label:'Source',type:'Single select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'l_status',label:'Status',type:'Single select',options:['New','Contacted','Nurturing','Sales-Ready','Disqualified']}),
-    F({id:'l_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Onboarding Pipeline']}),F({id:'l_close',label:'Expected close date',type:'Date'}),
+    F({id:'l_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Customer Onboarding']}),F({id:'l_close',label:'Expected close date',type:'Date'}),
     F({id:'l_value',label:'Estimated value',type:'Currency',important:true}),F({id:'l_owner',label:'Owner',type:'Lookup'}),F({id:'l_tags',label:'Tags',type:'Multi select'}),
     F({id:'l_industry',label:'Industry',type:'Single select',detail:'secondary',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']}),F({id:'l_employees',label:'Employees size',type:'Number',detail:'secondary'}),
   ];
@@ -4123,7 +4123,7 @@ const WIDGET_META={
 function dashMeta(id,def){return WIDGET_META[id]||{object:null,kind:(def&&['actions'].includes(def.type))?'actions':(def&&['bars','donut','line','lead-funnel','lead-source','accounts-type'].includes(def.type))?'chart':'metric',nav:'dashboard'};}
 // Source lists per object (Data tab dropdown).
 const DASH_SOURCES={
-  deal:['Sales Pipeline','Onboarding Pipeline','All pipelines'],
+  deal:['Sales Pipeline','Customer Onboarding','All pipelines'],
   lead:['All leads','New & working','Sales-Ready leads','My leads'],
   contact:['All contacts','Customers','Prospects','My contacts'],
   company:['All companies','Customers','Prospects','Partners'],
@@ -4156,7 +4156,7 @@ function dashMeasureFields(fields){return fields.filter(f=>['number','currency']
 // Apply source / owner / date-range / filters from a widget config to base rows.
 function dashSourceFilter(object,rows,source){
   if(!source)return rows;
-  if(object==='deal'){if(source==='Sales Pipeline')return rows.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');if(source==='Onboarding Pipeline')return rows.filter(d=>d.pipeline==='Onboarding Pipeline');return rows;}
+  if(object==='deal'){if(source==='Sales Pipeline')return rows.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');if(source==='Customer Onboarding')return rows.filter(d=>d.pipeline==='Customer Onboarding');return rows;}
   if(object==='lead'){if(source==='New & working')return rows.filter(l=>['New','Contacted'].includes(l.status));if(source==='Sales-Ready leads')return rows.filter(l=>l.status==='Sales-Ready');if(source==='My leads')return rows.filter(l=>l.owner==='AM');return rows;}
   if(object==='contact'){if(source==='Customers')return rows.filter(c=>c.cstatus==='Customer');if(source==='Prospects')return rows.filter(c=>c.cstatus==='Prospect');if(source==='My contacts')return rows.filter(c=>c.owner==='AM');return rows;}
   if(object==='company'){if(source==='Customers')return rows.filter(c=>c.type==='Customer');if(source==='Prospects')return rows.filter(c=>c.type==='Prospect');if(source==='Partners')return rows.filter(c=>c.type==='Partner');return rows;}
@@ -4475,7 +4475,7 @@ function DashCallStats({def,cfg,goTo}){
 function DashStaleDeals({def,cfg,goTo}){
   const name=cfg.name||def.name;const thresh=parseInt(cfg.staleDays||'14',10);const limit=parseInt(cfg.rows||'5',10);
   let deals;try{deals=allDeals().filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');}catch(e){deals=[];}
-  if(cfg.source==='Sales Pipeline')deals=deals.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');else if(cfg.source==='Onboarding Pipeline')deals=deals.filter(d=>d.pipeline==='Onboarding Pipeline');
+  if(cfg.source==='Sales Pipeline')deals=deals.filter(d=>(d.pipeline||'Sales Pipeline')==='Sales Pipeline');else if(cfg.source==='Customer Onboarding')deals=deals.filter(d=>d.pipeline==='Customer Onboarding');
   if(cfg.owner&&cfg.owner!=='any')deals=deals.filter(d=>cfg.owner==='me'?d.owner==='AM':d.owner===cfg.owner);
   const rows=deals.map(d=>({d,age:dashDealAgeDays(d)})).filter(x=>x.age>=thresh).sort((a,b)=>b.age-a.age);
   if(!rows.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No stale deals — nice!"/>);
@@ -5655,7 +5655,7 @@ function omFieldSchema(object,props,rows){
       F('opendeals','Open deals','number',null,r=>dealsForCompany(r).open),F('days','Days since activity','number',null,r=>r.days),F('website','Website','text'),F('createdAt','Created date','date',null,r=>r.createdAt)];
   } else if(object==='lead'){
     fields=[F('name','Name','text'),F('company','Company name','text'),F('title','Job title','text'),F('companyDomain','Company domain','text'),F('email','Email','text'),F('phone','Phone','text'),
-      F('source','Source','select',LEAD_SOURCES),F('status','Status','select',LEAD_STATUSES),F('pipeline','Pipeline','select',['Sales Pipeline','Onboarding Pipeline']),
+      F('source','Source','select',LEAD_SOURCES),F('status','Status','select',LEAD_STATUSES),F('pipeline','Pipeline','select',['Sales Pipeline','Customer Onboarding']),
       F('industry','Industry','select',['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']),F('owner','Owner','owner',ownerOpts,r=>r.owner),
       F('estValueNum','Estimated value','currency',null,r=>r.estValueNum!=null?r.estValueNum:parseMoney(r.estValue)),F('score','Score','number',null,r=>r.score),
       F('employeesSize','Employees size','number',null,r=>r.employeesSize),
@@ -7887,7 +7887,7 @@ function PipelinePage({goTo,nav}){
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
-  const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal whose pipeline has no real board (e.g. legacy 'Onboarding Pipeline') falls back to the default pipeline so it is never invisible
+  const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal carrying a legacy/renamed pipeline value with no real board falls back to the default pipeline so it is never invisible
   const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key&&!d.deleted&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
@@ -7897,11 +7897,18 @@ function PipelinePage({goTo,nav}){
   const allVisible=active.stages.flatMap(dealsFor);
   publishRecordCtx('deal',allVisible.map(d=>d.id));
   const totalVal=allVisible.reduce((a,d)=>a+parseMoney(d.value),0);
+  // P0-4: KPIs are COMPUTED from the live board (previously Won/Avg/Win-rate + all deltas were hardcoded strings).
+  const _openBd=allVisible.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');
+  const _wonBd=allVisible.filter(d=>d.stageKey==='won');
+  const _lostBd=allVisible.filter(d=>d.stageKey==='lost');
+  const _openVal=_openBd.reduce((a,d)=>a+parseMoney(d.value),0);
+  const _wonVal=_wonBd.reduce((a,d)=>a+parseMoney(d.value),0);
+  const _winRate=(_wonBd.length+_lostBd.length)?Math.round(_wonBd.length*100/(_wonBd.length+_lostBd.length)):null;
   const METRICS=[
-    {label:'Pipeline',value:fmtK(totalVal),delta:'+12%',up:true,Icon:I.GitBranch,colors:'bg-brand-500/10 border-brand-500/20 text-brand-300'},
-    {label:'Won',value:'$134k',delta:'+31%',up:true,Icon:I.TrendUp,colors:'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'},
-    {label:'Avg deal',value:'$11.5k',delta:'+4%',up:true,Icon:I.BarChart,colors:'bg-violet-500/10 border-violet-500/20 text-violet-300'},
-    {label:'Win rate',value:'68%',delta:'-2%',up:false,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
+    {label:'Pipeline',value:fmtK(_openVal),delta:_openBd.length+' open',up:null,Icon:I.GitBranch,colors:'bg-brand-500/10 border-brand-500/20 text-brand-300'},
+    {label:'Won',value:fmtK(_wonVal),delta:_wonBd.length+' won',up:true,Icon:I.TrendUp,colors:'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'},
+    {label:'Avg deal',value:_openBd.length?fmtK(_openVal/_openBd.length):'—',delta:'open avg',up:null,Icon:I.BarChart,colors:'bg-violet-500/10 border-violet-500/20 text-violet-300'},
+    {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostBd.length+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
   ];
   const GC='28px 1fr 132px 64px 34px';
   // Stage rollups shared by the List + Forecast views and the topbar weighted total.
@@ -7953,7 +7960,7 @@ function PipelinePage({goTo,nav}){
                 <button onClick={delPipeline} disabled={pipelines.length<=1} title={pipelines.length<=1?'Only pipeline — cannot delete':'Delete this pipeline'} aria-label="Delete pipeline" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',pipelines.length<=1?'text-white/20 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={14}/></button>
               </React.Fragment>)}
             </div>
-            <p className="text-white/45 text-[12.5px] pl-0.5">{allVisible.length} open deals · {fmtK(totalVal)} total</p>
+            <p className="text-white/45 text-[12.5px] pl-0.5">{_openBd.length} open deal{_openBd.length!==1?'s':''} · {fmtK(_openVal)} pipeline</p>
           </div>
         }
           rightSlot={<>
@@ -7975,7 +7982,7 @@ function PipelinePage({goTo,nav}){
             {effCanObject('Deals','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal'):goTo('add-deal')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Deal</button>}
           </>}/>
         <div className="shrink-0 border-b border-white/[0.05] px-7 py-2 flex items-center gap-x-6 gap-y-1 flex-wrap overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
-          {METRICS.map(m=>(<div key={m.label} className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">{m.label}</span><span className="text-[14px] font-semibold text-white tabular-nums">{m.value}</span><span className={['text-[10px] font-medium inline-flex items-center gap-0.5',m.up?'text-emerald-400':'text-red-400'].join(' ')}>{m.up?<I.TrendUp size={8} stroke={2.6}/>:<I.TrendDown size={8} stroke={2.6}/>}{m.delta}</span></div>))}
+          {METRICS.map(m=>(<div key={m.label} className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-medium">{m.label}</span><span className="text-[14px] font-semibold text-white tabular-nums">{m.value}</span><span className={['text-[10px] font-medium inline-flex items-center gap-0.5',m.up==null?'text-white/40':(m.up?'text-emerald-400':'text-red-400')].join(' ')}>{m.up==null?null:(m.up?<I.TrendUp size={8} stroke={2.6}/>:<I.TrendDown size={8} stroke={2.6}/>)}{m.delta}</span></div>))}
           <div className="flex items-center gap-2 shrink-0"><span className="text-[10px] uppercase tracking-[0.14em] text-brand-300/70 font-medium">Forecast</span><span className="text-[14px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</span><span className="text-[10px] text-brand-300/70">weighted</span></div>
         </div>
         {boardView==='board'&&<div className="pipe-mob-tabs shrink-0 border-b border-white/[0.05] px-3 py-2 hidden items-center gap-1.5 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
@@ -8129,7 +8136,7 @@ function DealDetailPage({goTo,nav}){
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
     updateDeal(d.id,{[k]:v});
   };
-  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Onboarding Pipeline']},{key:'dStage',label:'Stage',type:'pill',options:DEAL_STAGES_ALL},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
+  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:['Sales Pipeline','Customer Onboarding']},{key:'dStage',label:'Stage',type:'pill',options:DEAL_STAGES_ALL},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
@@ -8635,7 +8642,7 @@ function adSourceByKey(k){return AD_SOURCE_DEFS.find(s=>s.key===k)||AD_SOURCE_DE
 const AD_FIELD_LABELS={full_name:'Full name',first_name:'First name',last_name:'Last name',email:'Email',phone_number:'Phone',company_name:'Company',city:'City',postal_code:'Postal code',job_title:'Job title',message:'Message'};
 // CRM fields an ad-form field can map INTO (right side of the mapping editor). Mirrors contact fields.
 const AD_CRM_FIELDS=[{key:'name',label:'Full name'},{key:'first',label:'First name'},{key:'last',label:'Last name'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'co',label:'Company'},{key:'title',label:'Job title'},{key:'loc',label:'City / location'},{key:'__ignore',label:"— Don't import"}];
-const AD_PIPELINES=['Sales Pipeline','Onboarding Pipeline'];
+const AD_PIPELINES=['Sales Pipeline','Customer Onboarding'];
 // Lead forms (one mapping each) — Part B. Multiple forms per source supported.
 const AD_LEAD_FORMS_SEED=[
   {id:'lf_meta_1',sourceKey:'meta-ads',name:'Spring Promo — Demo Request',campaign:'Spring Promo 2026',asset:'Bloom Creative',pipeline:'Sales Pipeline',stage:'New',tag:'meta-lead',owner:'Round-robin',
@@ -8813,7 +8820,7 @@ function ConvertLeadModal({lead,close,onConfirm}){
               <CvtField label="Deal name" wide><CvtInput value={deal.name} onChange={e=>setDeal(st=>({...st,name:e.target.value}))}/></CvtField>
               <CvtField label="Value"><div className="flex items-center gap-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40"><span className="text-white/40 text-[13px]">$</span><input value={deal.value} onChange={e=>setDeal(st=>({...st,value:e.target.value}))} placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></CvtField>
               <CvtField label="Expected close date"><CvtInput type="date" value={deal.close} onChange={e=>setDeal(st=>({...st,close:e.target.value}))} style={{colorScheme:'dark'}}/></CvtField>
-              <CvtField label="Pipeline" wide><CvtSelect value={deal.pipeline} onChange={e=>setDeal(st=>({...st,pipeline:e.target.value}))} options={['Sales Pipeline','Onboarding Pipeline']}/></CvtField>
+              <CvtField label="Pipeline" wide><CvtSelect value={deal.pipeline} onChange={e=>setDeal(st=>({...st,pipeline:e.target.value}))} options={['Sales Pipeline','Customer Onboarding']}/></CvtField>
               <CvtCarry label="Also carried:" items={['Source: '+(lead.source||'—'),'Owner: '+ownerName,tagStr,'Placed in first stage']}/>
             </div>):(<div className="px-4 pb-4 pt-3 border-t border-white/[0.05]"><p className="text-[12px] text-white/40">Turn on the toggle to create a deal from this lead.</p></div>))}
           </div>
@@ -14188,7 +14195,7 @@ function SettingsTeamPage({goTo}){
 // ?? Settings Properties ??????????????????????????????????????????????????????
 const PROP_TYPES=['Text','Long text','Number','Currency','Single select','Multi select','Date','Date range','Boolean','Email','Phone','URL','Lookup','Autocomplete'];
 const PROP_TYPE_ICON={'Text':I.Note,'Long text':I.Note,'Number':I.Hash,'Currency':I.Dollar,'Single select':I.ChevronDown,'Multi select':I.Layers,'Date':I.Calendar,'Date range':I.Calendar,'Boolean':I.Check,'Email':I.Mail,'Phone':I.Phone,'URL':I.Globe,'Lookup':I.Building,'Autocomplete':I.Search};
-const PROP_PIPELINES=['Sales Pipeline','Onboarding Pipeline'];
+const PROP_PIPELINES=['Sales Pipeline','Customer Onboarding'];
 const PROP_STAGES=['Qualified','Proposal','Negotiation','Won','Lost'];
 function propSeed(){
   const F=(o)=>Object.assign({create:false,detail:'secondary',col:false,required:false,important:false,unique:false,sensitive:false,help:'',defaultValue:'',options:[],adv:{pipelines:[],stages:[],condField:'',condOp:'is',condValue:''}},o);
@@ -14243,7 +14250,7 @@ function propSeed(){
       {g:'Deal basics',open:true,fields:[
         F({id:'d_name',label:'Name',type:'Text',create:true,detail:'primary',col:true,required:true,system:true}),
         F({id:'d_amount',label:'Amount',type:'Currency',create:true,detail:'primary',col:true,important:true}),
-        F({id:'d_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',system:true,options:['Sales Pipeline','Onboarding Pipeline']}),
+        F({id:'d_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',system:true,options:['Sales Pipeline','Customer Onboarding']}),
         F({id:'d_stage',label:'Stage',type:'Single select',create:true,detail:'primary',col:true,system:true,options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
         F({id:'d_prob',label:'Probability',type:'Number',detail:'primary',col:true}),
         F({id:'d_close',label:'Expected close date',type:'Date',create:true,detail:'primary',col:true}),
@@ -14274,7 +14281,7 @@ function propSeed(){
       {g:'Qualification',open:true,fields:[
         F({id:'l_source',label:'Source',type:'Single select',create:true,detail:'primary',col:true,options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),
         F({id:'l_status',label:'Status',type:'Single select',create:true,detail:'primary',col:true,options:['New','Contacted','Nurturing','Sales-Ready','Disqualified']}),
-        F({id:'l_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',col:true,options:['Sales Pipeline','Onboarding Pipeline']}),
+        F({id:'l_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',col:true,options:['Sales Pipeline','Customer Onboarding']}),
         F({id:'l_close',label:'Expected close date',type:'Date',create:true,detail:'primary',col:true}),
         F({id:'l_value',label:'Estimated value',type:'Currency',create:true,detail:'primary',col:true,important:true}),
         F({id:'l_owner',label:'Owner',type:'Lookup',create:true,detail:'primary',col:true}),
