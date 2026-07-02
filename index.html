@@ -2200,7 +2200,7 @@ function ARLookup({value,onChange,options,placeholder,onCreateNew,Icon,error}){
     {open&&<div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
       <div className="p-2 border-b border-white/[0.06]"><div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04]"><I.Search size={12} className="text-white/35"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="flex-1 bg-transparent outline-none text-[12.5px] text-white placeholder:text-white/30"/></div></div>
       <div className="max-h-[200px] overflow-y-auto scroll-area py-1">
-        {filtered.map(o=>(<button key={o} type="button" onClick={()=>{onChange(o);setOpen(false);setQ('');}} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:arPick()}}>{arInitials(o)}</span><span className="flex-1 text-[12.5px] text-white/80 truncate">{o}</span>{value===o&&<I.Check size={12} className="text-brand-300"/>}</button>))}
+        {filtered.map((o,i)=>(<button key={o+'#'+i} type="button" onClick={()=>{onChange(o);setOpen(false);setQ('');}} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors"><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:arPick()}}>{arInitials(o)}</span><span className="flex-1 text-[12.5px] text-white/80 truncate">{o}</span>{value===o&&<I.Check size={12} className="text-brand-300"/>}</button>))}
         {filtered.length===0&&!q&&<p className="px-3 py-2 text-[12px] text-white/30">No records yet.</p>}
       </div>
       {q.trim()&&!exact&&<button type="button" onClick={()=>{onCreateNew&&onCreateNew(q.trim());onChange(q.trim());setOpen(false);setQ('');}} className="w-full flex items-center gap-2 px-3 py-2.5 border-t border-white/[0.06] text-left hover:bg-brand-500/10 transition-colors text-brand-300"><I.Plus size={13}/><span className="text-[12.5px] font-medium">Create "{q.trim()}"</span></button>}
@@ -3682,6 +3682,22 @@ function OnboardingDropdown({options,value,onChange,placeholder}){
   useClickOutside(ref,()=>setOpen(false));
   return(<div ref={ref} className="relative"><button type="button" onClick={()=>setOpen(!open)} className={['w-full flex items-center justify-between gap-2 bg-white/[0.04] border rounded-xl px-3.5 py-3 text-[14px] transition-all',open?'border-brand-500/50 bg-white/[0.05] shadow-[0_0_0_3px_rgba(99,102,241,0.12)]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')}><span className={value?'text-white':'text-white/30'}>{value||placeholder}</span><I.ChevronDown size={14} stroke={2} className={'text-white/40 transition-transform '+(open?'rotate-180':'')}/></button>{open&&(<div className="absolute z-20 left-0 right-0 mt-2 rounded-xl border border-white/[0.08] p-1.5" style={{background:'var(--pop)',backdropFilter:'blur(16px)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>{options.map(o=>(<button key={o} type="button" onClick={()=>{onChange(o);setOpen(false);}} className={['w-full text-left px-3 py-2 rounded-lg text-[13px] flex items-center justify-between transition-colors',value===o?'bg-brand-500/15 text-brand-200':'text-white/70 hover:bg-white/[0.04] hover:text-white'].join(' ')}>{o}{value===o&&<I.Check size={13} stroke={2.4} className="text-brand-400"/>}</button>))}</div>)}</div>);
 }
+let _onbPipeChoice=null; // pipeline template picked during onboarding (step 2); PipelinePage adds that board on first mount
+function onbExtraPipeline(){
+  if(_onbPipeChoice==='agency')return {id:3,name:'Client Delivery',stages:[
+    {id:'st_ag1',key:'ag_lead',real:true,name:'Lead',color:'#60a5fa',prob:20},
+    {id:'st_ag2',key:'ag_scoping',real:true,name:'Scoping',color:'#818cf8',prob:40},
+    {id:'st_ag3',key:'ag_proposal',real:true,name:'Proposal',color:'#a78bfa',prob:60},
+    {id:'st_ag4',key:'ag_active',real:true,name:'Active',color:'#34d399',prob:80},
+    {id:'st_ag5',key:'ag_delivered',real:true,name:'Delivered',color:'#10b981',prob:100},
+  ]};
+  if(_onbPipeChoice==='custom')return {id:3,name:'My Pipeline',stages:[
+    {id:'st_c1',key:'c_stage1',real:true,name:'Stage 1',color:'#60a5fa',prob:25},
+    {id:'st_c2',key:'c_stage2',real:true,name:'Stage 2',color:'#a78bfa',prob:60},
+    {id:'st_c3',key:'c_won',real:true,name:'Won',color:'#34d399',prob:100},
+  ]};
+  return null;
+}
 function OnboardingPage({step,goTo}){
   const [company,setCompany]=React.useState('');
   const [industry,setIndustry]=React.useState('');
@@ -3747,7 +3763,7 @@ function OnboardingPage({step,goTo}){
                       <div><label className="text-[12px] font-medium text-white/70 block mb-2">Industry</label><OnboardingDropdown options={['Agency','Consulting','SaaS','Service business','Other']} value={industry} onChange={setIndustry} placeholder="Choose your industry"/></div>
                       <div><div className="flex items-center justify-between mb-2"><label className="text-[12px] font-medium text-white/70">Team size</label><span className="text-[11px] text-white/40">Pick what’s closest</span></div><div className="grid grid-cols-4 gap-2">{['Just me','2–3','4–5','5+'].map(o=>{const s=teamSize===o;return(<button key={o} onClick={()=>setTeamSize(o)} className={['px-3 py-2.5 rounded-xl text-[13px] font-medium border transition-all',s?'bg-brand-500/15 border-brand-500/40 text-brand-200 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] text-white/60 hover:text-white hover:border-white/[0.16]'].join(' ')}>{o}</button>);})}</div></div>
                     </div>)}
-                    {step===2&&(<div className="flex flex-col gap-3">{PIPES.map(p=>{const s=pipeline===p.key;return(<button key={p.key} onClick={()=>setPipeline(p.key)} className={['flex items-center gap-4 p-4 rounded-2xl border text-left transition-all',s?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}><div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0',s?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><p.Icon size={18}/></div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{p.name}</p><p className="text-[12px] text-white/50 mt-0.5 leading-relaxed">{p.desc}</p></div><span className={['w-5 h-5 rounded-full border flex items-center justify-center shrink-0',s?'bg-brand-500 border-brand-500':'border-white/20'].join(' ')}>{s&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</span></button>);})}</div>)}
+                    {step===2&&(<div className="flex flex-col gap-3">{PIPES.map(p=>{const s=pipeline===p.key;return(<button key={p.key} onClick={()=>{setPipeline(p.key);_onbPipeChoice=p.key;}} className={['flex items-center gap-4 p-4 rounded-2xl border text-left transition-all',s?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(99,102,241,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}><div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0',s?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><p.Icon size={18}/></div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{p.name}</p><p className="text-[12px] text-white/50 mt-0.5 leading-relaxed">{p.desc}</p></div><span className={['w-5 h-5 rounded-full border flex items-center justify-center shrink-0',s?'bg-brand-500 border-brand-500':'border-white/20'].join(' ')}>{s&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</span></button>);})}</div>)}
                     {step===3&&(<div className="flex flex-col gap-3">{INTEGS.map(it=>{const st=integ[it.key]||'idle';return(<div key={it.key} className="flex items-center gap-3.5 p-4 rounded-2xl border border-white/[0.08] bg-white/[0.03]"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-[13px] shrink-0" style={{background:it.color+'22',color:it.color,border:`1px solid ${it.color}40`}}>{it.name[0]}</div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{it.name}</p><p className="text-[12px] text-white/50 mt-0.5">{it.desc}</p>{st==='connected'&&<button onClick={()=>disconnectInteg(it.key)} className="text-[11px] text-white/40 hover:text-red-300 mt-1 transition-colors">Disconnect</button>}</div>{st==='connected'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/12 text-emerald-300 border border-emerald-500/25"><I.Check size={13} stroke={2.6}/>Connected</span>):st==='connecting'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 border border-brand-500/30 bg-brand-500/10"><span className="w-3.5 h-3.5 rounded-full border-2 border-brand-300/30 border-t-brand-300 animate-spin"/>Connecting…</span>):(<button onClick={()=>connectInteg(it.key)} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-medium border border-brand-500/30 text-brand-300 hover:bg-brand-500/10 transition-all">Connect</button>)}</div>);})}</div>)}
                     {step===4&&(<div className="flex flex-col gap-4">
                       <div>
@@ -7752,7 +7768,7 @@ function PipelinePage({goTo,nav}){
   const viewOptsRef=React.useRef(null);
   const SALES_PROB={prospecting:10,qualified:30,proposal:55,negotiation:75,won:100,lost:0};
   const STAGE_COLORS=['#94a3b8','#818cf8','#a78bfa','#fbbf24','#34d399','#60a5fa','#f472b6','#f87171','#22d3ee','#facc15','#fb923c','#2dd4bf'];
-  const [pipelines,setPipelines]=React.useState(()=>[
+  const [pipelines,setPipelines]=React.useState(()=>{const _base=[
     {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50}))},
     {id:2,name:'Customer Onboarding',stages:[
       {id:'ob1',key:'ob1',name:'Kickoff',color:'#60a5fa',prob:20,demo:[{id:'o1',company:'Acme Inc',value:'$12,000',owner:'AM',ownerColor:'#6366f1',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'2d',score:'cold'},{id:'o2',company:'Bloom Studio',value:'$8,500',owner:'SC',ownerColor:'#3b82f6',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'4d',score:'cold'}]},
@@ -7760,8 +7776,8 @@ function PipelinePage({goTo,nav}){
       {id:'ob3',key:'ob3',name:'Training',color:'#a78bfa',prob:75,demo:[{id:'o4',company:'Forge & Co',value:'$18,000',owner:'AM',ownerColor:'#6366f1',tag:'Active',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'1d',score:'warm'}]},
       {id:'ob4',key:'ob4',name:'Live',color:'#34d399',prob:100,demo:[{id:'o5',company:'Northwind',value:'$31,000',owner:'JR',ownerColor:'#ec4899',tag:'Live',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'3d',score:'won'}]},
     ]},
-  ]);
-  const [activeId,setActiveId]=React.useState(1);
+  ];const _onbEx=onbExtraPipeline();return _onbEx?[..._base,_onbEx]:_base;});
+  const [activeId,setActiveId]=React.useState(()=>onbExtraPipeline()?3:1);
   const [pipeMenu,setPipeMenu]=React.useState(false);
   const [mobStage,setMobStage]=React.useState(0);
   const [cfgOpen,setCfgOpen]=React.useState(false);
