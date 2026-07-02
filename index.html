@@ -4378,6 +4378,16 @@ function dealRotInfo(d,stage){
 }
 // P0-2: stamp a deal's stage entry — stageEnteredAt (ms) + first stageHistory entry. Spread into every create path.
 function dealStageStamp(stageKey,by){const at=Date.now();return{stageEnteredAt:at,stageHistory:[{stageKey,at,by:by||'AM'}]};}
+// P0-3: terminal-stage detection by stage KEY (survives renames), exact-name fallback for user-created
+// stages. Replaces the old /won|live/ name regex — a stage named 'Live' no longer false-positives as Won.
+function dealTerminalKind(stageOrName){
+  const isObj=stageOrName&&typeof stageOrName==='object';
+  const key=isObj?stageOrName.key:null;
+  const nm=String(isObj?(stageOrName.name||''):(stageOrName||'')).trim().toLowerCase();
+  if(key==='won')return'won';if(key==='lost')return'lost';
+  if(nm==='won')return'won';if(nm==='lost')return'lost';
+  return null;
+}
 function DashEmptyBody({def,goTo,nav,label}){return(<div className="flex flex-col h-full"><DashHdr name={def.name}/><WidgetEmpty Icon={def.Icon} goTo={goTo} nav={nav} label={label}/></div>);}
 // 1 — Tasks Due Today / Overdue
 function DashTasksDue({def,cfg,goTo}){
@@ -7874,7 +7884,7 @@ function PipelinePage({goTo,nav}){
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
   const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:'AM'}]};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
-  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const nm=(toStage.name||'').toLowerCase();const kind=/lost/.test(nm)?'lost':/won|live/.test(nm)?'won':null;if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
+  const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
   const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal whose pipeline has no real board (e.g. legacy 'Onboarding Pipeline') falls back to the default pipeline so it is never invisible
@@ -7916,10 +7926,10 @@ function PipelinePage({goTo,nav}){
   const allChecked=listIds.length>0&&listIds.every(id=>selected.includes(id));
   const toggleAll=()=>setSelected(allChecked?[]:listIds.slice());
   const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
-  const lvStage=(d,toStage)=>{if(!_dEdit||!d._stage||d._stage.id===toStage.id)return;applyMove({id:d.id,fromStageId:d._stage.id},toStage);lvToast('Moved “'+(d.name||d.company)+'” to '+toStage.name);};
+  const lvStage=(d,toStage)=>{if(!_dEdit||!d._stage||d._stage.id===toStage.id)return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd:{id:d.id,fromStageId:d._stage.id},toStage,kind});return;}applyMove({id:d.id,fromStageId:d._stage.id},toStage);lvToast('Moved “'+(d.name||d.company)+'” to '+toStage.name);};
   const lvOwner=(d,m)=>{if(!_dEdit)return;const patch={owner:m.avatar,ownerColor:m.color};if(_deals.some(x=>x.id===d.id))setDeals(ds=>ds.map(x=>x.id===d.id?{...x,...patch}:x));else setStages(ss=>ss.map(s=>s.demo?{...s,demo:s.demo.map(x=>x.id===d.id?{...x,...patch}:x)}:s));lvToast('Owner set to '+m.name);};
   const lvOpen=(d)=>{if(d._stage&&d._stage.real)goTo('deal-detail',d.id);};
-  const onBulkStage=(toStage)=>{const ids=selected.slice();ids.forEach(id=>{const d=listFlat.find(x=>x.id===id);if(d&&d._stage&&d._stage.id!==toStage.id)applyMove({id,fromStageId:d._stage.id},toStage);});lvToast(ids.length+' deal'+(ids.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
+  const onBulkStage=(toStage)=>{const ids=selected.slice();const moves=ids.map(id=>{const d=listFlat.find(x=>x.id===id);return (d&&d._stage&&d._stage.id!==toStage.id)?{id,fromStageId:d._stage.id}:null;}).filter(Boolean);if(!moves.length){setSelected([]);return;}const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({bulk:moves,toStage,kind});return;}moves.forEach(m=>applyMove(m,toStage));lvToast(moves.length+' deal'+(moves.length>1?'s':'')+' moved to '+toStage.name);setSelected([]);};
   const dealColCtx={goTo,onOpen:lvOpen,onStage:lvStage,onOwner:lvOwner,stages:active.stages,readOnly:!_dEdit,canEdit:_dEdit,canDelete:_dDel};
   if(selPipe&&selPipe.object&&selPipe.object!=='deal')return(<ObjectBoard objKind={selPipe.object} pipelines={allPipelines} activeId={activeId} onSwitch={setActiveId} onNewDeal={addPipeline} onDeletePipeline={()=>deleteAuxPipeline(activeId)} goTo={goTo}/>);
   return(
@@ -8038,7 +8048,7 @@ function PipelinePage({goTo,nav}){
         <AppFooter note={boardView==='board'?"Drag deals between stages to move them":undefined}/>
         {newPipeOpen&&<NewPipelineModal onClose={()=>setNewPipeOpen(false)} customObjects={_customObjects} onCreateDeal={addPipeline} onSelect={addAuxPipeline}/>}
       </div>
-      {outcomePrompt&&(()=>{const od=allVisible.find(x=>x.id===outcomePrompt.dd.id)||{};return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={od.name||od.company} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const dd=outcomePrompt.dd,ts=outcomePrompt.toStage,kind=outcomePrompt.kind;applyMove(dd,ts);setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast('Deal marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);setOutcomePrompt(null);}}/>);})()}
+      {outcomePrompt&&(()=>{const _bulk=outcomePrompt.bulk||null;const od=_bulk?{}:(allVisible.find(x=>x.id===outcomePrompt.dd.id)||{});return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={_bulk?(_bulk.length+' deal'+(_bulk.length>1?'s':'')):(od.name||od.company)} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const ts=outcomePrompt.toStage,kind=outcomePrompt.kind;const moves=_bulk||[outcomePrompt.dd];moves.forEach(m=>applyMove(m,ts));const _ids=new Set(moves.map(m=>m.id));setDeals(ds=>ds.map(x=>_ids.has(x.id)?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:'Alex Morgan'}}:x));window.__nrturToast&&window.__nrturToast((moves.length>1?moves.length+' deals':'Deal')+' marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&!_bulk&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);if(_bulk)setSelected([]);setOutcomePrompt(null);}}/>);})()}
       {importDeals&&<BulkImportWizard object='deal' close={()=>setImportDeals(false)} onToast={(m)=>{}}/>}
       {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveDealView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={dealSmartMgr.canShare}/>}
       {/* Edit-stages drawer (right side) */}
@@ -8112,7 +8122,7 @@ function DealDetailPage({goTo,nav}){
   const stageIdx=DEAL_STAGE_ORDER.indexOf(stage);const nextStage=DEAL_STAGE_ORDER[stageIdx+1];const color=DEAL_STAGE_COLOR[stage];
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
-  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const low=(stageName||'').toLowerCase();const kind=/lost/.test(low)?'lost':/won|live/.test(low)?'won':null;if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}]});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
+  const commitStage=(stageName)=>{const k=DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:'AM'}]});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);};
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
