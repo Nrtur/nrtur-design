@@ -1358,6 +1358,25 @@ function FolderEditModal({initial,canTeam,onSave,onClose}){
     </div>
   </div>);
 }
+// Delete-folder flow: choose what happens to the items inside — keep them (move to another folder / Ungrouped) or, where the surface supports it, delete them too.
+function FolderDeleteModal({folder,count,otherFolders,canDeleteItems,onConfirm,onClose}){
+  const [mode,setMode]=React.useState('move');
+  const [target,setTarget]=React.useState('');
+  useEscKey(onClose);
+  const OPT=(k,Icon,title,desc,danger)=>{const a=mode===k;return(<button key={k} type="button" onClick={()=>setMode(k)} className={['w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all',a?(danger?'bg-red-500/[0.08] border-red-500/40':'bg-brand-500/10 border-brand-500/40'):'bg-white/[0.02] border-white/[0.08] hover:border-white/[0.16]'].join(' ')}><span className={['w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ring-1',a?(danger?'bg-red-500/15 text-red-300 ring-red-500/30':'bg-brand-500/15 text-brand-300 ring-brand-500/30'):'bg-white/[0.04] text-white/40 ring-white/[0.06]'].join(' ')}><Icon size={14}/></span><span className="min-w-0 flex-1"><span className={['block text-[13px] font-semibold',danger?'text-red-200':'text-white'].join(' ')}>{title}</span><span className="block text-[11.5px] text-white/45 mt-0.5 leading-relaxed">{desc}</span></span><span className={['w-[18px] h-[18px] rounded-full border flex items-center justify-center shrink-0 mt-0.5',a?(danger?'bg-red-500 border-red-500':'bg-brand-500 border-brand-500'):'border-white/20'].join(' ')}>{a&&<I.Check size={10} stroke={3} style={{color:'white'}}/>}</span></button>);};
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden max-w-full">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><p className="text-white text-[15px] font-semibold flex items-center gap-2"><I.Trash size={14} className="text-red-300"/>Delete “{folder.name}”?</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="px-6 py-5 flex flex-col gap-3" style={{background:'var(--s850)'}}>
+        <p className="text-[12.5px] text-white/55">This folder holds <span className="text-white font-semibold">{count} item{count>1?'s':''}</span>. What should happen to {count>1?'them':'it'}?</p>
+        {OPT('move',I.Folder,'Keep the items','Move them to another folder, or leave them Ungrouped.',false)}
+        {mode==='move'&&<div className="relative"><select value={target} onChange={e=>setTarget(e.target.value)} className="w-full appearance-none px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}><option value="" style={{background:'var(--s900)'}}>Ungrouped (no folder)</option>{otherFolders.map(f=>(<option key={f.id} value={f.id} style={{background:'var(--s900)'}}>{f.name}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"><I.ChevronDown size={13}/></span></div>}
+        {canDeleteItems&&OPT('delete',I.Trash,'Delete the items too','Permanently deletes the '+count+' item'+(count>1?'s':'')+' inside along with the folder.',true)}
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07]" style={{background:'var(--s850)'}}><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>onConfirm({mode,target})} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all',mode==='delete'?'bg-red-500 hover:bg-red-400':'bg-brand-500 hover:bg-brand-400 shadow-brand'].join(' ')}>{mode==='delete'?'Delete folder & items':'Delete folder'}</button></div>
+    </div>
+  </div>);
+}
 // Small hook surfaces use to host the "New folder" modal.
 function useFolderCreate(api){
   const [open,setOpen]=React.useState(false);
@@ -1400,18 +1419,19 @@ function MoveToFolderButton({api,itemId,sm,className}){
 // THE shared collapsible folder group: header (drag · chevron · color · name · count · ⋯) + body.
 // variant 'card' (wide pages) or 'rail' (narrow 220px view rail). Self-contains rename/recolor/
 // delete (confirm → items to Ungrouped) + folder-reorder & item-drop drag-and-drop.
-function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,children}){
+function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,getId,onDeleteItems,children}){
   const folder=group.folder;const isUng=!folder;const manage=!isUng&&canManage;const rail=variant==='rail';
   const menuRef=React.useRef(null);
   const [menuOpen,setMenuOpen]=React.useState(false);
   const [editOpen,setEditOpen]=React.useState(false);
+  const [delOpen,setDelOpen]=React.useState(false);
   const [over,setOver]=React.useState(false);
   const {confirmNode,openConfirm}=useConfirm();
   const accept=()=>(_fldItemDrag&&_fldItemDrag.surface===surface)||(_fldDrag&&_fldDrag.surface===surface&&folder&&_fldDrag.fromId!==folder.id);
   const onDrop=(e)=>{e.preventDefault();setOver(false);
     if(_fldItemDrag&&_fldItemDrag.surface===surface){const it=_fldItemDrag.itemId;const was=api.folderOf(it);_fldItemDrag=null;api.move(it,folder?folder.id:null);if(was!==(folder?folder.id:null))_ftoast(folder?('Moved to “'+folder.name+'”'):'Moved to Ungrouped');return;}
     if(_fldDrag&&_fldDrag.surface===surface&&folder){if(_fldDrag.fromId!==folder.id)api.reorder(_fldDrag.fromId,folder.id);_fldDrag=null;}};
-  const del=()=>{setMenuOpen(false);openConfirm({title:'Delete “'+folder.name+'” folder?',body:'The folder is removed and its items move to Ungrouped. No items are deleted.',confirmLabel:'Delete folder',danger:true,onConfirm:()=>{api.remove(folder.id);_ftoast('Folder deleted — items moved to Ungrouped');}});};
+  const del=()=>{setMenuOpen(false);if(count===0){openConfirm({title:'Delete “'+folder.name+'” folder?',body:'The folder is empty — nothing else is affected.',confirmLabel:'Delete folder',danger:true,onConfirm:()=>{api.remove(folder.id);_ftoast('Folder deleted');}});return;}setDelOpen(true);};
   const dndProps={draggable:manage,onDragStart:()=>{if(manage)_fldDrag={surface,fromId:folder.id};},onDragEnd:()=>{_fldDrag=null;},onDragOver:(e)=>{if(accept()){e.preventDefault();if(!over)setOver(true);}},onDragLeave:()=>{if(over)setOver(false);},onDrop};
   const hdr=rail?(
     <div {...dndProps} className={['group/fh flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors',over?'bg-brand-500/[0.12] ring-1 ring-brand-500/30':'hover:bg-white/[0.03]'].join(' ')}>
@@ -1446,11 +1466,12 @@ function FolderGroup({surface,api,group,count,open,onToggle,variant,canManage,ch
       <button onClick={del} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/>Delete folder</button>
     </AnchoredMenu>}
     {editOpen&&<FolderEditModal initial={folder} canTeam={api.canTeam} onSave={(a)=>{api.update(folder.id,a);setEditOpen(false);_ftoast('Folder updated');}} onClose={()=>setEditOpen(false)}/>}
+    {delOpen&&<FolderDeleteModal folder={folder} count={count} otherFolders={api.folders.filter(f=>f.id!==folder.id)} canDeleteItems={!!onDeleteItems} onClose={()=>setDelOpen(false)} onConfirm={(choice)=>{const gid=getId||((x)=>x.id);if(choice.mode==='delete'&&onDeleteItems){onDeleteItems((group.items||[]).map(gid));api.remove(folder.id);_ftoast('Folder and '+count+' item'+(count>1?'s':'')+' deleted');}else{(group.items||[]).forEach(it=>api.move(gid(it),choice.target||null));api.remove(folder.id);_ftoast(choice.target?'Folder deleted — items moved':'Folder deleted — items moved to Ungrouped');}setDelOpen(false);}}/>}
     {confirmNode}
   </div>);
 }
 // Orchestrator for wide "card"/list surfaces: folders + Ungrouped + New-folder, given a renderItem.
-function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint}){
+function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint,onDeleteItems}){
   const groups=api.group(items,getId);
   const {newFolderNode,openNewFolder}=useFolderCreate(api);
   return(<div className="flex flex-col gap-3">
@@ -1461,7 +1482,7 @@ function FolderedCards({surface,api,items,getId,renderItem,itemsClass,hint}){
     {groups.map(g=>{
       const folder=g.folder;const key=folder?folder.id:'__ungrouped__';
       if(!folder&&g.items.length===0&&api.folders.length>0)return null;
-      return(<FolderGroup key={key} surface={surface} api={api} group={g} count={g.items.length} open={api.isOpen(key)} onToggle={()=>api.toggle(key)} variant="card" canManage={folderCanManage(folder,api.canTeam)}>
+      return(<FolderGroup key={key} surface={surface} api={api} group={g} count={g.items.length} open={api.isOpen(key)} onToggle={()=>api.toggle(key)} variant="card" canManage={folderCanManage(folder,api.canTeam)} getId={getId} onDeleteItems={onDeleteItems}>
         {g.items.length?<div className={itemsClass||'flex flex-col gap-3'}>{g.items.map(renderItem)}</div>:<p className="text-[12px] text-white/30 px-1 py-3">Empty folder — drag items here or use “Move to folder”.</p>}
       </FolderGroup>);
     })}
@@ -14076,21 +14097,31 @@ function SettingsTeamPage({goTo}){
     {name:'Marcus Rios',email:'marcus@bloom.co',role:'Sales Rep',avatar:'MR',color:'#ec4899',status:'Pending'},
   ]);
   const setRole=(email,role)=>setMembers(ms=>ms.map(x=>x.email===email?{...x,role}:x));
-  const {teamInvites}=React.useContext(CrmDataContext);
-  const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending'}));
+  const {teamInvites,setTeamInvites}=React.useContext(CrmDataContext);
+  const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending',_invite:true}));
   const allMembers=[...members,...inviteRows];
+  const [inviteEmail,setInviteEmail]=React.useState('');
+  const _tToast=(m,k)=>window.__nrturToast&&window.__nrturToast(m,k||'success');
+  const sendTeamInvite=()=>{const em=inviteEmail.trim();if(!em)return;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){_tToast('Enter a valid email address','warning');return;}if(allMembers.some(x=>(x.email||'').toLowerCase()===em.toLowerCase())){_tToast(em+' is already a member or has a pending invite','warning');return;}setTeamInvites(a=>[...a,{email:em,role:inviteRole,invitedAt:'Just now'}]);setInviteEmail('');setInviteModal(false);_tToast('Invite sent to '+em);};
+  const resendInvite=(m)=>_tToast('Invite resent to '+m.email);
+  const setInviteRoleFor=(email,role)=>setTeamInvites(a=>a.map(x=>x.email===email?{...x,role}:x));
+  const revokeInvite=(m)=>openConfirm({title:'Revoke invite for '+m.email+'?',body:'They will no longer be able to join with this invite. You can invite them again any time.',confirmLabel:'Revoke invite',danger:true,onConfirm:()=>{setTeamInvites(a=>a.filter(x=>(x.email||'').toLowerCase()!==(m.email||'').toLowerCase()));_tToast('Invite revoked');}});
+  const removeMember=(m)=>openConfirm({title:`Remove ${m.name}?`,body:'They will lose access immediately. You can re-invite them at any time.',confirmLabel:'Remove',danger:true,onConfirm:()=>{setMembers(ms=>ms.filter(x=>x.email!==m.email));_tToast(m.name+' removed from the workspace');}});
   const COL='1.5fr 1.5fr 110px 110px 80px';
   return(
-    <SettingsShell active="settings-team" goTo={goTo} subtitle="5 of 5 seats used - Pro plan"
+    <SettingsShell active="settings-team" goTo={goTo} subtitle={allMembers.filter(m=>m.status==='Active').length+' active · '+allMembers.filter(m=>m.status==='Pending').length+' pending — Pro plan'}
       actions={<button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button>}>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Member</span><span>Email</span><span>Role</span><span>Status</span><span/></div>
         {allMembers.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<allMembers.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
           <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</div><p className="text-[13px] font-medium text-white truncate">{m.name}</p></div>
           <p className="text-[12px] text-white/55 truncate">{m.email}</p>
-          <RoleSelect compact value={m.role} onChange={v=>setRole(m.email,v)}/>
+          <RoleSelect compact value={m.role} onChange={v=>m._invite?setInviteRoleFor(m.email,v):setRole(m.email,v)}/>
           <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 w-fit',m.status==='Active'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-amber-500/12 text-amber-300 ring-amber-500/25'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',m.status==='Active'?'bg-emerald-400':'bg-amber-400'].join(' ')}/>{m.status}</span>
-          <button onClick={()=>openConfirm({title:`Remove ${m.name}?`,body:'They will lose access immediately. You can re-invite them at any time.',confirmLabel:'Remove',danger:true})} className="text-white/40 hover:text-red-400 transition-colors ml-auto"><I.Trash size={13}/></button>
+          <div className="flex items-center gap-1.5 justify-end ml-auto">
+            {m.status==='Pending'&&<button onClick={()=>resendInvite(m)} title="Resend invite" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"><I.Send size={13}/></button>}
+            <button onClick={()=>m._invite?revokeInvite(m):removeMember(m)} title={m._invite?'Revoke invite':'Remove member'} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/></button>
+          </div>
         </div>))}
       </div>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -14098,7 +14129,7 @@ function SettingsTeamPage({goTo}){
         {[{who:'Alex Morgan',color:'#3b82f6',action:'moved deal',target:'Forge & Co → Won',time:'2h ago'},{who:'Sarah Chen',color:'#8b5cf6',action:'sent email to',target:'James Rivera',time:'4h ago'},{who:'Jamie Kim',color:'#10b981',action:'created contact',target:'Barrett Digital',time:'Yesterday 3:12 PM'},{who:'Alex Morgan',color:'#3b82f6',action:'invited member',target:'marcus@bloom.co',time:'Yesterday 11:40 AM'},{who:'Ravi Lee',color:'#f59e0b',action:'deleted contact',target:'old@company.net',time:'May 30, 2:05 PM'},{who:'Sarah Chen',color:'#8b5cf6',action:'logged call with',target:'Priya Nair',time:'May 29, 4:33 PM'}].map((a,i,arr)=>(<div key={i} className={['flex items-center gap-3 px-6 py-3',i<arr.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:a.color}}>{a.who.split(' ').map(w=>w[0]).join('')}</div><p className="text-[12.5px] text-white/70 flex-1 min-w-0"><span className="font-medium text-white">{a.who}</span> {a.action} <span className="text-white/85">{a.target}</span></p><span className="text-[11px] text-white/35 shrink-0">{a.time}</span></div>))}
       </div>
       {confirmNode}
-      {inviteModal&&(<div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}}><div className="w-full max-w-md rounded-2xl border border-white/[0.10] p-7" style={{background:'var(--s850)'}}><div className="flex items-center justify-between mb-5"><p className="text-white text-[18px] font-semibold">Invite teammate</p><button onClick={()=>setInviteModal(false)} className="text-white/45 hover:text-white"><I.X size={16}/></button></div><input type="email" placeholder="Email address" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-3"/><div className="mb-5"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><div className="flex gap-3"><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Send invite</button></div></div></div>)}
+      {inviteModal&&(<div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}}><div className="w-full max-w-md rounded-2xl border border-white/[0.10] p-7" style={{background:'var(--s850)'}}><div className="flex items-center justify-between mb-5"><p className="text-white text-[18px] font-semibold">Invite teammate</p><button onClick={()=>setInviteModal(false)} className="text-white/45 hover:text-white"><I.X size={16}/></button></div><input type="email" autoFocus value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendTeamInvite();}} placeholder="Email address" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/40 mb-3"/><div className="mb-5"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><div className="flex gap-3"><button onClick={()=>setInviteModal(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={sendTeamInvite} disabled={!inviteEmail.trim()} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Send invite</button></div></div></div>)}
     </SettingsShell>
   );
 }
@@ -16558,7 +16589,7 @@ function SettingsAutomationsPage({goTo}){
               </div>
             ):(<div className="flex flex-col gap-4">
               <div className="flex items-center justify-end -mb-1"><button onClick={()=>setTplOpen(true)} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200"><I.Layers size={12}/>Browse templates</button></div>
-              <FolderedCards surface="automations" api={fldAuto} items={autos} itemsClass="flex flex-col gap-4" renderItem={(a)=>{const st=AUTO_ST[a.status];const isErr=a.status==='error',isDraft=a.status==='draft',muted=a.status==='paused'||isDraft;return(
+              <FolderedCards surface="automations" api={fldAuto} items={autos} itemsClass="flex flex-col gap-4" onDeleteItems={(ids)=>{const _s=new Set(ids.map(String));setAutos(a=>a.filter(x=>!_s.has(String(x.id))));}} renderItem={(a)=>{const st=AUTO_ST[a.status];const isErr=a.status==='error',isDraft=a.status==='draft',muted=a.status==='paused'||isDraft;return(
                 <div key={a.id} draggable onDragStart={()=>folderBeginItemDrag('automations',a.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',muted?'bg-white/[0.02] opacity-90':'bg-white/[0.035]',isErr?'':muted?'border-white/[0.05]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')} style={isErr?{borderColor:'rgba(239,68,68,0.3)',boxShadow:'0 0 0 1px rgba(239,68,68,0.12),0 0 30px rgba(239,68,68,0.08)'}:{}}>
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',a.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':isErr?'bg-red-500/10 text-red-300 ring-red-500/20':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><div className="flex items-center gap-2 mt-1 flex-wrap">{(()=>{const m=TRIGGER_META(a.trigger);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:m.color+'24',color:m.color}}><m.Icon size={10} stroke={2.4}/>{m.cat}</span>);})()}<p className="text-[12px] text-white/55"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div></div>
