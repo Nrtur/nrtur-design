@@ -12,7 +12,7 @@ _Companion to [`AUTOMATIONS_AUDIT.md`](AUTOMATIONS_AUDIT.md). Where the audit co
 
 nrtur now has a genuinely **excellent visual flow builder that executes real effects** — the interpreter walks the authored node tree ([`autoRunNodes`, index.html:17332](../../index.html)) and actually mutates records (assign/round-robin, add/remove tag, `updateField` Owner/Status/Priority, enroll, branch), fed by a multi-entity created-event bus (`fireEntityAutomationEvents`, 17372) plus full deal-lifecycle firing. **What it lacks is the paradigm every serious CRM ships _next to_ the canvas:** a per-object **rule layer** — Assignment/routing, Scoring, Validation, SLA/Escalation, and Approval as declarative IF-condition-THEN rows an admin configures in seconds, evaluated on **create / edit / save** (not just create). This is exactly where Zoho and Salesforce win, and it's the highest-leverage thing nrtur can add.
 
-**Readiness (rule-based automation dimension): `46 / 100` today → `88 / 100` if the plan in §6 is built.**
+**Readiness (rule-based automation dimension): `46 / 100` at research time → `~58 / 100` now that Phase 0 (the trigger substrate) has shipped → `88 / 100` once the rest of §6 is built.**
 
 ---
 
@@ -176,9 +176,9 @@ Eight additions, each designed to **reuse existing engines** — the `omApplyFil
 
 ### ⚡ Critical
 
-**1 · Trigger substrate — edit/tag/status dispatch + a simulated-time scheduler**
-_The single highest-leverage enabler; everything below is half-inert without it._
-Emit `fireRecordUpdate` / `fireStatusChanged` / `fireTagAdded` / `fireTagRemoved` at the record-mutation sites (the interpreter's `_patch` at 17334, the edit-drawer save near 2407, inline status/tag edits), diffing old→new. Add a lightweight time engine — a single `setInterval` tick with a visible **"Simulate: advance 1 day"** dev control — that scans records for age/due/inactivity breaches, fires the interpreter for "Deal inactive 7 days" / "Task overdue" / "Date field reached", and **executes the previously-skipped `wait`/`waitUntil` steps** (replacing the skip at 17340). Reuses `fireEntityAutomationEvents` verbatim — only new **emitters** are needed. _Backend: durable timers need a server (one line)._
+**1 · Trigger substrate — edit/tag/status dispatch + a simulated-time scheduler** &nbsp;✅ **SHIPPED** (`b4eee2f` · `41487e1` · `56d39a0`)
+_The single highest-leverage enabler; everything below was half-inert without it._
+A `fireRecordUpdate(ent,before,after)` helper now diffs a record edit and fires Contact/Lead/Company **updated · status · tag · owner** triggers, wired into the canonical `update*` helpers, the list inline setters, and the bulk bar. A simulated-time engine (`_autoNow` + a **"+1 day"** control on the Automations header) scans for age/due/inactivity breaches and fires "Deal inactive 7 days" / "Task overdue" / "Invoice overdue" (deduped), and **`wait`/`wait-until` nodes now pause and resume** on advance instead of being skipped. Reuses `fireEntityAutomationEvents` verbatim. _Verified headless (CDP): edit-triggers fire + effects land; a paused flow resumes on advance; nested waits no longer drop the flow tail. Backend: durable timers need a server (one line)._
 
 **2 · Unified AND/OR condition model — shared by rules AND automations**
 Promote the `omApplyFilter` `{match, conds}` model into the single condition primitive used everywhere: the automation condition node, the deal cond-gate, and every new rule type. Swap `autoEvalCond` (17318) to `omApplyFilter([record], model, fields).length > 0`; `dealCondPass` (17296) becomes a thin wrapper. Render the automation condition node with the **existing `OmCondRow`/`OmFiltersButton` UI** (5860-5903). Zero new UI components — and it removes the awkward gap where a Smart List can currently express richer logic than an automation.
@@ -211,7 +211,7 @@ The umbrella UI: `Settings > <Object> > Rules` listing all rule types as plain I
 
 Ordered so each phase unblocks the next; every phase is in-memory-feasible.
 
-0. **Foundation — trigger substrate.** Edit/tag/status emitters at the mutation sites + a simulated-time scheduler that drains waits and scans breaches. _Unblocks everything._
+0. ✅ **Foundation — trigger substrate (SHIPPED, `b4eee2f`/`41487e1`/`56d39a0`).** Edit/tag/status emitters at the mutation sites + a simulated-time scheduler that drains waits and scans breaches. _Unblocked everything below._
 1. **Unified condition model.** Refactor `autoEvalCond` + `dealCondPass` onto `omApplyFilter`; render conditions with `OmCondRow`. _Now every rule can express AND/OR._
 2. **Assignment / Routing Rules.** Promote the booking routing UI into a shared persisted table; real least-busy + per-pool round-robin; wire into create + ad-lead.
 3. **Scoring Rules.** Scorecard config + `recomputeScore`; replace the static seed; wire the score action + threshold dispatch.

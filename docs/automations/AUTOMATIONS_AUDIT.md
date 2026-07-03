@@ -123,9 +123,9 @@ _● full · ◐ partial · ○ none. `◐→●` = lifted by the #1/#2 fixes._
 
 ## 7. Remaining gaps (ranked)
 
-- **[High] No scheduler / clock.** Every `setInterval` is UI-only, so time/date/inactivity/delay triggers and wait-node timers can't run — rotting-deal alerts, renewals, dunning, no-reply follow-ups, birthdays, real delays. _Fix: one app-level "automation tick" that scans for elapsed-time/date conditions and advances wait timers via the entity bus._
+- **✅ [was High] No scheduler / clock — SHIPPED (`41487e1`).** A simulated-time engine (`_autoNow` + a "+1 day" control on the Automations header) now scans for elapsed-time breaches and fires "Deal inactive 7 days" / "Task overdue" / "Invoice overdue", and **wait/wait-until nodes now pause and resume** on advance (top-level; nested waits run inline). Real durable timers remain a backend concern.
 - **[High] Edit opens a blank builder.** Every card's Edit calls `goTo('automation-builder')` with no id → always the default flow, and Save creates a **new** record. _Fix: pass `editId`, seed the builder from the record, `savedId = editId`._
-- **[High] Update / tag / status-change dispatch not wired.** The bus fires "created" but not the many update/tag/status mutation sites. _Fix: dispatch from the field-commit / tag / status handlers per entity._
+- **✅ [was High] Update / tag / status-change dispatch — SHIPPED (`b4eee2f`, `56d39a0`).** `fireRecordUpdate` now diffs record edits and fires Contact/Lead/Company updated · status · tag · owner triggers from the canonical `update*` helpers, the list inline setters, and the bulk bar.
 - **[High] No AND/OR condition grouping in automations.** Every condition is a single clause; the real AND/OR engine (`omApplyFilter`) is bound to Smart Lists only. _Fix: reuse `omApplyFilter` + its AND/OR toggle in the entry filter and condition nodes (see the rule-based plan)._
 - **[Medium] No enrollment ledger / re-enrollment control** at the automation level (enroll action is deduped, but no per-automation enroll-once).
 - **[Medium] No real failure states / retries** — every run is hardcoded `success`.
@@ -138,9 +138,9 @@ _● full · ◐ partial · ○ none. `◐→●` = lifted by the #1/#2 fixes._
 
 1. ✅ **Persist node tree + interpreter** (`d2220db`).
 2. ✅ **Multi-entity event bus — created triggers** (`add9b28`).
-3. **Scheduler tick** — time/date/inactivity + wait timers.
+3. ✅ **Scheduler tick** — time/date/inactivity + wait timers (`41487e1`, `56d39a0`).
 4. **Fix Edit** — load the clicked automation, update in place.
-5. **Extend the bus** — update / tag / status-change dispatch.
+5. ✅ **Extend the bus** — update / tag / status-change dispatch (`b4eee2f`, `56d39a0`).
 6. **AND/OR conditions in automations** — reuse `omApplyFilter`.
 7. **Rule-based automation layer** — assignment / scoring / validation / SLA / approval rules (see [`RULES_BASED_AUTOMATION.md`](RULES_BASED_AUTOMATION.md)).
 8. **Enrollment ledger + failure states/retries.**
