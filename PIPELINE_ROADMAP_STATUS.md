@@ -45,6 +45,7 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 | Hero name no longer wraps when the stage word changes | `2de6537` |
 | **Pipeline membership is id-based** (`stagePlacements` pipelineId), not the name string — survives renames | `17008c3` |
 | Deal card label is the real, live **Next action** (was a static `tag` string that never updated) | `7790b07` |
+| **Cross-pipeline automation** — connected-pipeline handoffs (enroll/move to another pipeline on a trigger stage; config UI + seeded Won→Onboarding rule) | `8c3907e` |
 
 ### Research & docs
 | Item | Commit |
@@ -60,7 +61,6 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 ### Pipeline module — behind the leaders (from the verified matrix)
 | Priority | Item | Why / who has it | Est |
 |---|---|---|---|
-| High | **Cross-pipeline automation** — auto-move/copy a deal to another pipeline on Won (e.g. Sales→Onboarding) | Bigin Connected Pipelines, Bitrix24 tunnels; our automation engine + multi-pipeline are both live, so this is cheap | M |
 | High | **Gate deal *creation*** into a gated stage (gates currently fire only on transitions) | HubSpot conditional stage properties fire on create-in-stage too | S |
 | Med | **Close-date forecast view** (kanban by expected-close-date columns) | Pipedrive forecast view | M |
 | Med | **`includedForConversion`** flag on lost reasons (exclude junk losses like duplicates from win-rate) | Capsule — unique, cheap, improves report honesty | S |
