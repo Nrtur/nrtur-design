@@ -20119,6 +20119,50 @@ function payDayShift(n){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDa
 function payDateLabel(d){return PAY_MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
 function payRandToken(){return Math.random().toString(36).slice(2,10);}
 function payLinkUrl(p){return 'https://nrtur.app/pay/'+p;}
+// Escape any free-text before it lands in the downloadable invoice document — desc/contact/company/notes are user-entered.
+const payEsc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PAY_SELLER={name:'nrtur, Inc.',addr:'2261 Market Street, San Francisco, CA 94114',email:'billing@nrtur.app',taxId:'EIN 88-1234567'};
+// Pure builder for the customer-facing invoice document (returns an HTML string; no side effects).
+// Mirrors the on-screen detail drawer exactly: currency threaded everywhere, Subtotal/Discount/Tax shown when present
+// so the printed math reconciles, the real status is stamped, and every interpolated field is escaped.
+function payInvoiceDocHtml(inv){
+  if(!inv)return '';
+  const ccy=inv.currency;const m=(n)=>payEsc(payMoney(n,ccy));
+  const items=(inv.items||[]).map((it)=>({desc:it.desc,q:Number(it.qty)||0,p:Number(it.price)||0}));
+  const st=payEffStatus(inv);const meta=(typeof PAY_INV_ST!=='undefined'&&PAY_INV_ST[st])||null;
+  const stLabel=(meta&&meta.label)||st||'';
+  const stColor=st==='paid'?'#0a7d33':st==='overdue'?'#c2410c':st==='void'?'#6b7280':st==='refunded'?'#b45309':st==='sent'?'#2563eb':'#4f46e5';
+  const stSub=st==='paid'?('Paid'+(inv.paidDate?(' on '+payEsc(inv.paidDate)):'')):st==='refunded'?('Refunded'+(inv.refundedDate?(' on '+payEsc(inv.refundedDate)):'')):st==='void'?'Cancelled — no longer payable':'';
+  const rows=items.length?items.map((it)=>'<tr><td class="d">'+payEsc(it.desc||'—')+'</td><td class="n">'+it.q+'</td><td class="n">'+m(it.p)+'</td><td class="n">'+m(Math.round(it.q*it.p*100)/100)+'</td></tr>').join(''):'<tr><td colspan="4" style="text-align:center;color:#999;padding:16px">No line items</td></tr>';
+  let breakdown='';
+  if(inv.discount>0||inv.tax>0){
+    breakdown+='<tr class="sum"><td colspan="3" class="sl">Subtotal</td><td class="n">'+m(inv.subtotal!=null?inv.subtotal:inv.amount)+'</td></tr>';
+    if(inv.discount>0)breakdown+='<tr class="sum"><td colspan="3" class="sl">Discount</td><td class="n" style="color:#0a7d33">-'+m(inv.discount)+'</td></tr>';
+    if(inv.tax>0)breakdown+='<tr class="sum"><td colspan="3" class="sl">Tax'+(inv.taxRate?(' ('+payEsc(inv.taxRate)+'%)'):'')+'</td><td class="n">'+m(inv.tax)+'</td></tr>';
+  }
+  const totalLabel=st==='paid'?'Amount paid':st==='refunded'?'Amount refunded':st==='void'?'Amount (voided)':'Amount due';
+  const notes=inv.notes?('<div class="notes"><div class="h">Notes</div>'+payEsc(inv.notes).replace(/\n/g,'<br>')+'</div>'):'';
+  const payline=((st==='sent'||st==='overdue')&&inv.link)?('<p class="pay">Pay online at <a href="'+payEsc(inv.link)+'">'+payEsc(inv.link)+'</a></p>'):'';
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice '+payEsc(inv.number||'')+'</title>'
+    +'<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#111;line-height:1.55}'
+    +'.top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}.brand{font-size:26px;font-weight:800;margin:0;letter-spacing:-.02em}.muted{color:#666}'
+    +'.badge{display:inline-block;padding:4px 12px;border-radius:999px;color:#fff;font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase}'
+    +'.grid{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin:26px 0}.grid .h{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:3px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}th,td{padding:8px 10px;overflow-wrap:anywhere}'
+    +'th{text-align:left;border-bottom:2px solid #111;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#444}'
+    +'td.d{border-bottom:1px solid #eee}td.n{text-align:right;border-bottom:1px solid #eee;font-variant-numeric:tabular-nums}'
+    +'tr.sum td{border:0;padding:3px 10px}td.sl{text-align:right;color:#555}tr.total td{border-top:2px solid #111;font-weight:800;font-size:15px;padding-top:10px}'
+    +'.notes{margin-top:24px}.notes .h{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:4px}'
+    +'.seller{margin-top:32px;padding-top:16px;border-top:1px solid #eee;color:#888;font-size:12px}.pay{margin-top:16px}@media print{body{margin:0}}</style></head><body>'
+    +'<div class="top"><div><h1 class="brand">nrtur</h1><p class="muted">Invoice '+payEsc(inv.number||'—')+'</p></div>'
+    +'<div style="text-align:right">'+(stLabel?('<span class="badge" style="background:'+stColor+'">'+payEsc(stLabel)+'</span>'):'')+(stSub?('<p class="muted" style="margin:6px 0 0;font-size:12px">'+stSub+'</p>'):'')+'</div></div>'
+    +'<div class="grid"><div><div class="h">Billed to</div><b>'+payEsc(inv.contact||'—')+'</b>'+(inv.company?('<br>'+payEsc(inv.company)):'')+(inv.email?('<br>'+payEsc(inv.email)):'')+'</div>'
+    +'<div style="text-align:right"><div class="h">Issued</div>'+payEsc(inv.issued||'—')+'<div class="h" style="margin-top:8px">Due</div>'+payEsc(inv.due||'—')+'<div class="h" style="margin-top:8px">Currency</div>'+payEsc(ccy||'USD')+'</div></div>'
+    +'<table><thead><tr><th style="width:52%">Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit price</th><th style="text-align:right">Amount</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody><tfoot>'+breakdown+'<tr class="total"><td colspan="3" style="text-align:right">'+totalLabel+'</td><td class="n">'+m(inv.amount)+'</td></tr></tfoot></table>'
+    +payline+notes
+    +'<div class="seller"><b>'+payEsc(PAY_SELLER.name)+'</b> · '+payEsc(PAY_SELLER.addr)+'<br>'+payEsc(PAY_SELLER.email)+' · '+payEsc(PAY_SELLER.taxId)+'</div></body></html>';
+}
 let _payInvSeq=1041;
 function payNextInvoiceNo(){return 'INV-'+(++_payInvSeq);}
 function payCopy(text,toast,label){try{navigator.clipboard&&navigator.clipboard.writeText(text);}catch(e){}if(toast)toast((label||'Link')+' copied ✓');}
@@ -20432,7 +20476,7 @@ function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,onEdit,onDuplicate,toas
   const voidInv=()=>openConfirm({title:'Void '+inv.number+'?',body:'This cancels the invoice. It stays on record but drops out of outstanding revenue and can no longer be paid.',confirmLabel:'Void invoice',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'void'});toast('Invoice '+inv.number+' voided');}});
   const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount,inv.currency)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount,inv.currency)+' · '+inv.number+' ✓');}});
   const sendReceipt=()=>toast('Receipt for '+inv.number+' sent to '+(inv.contact||'the customer')+' ✓');
-  const downloadPdf=()=>{try{const rows=(inv.items||[]).map(it=>'<tr><td>'+(it.desc||'')+'</td><td>'+it.qty+'</td><td>'+payMoney(it.price)+'</td><td style="text-align:right">'+payMoney(it.qty*it.price)+'</td></tr>').join('');const html='<!doctype html><meta charset="utf-8"><title>'+inv.number+'</title><body style="font-family:system-ui,Arial,sans-serif;max-width:680px;margin:40px auto;color:#111"><h1 style="margin:0">nrtur</h1><p style="color:#666">Invoice '+inv.number+' · Issued '+inv.issued+'</p><p>Bill to: <b>'+(inv.contact||'—')+'</b>'+(inv.company?(' · '+inv.company):'')+'<br>Due: '+inv.due+'</p><table style="width:100%;border-collapse:collapse;margin-top:16px"><thead><tr style="text-align:left;border-bottom:2px solid #111"><th>Description</th><th>Qty</th><th>Price</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr style="font-weight:700;border-top:2px solid #111"><td colspan="3">Total</td><td style="text-align:right">'+payMoney(inv.amount,inv.currency)+'</td></tr></tfoot></table></body>';const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=inv.number+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},120);}catch(e){}toast('Invoice '+inv.number+' downloaded ✓');};
+  const downloadPdf=()=>{if(!inv)return;try{const html=payInvoiceDocHtml(inv);const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(inv.number||'invoice')+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},120);toast('Invoice '+inv.number+' downloaded ✓');}catch(e){toast('Could not generate the invoice document — please try again.');}};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
