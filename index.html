@@ -1633,6 +1633,7 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Tags',page:'settings-tags'},
     {label:'Statuses',page:'settings-statuses'},
     {label:'Duplicates',page:'settings-duplicates'},
+    {label:'Assignment rules',page:'settings-assignment'},
     {label:'Automations',page:'settings-automations'},
     {label:'Sequences',page:'settings-sequences'},
     {label:'Forms',page:'settings-forms'},
@@ -3098,6 +3099,7 @@ const SETTINGS_GROUPS=[
     {label:'Import data',page:'settings-import',Icon:I.Upload},
     {label:'Export data',page:'settings-export',Icon:I.Download},
     {label:'Duplicates',page:'settings-duplicates',Icon:I.Copy},
+    {label:'Assignment rules',page:'settings-assignment',Icon:I.GitBranch},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
     {label:'Recycle bin',page:'settings-recycle-bin',Icon:I.History},
     {label:'Delete workspace',page:'settings-delete-workspace',Icon:I.Trash,danger:true,ownerOnly:true},
@@ -6339,6 +6341,57 @@ function DuplicatesView({object,showToolbar}){
   </div>);
 }
 // -- Part D: global Settings -> Duplicates page --
+// P2: Assignment / Routing Rules console — author per-object rules that set a new record's owner on create.
+const ASSIGN_OBJECTS=[['lead','Leads'],['contact','Contacts'],['company','Companies'],['deal','Deals']];
+const ASSIGN_THEN=[['leastBusy','Least busy rep'],['roundRobin','Round-robin'],['rep','Specific rep']];
+function AssignRuleRow({rule,fields,reps,readOnly,onChange,onRemove,onMove,idx,total}){
+  const M=reps;const tt=rule.thenType||'rep';
+  const inPool=(av)=>!(rule.pool&&rule.pool.length)||rule.pool.indexOf(av)>=0;
+  const togglePool=(av)=>{const cur=(rule.pool&&rule.pool.length)?rule.pool.slice():M.map(m=>m.avatar);const nx=cur.indexOf(av)>=0?cur.filter(x=>x!==av):[...cur,av];onChange({pool:nx.length>=M.length?[]:nx});};
+  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="w-6 h-6 rounded-lg bg-brand-500/12 text-brand-300 text-[11px] font-semibold flex items-center justify-center shrink-0 tabular-nums">{idx+1}</span>
+      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
+      <button onClick={()=>onMove(-1)} disabled={idx===0||readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white disabled:opacity-20 hover:bg-white/[0.05] shrink-0"><I.ChevronUp size={14}/></button>
+      <button onClick={()=>onMove(1)} disabled={idx===total-1||readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white disabled:opacity-20 hover:bg-white/[0.05] shrink-0"><I.ChevronDown size={14}/></button>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})}/>
+      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
+    </div>
+    <div className="flex items-start gap-2 flex-wrap">
+      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">IF</span>
+      <div className="min-w-0"><OmFiltersButton object={rule.object} fields={fields} model={rule.conds||{match:'AND',conds:[]}} onChange={m=>onChange({conds:m})}/></div>
+      <span className="text-[10.5px] text-white/30 mt-2">{(rule.conds&&rule.conds.conds&&rule.conds.conds.length)?'':'(matches every new record)'}</span>
+    </div>
+    <div className="flex items-center gap-2 flex-wrap mt-3">
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">THEN assign to</span>
+      {ASSIGN_THEN.map(([k,l])=>(<button key={k} onClick={()=>onChange({thenType:k})} disabled={readOnly} className={['px-2.5 py-1.5 rounded-lg text-[12px] font-medium border transition-all',tt===k?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{l}</button>))}
+    </div>
+    {tt==='rep'&&(<div className="mt-2.5 max-w-[220px]"><select value={rule.rep||(M[0]&&M[0].avatar)} onChange={e=>onChange({rep:e.target.value})} disabled={readOnly} style={{colorScheme:'dark'}} className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40">{M.map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>)}
+    {(tt==='roundRobin'||tt==='leastBusy')&&(<div className="mt-2.5"><p className="text-[10.5px] text-white/35 mb-1.5">Rep pool · {(rule.pool&&rule.pool.length)?rule.pool.length:M.length} of {M.length}</p><div className="flex items-center gap-1.5 flex-wrap">{M.map(m=>(<button key={m.avatar} onClick={()=>togglePool(m.avatar)} disabled={readOnly} className={['inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full text-[11.5px] border transition-all',inPool(m.avatar)?'bg-brand-500/12 text-white/80 border-brand-500/25':'bg-white/[0.03] text-white/35 border-white/[0.08] hover:border-white/[0.14]'].join(' ')}><span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:m.color}}>{m.avatar}</span>{m.name.split(' ')[0]}</button>))}</div></div>)}
+  </div>);
+}
+function SettingsAssignmentPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const rules=crm.routingRules||[];const setRules=crm.setRoutingRules;
+  const readOnly=!settingsIsAdmin();
+  const [obj,setObj]=React.useState('lead');
+  const reps=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
+  const liveRows=({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[obj]||[];
+  const fields=React.useMemo(()=>autoFieldsFor(obj,liveRows),[obj,liveRows.length]);
+  const objRules=rules.filter(r=>r.object===obj);
+  const addRule=()=>setRules(l=>[...l,{id:'ar'+Date.now(),object:obj,name:'New '+obj+' rule',enabled:true,conds:{match:'AND',conds:[]},thenType:'leastBusy',pool:[]}]);
+  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
+  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
+  const moveRule=(id,dir)=>setRules(l=>{const same=l.filter(r=>r.object===obj);const i=same.findIndex(r=>r.id===id);const j=i+dir;if(j<0||j>=same.length)return l;const arr=same.slice();const t=arr[i];arr[i]=arr[j];arr[j]=t;return [...l.filter(r=>r.object!==obj),...arr];});
+  return(<SettingsShell active="settings-assignment" goTo={goTo} subtitle="Route new records to the right rep automatically. Rules run top-to-bottom on create — the first match wins.">
+    <div className="max-w-3xl">
+      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] mb-5">{ASSIGN_OBJECTS.map(([k,l])=>{const n=rules.filter(r=>r.object===k).length;return(<button key={k} onClick={()=>setObj(k)} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',obj===k?'bg-brand-500/20 text-brand-200':'text-white/55 hover:text-white'].join(' ')}>{l}{n?<span className="ml-1 text-white/35 tabular-nums">{n}</span>:null}</button>);})}</div>
+      <div className="flex items-start gap-2 rounded-xl bg-white/[0.03] border border-white/[0.07] px-3.5 py-2.5 mb-4"><I.Zap size={13} className="text-brand-300 shrink-0 mt-0.5"/><p className="text-[11.5px] text-white/55 leading-relaxed"><span className="text-white/80 font-medium">Least busy</span> counts each rep's open deals + active leads and picks the lightest. A rule with no conditions matches every new record.</p></div>
+      <div className="flex flex-col gap-3">{objRules.length?objRules.map((r,i)=>(<AssignRuleRow key={r.id} rule={r} idx={i} total={objRules.length} fields={fields} reps={reps} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)} onMove={d=>moveRule(r.id,d)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.GitBranch size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No assignment rules for these records yet.</p></div>)}</div>
+      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+    </div>
+  </SettingsShell>);
+}
 function SettingsDuplicatesPage({goTo}){
   const crm=React.useContext(CrmDataContext);
   const [tab,setTab]=React.useState('contact');
@@ -12926,7 +12979,7 @@ function ReportsPage({goTo}){
 const SETTINGS_PAGE_META={
   'settings-general':'General','settings-properties':'Custom fields','settings-team':'Team','settings-permissions':'Permissions','settings-permission-matrix':'Permission matrix','settings-billing':'Billing',
   'settings-tags':'Tags','settings-statuses':'Statuses',
-  'settings-duplicates':'Duplicates','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
+  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
   'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
   // Personal
@@ -12938,7 +12991,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -22858,6 +22911,7 @@ function App(){
       {page==='settings-reengagement' && <SettingsReengagementPage {...p}/>}
       {page==='settings-privacy'  && <SettingsPrivacyPage {...p}/>}
       {page==='settings-duplicates' && <SettingsDuplicatesPage {...p}/>}
+      {page==='settings-assignment' && <SettingsAssignmentPage {...p}/>}
       {page==='settings-tags' && <SettingsTagsPage {...p}/>}
       {page==='settings-statuses' && <SettingsStatusesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
