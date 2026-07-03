@@ -8074,6 +8074,7 @@ function PipelinePage({goTo,nav}){
   const [cardF,setCardF]=React.useState({name:true,amount:true,contact:false,close:false,tags:true,rot:true});
   const [boardView,_setBoardView]=React.useState(()=>{try{return sessionStorage.getItem('nrtur-pipe-view')||'board';}catch(e){return 'board';}});
   const setBoardView=(v)=>{_setBoardView(v);try{sessionStorage.setItem('nrtur-pipe-view',v);}catch(e){}};
+  const [fcMode,setFcMode]=React.useState('stage'); // forecast view: 'stage' (weighted by stage) | 'date' (period columns by expected close)
   const [groupBy,setGroupBy]=React.useState('stage');
   const DEAL_GROUPS=[['stage','Stage'],['owner','Owner'],['score','Score'],['tag','Tag']];
   // List-view state: per-pipeline columns, multi-select, frozen first column.
@@ -8196,6 +8197,20 @@ function PipelinePage({goTo,nav}){
   const fc_openVal=fc_openRows.reduce((a,r)=>a+r.val,0);
   const fc_weightedTotal=fc_openRows.reduce((a,r)=>a+r.weighted,0);
   const fc_wonRow=fc_stageRows.find(r=>dealTerminalKind(r.stage)==='won');
+  // Forecast "by close date" (Pipedrive-style): bucket OPEN deals into period columns by expected close.
+  const fc_openDeals=fc_openRows.flatMap(r=>r.deals.map(d=>({d,prob:((d.probability!=null?d.probability:r.stage.prob)||0)})));
+  const _fcToday=new Date();const _fcSod=new Date(_fcToday.getFullYear(),_fcToday.getMonth(),_fcToday.getDate());
+  const _fcMk=(dt)=>dt.getFullYear()*12+dt.getMonth();const _fcNow=_fcMk(_fcToday);
+  const _fcMName=(off)=>new Date(_fcToday.getFullYear(),_fcToday.getMonth()+off,1).toLocaleString('en-US',{month:'short',year:'numeric'});
+  const fc_dateCols=[
+    {key:'overdue',label:'Overdue',accent:'#f87171',test:dt=>dt&&dt<_fcSod},
+    {key:'m0',label:_fcMName(0),sub:'this month',accent:'#818cf8',test:dt=>dt&&dt>=_fcSod&&_fcMk(dt)===_fcNow},
+    {key:'m1',label:_fcMName(1),accent:'#60a5fa',test:dt=>dt&&_fcMk(dt)===_fcNow+1},
+    {key:'m2',label:_fcMName(2),accent:'#34d399',test:dt=>dt&&_fcMk(dt)===_fcNow+2},
+    {key:'m3',label:_fcMName(3),accent:'#a78bfa',test:dt=>dt&&_fcMk(dt)===_fcNow+3},
+    {key:'later',label:'Later',accent:'#94a3b8',test:dt=>dt&&_fcMk(dt)>_fcNow+3},
+    {key:'none',label:'No close date',accent:'#64748b',test:dt=>!dt},
+  ].map(c=>{const items=fc_openDeals.filter(x=>c.test(omDate(x.d.closeDate)));const val=items.reduce((a,x)=>a+parseMoney(x.d.value),0);const wtd=items.reduce((a,x)=>a+parseMoney(x.d.value)*(x.prob/100),0);return{...c,items,val,wtd};}).filter(c=>c.items.length>0||['m0','m1','m2','m3'].includes(c.key));
   const LIST_GC='1fr 150px 120px 110px 64px 70px';
   // ── List view wiring: columns (per pipeline), sort, inline edits, bulk, selection ──
   const _dEdit=effCanObject('Deals','edit');const _dDel=effCanObject('Deals','delete');
@@ -8330,11 +8345,17 @@ function PipelinePage({goTo,nav}){
         </div>)}
         {boardView==='forecast'&&(
         <div className="flex-1 overflow-auto scroll-area p-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <div><p className="text-[13px] font-medium text-white">Weighted forecast</p><p className="text-[11px] text-white/45 mt-0.5">Open deals only · deal probability overrides stage probability</p></div>
-              <div className="text-right"><p className="text-[20px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</p><p className="text-[11px] text-white/45 tabular-nums">{fmtK(fc_openVal)} unweighted open</p></div>
+          <div className={fcMode==='date'?'':'max-w-3xl mx-auto'}>
+            <div className="flex items-center justify-between gap-3 mb-4 px-1 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div><p className="text-[13px] font-medium text-white">Weighted forecast</p><p className="text-[11px] text-white/45 mt-0.5">Open deals only · deal probability overrides stage probability</p></div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['stage','By stage'],['date','By close date']].map(([k,l])=>(<button key={k} onClick={()=>setFcMode(k)} className={['px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all',fcMode===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}>{l}</button>))}</div>
+                <div className="text-right"><p className="text-[20px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</p><p className="text-[11px] text-white/45 tabular-nums">{fmtK(fc_openVal)} unweighted open</p></div>
+              </div>
             </div>
+            {fcMode==='stage'?(
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden">
               {fc_openRows.map(r=>{const pct=fc_openVal>0?Math.round(r.val/fc_openVal*100):0;return(
                 <div key={r.stage.id} className="px-5 py-3.5 border-b border-white/[0.04] last:border-0">
@@ -8348,6 +8369,27 @@ function PipelinePage({goTo,nav}){
               <div className="px-5 py-3.5 flex items-center justify-between bg-white/[0.02]"><span className="text-[13px] font-semibold text-white">Weighted total</span><span className="text-[15px] font-semibold text-white tabular-nums">{fmtK(fc_weightedTotal)}</span></div>
               {fc_wonRow&&fc_wonRow.deals.length>0&&<div className="px-5 py-3 flex items-center justify-between border-t border-white/[0.04]"><span className="inline-flex items-center gap-2 text-[12px] text-emerald-300/90"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>Closed won · booked, not forecast</span><span className="text-[13px] font-semibold text-emerald-300 tabular-nums">{fc_wonRow.deals.length} · {fmtK(fc_wonRow.val)}</span></div>}
             </div>
+            ):(
+            <div className="flex gap-3 overflow-x-auto scroll-area pb-2">
+              {fc_dateCols.map(c=>(
+                <div key={c.key} className="w-[240px] shrink-0 flex flex-col rounded-2xl bg-white/[0.018] border border-white/[0.05] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-white/[0.05]" style={{background:'var(--hdr80)'}}>
+                    <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><span className="w-2 h-2 rounded-full shrink-0" style={{background:c.accent}}/><span className="text-[13px] font-medium text-white truncate">{c.label}</span></div><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono shrink-0">{c.items.length}</span></div>
+                    <div className="flex items-center justify-between mt-1.5"><span className="text-[12px] font-semibold text-white tabular-nums">{fmtK(c.val)}</span><span className="text-[10px] text-white/45 tabular-nums" title="Weighted (× probability)">{fmtK(c.wtd)} wtd</span></div>
+                  </div>
+                  <div className="p-2.5 flex flex-col gap-2 min-h-[80px]">
+                    {c.items.length===0&&<p className="text-[11px] text-white/25 text-center py-4">No deals</p>}
+                    {c.items.slice(0,40).map(({d,prob})=>(
+                      <button key={d.id} onClick={()=>goTo('deal-detail',d.id)} className="w-full text-left rounded-xl p-2.5 bg-white/[0.035] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors">
+                        <div className="flex items-start justify-between gap-2"><span className="text-[12px] font-medium text-white leading-tight truncate min-w-0">{d.name||d.company}</span><span className="text-[12px] font-semibold text-white tabular-nums shrink-0">{d.value}</span></div>
+                        <div className="flex items-center justify-between gap-2 mt-1.5"><span className="text-[10px] text-white/45 truncate">{d.company||'—'}</span><span className="text-[10px] font-mono text-white/40 shrink-0">{prob}%</span></div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            )}
           </div>
         </div>)}
         <AppFooter note={boardView==='board'?"Drag deals between stages to move them":undefined}/>
