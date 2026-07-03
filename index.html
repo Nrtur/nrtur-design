@@ -8073,6 +8073,173 @@ function NewPipelineModal({onClose,customObjects,onCreateDeal,onSelect}){
     </div>
   </div>);
 }
+// ── Stage bulk actions ─────────────────────────────────────────────────────────
+// Per-stage ⋯ menu on the board: act on every deal in a stage at once. Research-backed rails:
+// a review sheet before anything sends (HubSpot bulk-enroll pattern), per-record skip reasons
+// (DNC / suppressed / no email / already enrolled — auto-excluded, never silently mailed),
+// sequences created ONCE from a template then reused (never a new copy per click), and a
+// retroactive "run for deals already here" on stage automations (HubSpot enroll-existing).
+const SEQ_TEMPLATES=[
+  {key:'nudge',name:'Follow-up Nudge',stepLabels:['Email · gentle check-in','Wait 3 days','Email · value recap','Wait 4 days','Email · break-up note'],desc:'3 emails over 10 days'},
+  {key:'proposal',name:'Proposal Follow-Up Emails',stepLabels:['Email · proposal recap','Wait 2 days','Email · answer objections','Wait 5 days','Email · final call'],desc:'3 emails over 7 days'},
+  {key:'reengage',name:'Re-engagement Touch',stepLabels:['Email · checking back in','Wait 7 days','Email · relevant case study','Wait 7 days','Email · last touch'],desc:'3 emails over 14 days'},
+];
+const STAGE_EMAIL_TEMPLATES=['Quick check-in','Proposal follow-up','Next steps recap','Pricing questions answered'];
+// Same suppression rules the contact page enforces (Settings → Suppression list, simulated).
+function contactEmailSuppressed(email){const e=(email||'').toLowerCase();const dom=e.split('@')[1]||'';return ['unsub@acme.com','bounce@example.com','spam@test.io','blocked@co.org','old@company.net','donotcontact@firm.co'].includes(e)||['competitor.com','acme.com'].includes(dom);}
+// Resolve a stage's deals to UNIQUE, emailable contacts + an explicit skip list with reasons.
+function stageBulkAudience(deals,contacts,opts){
+  opts=opts||{};const seen={};const recipients=[];const skipped=[];
+  (deals||[]).forEach(d=>{
+    let c=null;
+    if(d.primaryContactId!=null)c=(contacts||[]).find(x=>x.id===d.primaryContactId&&!x.deleted);
+    if(!c&&d.primaryContact)c=(contacts||[]).find(x=>x.name===d.primaryContact&&!x.deleted);
+    if(!c){skipped.push({name:d.name||d.company||('Deal #'+d.id),reason:'No contact linked to the deal'});return;}
+    if(seen[c.id]){if(seen[c.id].deals)seen[c.id].deals.push(d);return;} // dedupe — one contact, many deals
+    const email=(c.email||'').trim();
+    let block=null;
+    if(!email)block='No email address';
+    else if(c.dnc)block='Do Not Contact';
+    else if(contactEmailSuppressed(email))block='Suppressed (email)';
+    else if(opts.enrolledIds&&opts.enrolledIds[c.id])block='Already in this sequence';
+    if(block){seen[c.id]={};skipped.push({name:c.name,reason:block});return;}
+    const rec={contact:c,deals:[d]};seen[c.id]=rec;recipients.push(rec);
+  });
+  return {recipients,skipped};
+}
+// Catch-up runner: apply ONE automation to deals already sitting in the stage (retroactive).
+// Mirrors fireDealAutomationEvents' effects but scoped to a single automation across many deals.
+function retroRunAutomation(auto,deals){
+  if(!_autoRt||!deals.length)return 0;
+  const stepLabels=(auto.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);
+  deals.forEach(deal=>{
+    if(stepLabels.some(l=>/task|remind|follow/i.test(l)))_autoRt.addTask({title:auto.name+': follow up on '+(deal.name||deal.company),deal,auto});
+    _autoRt.addActivity('deal',deal.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+auto.name+'" ran (catch-up)',body:'Applied to a deal already in the stage when catch-up was requested.'}));
+    _autoRt.addAutoLog({auto:auto.name,contact:deal.name||deal.company||'Deal',avatar:arInitials(deal.name||deal.company||'D'),color:'#6366f1',status:'success',steps:(auto.steps||[]).length+'/'+(auto.steps||[]).length,time:'Just now'});
+  });
+  _autoRt.setAutomations(list=>list.map(x=>x.id===auto.id?{...x,runs:(x.runs||0)+deals.length,lastRun:'Just now',success:x.success==null?100:x.success}:x));
+  window.__nrturToast&&window.__nrturToast('⚡ "'+auto.name+'" ran for '+deals.length+' deal'+(deals.length===1?'':'s'),'success');
+  return deals.length;
+}
+// Review sheet + flows for "Email stage" and "Enroll stage in sequence".
+function StageBulkModal({mode,stage,deals,pipeName,onClose}){
+  const crm=React.useContext(CrmDataContext);
+  useEscKey(onClose);
+  const [seq,setSeq]=React.useState(null); // sequence mode: chosen sequence (null = picker step)
+  const [tpl,setTpl]=React.useState(STAGE_EMAIL_TEMPLATES[0]); // email mode: template
+  const seqList=[...EMAIL_SEQ_DATA.map(s=>({id:'email'+s.id,name:s.name,steps:s.steps,enrolled:s.enrolled})),...(crm.customSeqs||[])];
+  const liveEnrolled=(sid)=>(crm.seqEnrollments||[]).filter(e=>e.seqId===sid).length;
+  const enrolledIds=seq?Object.fromEntries((crm.seqEnrollments||[]).filter(e=>e.seqId===seq.id).map(e=>[e.contactId,1])):null;
+  const {recipients,skipped}=stageBulkAudience(deals,crm.contacts,{enrolledIds});
+  const n=recipients.length;
+  const useTemplate=(t)=>{
+    const existing=(crm.customSeqs||[]).find(s=>s.fromTemplate===t.key); // enroll-once: reuse, never duplicate
+    if(existing){setSeq(existing);return;}
+    const ns={id:'cs_'+t.key,name:t.name,steps:t.stepLabels.length,stepLabels:t.stepLabels,enrolled:0,active:true,channel:'email',fromTemplate:t.key};
+    crm.setCustomSeqs(a=>[...a,ns]);setSeq(ns);
+  };
+  const confirm=()=>{
+    if(!n)return;
+    if(mode==='email'){
+      recipients.forEach(r=>{
+        crm.addActivity('contact',r.contact.id,mkAct('email',{ts:0,by:CURRENT_USER.avatar,title:'Bulk email — '+tpl,body:'Sent from the '+stage.name+' stage of '+pipeName+'.'}));
+        r.deals.forEach(d=>crm.addActivity('deal',d.id,mkAct('email',{ts:0,by:CURRENT_USER.avatar,title:'Bulk email — '+tpl,body:'Sent to '+r.contact.name+' via the stage bulk action.'})));
+      });
+      window.__nrturToast&&window.__nrturToast('Email sent to '+n+' contact'+(n===1?'':'s')+(skipped.length?' · '+skipped.length+' skipped':''),'success');
+    }else{
+      const at=Date.now();
+      const recs=recipients.map(r=>({id:'se'+at+'_'+r.contact.id,seqId:seq.id,seqName:seq.name,contactId:r.contact.id,contactName:r.contact.name,dealId:r.deals[0].id,stage:stage.name,pipeline:pipeName,at,by:CURRENT_USER.avatar}));
+      crm.setSeqEnrollments(a=>[...recs,...a]);
+      recipients.forEach(r=>crm.addActivity('contact',r.contact.id,mkAct('sequence',{ts:0,by:CURRENT_USER.avatar,title:'Enrolled in "'+seq.name+'"',body:'Added from the '+stage.name+' stage of '+pipeName+'. Replies and unsubscribes auto-unenroll.'})));
+      window.__nrturToast&&window.__nrturToast(n+' contact'+(n===1?'':'s')+' enrolled in "'+seq.name+'"'+(skipped.length?' · '+skipped.length+' skipped':''),'success');
+    }
+    onClose();
+  };
+  const pickStep=mode==='sequence'&&!seq;
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden max-h-[calc(100vh-4rem)]">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',mode==='email'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-violet-500/12 text-violet-300 ring-violet-500/25'].join(' ')}>{mode==='email'?<I.Send size={16}/>:<I.Zap size={16}/>}</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-white text-[15px] font-semibold truncate">{pickStep?('Enroll "'+stage.name+'" in a sequence'):mode==='email'?('Email everyone in "'+stage.name+'"'):('Enroll "'+stage.name+'" in “'+seq.name+'”')}</p>
+          <p className="text-white/45 text-[12px] truncate">{deals.length} deal{deals.length===1?'':'s'} in this stage · {pipeName}</p>
+        </div>
+        <button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button>
+      </div>
+      {pickStep?(
+      <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+        <div>
+          <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Your sequences</p>
+          <div className="flex flex-col gap-1.5">{seqList.map(s=>(<button key={s.id} data-seq-pick={s.name} onClick={()=>setSeq(s)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-brand-500/30 transition-all"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25"><I.Send size={13}/></span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{s.name}</p><p className="text-[11px] text-white/40">{s.steps} steps · {(s.enrolled||0)+liveEnrolled(s.id)} enrolled</p></div><I.ArrowRight size={13} className="text-white/25 shrink-0"/></button>))}</div>
+        </div>
+        <div>
+          <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Start from a template</p>
+          <div className="flex flex-col gap-1.5">{SEQ_TEMPLATES.map(t=>{const existing=(crm.customSeqs||[]).find(s=>s.fromTemplate===t.key);return(<button key={t.key} data-seq-tpl={t.key} onClick={()=>useTemplate(t)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left bg-white/[0.03] border border-dashed border-white/[0.10] hover:bg-white/[0.06] hover:border-violet-500/35 transition-all"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/25"><I.Sparkles size={13}/></span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{t.name}</p><p className="text-[11px] text-white/40">{t.desc}{existing?' · already created — will reuse':''}</p></div><span className="text-[11px] font-medium text-violet-300 shrink-0">{existing?'Use existing':'Create once & use'}</span></button>);})}</div>
+          <p className="text-[10.5px] text-white/30 mt-2 leading-relaxed">Templates create the sequence once. Enrolling again later reuses the same sequence — you never end up with duplicate copies.</p>
+        </div>
+      </div>
+      ):(
+      <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-3"><p className="text-[20px] font-semibold text-white tabular-nums" data-stage-ready>{n}</p><p className="text-[11px] text-white/45 mt-0.5">contact{n===1?'':'s'} ready</p></div>
+          <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-3"><p className="text-[20px] font-semibold text-white/70 tabular-nums" data-stage-skipped>{skipped.length}</p><p className="text-[11px] text-white/45 mt-0.5">skipped automatically</p></div>
+        </div>
+        {n>0&&<div className="flex flex-col gap-1">{recipients.slice(0,6).map(r=>(<div key={r.contact.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05]"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:r.contact.color||'#6366f1'}}>{r.contact.avatar||arInitials(r.contact.name)}</span><span className="text-[12.5px] text-white/85 truncate flex-1">{r.contact.name}</span><span className="text-[11px] text-white/35 truncate">{r.deals.length>1?(r.deals.length+' deals'):(r.deals[0].name||r.deals[0].company)}</span></div>))}{n>6&&<p className="text-[11px] text-white/35 px-1 pt-1">+{n-6} more</p>}</div>}
+        {skipped.length>0&&<div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3"><p className="text-[11px] font-medium text-amber-300 uppercase tracking-[0.14em] mb-1.5">Skipped — will not be contacted</p>{skipped.map((s,i)=>(<div key={i} className="flex items-center justify-between gap-3 py-0.5"><span className="text-[12px] text-white/70 truncate">{s.name}</span><span className="text-[11px] text-amber-300/80 shrink-0">{s.reason}</span></div>))}</div>}
+        {mode==='email'&&<div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Email template</label><select value={tpl} onChange={e=>setTpl(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}>{STAGE_EMAIL_TEMPLATES.map(t=>(<option key={t} value={t} style={{background:'var(--s900)'}}>{t}</option>))}</select></div>}
+        <p className="text-[10.5px] text-white/30 leading-relaxed">Do Not Contact, suppressed, and already-enrolled contacts are excluded automatically. One contact with several deals here {mode==='email'?'gets one email':'is enrolled once'}.</p>
+      </div>
+      )}
+      {!pickStep&&<div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        {mode==='sequence'?<button onClick={()=>setSeq(null)} className="text-[12px] text-white/45 hover:text-white transition-colors">‹ Choose another sequence</button>:<span/>}
+        <div className="flex items-center gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Cancel</button>
+          <button data-stage-confirm onClick={confirm} disabled={!n} className={['inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all',n?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{mode==='email'?<I.Send size={13}/>:<I.Zap size={13}/>}{mode==='email'?('Send '+n+' email'+(n===1?'':'s')):('Enroll '+n+' contact'+(n===1?'':'s'))}</button>
+        </div>
+      </div>}
+    </div>
+  </div>);
+}
+// Stage automation panel: the standing rule for FUTURE arrivals lives in automations
+// ("Deal moved to <stage>"); this modal manages it AND offers the retroactive catch-up
+// for deals already sitting in the stage — the piece stage triggers can't reach.
+function StageAutomationModal({stage,deals,pipeName,goTo,onClose}){
+  const crm=React.useContext(CrmDataContext);
+  useEscKey(onClose);
+  const trig='Deal moved to '+stage.name;
+  const matching=(crm.automations||[]).filter(a=>a.trigger===trig);
+  const toggle=(a)=>crm.setAutomations(list=>list.map(x=>x.id===a.id?{...x,status:x.status==='active'?'paused':'active'}:x));
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden max-h-[calc(100vh-4rem)]">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-amber-500/12 text-amber-300 ring-amber-500/25 shrink-0"><I.Zap size={16}/></div>
+        <div className="min-w-0 flex-1"><p className="text-white text-[15px] font-semibold truncate">Stage automation — {stage.name}</p><p className="text-white/45 text-[12px] truncate">Runs for every deal that ENTERS this stage · {pipeName}</p></div>
+        <button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-3 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+        {matching.length===0?(
+          <div className="text-center py-6">
+            <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/30"><I.Zap size={20}/></div>
+            <p className="text-[13.5px] font-medium text-white">No automation listens to this stage yet</p>
+            <p className="text-[12px] text-white/45 mt-1 max-w-[360px] mx-auto leading-relaxed">Create one with the trigger “{trig}” and every deal that enters {stage.name} will get it automatically.</p>
+            <button onClick={()=>{onClose();goTo('automation-builder');}} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>Open automation builder</button>
+          </div>
+        ):matching.map(a=>{const on=a.status==='active';return(
+          <div key={a.id} className="rounded-xl bg-white/[0.03] border border-white/[0.08] p-4">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1"><p className="text-[13.5px] font-medium text-white truncate">{a.name}</p><p className="text-[11px] text-white/40 mt-0.5">{(a.steps||[]).length} steps · {a.runs||0} runs · {on?'runs for every new arrival':'paused — new arrivals skip it'}</p></div>
+              <Toggle on={on} onChange={()=>toggle(a)}/>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/[0.05] flex items-center justify-between gap-3">
+              <p className="text-[11.5px] text-white/45 leading-snug flex-1">Catch-up: stage triggers only fire on entry — the {deals.length} deal{deals.length===1?'':'s'} already here never ran it.</p>
+              <button data-retro-run={a.id} disabled={!deals.length} onClick={()=>{retroRunAutomation(a,deals);onClose();}} className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',deals.length?'text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25':'text-white/25 bg-white/[0.03] border border-white/[0.06] cursor-not-allowed'].join(' ')}><I.Zap size={11}/>Run for {deals.length} deal{deals.length===1?'':'s'} now</button>
+            </div>
+          </div>);})}
+      </div>
+      <div className="flex items-center justify-end px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={onClose} className="px-4 py-2 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Close</button></div>
+    </div>
+  </div>);
+}
 function PipelinePage({goTo,nav}){
   const loading=useSkeleton(1000);
   const {deals:_deals,setDeals,customObjects:_customObjects,pipelines,setPipelines,dealReasons,setDealReasons,addActivity}=React.useContext(CrmDataContext); // P1-1: pipelines shared + persistent; P1-2: win/loss reason lists; P2-2: merge logs a timeline entry
@@ -8117,6 +8284,9 @@ function PipelinePage({goTo,nav}){
   const [reasonsOpen,setReasonsOpen]=React.useState(false); // P1-2: win/loss reason lists editor (opened from the edit-stages toolbar)
   const [reqEdit,setReqEdit]=React.useState(null); // P1-3: which stage's required-fields popover is open
   React.useEffect(()=>{if(reqEdit===null)return;const fn=e=>{if(!e.target.closest('[data-req-pop]'))setReqEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[reqEdit]);
+  const [stageMenu,setStageMenu]=React.useState(null); // stage ⋯ actions menu — which stage id is open
+  const [stageAction,setStageAction]=React.useState(null); // {kind:'email'|'sequence'|'automation',stage,deals} — open bulk flow
+  React.useEffect(()=>{if(stageMenu===null)return;const fn=e=>{if(!e.target.closest('[data-stage-menu]'))setStageMenu(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[stageMenu]);
   const [colorEdit,setColorEdit]=React.useState(null);
   const [editStages,setEditStages]=React.useState(false);
   const [focusStageId,setFocusStageId]=React.useState(null);
@@ -8320,6 +8490,7 @@ function PipelinePage({goTo,nav}){
         {boardView==='board'&&<div className="pipe-mob-tabs shrink-0 border-b border-white/[0.05] px-3 py-2 hidden items-center gap-1.5 overflow-x-auto scroll-area" style={{background:'var(--s925)'}}>
           {active.stages.map((s,i)=>{const on=i===Math.min(mobStage,active.stages.length-1);return(<button key={s.id} onClick={()=>setMobStage(i)} className={['shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-all',on?'bg-brand-500/20 text-brand-200 border-brand-500/35':'text-white/50 border-white/[0.08] bg-white/[0.03]'].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:s.color}}></span>{s.name}<span className="text-[10px] font-mono opacity-70">{dealsFor(s).length}</span></button>);})}
         </div>}
+        {boardView==='board'&&selected.length>0&&(<BulkBar object="deal" selected={selected} setSelected={setSelected} setRows={setDeals} showToast={lvToast} openConfirm={openConfirm} stageOptions={active.stages} onStageMove={onBulkStage} onMerge={()=>setMergeOpen(true)}/>)}
         {boardView==='board'&&<KanbanBoard
           wrapClass="flex-1 overflow-x-auto overflow-y-hidden scroll-area"
           boardClass="pipe-board h-full p-6 flex gap-4 min-w-max"
@@ -8328,7 +8499,19 @@ function PipelinePage({goTo,nav}){
           canDrag={()=>effCanObject('Deals','edit')}
           columns={active.stages.map((stage,si)=>{const sd=dealsFor(stage);const sval=fmtK(sd.reduce((a,d)=>a+parseMoney(d.value),0));return({key:stage.id,si,stage,sval,rows:sd,
             header:(<div className="px-4 py-3.5 border-b border-white/[0.05] sticky top-0 z-10" style={{background:'var(--hdr80)',backdropFilter:'blur(12px)'}}>
-                  {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.slice(0,3).map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}<CustomColorWheel value={stage.color} onPick={(c)=>setColor(stage.id,c)}/></div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><button onClick={()=>setEditStages(true)} title="Edit stages" className="w-6 h-6 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-all"><I.More size={13}/></button></div>)}
+                  {editStages?(<div className="flex items-center gap-1.5"><span draggable onDragStart={e=>{e.stopPropagation();dragRef.current=si;}} className="text-white/30 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder stage"><I.Grip size={13}/></span><div className="relative shrink-0" data-color-pop><button onClick={()=>setColorEdit(colorEdit===stage.id?null:stage.id)} title="Change color" className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20 hover:scale-110 transition-transform" style={{background:stage.color}}/>{colorEdit===stage.id&&(<div className="absolute z-40 top-6 left-0 p-2 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.5)] grid grid-cols-6 gap-1.5 w-[180px]" style={{background:'var(--pop)'}} data-color-pop>{STAGE_COLORS.slice(0,3).map(co=>(<button key={co} onClick={()=>setColor(stage.id,co)} className="w-6 h-6 rounded-full ring-1 ring-white/10 hover:scale-110 transition-transform flex items-center justify-center" style={{background:co,boxShadow:stage.color===co?('0 0 0 2px var(--pop), 0 0 0 4px '+co):'none'}}>{stage.color===co&&<I.Check size={12} stroke={3} className="text-white"/>}</button>))}<CustomColorWheel value={stage.color} onPick={(c)=>setColor(stage.id,c)}/></div>)}</div><input autoFocus={focusStageId===stage.id} value={stage.name} onChange={e=>renameStage(stage.id,e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())renameStage(stage.id,'Untitled stage');}} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-white outline-none border-b border-transparent focus:border-brand-500/50 pb-0.5"/><button onClick={()=>delStage(stage)} disabled={active.stages.length<=1} title="Delete stage" className={['shrink-0 transition-colors',active.stages.length<=1?'text-white/15 cursor-not-allowed':'text-white/30 hover:text-red-400'].join(' ')}><I.X size={14}/></button></div>):(<div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:stage.color,boxShadow:`0 0 12px ${stage.color}80`}}/><span className="text-[13px] font-medium text-white">{stage.name}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono">{sd.length}</span></div><div className="relative shrink-0" data-stage-menu>
+                    <button data-stage-dots={stage.name} onClick={()=>setStageMenu(stageMenu===stage.id?null:stage.id)} title="Stage actions" className={['w-6 h-6 rounded-md flex items-center justify-center transition-all',stageMenu===stage.id?'text-white bg-white/[0.08]':'text-white/40 hover:text-white hover:bg-white/[0.06]'].join(' ')}><I.More size={13}/></button>
+                    {stageMenu===stage.id&&(()=>{const _can=effCanObject('Deals','edit');const _n=sd.length;const IT='w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-left transition-colors ';const ON=IT+'text-white/75 hover:bg-white/[0.05] hover:text-white';const OFF=IT+'text-white/25 cursor-not-allowed';return(
+                    <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+                      <p className="px-3 pt-2 pb-1 text-[9.5px] font-medium uppercase tracking-[0.14em] text-white/35">{_n} deal{_n===1?'':'s'} in {stage.name}</p>
+                      {_can&&<button onClick={()=>{setSelected(sd.map(d=>d.id));setStageMenu(null);}} disabled={!_n} className={_n?ON:OFF}><I.CheckSquare size={13}/>Select all in stage</button>}
+                      {_can&&<button data-stage-email onClick={()=>{setStageAction({kind:'email',stage,deals:sd});setStageMenu(null);}} disabled={!_n} className={_n?ON:OFF}><I.Send size={13}/>Email everyone in stage…</button>}
+                      {_can&&<button data-stage-seq onClick={()=>{setStageAction({kind:'sequence',stage,deals:sd});setStageMenu(null);}} disabled={!_n} className={_n?ON:OFF}><I.Zap size={13}/>Enroll stage in sequence…</button>}
+                      {_can&&<button data-stage-auto onClick={()=>{setStageAction({kind:'automation',stage,deals:sd});setStageMenu(null);}} className={ON}><I.GitBranch size={13}/>Stage automation…</button>}
+                      <div className="h-px bg-white/[0.06] my-1"/>
+                      <button onClick={()=>{setStageMenu(null);setEditStages(true);}} className={ON}><I.Edit size={13}/>Edit stages</button>
+                    </div>);})()}
+                  </div></div>)}
                   <div className="flex items-center justify-between mt-1.5 gap-2"><span className="text-[12px] font-semibold text-white tabular-nums">{sval}</span>{editStages?(<label className="flex items-center gap-1.5 shrink-0" title="Win probability at this stage"><input type="range" min="0" max="100" value={stage.prob} onChange={e=>setProb(stage.id,e.target.value)} style={{accentColor:stage.color,width:64}}/><span className="text-[10px] text-white/55 tabular-nums w-8 text-right">{stage.prob}%</span></label>):(<span className="text-[10px] text-white/35 font-medium">{stage.prob}% close</span>)}</div>
                   {editStages&&!/won|lost|closed|live/i.test(stage.name||'')&&<div className="flex items-center gap-1.5 mt-1.5" title="Flag deals as stale after this many days without activity"><I.AlertTriangle size={10} className="text-amber-300/70 shrink-0"/><span className="text-[10px] text-white/45">Rot after</span><input type="number" min="0" value={stage.rotDays!=null?stage.rotDays:DEAL_ROT_DEFAULT} onChange={e=>setRot(stage.id,e.target.value)} className="w-12 bg-white/[0.05] border border-white/[0.10] rounded-md px-1.5 py-0.5 text-[10px] text-white text-center outline-none focus:border-brand-500/40"/><span className="text-[10px] text-white/45">days</span></div>}
                   {editStages&&<div className="relative flex items-center gap-1.5 mt-1.5" title="Fields a deal must have filled before it can enter this stage" data-req-pop><I.ShieldCheck size={10} className="text-brand-300/70 shrink-0"/><span className="text-[10px] text-white/45">Requires</span><button onClick={()=>setReqEdit(reqEdit===stage.id?null:stage.id)} className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.10] text-white/70 hover:text-white hover:border-brand-500/40 transition-all">{(stage.required||[]).length?((stage.required||[]).length+' field'+((stage.required||[]).length>1?'s':'')):'None'}</button>
@@ -8424,6 +8607,8 @@ function PipelinePage({goTo,nav}){
       {outcomePrompt&&(()=>{const _bulk=outcomePrompt.bulk||null;const od=_bulk?{}:(allVisible.find(x=>x.id===outcomePrompt.dd.id)||{});return(<DealOutcomeModal kind={outcomePrompt.kind} dealName={_bulk?(_bulk.length+' deal'+(_bulk.length>1?'s':'')):(od.name||od.company)} stageName={outcomePrompt.toStage.name} onClose={()=>setOutcomePrompt(null)} onConfirm={(reason,note)=>{const ts=outcomePrompt.toStage,kind=outcomePrompt.kind;const moves=_bulk||[outcomePrompt.dd];moves.forEach(m=>applyMove(m,ts));const _ids=new Set(moves.map(m=>m.id));setDeals(ds=>ds.map(x=>_ids.has(x.id)?{...x,outcome:{result:kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:CURRENT_USER.name}}:x));window.__nrturToast&&window.__nrturToast((moves.length>1?moves.length+' deals':'Deal')+' marked '+(kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(kind==='won'&&!_bulk&&od.adSourceKey)setTimeout(()=>ads.reportConversion(od.adSourceKey,od.name||od.company),700);if(_bulk)setSelected([]);setOutcomePrompt(null);}}/>);})()}
       {/* P2-2: merge duplicates — 2–3 selected deals, primary wins */}
       {mergeOpen&&<MergeDealsModal records={selected.map(id=>listFlat.find(x=>x.id===id)).filter(Boolean)} onConfirm={doMergeDeals} onClose={()=>setMergeOpen(false)}/>}
+      {stageAction&&stageAction.kind!=='automation'&&<StageBulkModal mode={stageAction.kind} stage={stageAction.stage} deals={stageAction.deals} pipeName={active.name} onClose={()=>setStageAction(null)}/>}
+      {stageAction&&stageAction.kind==='automation'&&<StageAutomationModal stage={stageAction.stage} deals={stageAction.deals} pipeName={active.name} goTo={goTo} onClose={()=>setStageAction(null)}/>}
       {/* P1-3: stage gate — fill the missing required fields inline, then the move continues (incl. into the outcome modal for terminal stages) */}
       {gatePrompt&&<StageGateModal deal={gatePrompt.deal} stage={gatePrompt.toStage} missing={gatePrompt.missing} onClose={()=>setGatePrompt(null)} onSave={(patch)=>{const {dd,toStage}=gatePrompt;setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,...patch}:x));setGatePrompt(null);const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);window.__nrturToast&&window.__nrturToast('Saved & moved to '+toStage.name,'success');}}/>}
       {/* Per-pipeline access — restricted roles lose this board everywhere (switcher, enrollment, detail arrows). Owner/Admin always keep access. */}
@@ -8818,6 +9003,7 @@ const CO_SEED_DEALS=[
 ];
 let _liveDeals=null; // live deals array, set by App on each render; falls back to the STAGES_DATA seed
 let _liveContacts=null; // Wave 3: live contacts array, set by App on each render; falls back to the CONTACTS_DATA seed
+let _liveSeqEnrollments=null; // stage-bulk enroll: live sequence-membership records, set by App each render
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
 let _liveLeads=null; // live leads array, set by App on each render; used to resolve calendar task/event links to lead ids
 // Resolve a calendar task/event's selected link (by current name) to a record id, so record→task joins survive renames / duplicate names.
@@ -22111,6 +22297,9 @@ function App(){
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
+  const [seqEnrollments,setSeqEnrollments]=React.useState([]); // stage-bulk: REAL sequence membership — {seqId,contactId,dealId,stage,at,by}; dedupe + timeline read this
+  _liveSeqEnrollments=seqEnrollments;
+  const [customSeqs,setCustomSeqs]=React.useState([]); // sequences created ONCE from a template via stage bulk enroll — later enrolls reuse them (never one-per-click)
   const [dealReasons,setDealReasons]=React.useState(DEFAULT_DEAL_REASONS); // P1-2: workspace win/loss reason lists — edited in pipeline settings, read by the close modal + Win/Loss report
   _liveDealReasons=dealReasons; // mirror so DealOutcomeModal reads the live lists from any page
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
@@ -22186,7 +22375,8 @@ function App(){
     automations,setAutomations,autoLogs,
     pipelines,setPipelines,
     dealReasons,setDealReasons,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons]);
+    seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
