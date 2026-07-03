@@ -20184,9 +20184,9 @@ function paySubInvoice(sub){
 }
 function paySeedQuotes(){
   return [
-    {id:'qot_1',number:'QUO-2041',kind:'quote',contact:'Marcus Reed',company:'Northwind Labs',dealId:null,items:[{desc:'CRM Onboarding',qty:1,price:1200},{desc:'Pro plan — annual (5 seats)',qty:5,price:590}],amount:4150,subtotal:4150,discount:0,taxRate:0,tax:0,status:'sent',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(10)),due:payDateLabel(payDayShift(24))},
-    {id:'qot_2',number:'QUO-2040',kind:'quote',contact:'Sarah Chen',company:'Meridian Agency',dealId:1,items:[{desc:'Strategy retainer',qty:1,price:2500}],amount:2500,subtotal:2500,discount:0,taxRate:0,tax:0,status:'accepted',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(6)),due:payDateLabel(payDayShift(20))},
-    {id:'qot_3',number:'QUO-2039',kind:'quote',contact:'Priya Nair',company:'Lumen Co',dealId:null,items:[{desc:'Workshop seat',qty:6,price:149}],amount:894,subtotal:894,discount:0,taxRate:0,tax:0,status:'draft',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(14)),due:payDateLabel(payDayShift(28))},
+    {id:'qot_1',number:'QUO-2041',kind:'quote',contact:'Marcus Reed',company:'Northwind Labs',dealId:null,items:[{desc:'CRM Onboarding',qty:1,price:1200},{desc:'Pro plan — annual (5 seats)',qty:5,price:590}],amount:4150,subtotal:4150,discount:0,taxRate:0,tax:0,status:'sent',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(-3)),validUntilTs:payDayShift(-3).getTime(),due:payDateLabel(payDayShift(24))},
+    {id:'qot_2',number:'QUO-2040',kind:'quote',contact:'Sarah Chen',company:'Meridian Agency',dealId:1,items:[{desc:'Strategy retainer',qty:1,price:2500}],amount:2500,subtotal:2500,discount:0,taxRate:0,tax:0,status:'accepted',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(6)),validUntilTs:payDayShift(6).getTime(),due:payDateLabel(payDayShift(20))},
+    {id:'qot_3',number:'QUO-2039',kind:'quote',contact:'Priya Nair',company:'Lumen Co',dealId:null,items:[{desc:'Workshop seat',qty:6,price:149}],amount:894,subtotal:894,discount:0,taxRate:0,tax:0,status:'draft',owner:'AM',notes:'',validUntil:payDateLabel(payDayShift(14)),validUntilTs:payDayShift(14).getTime(),due:payDateLabel(payDayShift(28))},
   ];
 }
 function paySeedLinks(){
@@ -20227,6 +20227,9 @@ function PayStripeStatus({goTo}){
 // everywhere (KPIs, pills). Keeps Outstanding vs Overdue honest as time passes / for past-due creates.
 function payIsOverdue(inv){return !!(inv&&inv.status==='sent'&&inv.dueTs!=null&&inv.dueTs<Date.now());}
 function payEffStatus(inv){return payIsOverdue(inv)?'overdue':(inv?inv.status:'');}
+// Quotes expire the same way: a sent/accepted quote past its validUntil reads 'expired' and can't be accepted or converted.
+function payQuoteExpired(q){return !!(q&&(q.status==='sent'||q.status==='accepted')&&q.validUntilTs!=null&&q.validUntilTs<Date.now());}
+function payQuoteEff(q){return payQuoteExpired(q)?'expired':(q?q.status:'');}
 function PayRevenueWidget({invoices,subs}){
   // Revenue KPIs report in ONE base currency — summing amounts across currencies and stamping '$' was
   // arithmetically wrong (added €5k to $1k → "$6,000"). Base = the most common invoice currency; invoices
@@ -20566,16 +20569,17 @@ function PayQuoteDetail({q,crm,goTo,onClose,onStatus,onConvert,toast}){
   useEscKey(onClose);
   const contactRec=(crm.contacts||[]).find(c=>c.name===q.contact);
   const dealRec=q.dealId!=null?allDeals().find(d=>d.id===q.dealId):null;
-  const live=q.status;
+  const live=payQuoteEff(q);
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div className="flex items-center gap-2.5 min-w-0"><span className="w-8 h-8 rounded-lg bg-violet-500/12 ring-1 ring-violet-500/25 flex items-center justify-center text-violet-300 shrink-0"><I.Edit size={15}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white truncate">{q.number}</p><p className="text-[11px] text-white/45">Quote · valid until {q.validUntil}</p></div></div><button onClick={onClose} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between"><PayPill map={PAY_QUOTE_ST} k={live}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(q.amount)}</span></div>
+        <div className="flex items-center justify-between"><PayPill map={PAY_QUOTE_ST} k={live}/><span className="text-[22px] font-bold text-white tabular-nums">{payMoney(q.amount,q.currency)}</span></div>
         {live==='accepted'&&<div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-emerald-200"><I.Check size={13} stroke={2.5}/>Accepted by the customer — ready to convert to an invoice.</div>}
         {live==='converted'&&<div className="rounded-xl bg-violet-500/[0.08] border border-violet-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-violet-200"><I.Check size={13} stroke={2.5}/>Converted to an invoice.</div>}
         {live==='declined'&&<div className="rounded-xl bg-red-500/[0.06] border border-red-500/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-red-200"><I.Ban size={13}/>Declined by the customer.</div>}
+        {live==='expired'&&<div className="rounded-xl bg-white/[0.04] border border-white/15 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-white/60"><I.Ban size={13}/>Expired on {q.validUntil} — re-issue it before it can be accepted or converted.</div>}
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Prepared for</span>{contactRec?<button onClick={()=>{goTo('contact-detail',contactRec.id);onClose();}} className="text-[13px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 truncate">{q.contact}<I.ArrowRight size={11}/></button>:<span className="text-[13px] font-medium text-white truncate">{q.contact||'—'}</span>}</div>
           {q.company&&<div className="flex items-center justify-between gap-2"><span className="text-[11px] text-white/40 uppercase tracking-[0.12em]">Company</span><span className="text-[12.5px] text-white/75 truncate">{q.company}</span></div>}
@@ -20584,13 +20588,13 @@ function PayQuoteDetail({q,crm,goTo,onClose,onStatus,onConvert,toast}){
         </div>
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
           <div className="px-3.5 py-2 border-b border-white/[0.05] text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]">Line items</div>
-          {(q.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+          {(q.items||[]).map((it,i,a)=>(<div key={i} className={['flex items-center justify-between gap-3 px-3.5 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><div className="min-w-0"><p className="text-[12.5px] text-white/85 truncate">{it.desc}</p><p className="text-[11px] text-white/40">{it.qty} × {payMoney(it.price,q.currency)}</p></div><span className="text-[12.5px] font-semibold text-white tabular-nums shrink-0">{payMoney(it.qty*it.price,q.currency)}</span></div>))}
           {(q.discount>0||q.tax>0)&&<div className="px-3.5 pt-2.5 flex flex-col gap-1.5 border-t border-white/[0.05]">
-            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(q.subtotal!=null?q.subtotal:q.amount)}</span></div>
-            {q.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(q.discount)}</span></div>}
-            {q.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{q.taxRate?(' ('+q.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(q.tax)}</span></div>}
+            <div className="flex items-center justify-between text-[12px] text-white/55"><span>Subtotal</span><span className="tabular-nums">{payMoney(q.subtotal!=null?q.subtotal:q.amount,q.currency)}</span></div>
+            {q.discount>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(q.discount,q.currency)}</span></div>}
+            {q.tax>0&&<div className="flex items-center justify-between text-[12px] text-white/55"><span>Tax{q.taxRate?(' ('+q.taxRate+'%)'):''}</span><span className="tabular-nums">{payMoney(q.tax,q.currency)}</span></div>}
           </div>}
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(q.amount)}</span></div>
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/[0.06]"><span className="text-[12px] font-medium text-white/55">Total</span><span className="text-[14px] font-bold text-white tabular-nums">{payMoney(q.amount,q.currency)}</span></div>
         </div>
         {q.notes&&<div><p className="text-[11px] text-white/40 uppercase tracking-[0.12em] mb-1.5">Notes</p><p className="text-[12.5px] text-white/65 leading-relaxed">{q.notes}</p></div>}
         <PayStripeNotice/>
@@ -20600,6 +20604,7 @@ function PayQuoteDetail({q,crm,goTo,onClose,onStatus,onConvert,toast}){
         {live==='sent'&&<button onClick={()=>onStatus(q,'accepted','Quote '+q.number+' marked accepted')} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/15 transition-all"><I.Check size={13}/>Mark accepted</button>}
         {(live==='sent'||live==='accepted')&&<button onClick={()=>onConvert(q)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.ArrowRight size={13}/>Convert to invoice</button>}
         {(live==='sent'||live==='draft')&&<button onClick={()=>onStatus(q,'declined','Quote '+q.number+' declined')} className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 transition-all"><I.Ban size={13}/>Decline</button>}
+        {live==='expired'&&<button onClick={()=>onStatus(q,'sent','Quote '+q.number+' re-issued ✓',{validUntil:payDateLabel(payDayShift(14)),validUntilTs:payDayShift(14).getTime()})} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Send size={13}/>Re-issue (+14 days)</button>}
         <button onClick={onClose} className="ml-auto px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
       </div>
     </div>
@@ -20643,9 +20648,9 @@ function PaymentsPage({goTo,nav}){
   const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);crm.setPayInvoices(a=>[paySubInvoice(s),...a]);setSubModal(false);showToast('Subscription started ✓ · first invoice issued');};
   const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
   const billSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t bill subscriptions.');return;}crm.setPayInvoices(a=>[paySubInvoice(s),...a]);crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,nextBill:payDateLabel(payDayShift(s.interval==='year'?365:30))}:x));setSubMenu(null);showToast('Invoice generated for '+(s.customer||s.plan)+' ✓ · counts in revenue');};
-  const createQuote=(q,status)=>{if(!effCanPay('create')){showToast('Your role can’t create quotes.');return;}const quote={...q,kind:'quote',id:'qot_'+Date.now(),number:'QUO-'+String(Date.now()).slice(-4),status:status==='sent'?'sent':'draft',validUntil:payDateLabel(payDayShift(14)),link:null,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayQuotes(a=>[quote,...a]);setNewQuote(false);showToast(status==='draft'?('Quote '+quote.number+' saved'):('Quote '+quote.number+' sent ✓'));};
-  const setQuoteStatus=(q,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change quotes.');return;}crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:st}:x));showToast(label);};
-  const convertQuote=(q)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const inv={...q,id:'inv_'+Date.now(),number:payNextInvoiceNo(),kind:'invoice',status:'sent',fromQuote:q.id,link:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(14)),dueTs:payDayShift(14).getTime(),agoMin:0,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayInvoices(a=>[inv,...a]);crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:'converted',invoiceId:inv.id}:x));setOpenQuoteId(null);showToast('Quote '+q.number+' → Invoice '+inv.number+' created ✓');};
+  const createQuote=(q,status)=>{if(!effCanPay('create')){showToast('Your role can’t create quotes.');return;}const quote={...q,kind:'quote',id:'qot_'+Date.now(),number:'QUO-'+String(Date.now()).slice(-4),status:status==='sent'?'sent':'draft',validUntil:(q.due||payDateLabel(new Date(q.dueTs!=null?q.dueTs:payDayShift(14).getTime()))),validUntilTs:(q.dueTs!=null?q.dueTs:payDayShift(14).getTime()),link:null,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayQuotes(a=>[quote,...a]);setNewQuote(false);showToast(status==='draft'?('Quote '+quote.number+' saved'):('Quote '+quote.number+' sent ✓'));};
+  const setQuoteStatus=(q,st,label,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change quotes.');return;}if(st==='accepted'&&payQuoteExpired(q)){showToast('This quote expired — re-issue it before it can be accepted.');return;}crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:st,...(patch||{})}:x));showToast(label);};
+  const convertQuote=(q)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}if(payQuoteExpired(q)){showToast('This quote expired — re-issue it before converting to an invoice.');return;}const inv={...q,id:'inv_'+Date.now(),number:payNextInvoiceNo(),kind:'invoice',status:'sent',fromQuote:q.id,link:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(14)),dueTs:payDayShift(14).getTime(),agoMin:0,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayInvoices(a=>[inv,...a]);crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:'converted',invoiceId:inv.id}:x));setOpenQuoteId(null);showToast('Quote '+q.number+' → Invoice '+inv.number+' created ✓');};
   // header action depends on tab
   const primary=tab==='products'?{l:'New product',on:()=>setProdModal({})}:tab==='links'?{l:'New link',on:()=>setLinkModal(true)}:tab==='subscriptions'?{l:'New subscription',on:()=>setSubModal(true)}:tab==='quotes'?{l:'New quote',on:()=>setNewQuote(true)}:{l:'New invoice',on:()=>setNewInv(true)};
   const TH='text-[10px] font-medium text-white/35 uppercase tracking-[0.12em]';
@@ -20698,8 +20703,8 @@ function PaymentsPage({goTo,nav}){
             <button key={v.id} onClick={()=>setOpenQuoteId(v.id)} className={['w-full text-left grid grid-cols-[1fr_auto] sm:grid-cols-[110px_1.4fr_1fr_96px_120px_28px] gap-x-3 sm:gap-x-4 items-center px-4 py-3 hover:bg-white/[0.025] transition-colors',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}>
               <span className="hidden sm:block text-[12px] font-mono text-white/55">{v.number}</span>
               <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{v.contact||v.company||'—'}</p><p className="text-[11px] text-white/40 truncate sm:hidden">{v.number} · valid until {v.validUntil}</p><p className="text-[11px] text-white/40 truncate hidden sm:block">{v.company}</p></div>
-              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount,v.currency)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span></div>
-              <span className="hidden sm:block"><PayPill map={PAY_QUOTE_ST} k={v.status}/></span>
+              <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(v.amount,v.currency)}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_QUOTE_ST} k={payQuoteEff(v)}/></span></div>
+              <span className="hidden sm:block"><PayPill map={PAY_QUOTE_ST} k={payQuoteEff(v)}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{v.validUntil}</span>
               <span className="hidden sm:flex justify-end text-white/25"><I.ChevronRight size={15}/></span>
             </button>))}
