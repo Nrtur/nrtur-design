@@ -12,7 +12,7 @@ _Companion to [`AUTOMATIONS_AUDIT.md`](AUTOMATIONS_AUDIT.md). Where the audit co
 
 nrtur now has a genuinely **excellent visual flow builder that executes real effects** — the interpreter walks the authored node tree ([`autoRunNodes`, index.html:17332](../../index.html)) and actually mutates records (assign/round-robin, add/remove tag, `updateField` Owner/Status/Priority, enroll, branch), fed by a multi-entity created-event bus (`fireEntityAutomationEvents`, 17372) plus full deal-lifecycle firing. **What it lacks is the paradigm every serious CRM ships _next to_ the canvas:** a per-object **rule layer** — Assignment/routing, Scoring, Validation, SLA/Escalation, and Approval as declarative IF-condition-THEN rows an admin configures in seconds, evaluated on **create / edit / save** (not just create). This is exactly where Zoho and Salesforce win, and it's the highest-leverage thing nrtur can add.
 
-**Readiness (rule-based automation dimension): `46 / 100` at research time → `~64 / 100` now that Phase 0 (trigger substrate) and Phase 1 (unified AND/OR conditions) have shipped → `88 / 100` once the rest of §6 is built.**
+**Readiness (rule-based automation dimension): `46 / 100` at research time → `~72 / 100` now that Phase 0 (trigger substrate), Phase 1 (unified AND/OR conditions), and Phase 2 (Assignment Rules — the first true rule-list) have shipped → `88 / 100` once the rest of §6 is built.**
 
 ---
 
@@ -51,7 +51,7 @@ The 14 rule types that make up the rule-based paradigm across Salesforce, Zoho, 
 | # | Rule type | nrtur | The gap in one line |
 |---|---|:--:|---|
 | 1 | **Workflow Rules** (IF-condition-THEN on create/edit/save) | ◐ | Has the interpreter; has no rule-list console — every rule must be **drawn** as a flow. |
-| 2 | **Assignment / Routing Rules** (round-robin, load-balance, territory, weighted, skill) | ◐ | Three siloed impls; naive global counter; "least busy" is fake; no shared persisted table. |
+| 2 | **Assignment / Routing Rules** (round-robin, load-balance, territory, weighted, skill) | ◐→● | **Shipped:** shared per-object rule table + real least-busy. Territory/weighted/skill still to add. |
 | 3 | **Lead / Deal Scoring Rules** (demographic + behavioral scorecard) | ○ | Score is a **static random seed** (2354); the score action is a label-only no-op (17347). |
 | 4 | **Validation Rules** (block a bad save via custom expression) | ◐ | Only hardcoded required/email + field-presence stage gates — no cross-field/formula rule. |
 | 5 | **Escalation / SLA / Time-based Rules** | ○ | **No scheduler** — waits are noted-and-skipped (17340); "SLA" is only marketing copy. |
@@ -116,7 +116,7 @@ Every automation use case a CRM is expected to handle, judged **post-fix** (afte
 ### Assignment / routing
 | Use case | Support | Note / what's needed |
 |---|:--:|---|
-| Load-balance assignment | ○ | "Least busy" is fake (17314); no workload metric computed. |
+| Load-balance assignment | ○→● | **Shipped:** `autoOpenCount` (open deals + active leads per rep) drives a real least-busy = argmin. |
 | Reassign on inactivity / owner absence | ○ | No scheduler to detect an inactive owner / OOO. |
 
 ### SLA / escalation
@@ -183,8 +183,8 @@ A `fireRecordUpdate(ent,before,after)` helper now diffs a record edit and fires 
 **2 · Unified AND/OR condition model — shared by rules AND automations** &nbsp;✅ **SHIPPED** (`8d5348e` · `73bdf82` · `ce6d8ab`)
 `autoEvalCond` and `dealCondPass` now evaluate the `omApplyFilter` `{match, conds}` model when a node/automation carries one (type-aware operators, AND/OR), with the legacy single-condition path kept as fallback; `autoFieldsFor(ent)` resolves the per-entity field schema. Condition/goal nodes are authored with the **embedded Smart-Lists `OmFiltersButton`** (via the new `AutoCondEditor`), so the flow builder gains the same AND/OR power Smart Lists have — the single condition primitive every future rule type will reuse. _Verified headless (runtime eval + live render + adversarial-review hardening). Backend: none — pure in-memory._
 
-**3 · Assignment / Routing Rules — a shared, persisted, first-class table**
-_nrtur's single biggest competitive win in this space._ A per-object ordered table (`Settings > <Object> > Assignment`): "IF `<AND/OR conditions>` THEN assign to `<rep | round-robin pool | least-busy pool | territory>`", first match wins. Promote the **existing booking Routing-rules row UI** (19923-19934) — it already renders _IF field op value THEN rep_ — generalize the THEN to include pools, persist to a `routingRules` object (fixing the toast-only Save at 19937). Rewrite `autoResolveOwner` (17311): **real** least-busy (count open records per rep from state), per-pool round-robin (not one global counter), territory = a condition set → pool. Wire into create (2409) + ad-lead capture (9486).
+**3 · Assignment / Routing Rules — a shared, persisted, first-class table** &nbsp;✅ **SHIPPED** (`b238602` · `11d082d` · `73ba9cf`)
+_nrtur's single biggest competitive win in this space — now real._ A per-object ordered table lives at **Settings › Assignment rules** (per-object tabs): "IF `<AND/OR conditions>` THEN assign to `<least busy | round-robin | specific rep>`", first match wins, with a configurable rep pool. `resolveAssignment(object,record)` evaluates the rules via the Phase-1 `omApplyFilter` engine and runs on **record create** + **ad-lead capture**. `autoOpenCount` gives a **real** least-busy (open deals + active leads per rep → argmin); `autoResolveOwner`'s "Least busy rep" now uses it (was the fake alias). _Verified headless (engine: rule-match / first-match-wins / real least-busy == argmin; console: render + author; + adversarial-review hardening). Deferred: territory/weighted/skill routing (a criteria→pool extension), and persisting the booking routing rules onto this table._
 
 ### 🔶 High
 
@@ -213,7 +213,7 @@ Ordered so each phase unblocks the next; every phase is in-memory-feasible.
 
 0. ✅ **Foundation — trigger substrate (SHIPPED, `b4eee2f`/`41487e1`/`56d39a0`).** Edit/tag/status emitters at the mutation sites + a simulated-time scheduler that drains waits and scans breaches. _Unblocked everything below._
 1. ✅ **Unified condition model (SHIPPED, `8d5348e`/`73bdf82`/`ce6d8ab`).** `autoEvalCond` + `dealCondPass` evaluate the `omApplyFilter` AND/OR model; condition nodes authored with the embedded `OmFiltersButton`. _Every rule and flow can now express AND/OR._
-2. **Assignment / Routing Rules.** Promote the booking routing UI into a shared persisted table; real least-busy + per-pool round-robin; wire into create + ad-lead.
+2. ✅ **Assignment / Routing Rules (SHIPPED, `b238602`/`11d082d`/`73ba9cf`).** Per-object rule table at Settings › Assignment rules; `resolveAssignment` via `omApplyFilter`; real least-busy (`autoOpenCount` argmin) + per-pool round-robin; wired into create + ad-lead.
 3. **Scoring Rules.** Scorecard config + `recomputeScore`; replace the static seed; wire the score action + threshold dispatch.
 4. **Validation Rules.** Per-object validation list evaluated in `errorFor` + the stage-gate caller, custom error via existing plumbing.
 5. **SLA / Escalation Rules.** On the Phase-0 scheduler: breach ladders firing existing interpreter actions + an SLA badge.
