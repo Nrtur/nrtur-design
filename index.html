@@ -20223,8 +20223,8 @@ function paySeedSubs(){
 // A subscription billing cycle IS an invoice (mirrors Stripe). Build a paid invoice for the current
 // period from a subscription so MRR and invoice revenue reconcile. Tagged with subId + source.
 function paySubInvoice(sub){
-  const seats=sub.seats||1;const per=seats?Math.round((sub.amount/seats)*100)/100:sub.amount;const now=payDateLabel(payDayShift(0));
-  return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',company:sub.customer||'',dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:sub.amount,subtotal:sub.amount,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
+  const seats=sub.seats||1;const per=seats?Math.round((sub.amount/seats)*100)/100:sub.amount;const lineTotal=Math.round(per*seats*100)/100;const now=payDateLabel(payDayShift(0));
+  return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',company:sub.customer||'',dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:lineTotal,subtotal:lineTotal,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
 }
 function paySeedQuotes(){
   return [
@@ -20551,7 +20551,8 @@ function PayCheckoutPage({goTo,nav}){
   // A link "click" is a visit to the hosted page — count it once on mount for a live link. paidCount tracks conversions separately (bumped only on pay).
   React.useEffect(()=>{if(link&&!linkDisabled&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,clicks:(l.clicks||0)+1}:l));},[]);
   const pay=()=>{if(!cardOk||stage==='processing')return;setStage('processing');setTimeout(()=>{
-    if(inv&&crm.setPayInvoices)crm.setPayInvoices(a=>a.map(v=>v.id===inv.id?{...v,status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0}:v));
+    // Idempotent + safe against a concurrent void/refund: the functional updater sees the live array, so never resurrect a settled/cancelled invoice as paid.
+    if(inv&&crm.setPayInvoices)crm.setPayInvoices(a=>a.map(v=>{if(v.id!==inv.id)return v;if(v.status==='void'||v.status==='refunded'||v.status==='paid')return v;return {...v,status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0};}));
     if(link&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,paidCount:(l.paidCount||0)+1}:l));
     // A paid link records a real transaction so its revenue reaches the Collected KPI (mirrors pay-at-booking). Seed paidCount stays a link-level stat.
     if(link&&crm.setPayInvoices)crm.setPayInvoices(a=>[{id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:(email.trim()||'Payment link customer'),company:'',email:email.trim(),dealId:null,items:[{desc:link.title,qty:1,price:link.amount}],amount:link.amount,subtotal:link.amount,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Paid via payment link',link:link.url,issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(0)),dueTs:payDayShift(0).getTime(),agoMin:0,paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0,source:'Payment link',currency:link.currency},...a]);
