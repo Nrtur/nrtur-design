@@ -17663,7 +17663,7 @@ const ALL_SEQ_NAMES=['None',...EMAIL_SEQ_DATA.map(s=>s.name),...SEQ_DATA.map(s=>
 const FORMS_DATA=[
   {id:1,name:'Request a Demo',status:'active',submissions:184,conversion:42,created:'Apr 2',spark:[5,7,6,9,11,8,12,10,14,13,16,15,18,21],
    fields:[{id:1,label:'Full name',type:'text',map:'First name',required:true},{id:2,label:'Work email',type:'email',map:'Email',required:true},{id:3,label:'Company',type:'company',map:'Company',required:true},{id:4,label:'Company size',type:'dropdown',map:'Do not map',required:false,options:['1-10','11-50','51-200','200+']},{id:5,label:'utm_source',type:'hidden',map:'Lead source',capture:'utm_source',required:false},{id:6,label:'Marketing consent',type:'consent',map:'Consent (opt-in)',required:true}],
-   onSubmit:{recordType:'contact',applyTag:'demo-requested',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Qualified',createTask:true,taskTitle:'Follow up on demo request',taskAssignee:'Deal owner',automations:['New Lead Welcome Sequence','Proposal Follow-Up','Deal Won Celebration'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! Our team will reach out within one business day.',redirect:''}},
+   onSubmit:{recordType:'contact',applyTag:'demo-requested',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Prospecting',createTask:true,taskTitle:'Follow up on demo request',taskAssignee:'Deal owner',automations:['New Lead Welcome Sequence','Proposal Follow-Up','Deal Won Celebration'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thanks! Our team will reach out within one business day.',redirect:''}},
   {id:2,name:'Contact Us',status:'active',submissions:97,conversion:100,created:'Mar 18',spark:[3,4,3,5,4,6,5,7,6,5,7,8,6,9],
    fields:[{id:1,label:'Name',type:'text',map:'First name',required:true},{id:2,label:'Email',type:'email',map:'Email',required:true},{id:3,label:'How can we help?',type:'textarea',map:'Do not map',required:true}],
    onSubmit:{automations:['New Lead Welcome Sequence'],after:'thankyou',thankHeading:'Thank you!',thankyou:'Got it — we will be in touch shortly.',redirect:''}},
@@ -17672,7 +17672,7 @@ const FORMS_DATA=[
    onSubmit:{automations:['Cold Lead Nurture'],after:'thankyou',thankHeading:'You are subscribed!',thankyou:'You are subscribed. Watch your inbox!',redirect:''}},
   {id:4,name:'Pricing Inquiry',status:'paused',submissions:63,conversion:55,created:'Mar 30',spark:[4,5,6,5,7,6,5,4,3,2,2,1,1,0],
    fields:[{id:1,label:'Full name',type:'text',map:'First name',required:true},{id:2,label:'Work email',type:'email',map:'Email',required:true},{id:3,label:'Budget range',type:'dropdown',map:'Do not map',required:false,options:['Under $5k','$5k-$20k','$20k-$50k','$50k+']}],
-   onSubmit:{recordType:'lead',applyTag:'pricing-inquiry',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Qualified',automations:['Proposal Follow-Up'],after:'redirect',thankyou:'',redirect:'https://nrtur.com/thank-you'}},
+   onSubmit:{recordType:'lead',applyTag:'pricing-inquiry',createDeal:true,dealPipeline:'Sales Pipeline',dealStage:'Prospecting',automations:['Proposal Follow-Up'],after:'redirect',thankyou:'',redirect:'https://nrtur.com/thank-you'}},
   {id:5,name:'Event Registration',status:'draft',submissions:0,conversion:0,created:'May 24',spark:[0,0,0,0,0,0,0,0,0,0,0,0,0,0],
    fields:[{id:1,label:'Name',type:'text',map:'First name',required:true},{id:2,label:'Email',type:'email',map:'Email',required:true},{id:3,label:'Will you attend in person?',type:'checkbox',map:'Do not map',required:false}],
    onSubmit:{automations:[],after:'thankyou',thankHeading:'You are registered!',thankyou:'You are registered — see you there!',redirect:''}},
@@ -19445,7 +19445,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       dealName=nm+' — '+et.name;
       const amt=parseFloat(String(auto.dealValue).replace(/[^0-9.]/g,''))||0;
       dealValue='$'+amt.toLocaleString('en-US');
-      const stageKey=auto.dealStage||'qualified';
+      const stageKey=auto.dealStage||'prospecting';
       // P2-3: normalize like every other create path — a booking config pointing at a non-default
       // pipeline re-homes the deal into that pipeline's first stage instead of carrying a foreign stageKey.
       const _bkRec=normalizeDealPipeline({id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,...dealStageStamp(stageKey,rep.avatar),primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},rep.avatar);
@@ -19638,7 +19638,7 @@ const SCHED_PIPELINES=['Sales Pipeline','Partnerships','Expansion'];
 const SCHED_RULE_FIELDS=['Company size','Budget','Use case','Email domain','Job title'];
 const SCHED_RULE_OPS=['is','contains'];
 const SCHED_MINI='px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none';
-const SCHED_DEFAULT_AUTOMATION={autoContact:true,autoTimeline:true,createDeal:false,dealStage:'qualified',dealValue:'',pipeline:'Sales Pipeline',assign:'me',rotation:{AM:true,SC:true,JK:true,RL:false,MR:false},specificRep:'AM',rules:[]};
+const SCHED_DEFAULT_AUTOMATION={autoContact:true,autoTimeline:true,createDeal:false,dealStage:'prospecting',dealValue:'',pipeline:'Sales Pipeline',assign:'me',rotation:{AM:true,SC:true,JK:true,RL:false,MR:false},specificRep:'AM',rules:[]};
 function schedMtgTime(m){const end=new Date(m.date.getTime()+m.duration*60000);return schedFmtTime(m.date.getHours()*60+m.date.getMinutes())+' – '+schedFmtTime(end.getHours()*60+end.getMinutes());}
 function schedStatusChip(s){const map={confirmed:['Confirmed','bg-emerald-500/15 text-emerald-300 ring-emerald-500/25'],pending:['Pending','bg-amber-500/15 text-amber-300 ring-amber-500/25'],cancelled:['Cancelled','bg-red-500/15 text-red-300 ring-red-500/25']};const v=map[s]||map.confirmed;return {l:v[0],c:v[1]};}
 function schedSeedMeetings(){
