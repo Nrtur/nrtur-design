@@ -44,6 +44,7 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 | Pipeline actions collapsed into one stable overflow menu (no reflow on switch) | `d0508c0` |
 | Hero name no longer wraps when the stage word changes | `2de6537` |
 | **Pipeline membership is id-based** (`stagePlacements` pipelineId), not the name string — survives renames | `17008c3` |
+| Deal card label is the real, live **Next action** (was a static `tag` string that never updated) | `7790b07` |
 
 ### Research & docs
 | Item | Commit |
