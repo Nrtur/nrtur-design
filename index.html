@@ -8786,7 +8786,9 @@ function DealDetailPage({goTo,nav}){
   // Win probability is a PRIMARY-pipeline concept (the "will we win, for how much" story that also
   // drives the weighted forecast). It is NOT the viewed placement's stage % — an enrolled onboarding
   // stage isn't a win probability. So it always reflects the primary stage, whatever pipeline is viewed.
-  const _primProb=(d.probability!=null)?d.probability:((realStagesOf(_primaryPipe).find(s=>s.key===d.stageKey)||{}).prob);
+  // A closed deal has a settled win probability, not the stage's %: Won = 100, Lost = 0. Otherwise derive from the primary stage.
+  const _primStageTerm=dealTerminalKind({key:d.stageKey,name:stage});
+  const _primProb=_primStageTerm==='won'?100:_primStageTerm==='lost'?0:((d.probability!=null)?d.probability:((realStagesOf(_primaryPipe).find(s=>s.key===d.stageKey)||{}).prob));
   const drec={...d,pipeline:d.pipeline||_primaryPipe.name,probability:_primProb,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
   const [stageGate,setStageGate]=React.useState(null); // P1-3: {stageName,stage,missing} — stage move blocked until required fields are filled
@@ -8865,7 +8867,7 @@ function DealDetailPage({goTo,nav}){
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>
-                      {d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}
+                      {d.name&&d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}
                     </div>
                     {_primProb!=null&&(()=>{const _pc=_primProb>=70?'#34d399':_primProb>=40?'#fbbf24':'#94a3b8';return(
                     <div className="flex flex-col items-end shrink-0 text-right pt-0.5" title={'Win probability · '+(_viewIsPrimary?'from the current stage':'from the primary pipeline '+_primaryPipe.name)}>
