@@ -8070,12 +8070,14 @@ function PipelinePage({goTo,nav}){
   const [dropStageId,setDropStageId]=React.useState(null);
   const dragRef=React.useRef(null);
   const [dragOver,setDragOver]=React.useState(null);
-  const active=pipelines.find(p=>p.id===activeId)||pipelines[0];
+  const _visPipelines=pipelines.filter(pipeAccessible); // per-pipeline access: restricted boards vanish from this role's switcher/board
+  const active=_visPipelines.find(p=>p.id===activeId)||_visPipelines[0]||pipelines[0];
+  const [accessOpen,setAccessOpen]=React.useState(false); // per-pipeline access editor (admins only)
   const [auxPipelines,setAuxPipelines]=React.useState([]);
   const deleteAuxPipeline=(pipeId)=>setAuxPipelines(ps=>ps.filter(p=>p.id!==pipeId));
   const addAuxPipeline=(pipeId)=>{if(auxPipelines.find(p=>p.id===pipeId)){setActiveId(pipeId);return;}if(pipeId.startsWith('cop_')){const oid=pipeId.slice(4);const co=(_customObjects||[]).find(o=>o.id===oid);if(co){setAuxPipelines(ps=>[...ps,{id:pipeId,object:oid,name:co.plural}]);setActiveId(pipeId);}}};
   const _auxPipes=auxPipelines.map(ap=>{const o=(_customObjects||[]).find(x=>x.id===ap.object);return o?{id:ap.id,name:ap.name||o.plural,object:o.id,customObj:o}:null;}).filter(Boolean);
-  const allPipelines=[...pipelines.map(p=>({...p,object:p.object||'deal'})),..._auxPipes];
+  const allPipelines=[..._visPipelines.map(p=>({...p,object:p.object||'deal'})),..._auxPipes];
   const [newPipeOpen,setNewPipeOpen]=React.useState(false);
   const selPipe=allPipelines.find(p=>p.id===activeId)||active;
   const {confirmNode,openConfirm}=useConfirm();
@@ -8209,6 +8211,7 @@ function PipelinePage({goTo,nav}){
                 <button onClick={dupPipeline} title="Duplicate this pipeline" aria-label="Duplicate pipeline" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Copy size={14}/></button>
                 <button onClick={delPipeline} disabled={pipelines.length<=1} title={pipelines.length<=1?'Only pipeline — cannot delete':'Delete this pipeline'} aria-label="Delete pipeline" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',pipelines.length<=1?'text-white/20 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={14}/></button>
                 <button onClick={()=>setReasonsOpen(true)} title="Win & loss reasons" aria-label="Win and loss reasons" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Trophy size={14}/></button>
+                {settingsIsAdmin()&&<button onClick={()=>setAccessOpen(true)} title="Pipeline access" aria-label="Pipeline access" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',(active.access&&active.access.length)?'text-amber-300 bg-amber-500/12 border-amber-500/25 hover:bg-amber-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.Lock size={14}/></button>}
               </React.Fragment>)}
             </div>
             <p className="text-white/45 text-[12.5px] pl-0.5">{_openBd.length} open deal{_openBd.length!==1?'s':''} · {fmtK(_openVal)} pipeline</p>
@@ -8318,6 +8321,31 @@ function PipelinePage({goTo,nav}){
       {mergeOpen&&<MergeDealsModal records={selected.map(id=>listFlat.find(x=>x.id===id)).filter(Boolean)} onConfirm={doMergeDeals} onClose={()=>setMergeOpen(false)}/>}
       {/* P1-3: stage gate — fill the missing required fields inline, then the move continues (incl. into the outcome modal for terminal stages) */}
       {gatePrompt&&<StageGateModal deal={gatePrompt.deal} stage={gatePrompt.toStage} missing={gatePrompt.missing} onClose={()=>setGatePrompt(null)} onSave={(patch)=>{const {dd,toStage}=gatePrompt;setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,...patch}:x));setGatePrompt(null);const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);window.__nrturToast&&window.__nrturToast('Saved & moved to '+toStage.name,'success');}}/>}
+      {/* Per-pipeline access — restricted roles lose this board everywhere (switcher, enrollment, detail arrows). Owner/Admin always keep access. */}
+      {accessOpen&&(()=>{const _acc=active.access||[];const _restricted=_acc.length>0;const _setAcc=(list)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,access:(list&&list.length)?list:null}:p));const _toggle=(r)=>{const cur=active.access||[];_setAcc(cur.includes(r)?cur.filter(x=>x!==r):[...cur,r]);};return(
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setAccessOpen(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-amber-500/12 text-amber-300 ring-amber-500/25"><I.Lock size={16}/></div>
+            <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Who can access {active.name}?</p><p className="text-white/45 text-[12px]">Restricted roles lose this pipeline everywhere. Owners and Admins always keep access.</p></div>
+          </div>
+          <div className="px-6 py-5 flex flex-col gap-1.5" style={{background:'var(--s850)'}}>
+            <button onClick={()=>_setAcc(null)} className={['w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all',!_restricted?'bg-brand-500/12 border-brand-500/35':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]'].join(' ')}>
+              <span className={['w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',!_restricted?'border-brand-400':'border-white/25'].join(' ')}>{!_restricted&&<span className="w-2 h-2 rounded-full bg-brand-400"/>}</span>
+              <span className="flex-1 text-[13px] font-medium text-white">Everyone</span>
+            </button>
+            {ALL_DASH_ROLES.map(r=>{const admin=NAV_ADMIN_ROLES.indexOf(r)>=0;const on=admin||(_restricted&&_acc.includes(r));return(
+              <button key={r} disabled={admin} onClick={()=>_toggle(r)} className={['w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all',admin?'bg-white/[0.02] border-white/[0.05] cursor-not-allowed':on?'bg-brand-500/12 border-brand-500/35':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]'].join(' ')}>
+                <span className={['w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0 transition-all',on?'bg-brand-500 border-brand-500':'border-white/25'].join(' ')}>{on&&<I.Check size={9} stroke={3} style={{color:'#fff'}}/>}</span>
+                <span className={['flex-1 text-[13px]',admin?'text-white/40':'text-white/85'].join(' ')}>{r}{admin?' · always':''}</span>
+              </button>);})}
+            <p className="text-[11px] text-white/35 mt-1.5">{_restricted?'Only the checked roles (plus Owner/Admin) can see this pipeline.':'No restriction — every role sees this pipeline.'}</p>
+          </div>
+          <div className="flex px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <button onClick={()=>setAccessOpen(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-all">Done</button>
+          </div>
+        </div>
+      </div>);})()}
       {/* P1-2: workspace win/loss reason lists — feed the Mark Won/Lost modal + the Win/Loss Analysis report */}
       {reasonsOpen&&(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setReasonsOpen(false)}>
         <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
@@ -8387,7 +8415,8 @@ function DealDetailPage({goTo,nav}){
   // About "Primary pipeline" field stays ownership, not view.
   const [viewPipeId,setViewPipeId]=React.useState(null);
   const [enrollOpen,setEnrollOpen]=React.useState(false);
-  const _placements=dealPlacements(d);
+  const _placementsAll=dealPlacements(d);
+  const _placements=_placementsAll.filter(p=>p.primary||pipeAccessible(livePipelines().find(x=>x.id===p.pipelineId))); // restricted roles don't see enrollments in pipelines they can't access (primary always shows)
   const _primaryPl=_placements.find(p=>p.primary)||_placements[0];
   const _viewPl=(viewPipeId!=null&&_placements.find(p=>p.pipelineId===viewPipeId))||_primaryPl;
   const _viewIsPrimary=_viewPl===_primaryPl;
@@ -8400,7 +8429,7 @@ function DealDetailPage({goTo,nav}){
   const _viewStageObj=_pipeStages.find(s=>s.key===_viewPl.stageKey);
   const stageShown=_viewIsPrimary?stage:((_viewStageObj&&_viewStageObj.name)||'—');
   const stageIdx=_ladder.indexOf(stageShown);const nextStage=_viewIsPrimary?_ladder[stageIdx+1]:null;const color=_colorByName[stageShown]||DEAL_STAGE_COLOR[stageShown];
-  const _enrollOpts=livePipelines().filter(p=>realStagesOf(p).length&&!_placements.some(x=>x.pipelineId===p.id));
+  const _enrollOpts=livePipelines().filter(p=>realStagesOf(p).length&&pipeAccessible(p)&&!_placementsAll.some(x=>x.pipelineId===p.id));
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
   const [stageGate,setStageGate]=React.useState(null); // P1-3: {stageName,stage,missing} — stage move blocked until required fields are filled
@@ -8408,7 +8437,7 @@ function DealDetailPage({goTo,nav}){
     if(!_viewIsPrimary){ // D2p2: a move on an ENROLLED view edits only that placement — primary stage/outcome untouched
       const k=_keyByName[stageName];const _tS=_pipeStages.find(s=>s.key===k);if(!_tS||k===_viewPl.stageKey)return;
       if(!skipGate){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}
-      updateDeal(d.id,{stagePlacements:_placements.map(p=>p===_viewPl?{...p,stageKey:k,at:Date.now()}:p)});
+      updateDeal(d.id,{stagePlacements:_placementsAll.map(p=>p.pipelineId===_viewPl.pipelineId?{...p,stageKey:k,at:Date.now()}:p)});
       window.__nrturToast&&window.__nrturToast('Moved to '+stageName+' in '+_pipe.name,'success');return;}
     const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
@@ -8428,7 +8457,7 @@ function DealDetailPage({goTo,nav}){
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
     updateDeal(d.id,{[k]:v});
   };
-  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Primary pipeline',type:'select',options:livePipelines().filter(p=>realStagesOf(p).length).map(p=>p.name)},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
+  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Primary pipeline',type:'select',options:livePipelines().filter(p=>realStagesOf(p).length&&pipeAccessible(p)).map(p=>p.name)},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
@@ -8477,7 +8506,7 @@ function DealDetailPage({goTo,nav}){
                     {_placements.length>1&&<span className="text-[9px] font-mono text-white/30 shrink-0">{_placements.indexOf(_viewPl)+1}/{_placements.length}</span>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {!_viewIsPrimary&&effCanObject('Deals','edit')&&<button onClick={()=>{openConfirm({title:'Remove from '+_pipe.name+'?',body:(d.name||d.company)+' will no longer be tracked in this pipeline. Its primary pipeline is unaffected.',confirmLabel:'Remove',danger:true,onConfirm:()=>{updateDeal(d.id,{stagePlacements:_placements.filter(p=>p!==_viewPl)});setViewPipeId(null);window.__nrturToast&&window.__nrturToast('Removed from '+_pipe.name,'success');}});}} title="Remove from this pipeline" className="w-5 h-5 rounded-md flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 transition-all"><I.X size={11}/></button>}
+                    {!_viewIsPrimary&&effCanObject('Deals','edit')&&<button onClick={()=>{openConfirm({title:'Remove from '+_pipe.name+'?',body:(d.name||d.company)+' will no longer be tracked in this pipeline. Its primary pipeline is unaffected.',confirmLabel:'Remove',danger:true,onConfirm:()=>{updateDeal(d.id,{stagePlacements:_placementsAll.filter(p=>p.pipelineId!==_viewPl.pipelineId)});setViewPipeId(null);window.__nrturToast&&window.__nrturToast('Removed from '+_pipe.name,'success');}});}} title="Remove from this pipeline" className="w-5 h-5 rounded-md flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 transition-all"><I.X size={11}/></button>}
                     {effCanObject('Deals','edit')&&_enrollOpts.length>0&&<button onClick={()=>setEnrollOpen(true)} title="Enroll this deal in another pipeline" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-medium text-brand-300 bg-brand-500/10 ring-1 ring-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={10} stroke={2.6}/>Add</button>}
                   </div>
                 </div>
@@ -8560,6 +8589,10 @@ function defaultPipelinesSeed(){
 let _livePipelines=null; // set by App each render (mirrors _liveDeals)
 function livePipelines(){return _livePipelines||defaultPipelinesSeed();}
 function realStagesOf(p){return ((p&&p.stages)||[]).filter(s=>s.real);}
+// Per-pipeline access (Bigin/Bitrix24 pattern): access=null/[] → everyone; else only the listed
+// roles see the pipeline (switcher, board, enrollment, detail arrows). Owner/Admin always pass —
+// a config UI that can lock out the person configuring it is a footgun, not a permission.
+function pipeAccessible(p){if(!p)return false;const r=effectiveRole();if(NAV_ADMIN_ROLES.indexOf(r)>=0)return true;const a=p.access;if(!a||!a.length)return true;return a.indexOf(r)>=0;}
 function pipelineFor(deal){const ps=livePipelines();const real=ps.filter(p=>realStagesOf(p).length);const dp=deal&&deal.pipeline;return real.find(p=>p.name===dp)||real[0]||ps[0];}
 function pipelineStageByKey(key){const ps=livePipelines();for(const p of ps){const s=(p.stages||[]).find(x=>x.key===key);if(s)return s;}return STAGE_BY_KEY[key]||null;}
 // D3 storage: stagePlacements[{pipelineId,stageKey,primary}] — single primary placement today; the
