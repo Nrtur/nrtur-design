@@ -7419,7 +7419,7 @@ function ContactDetailPage({goTo,nav}){
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const [showAllDeals,setShowAllDeals]=React.useState(false); // volume: deals panel shows 5, expandable
   const [dealsOpen,setDealsOpen]=React.useState(false); // panel collapsed by default — header count tells the story
-  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);},[c&&c.id]);
+  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);setNbaDismissed(false);},[c&&c.id]);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const [tab,setTab]=React.useState('all');
@@ -7427,6 +7427,7 @@ function ContactDetailPage({goTo,nav}){
   const [callModal,setCallModal]=React.useState(false);
   const [dialerOpen,setDialerOpen]=React.useState(false);
   const [composeOpen,setComposeOpen]=React.useState(false);
+  const [nbaDismissed,setNbaDismissed]=React.useState(false); // "Recommended next action" is dismissible per contact
   const [dnc,setDnc]=React.useState(c.dnc);
   // Channel suppression (mirrors Settings -> Suppression List). DNC suppresses all channels.
   const _supEmail=(c.email||'').toLowerCase();const _supDom=_supEmail.split('@')[1]||'';
@@ -7456,7 +7457,7 @@ function ContactDetailPage({goTo,nav}){
   const crec={...c,first:c.first!=null?c.first:_cf0,last:c.last!=null?c.last:_cl0,tags:c.tags||(c.tag?[c.tag]:[])};
   const onFieldChange=(k,v)=>{if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else if(k==='co'){const _co=(crm.companies||[]).find(x=>x.name===v&&!x.deleted);updateContact(c.id,{co:v,companyId:_co?_co.id:null});}else{updateContact(c.id,{[k]:v});}};
   const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>{const co=(c.companyId!=null?crm.companies.find(x=>x.id===c.companyId):null)||crm.companies.find(x=>x.name===c.co);g('company-detail',co&&co.id);}},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'}];
-  const cSecondary=[{key:'seniority',label:'Seniority',type:'select',options:['Individual Contributor','Entry / Junior','Senior / Lead','Manager','Director','VP','C-Level / Owner / Founder','Other']},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Meta Ads','Google Ads','Form','Manual','Import','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
+  const cSecondary=[{key:'seniority',label:'Seniority',type:'select',options:['Individual Contributor','Entry / Junior','Senior / Lead','Manager','Director','VP','C-Level / Owner / Founder','Other']},{key:'jobFunction',label:'Job function',type:'select',options:['Executive / GM','Sales','Marketing','Finance / Accounting','Operations','Product','Engineering / IT','Customer Success','Human Resources','Legal / Compliance','Procurement','Administration','Other']},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Meta Ads','Google Ads','Form','Manual','Import','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
   const cMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
@@ -7464,6 +7465,23 @@ function ContactDetailPage({goTo,nav}){
   const onEditSave=(patch)=>{const next={...crec,...patch};const out={...patch};if('first'in patch||'last'in patch)out.name=((next.first||'')+' '+(next.last||'')).trim();if('co'in patch){const _co=(crm.companies||[]).find(x=>x.name===patch.co&&!x.deleted);out.companyId=_co?_co.id:null;}updateContact(c.id,out);};
   const editGroups=[{title:'Basic info',fields:cPrimary},{title:'Additional details',fields:cSecondary}];
   const _ctLay=omLayoutSplit(cPrimary,cSecondary,'Contacts',_propsCtx);
+  // Recommended next action — derived from the contact's REAL linked deals (open = stageKey not won/lost),
+  // their live nextAction/stage/value, and DNC state. No hardcoded narrative. Dismissible per contact.
+  const _first=c.first||(c.name||'').split(' ')[0]||'this contact';
+  const _openDeals=myDeals.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost'&&!d.deleted).sort((a,b)=>(b.amount||0)-(a.amount||0));
+  const _wonDeals=myDeals.filter(d=>d.stageKey==='won');
+  const _newDeal=()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal');
+  const nba=(()=>{
+    if(dnc)return{title:'Outreach is paused',body:_first+' is marked Do Not Contact — email, SMS, and calls are disabled. Update the toggle below if that has changed.'};
+    if(_openDeals.length){const d=_openDeals[0];const more=_openDeals.length>1?(' · +'+(_openDeals.length-1)+' more open'):'';
+      const base={primary:{label:'Send follow-up',fn:()=>setComposeOpen(true)},secondary:{label:'Open deal',fn:()=>goTo('deal-detail',d.id)}};
+      return d.nextAction
+        ?{...base,title:'Advance '+(d.name||d.company||'the deal'),body:'Next step: '+d.nextAction+' — '+(d.value||'')+' in '+(d.stageName||'the pipeline')+more+'.'}
+        :{...base,title:'Keep '+(d.name||d.company||'the deal')+' moving',body:(d.value||'This deal')+' is sitting in '+(d.stageName||'the pipeline')+more+'. Log the next step to keep momentum.'};
+    }
+    if(_wonDeals.length)return{title:'Nurture '+_first,body:_first+' is a customer with no open deals. A check-in can surface the next opportunity.',primary:{label:'Send email',fn:()=>setComposeOpen(true)},secondary:{label:'New deal',fn:_newDeal}};
+    return{title:'Start a conversation with '+_first,body:'No deals yet. Reach out or open an opportunity when the timing is right.',primary:{label:'Send email',fn:()=>setComposeOpen(true)},secondary:{label:'New deal',fn:_newDeal}};
+  })();
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="contacts" goTo={goTo}/>
@@ -7532,17 +7550,17 @@ function ContactDetailPage({goTo,nav}){
                 </div>);})()}
             </div>
                         <div className="flex flex-col gap-5">
-            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
+            {!nbaDismissed&&<div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
               <div className="flex items-start gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/25 flex items-center justify-center shrink-0"><I.Sparkles size={16}/></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-medium text-amber-300 uppercase tracking-[0.14em]">Recommended next action</p>
-                  <p className="text-[14px] font-medium text-white mt-1">Follow up on the Q3 proposal</p>
-                  <p className="text-[12px] text-white/55 mt-1 leading-relaxed">Sarah opened your proposal twice but hasn't replied in 3 days. A quick check-in now keeps the $24k deal moving.</p>
-                  <div className="flex items-center gap-2 mt-3"><button disabled={dnc} onClick={()=>!dnc&&setComposeOpen(true)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',dnc?'bg-white/[0.04] text-white/30 cursor-not-allowed':'bg-amber-500/90 hover:bg-amber-400 text-[#1a1206] shadow-[0_4px_20px_rgba(245,158,11,0.3)]'].join(' ')}><I.Send size={12}/>Send follow-up</button><button onClick={()=>setCallModal(true)} disabled={dnc} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',dnc?'text-white/30 cursor-not-allowed':'text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08]'].join(' ')}>Schedule call</button><button className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>
+                  <p className="text-[14px] font-medium text-white mt-1">{nba.title}</p>
+                  <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{nba.body}</p>
+                  <div className="flex items-center gap-2 mt-3">{nba.primary&&<button disabled={dnc} onClick={()=>!dnc&&nba.primary.fn()} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',dnc?'bg-white/[0.04] text-white/30 cursor-not-allowed':'bg-amber-500/90 hover:bg-amber-400 text-[#1a1206] shadow-[0_4px_20px_rgba(245,158,11,0.3)]'].join(' ')}><I.Send size={12}/>{nba.primary.label}</button>}{nba.secondary&&<button onClick={nba.secondary.fn} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">{nba.secondary.label}</button>}<button onClick={()=>setNbaDismissed(true)} className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>
                 </div>
               </div>
-            </div>
+            </div>}
             <RecordTasks recId={c.id} match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
