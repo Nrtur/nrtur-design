@@ -6936,8 +6936,8 @@ function actDealOwn(d){
     mkAct('deal',{ts:9000,by:own,label:'DEAL VALUE',title:'Deal value updated',body:(val?('Set to '+val+' '):'')+'after scoping the annual plan.',payload:{field:'Value',from:'—',to:val||'—'}}),
     mkAct('deal',{ts:20160,by:own,label:'DEAL CREATED',title:'Deal created — '+(d.name||d.company||''),body:'Opened at '+(val||'—')+' · '+(d.stageName||'Qualified')+'.'}),
   ];
-  if(d.stageName==='Won'||d.stageKey==='won')out.unshift(mkAct('deal',{ts:240,by:own,label:'WON',title:'Deal won 🎉',body:(val?val+' ':'')+'closed-won.'}));
-  if(d.stageName==='Lost'||d.stageKey==='lost')out.unshift(mkAct('deal',{ts:240,by:own,label:'LOST',title:'Deal lost',body:'Marked closed-lost.'}));
+  if(d.stageName==='Won'||d.stageKey==='won')out.unshift(mkAct('deal',{ts:240,by:own,label:'WON',title:'Deal won 🎉',body:(val?val+' ':'')+'closed-won.'+(d.outcome&&d.outcome.reason?(' · '+d.outcome.reason):'')+(d.outcome&&d.outcome.note?(' — '+d.outcome.note):'')}));
+  if(d.stageName==='Lost'||d.stageKey==='lost')out.unshift(mkAct('deal',{ts:240,by:own,label:'LOST',title:'Deal lost',body:'Marked closed-lost.'+(d.outcome&&d.outcome.reason?(' · '+d.outcome.reason):'')+(d.outcome&&d.outcome.note?(' — '+d.outcome.note):'')}));
   return out;
 }
 function actCompanyOwn(co){
@@ -8279,6 +8279,7 @@ function PipelinePage({goTo,nav}){
   const saveDealChanges=()=>setDealViews(vs=>vs.map(v=>v.key===activeViewKey?{...v,filter:JSON.parse(JSON.stringify(workFilter)),sort:{...workSort}}:v));
   const [cardF,setCardF]=React.useState({name:true,amount:true,contact:false,close:false,tags:true,rot:true});
   const [boardView,_setBoardView]=React.useState(()=>{try{return sessionStorage.getItem('nrtur-pipe-view')||'board';}catch(e){return 'board';}});
+  const [dealSearch,setDealSearch]=React.useState(''); // G056: in-list text search across board/list/forecast (parity with Contacts/Leads/Companies)
   const setBoardView=(v)=>{_setBoardView(v);try{sessionStorage.setItem('nrtur-pipe-view',v);}catch(e){}};
   const [fcMode,setFcMode]=React.useState('stage'); // forecast view: 'stage' (weighted by stage) | 'date' (period columns by expected close)
   const [groupBy,setGroupBy]=React.useState('stage');
@@ -8385,7 +8386,7 @@ function PipelinePage({goTo,nav}){
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
   const dealInActivePipe=(d)=>{if((d.stagePlacements||[]).some(p=>p.pipelineId===active.id))return true;const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+ · D2p2: a deal belongs to this board if it has a PLACEMENT here (primary or enrolled); legacy/renamed pipeline values fall back to the default board so deals are never invisible
   const _stageKeyHere=(d)=>{const pl=(d.stagePlacements||[]).find(p=>p.pipelineId===active.id);return pl?pl.stageKey:d.stageKey;}; // the deal's stage ON THIS BOARD (its placement here, else its primary stage)
-  const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>_stageKeyHere(d)===stage.key&&!d.deleted&&!d.archived&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
+  const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>_stageKeyHere(d)===stage.key&&!d.deleted&&!d.archived&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);const _dq=dealSearch.trim().toLowerCase();if(_dq)arr=arr.filter(d=>[d.name,d.company,d.primaryContact,d.value,Array.isArray(d.dealTags)?d.dealTags.join(' '):'',Array.isArray(d.tags)?d.tags.join(' '):''].filter(Boolean).join('  ').toLowerCase().includes(_dq));arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
@@ -8490,7 +8491,7 @@ function PipelinePage({goTo,nav}){
           rightSlot={<>
             <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">{[['board','Board',I.LayoutDash],['list','List',I.List],['forecast','Forecast',I.Target]].map(([k,l,Ic])=>(<button key={k} onClick={()=>setBoardView(k)} title={l+' view'} aria-pressed={boardView===k} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',boardView===k?'bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.05]'].join(' ')}><Ic size={13}/><span className="hidden sm:inline">{l}</span></button>))}</div>
             
-            <div className="flex items-center gap-2.5"><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges} smart={dealSmartMgr} countFor={countForDeal}/>{dealSmartMgr.builderNode}<OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/>
+            <div className="flex items-center gap-2.5"><div className="hidden md:flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={dealSearch} onChange={e=>setDealSearch(e.target.value)} placeholder="Search deals..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-36"/>{dealSearch&&<button onClick={()=>setDealSearch('')} className="text-white/35 hover:text-white/70 transition-colors" title="Clear search"><I.X size={12}/></button>}</div><OmViewMenu views={dealViews} activeKey={activeViewKey} onSelect={selectDealView} favs={favs} onToggleFav={toggleFav} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} dirty={dealDirty} onSaveChanges={saveDealChanges} smart={dealSmartMgr} countFor={countForDeal}/>{dealSmartMgr.builderNode}<OmFiltersButton object='deal' fields={dealFields} model={workFilter} onChange={setWorkFilter}/>
               <div className="relative">
                 <button ref={viewOptsRef} onClick={()=>setViewOptsOpen(o=>!o)} title="View options" aria-haspopup="menu" aria-expanded={viewOptsOpen} className={['inline-flex items-center justify-center w-9 h-9 rounded-xl border transition-all',viewOptsOpen?'bg-brand-500/20 text-brand-200 border-brand-500/30':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:border-white/[0.18]'].join(' ')}><I.More size={16}/></button>
                 <AnchoredMenu anchorRef={viewOptsRef} open={viewOptsOpen} onClose={()=>setViewOptsOpen(false)} align="right" width={236} className="p-2 rounded-xl border border-white/[0.10]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
