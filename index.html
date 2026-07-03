@@ -12327,7 +12327,7 @@ function actionSummary(node){
 // Renders a single node card by kind, with its inline editor + nested lanes for branching nodes
 // Always-visible "who is here right now / unsubscribed here" badge for a flow step
 const FlowCfgCtx=React.createContext(null);
-function FlowCfgProvider({children}){const [selId,setSelId]=React.useState(null);return <FlowCfgCtx.Provider value={{selId,setSelId}}>{children}</FlowCfgCtx.Provider>;}
+function FlowCfgProvider({children,ent}){const [selId,setSelId]=React.useState(null);return <FlowCfgCtx.Provider value={{selId,setSelId,ent:ent||'deal'}}>{children}</FlowCfgCtx.Provider>;}
 function flowNodeSummary(node){
   if(node.kind==='action')return actionSummary(node)||'Configure this step';
   if(node.kind==='wait')return 'Wait '+delayText(nodeDelay(node));
@@ -12338,13 +12338,26 @@ function flowNodeSummary(node){
   if(node.kind==='branch')return (node.lanes?node.lanes.length:0)+' parallel paths';
   return '';
 }
+// P1: AND/OR condition editor for condition/goal nodes — reuses the Smart-Lists OmFiltersButton, writes node.cond={match,conds}.
+// Entity (field schema) comes from the builder's trigger via FlowCfgCtx; runtime prefers node.cond, else the legacy field/op/value.
+function AutoCondEditor({node,onChange}){
+  const cfg=React.useContext(FlowCfgCtx);
+  const ent=(cfg&&cfg.ent)||'deal';
+  const fields=React.useMemo(()=>autoFieldsFor(ent),[ent]);
+  const model=(node.cond&&node.cond.conds)?node.cond:{match:'AND',conds:[]};
+  const hasLegacy=!(node.cond&&node.cond.conds&&node.cond.conds.length)&&!!node.field;
+  return(<div>
+    <OmFiltersButton object={ent} fields={fields} model={model} onChange={m=>onChange({cond:m})}/>
+    {hasLegacy&&(<p className="mt-1.5 text-[11px] text-white/35 leading-relaxed">A simple condition is in effect: <span className="text-white/60">{node.field} {node.op} {String(node.value)}</span>. Add a condition above to replace it with AND / OR logic.</p>)}
+  </div>);
+}
 function FlowNodeConfigBody({node,onChange,goTo}){
   return(<div className="flex flex-col gap-4">
     {node.kind==='action'&&(node.seq?(<div><div className="flex items-center justify-between mb-1"><label className="text-[11px] text-white/45">{node.seq==='sms'?'SMS sequence to enroll in':'Email sequence to enroll in'}</label><button onClick={()=>goTo(node.seq==='sms'?'sms-sequence-builder':'email-sequence-builder')} className="text-[11px] text-brand-300 hover:text-brand-200">Manage →</button></div><select value={node.seqName||(node.seq==='sms'?SEQ_DATA[0].name:EMAIL_SEQ_DATA[0].name)} onChange={e=>onChange({seqName:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{(node.seq==='sms'?SEQ_DATA:EMAIL_SEQ_DATA).map(q=>(<option key={q.id}>{q.name}</option>))}</select><div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/[0.07] border border-amber-500/20 px-2.5 py-2"><I.Zap size={11} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-white/55 leading-relaxed">Enrolls the contact even if the sequence's own trigger doesn't match. Respects the sequence's re-enrollment rule (no duplicates).</p></div></div>):(<ActionConfig node={node} onChange={onChange} goTo={goTo}/>))}
     {node.kind==='wait'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Pause the flow for</label><DelayPicker value={nodeDelay(node)} onChange={d=>onChange({delay:d})}/></div>)}
     {node.kind==='waitUntil'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Hold here until</label><CondRow node={node} onChange={onChange}/><div className="mt-2.5"><label className="text-[11px] text-white/45 block mb-1.5">Time out after</label><DelayPicker value={nodeTimeout(node)} onChange={d=>onChange({timeoutDelay:d})}/></div></div>)}
-    {node.kind==='goal'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Exit the automation early once this is met</label><CondRow node={node} onChange={onChange}/></div>)}
-    {node.kind==='condition'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Split the flow on</label><CondRow node={node} onChange={onChange}/><p className="mt-2 text-[11px] text-white/40 leading-relaxed">The Yes / No paths are edited directly on the canvas below the step.</p></div>)}
+    {node.kind==='goal'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Exit the automation early once this is met</label><AutoCondEditor node={node} onChange={onChange}/></div>)}
+    {node.kind==='condition'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Split the flow on</label><AutoCondEditor node={node} onChange={onChange}/><p className="mt-2 text-[11px] text-white/40 leading-relaxed">The Yes / No paths are edited directly on the canvas below the step.</p></div>)}
     {node.kind==='branch'&&(<div><label className="text-[11px] text-white/45 block mb-1.5">Path names</label><div className="flex flex-col gap-1.5">{(node.lanes||[]).map((l,li)=>(<input key={l.id} value={l.label} onChange={e=>onChange({lanes:node.lanes.map(x=>x.id===l.id?{...x,label:e.target.value}:x)})} className="px-2.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40"/>))}</div><p className="mt-2 text-[11px] text-white/40 leading-relaxed">Steps inside each path are edited on the canvas.</p></div>)}
     {node.kind==='mapFields'&&(<div><label className="text-[11px] text-white/45 block mb-1">Store as this form</label><select value={node.form} onChange={e=>onChange({form:e.target.value})} style={FSEL_STYLE} className={FSEL+' w-full'}>{FORMS_DATA.map(f=>(<option key={f.id}>{f.name}</option>))}</select>
       <label className="text-[11px] text-white/45 block mt-3 mb-1.5">Field mapping</label>
@@ -12562,7 +12575,7 @@ function AutomationBuilderPage({goTo,nav}){
               <div className="overflow-x-auto scroll-area pb-2">
                 <div className="flex flex-col items-center w-fit min-w-full mx-auto">
                   <NodeTile eyebrow="Trigger" accent="#818cf8" Icon={tm.Icon} title={trigger} summary={'Fires when '+tm.hint} selected={triggerOpen} onClick={()=>setTriggerOpen(true)} noTopPort/>
-                  <FlowCfgProvider><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} flowName={name}/></FlowCfgProvider>
+                  <FlowCfgProvider ent={({Contact:'contact',Lead:'lead',Company:'company',Deal:'deal'})[(tm&&tm.cat)]||'deal'}><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} flowName={name}/></FlowCfgProvider>
                 </div>
               </div>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 sticky top-4 flex flex-col gap-4">
