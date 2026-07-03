@@ -9865,6 +9865,10 @@ function LeadDetailPage({goTo,nav}){
   const extra=(crm.activities||[]).filter(a=>a.subjectType==='lead'&&a.subjectId===(l||{}).id); // R3: persisted, keyed by record
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('lead',(l||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:l.owner||'AM',title:'Note added',body:text}),...x]);
+  // Lead parity with Contacts/Deals: a lead can log a call and record an email (both persist via addActivity('lead',...)).
+  const [callModal,setCallModal]=React.useState(false);
+  const [composeOpen,setComposeOpen]=React.useState(false);
+  const onLogCall=(cd)=>{setExtra(x=>[mkAct('call',{ts:0,by:l.owner||'AM',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),payload:{dir:cd.direction==='in'?'in':'out',outcome:cd.outcome,reason:cd.reason}}),...x]);};
   const [convertOpen,setConvertOpen]=React.useState(false);
   const [convToast,setConvToast]=React.useState('');
   const {addItem:calAddItem}=React.useContext(CalendarContext);
@@ -9935,7 +9939,7 @@ function LeadDetailPage({goTo,nav}){
                 </div>
               </div>
               <RecordTasks recId={l.id} match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
-              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
+              <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onEmail={canEditLead?()=>setComposeOpen(true):undefined} onLogCall={canEditLead?()=>setCallModal(true):undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
           </div>
           <RecordMetaFooter record={l} meta={leadMeta}/>
@@ -9944,6 +9948,8 @@ function LeadDetailPage({goTo,nav}){
       </div>
       {editOpen&&<RecordEditDrawer title={'Edit '+l.name} Icon={I.Sparkles} groups={editGroups} record={l} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
       {convertOpen&&<ConvertLeadModal lead={l} close={()=>setConvertOpen(false)} onConfirm={doConvert}/>}
+      {callModal&&<LogCallModal close={()=>setCallModal(false)} contactName={l.name} onSave={onLogCall}/>}
+      {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={l.email} onSent={(em)=>setExtra(x=>[mkAct('email',{ts:0,by:l.owner||'AM',title:'Email sent'+(em&&em.subject?' — '+em.subject:''),body:(em&&em.body)||('Email sent to '+(l.email||'the lead')+'.')}),...x])}/>}
       {convToast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{convToast}</div>)}
       {schedOpen&&<CalEventFormModal initial={{type:'call',contact:l.name,linkType:'lead',company:l.company}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setExtra(x=>[mkAct('meeting',{ts:0,by:l.owner||'AM',title:ev.title||'Call scheduled',body:(ev.date?('On '+ev.date):'Added to the calendar.')}),...x]);setSchedOpen(false);}}/>}
     </div>
