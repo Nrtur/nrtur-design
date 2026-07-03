@@ -6479,8 +6479,8 @@ function ContactsPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Contacts" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={(120+(i%3)*20)+'px'} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={(110+i*7)+'px'} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
-  const setStatus=(id,st)=>{setRows(r=>r.map(c=>c.id===id?{...c,cstatus:st}:c));showToast('Status updated to '+st);};
-  const setOwner=(id,m)=>{setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
+  const setStatus=(id,st)=>{const _b=(_liveContacts||[]).find(c=>c.id===id);if(_b)fireRecordUpdate('contact',_b,{..._b,cstatus:st});setRows(r=>r.map(c=>c.id===id?{...c,cstatus:st}:c));showToast('Status updated to '+st);};
+  const setOwner=(id,m)=>{const _b=(_liveContacts||[]).find(c=>c.id===id);if(_b)fireRecordUpdate('contact',_b,{..._b,owner:m.avatar,ownerColor:m.color});setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
   const doArchive=(c)=>openConfirm({title:'Archive '+c.name+'?',body:'Archived contacts are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===c.id?{...x,archived:true}:x));showToast(c.name+' archived');}});
   const doRestore=(c)=>{setRows(r=>r.map(x=>x.id===c.id?{...x,archived:false}:x));showToast(c.name+' restored');};
   const selectView=(k)=>{setActiveKey(k);setSelected([]);};
@@ -9196,8 +9196,8 @@ function CompaniesPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Companies" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={(120+(i%3)*20)+'px'} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="10px"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={(110+i*7)+'px'} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
-  const setType=(id,t)=>{setRows(r=>r.map(c=>c.id===id?{...c,type:t}:c));showToast('Type updated to '+t);};
-  const setOwner=(id,m)=>{setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
+  const setType=(id,t)=>{const _b=(_liveCompanies||[]).find(c=>c.id===id);if(_b)fireRecordUpdate('company',_b,{..._b,type:t});setRows(r=>r.map(c=>c.id===id?{...c,type:t}:c));showToast('Type updated to '+t);};
+  const setOwner=(id,m)=>{const _b=(_liveCompanies||[]).find(c=>c.id===id);if(_b)fireRecordUpdate('company',_b,{..._b,owner:m.avatar,ownerColor:m.color});setRows(r=>r.map(c=>c.id===id?{...c,owner:m.avatar,ownerColor:m.color}:c));showToast('Reassigned to '+m.name);};
   const doArchive=(co)=>openConfirm({title:'Archive '+co.name+'?',body:'Archived companies are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===co.id?{...x,archived:true}:x));showToast(co.name+' archived');}});
   const doRestore=(co)=>{setRows(r=>r.map(x=>x.id===co.id?{...x,archived:false}:x));showToast(co.name+' restored');};
   const selectView=(k)=>{setActiveKey(k);setSelected([]);};
@@ -9777,8 +9777,8 @@ function LeadsPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Leads" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s880)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={(120+(i%3)*20)+'px'} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={(110+i*7)+'px'} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
-  const setStatus=(id,st)=>{setRows(r=>r.map(l=>l.id===id?{...l,status:st}:l));showToast('Status updated to '+st);};
-  const setOwner=(id,m)=>{setRows(r=>r.map(l=>l.id===id?{...l,owner:m.avatar,ownerColor:m.color}:l));showToast('Reassigned to '+m.name);};
+  const setStatus=(id,st)=>{const _b=(_liveLeads||[]).find(l=>l.id===id);if(_b)fireRecordUpdate('lead',_b,{..._b,status:st});setRows(r=>r.map(l=>l.id===id?{...l,status:st}:l));showToast('Status updated to '+st);};
+  const setOwner=(id,m)=>{const _b=(_liveLeads||[]).find(l=>l.id===id);if(_b)fireRecordUpdate('lead',_b,{..._b,owner:m.avatar,ownerColor:m.color});setRows(r=>r.map(l=>l.id===id?{...l,owner:m.avatar,ownerColor:m.color}:l));showToast('Reassigned to '+m.name);};
   const doArchive=(l)=>openConfirm({title:'Archive '+l.name+'?',body:'Archived leads are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:true}:x));showToast(l.name+' archived');}});
   const doRestore=(l)=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:false}:x));showToast(l.name+' restored');};
   const doConvert=(payload)=>{const l=convertLead;const rec=buildConvertRecords(l,payload);const contact=rec.contact,company=rec.company,deal=rec.deal,coId=rec.companyId;setContacts(a=>rec.contactReused?a.map(x=>x.id===contact.id?contact:x):[contact,...a]);if(company)setCompanies(a=>[company,...a]);if(deal)setDeals(a=>[deal,...a]);setRows(r=>r.map(x=>x.id===l.id?{...x,converted:true,convertedAt:'Just now',convertedToContactId:contact.id,convertedToCompanyId:coId,convertedToDealId:deal?deal.id:null,convContact:contact.name,convCompany:company?company.name:(l.company||''),convDeal:deal?(deal.company+' · '+deal.value):''}:x));setConvertLead(null);setSelected([]);showToast(rec.contactReused?('Lead converted — linked to existing contact'+(deal?' · deal created':'')):('Lead converted — Contact'+(company?', Company':'')+(deal?' (and Deal)':'')+' created.'));};
@@ -17377,6 +17377,36 @@ function fireEntityAutomationEvents(ent,record,events){
   if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
   return fired;
 }
+// P0 trigger substrate: diff a record EDIT (before→after) and fire the matching entity automations.
+// Deferred via setTimeout(0) so it never runs inside a React setState/commit. Inert until App has mounted (_autoRt/live pointers set).
+function fireRecordUpdate(ent,before,after){
+  if(!_autoRt||!after)return;
+  const b=before||{},a=after,evs=[];
+  const chg=(k)=>String(b[k]==null?'':b[k])!==String(a[k]==null?'':a[k]);
+  const tagDiff=(k)=>{const ob=Array.isArray(b[k])?b[k]:[],oa=Array.isArray(a[k])?a[k]:[];return {added:oa.some(t=>ob.indexOf(t)<0),removed:ob.some(t=>oa.indexOf(t)<0)};};
+  if(ent==='contact'){
+    const t=tagDiff('tags');
+    if(chg('cstatus'))evs.push('Status changed');
+    if(t.added)evs.push('Tag added');
+    if(t.removed)evs.push('Tag removed');
+    if(chg('cstatus')||chg('owner')||chg('title')||chg('co')||chg('phone')||chg('email')||chg('name')||t.added||t.removed)evs.push('Contact updated');
+  }else if(ent==='lead'){
+    const t=tagDiff('tags');
+    if(chg('status')){evs.push('Lead status changed');if(/sales-?ready|qualified/i.test(String(a.status)))evs.push('Lead qualified');}
+    if(chg('owner'))evs.push('Lead assigned');
+    if(t.added)evs.push('Tag added');
+    if(t.removed)evs.push('Tag removed');
+  }else if(ent==='company'){
+    const t=tagDiff('tags');
+    if(chg('type')){evs.push('Company type changed');if(/customer/i.test(String(a.type)))evs.push('Account became Customer');}
+    if(chg('owner'))evs.push('Company owner changed');
+    if(t.added)evs.push('Tag added');
+    if(t.removed)evs.push('Tag removed');
+  }
+  if(!evs.length)return;
+  const uniq=Array.from(new Set(evs));
+  setTimeout(function(){try{fireEntityAutomationEvents(ent,a,uniq);}catch(e){}},0);
+}
 function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
   const matched=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
@@ -22611,9 +22641,9 @@ function App(){
     setCustomRecords:(objId,fn)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(typeof fn==='function'?fn(o.records||[]):fn)}:o)),
     updateCustomRecord:(objId,recId,patch)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(o.records||[]).map(r=>r.id===recId?{...r,...patch}:r)}:o)),
     addCustomRecord:(objId,rec)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:[rec,...(o.records||[])]}:o)),
-    updateContact:(id,patch)=>{setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){const _o=(_liveContacts||[]).find(c=>c.id===id);const oldName=_o&&_o.name;setDeals(a=>a.map(d=>{let nd=d.primaryContactId===id?{...d,primaryContact:patch.name}:d;if(oldName&&Array.isArray(nd.additionalContacts)&&nd.additionalContacts.some(ac=>ac&&ac.contact===oldName))nd={...nd,additionalContacts:nd.additionalContacts.map(ac=>ac&&ac.contact===oldName?{...ac,contact:patch.name}:ac)};return nd;}));}},
-    updateLead:(id,patch)=>setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l)),
-    updateCompany:(id,patch)=>{setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
+    updateContact:(id,patch)=>{const _bef=(_liveContacts||[]).find(c=>c.id===id);if(_bef)fireRecordUpdate('contact',_bef,{..._bef,...patch});setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){const _o=(_liveContacts||[]).find(c=>c.id===id);const oldName=_o&&_o.name;setDeals(a=>a.map(d=>{let nd=d.primaryContactId===id?{...d,primaryContact:patch.name}:d;if(oldName&&Array.isArray(nd.additionalContacts)&&nd.additionalContacts.some(ac=>ac&&ac.contact===oldName))nd={...nd,additionalContacts:nd.additionalContacts.map(ac=>ac&&ac.contact===oldName?{...ac,contact:patch.name}:ac)};return nd;}));}},
+    updateLead:(id,patch)=>{const _bef=(_liveLeads||[]).find(l=>l.id===id);if(_bef)fireRecordUpdate('lead',_bef,{..._bef,...patch});setLeads(a=>a.map(l=>l.id===id?{...l,...patch}:l));},
+    updateCompany:(id,patch)=>{const _befC=(_liveCompanies||[]).find(c=>c.id===id);if(_befC)fireRecordUpdate('company',_befC,{..._befC,...patch});setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
     // Lifecycle: winning a deal advances its primary contact to Customer (unless already Customer/Lost), logged on the contact's Changes tab.
     promoteWonContact:(deal)=>{if(!deal||deal.primaryContactId==null)return;const ct=contacts.find(x=>x.id===deal.primaryContactId);if(!ct||ct.cstatus==='Customer'||ct.cstatus==='Lost')return;setContacts(cs=>cs.map(x=>x.id===deal.primaryContactId?{...x,cstatus:'Customer'}:x));setActivities(a=>[{...mkAct('field',{ts:0,by:'nrtur',title:'Status → Customer',body:'Auto-set when “'+(deal.name||deal.company||'a deal')+'” was won.'}),subjectType:'contact',subjectId:deal.primaryContactId},...a]);},
