@@ -2158,7 +2158,7 @@ function arDefaultFields(object){
     F({id:'d_pipeline',label:'Pipeline',type:'Single select',options:['Sales Pipeline','Customer Onboarding']}),F({id:'d_stage',label:'Stage',type:'Single select',options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
     F({id:'d_close',label:'Expected close date',type:'Date'}),F({id:'d_owner',label:'Owner',type:'Lookup'}),
     F({id:'d_contact',label:'Primary contact',type:'Lookup'}),F({id:'d_company',label:'Company',type:'Lookup'}),
-    F({id:'d_next',label:'Next action',type:'Text'}),F({id:'d_tags',label:'Tags',type:'Multi select'}),
+    F({id:'d_next',label:'Next action',type:'Single select',options:DEAL_NEXT_ACTIONS}),F({id:'d_tags',label:'Tags',type:'Multi select'}),
     F({id:'d_source',label:'Source',type:'Single select',create:true,detail:'secondary',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']}),F({id:'d_amttype',label:'Amount type',type:'Single select',create:true,detail:'secondary',options:['One-time','ACV','TCV','ARR','MRR']}),
   ];
   if(object==='lead')return[
@@ -5197,7 +5197,7 @@ function importBaseFields(object){
     {key:'name',label:'Name',required:true},{key:'amount',label:'Amount'},
     {key:'pipeline',label:'Pipeline'},{key:'dStage',label:'Stage',opts:DEAL_STAGES_ALL},
     {key:'closeDate',label:'Expected close date'},{key:'owner',label:'Owner'},
-    {key:'company',label:'Company'},{key:'primaryContact',label:'Primary contact'},{key:'nextAction',label:'Next action'},{key:'source',label:'Source'},
+    {key:'company',label:'Company'},{key:'primaryContact',label:'Primary contact'},{key:'nextAction',label:'Next action',opts:DEAL_NEXT_ACTIONS},{key:'source',label:'Source'},
   ];
   if(object==='lead')return[
     {key:'name',label:'Name',required:true},{key:'company',label:'Company name'},
@@ -6585,7 +6585,11 @@ function ContactsPage({goTo,nav}){
 
 // ?? Record property field system (two-tier About / Show all properties / meta) ??
 function userByCode(code){return (typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(u=>u.avatar===code)||null;}
-const PILL_C={'Subscriber':'#94a3b8','Lead':'#60a5fa','Marketing Qualified Lead':'#a78bfa','Sales Qualified Lead':'#818cf8','Opportunity':'#fbbf24','Customer':'#34d399','Evangelist':'#f472b6','Other':'#94a3b8','New':'#60a5fa','Contacted':'#818cf8','Nurturing':'#a78bfa','Engaged':'#a78bfa','Qualified':'#34d399','Unqualified':'#94a3b8','Sales-Ready':'#34d399','Disqualified':'#94a3b8','Prospecting':'#94a3b8','Proposal':'#a78bfa','Negotiation':'#fbbf24','Won':'#34d399','Lost':'#f87171','Open':'#60a5fa','Prospect':'#818cf8','Partner':'#60a5fa','Competitor':'#f87171'};
+const PILL_C={'Subscriber':'#94a3b8','Lead':'#60a5fa','Marketing Qualified Lead':'#a78bfa','Sales Qualified Lead':'#818cf8','Opportunity':'#fbbf24','Customer':'#34d399','Evangelist':'#f472b6','Other':'#94a3b8','New':'#60a5fa','Contacted':'#818cf8','Nurturing':'#a78bfa','Engaged':'#a78bfa','Qualified':'#34d399','Unqualified':'#94a3b8','Sales-Ready':'#34d399','Disqualified':'#94a3b8','Prospecting':'#94a3b8','Proposal':'#a78bfa','Negotiation':'#fbbf24','Won':'#34d399','Lost':'#f87171','Open':'#60a5fa','Prospect':'#818cf8','Partner':'#60a5fa','Competitor':'#f87171','Call':'#60a5fa','Email / follow-up':'#818cf8','Send proposal':'#fbbf24','Run demo':'#22d3ee','Negotiate':'#fb923c','Get signature':'#34d399','Internal review':'#a78bfa','Waiting on them':'#94a3b8','Onboard':'#2dd4bf'};
+// Next action = a bounded, repeatable set of sales motions (unlike free-text job title). A picklist
+// lets us color-code it, scan a stage at a glance, filter by it, and trigger automations off it.
+// The specific detail ("chase the Q3 signature") belongs on a linked task, which carries a due date.
+const DEAL_NEXT_ACTIONS=['Call','Email / follow-up','Send proposal','Run demo','Negotiate','Get signature','Internal review','Waiting on them','Onboard'];
 function pillC(v){return PILL_C[v]||'#94a3b8';}
 function scoreC(n){n=Number(n)||0;if(n>=70)return'#34d399';if(n>=40)return'#fbbf24';return'#60a5fa';}
 function fmtMoney(n){if(n===''||n==null)return'';const num=typeof n==='number'?n:parseFloat(String(n).replace(/[^0-9.]/g,''));if(isNaN(num))return String(n);return '$'+num.toLocaleString('en-US');}
@@ -7615,14 +7619,14 @@ function AddContactPage({goTo,nav}){
 const STAGES_DATA=[
   {key:'prospecting',name:'Prospecting',color:'#94a3b8',count:8,value:'$42k',deals:[
     {id:120,company:'Northpeak Co',value:'$4,000',owner:'AM',ownerColor:'#3b82f6',tag:'Lost',tagBg:'bg-red-500/15',tagFg:'text-red-300',age:'4w',score:'cold',name:'Northpeak — Pilot',amount:4000,pipeline:'Sales Pipeline',primaryContact:'Greg Mason',dealTags:['cold'],deleted:true,deletedAt:Date.now()-14*864e5,deletedBy:'Jamie Kim'},
-    {id:1,company:'Meridian Agency',value:'$8,400',owner:'SC',ownerColor:'#3b82f6',tag:'Follow up',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'5d',score:'cold',name:'Meridian — Managed CRM',amount:8400,pipeline:'Sales Pipeline',probability:30,closeDate:'2026-07-15',primaryContact:'Sarah Chen',nextAction:'Send follow-up email',dealTags:['inbound'],source:'Meta Ads',amountType:'One-time',forecast:'Pipeline',additionalContacts:[{contact:'James Rivera',role:'Champion'}],createdBy:'SC',createdAt:'Apr 1, 2026',lastActivity:'5d ago',adSourceKey:'meta-ads',adPlatform:'meta',adCampaign:'Spring Promo 2026',fbclid:'IwAR2_a91kZ_demo_fbclid_8x2'},
+    {id:1,company:'Meridian Agency',value:'$8,400',owner:'SC',ownerColor:'#3b82f6',tag:'Follow up',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'5d',score:'cold',name:'Meridian — Managed CRM',amount:8400,pipeline:'Sales Pipeline',closeDate:'2026-07-15',primaryContact:'Sarah Chen',nextAction:'Email / follow-up',dealTags:['inbound'],source:'Meta Ads',amountType:'One-time',forecast:'Pipeline',additionalContacts:[{contact:'James Rivera',role:'Champion'}],createdBy:'SC',createdAt:'Apr 1, 2026',lastActivity:'5d ago',adSourceKey:'meta-ads',adPlatform:'meta',adCampaign:'Spring Promo 2026',fbclid:'IwAR2_a91kZ_demo_fbclid_8x2'},
     {id:2,company:'Bloom Creative',value:'$12,000',owner:'JK',ownerColor:'#8b5cf6',tag:'New lead',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'2d',score:'warm'},
     {id:3,company:'Vertex Labs',value:'$6,200',owner:'RL',ownerColor:'#10b981',tag:'Call booked',tagBg:'bg-violet-500/15',tagFg:'text-violet-300',age:'1d',score:'hot'}]},
   {key:'qualified',name:'Qualified',color:'#818cf8',count:5,value:'$81k',deals:[
-    {id:4,company:'Pivot Studio',value:'$22,500',owner:'SC',ownerColor:'#3b82f6',tag:'Proposal sent',tagBg:'bg-amber-500/15',tagFg:'text-amber-300',age:'3d',score:'warm',name:'Pivot Studio — Platform',amount:22500,pipeline:'Sales Pipeline',probability:50,closeDate:'2026-07-22',primaryContact:'',nextAction:'Schedule demo',dealTags:[],source:'Website',amountType:'ACV',forecast:'Best case',additionalContacts:[],createdBy:'SC',createdAt:'Mar 20, 2026',lastActivity:'3d ago'},
+    {id:4,company:'Pivot Studio',value:'$22,500',owner:'SC',ownerColor:'#3b82f6',tag:'Proposal sent',tagBg:'bg-amber-500/15',tagFg:'text-amber-300',age:'3d',score:'warm',name:'Pivot Studio — Platform',amount:22500,pipeline:'Sales Pipeline',closeDate:'2026-07-22',primaryContact:'',nextAction:'Run demo',dealTags:[],source:'Website',amountType:'ACV',forecast:'Best case',additionalContacts:[],createdBy:'SC',createdAt:'Mar 20, 2026',lastActivity:'3d ago'},
     {id:5,company:'Atlas Consult',value:'$18,000',owner:'MR',ownerColor:'#f59e0b',tag:'Demo done',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'4d',score:'warm'}]},
   {key:'proposal',name:'Proposal',color:'#a78bfa',count:4,value:'$67k',deals:[
-    {id:6,company:'Summit Digital',value:'$31,000',owner:'JK',ownerColor:'#8b5cf6',tag:'Negotiating',tagBg:'bg-orange-500/15',tagFg:'text-orange-300',age:'1d',score:'hot',name:'Summit — Renewal',amount:31000,pipeline:'Sales Pipeline',probability:65,closeDate:'2026-06-28',primaryContact:'James Rivera',nextAction:'Negotiate terms',dealTags:['expansion'],source:'Referral',amountType:'ARR',forecast:'Commit',additionalContacts:[{contact:'Sarah Chen',role:'Decision maker'}],createdBy:'JK',createdAt:'Feb 10, 2026',lastActivity:'1d ago'},
+    {id:6,company:'Summit Digital',value:'$31,000',owner:'JK',ownerColor:'#8b5cf6',tag:'Negotiating',tagBg:'bg-orange-500/15',tagFg:'text-orange-300',age:'1d',score:'hot',name:'Summit — Renewal',amount:31000,pipeline:'Sales Pipeline',closeDate:'2026-06-28',primaryContact:'James Rivera',nextAction:'Negotiate',dealTags:['expansion'],source:'Referral',amountType:'ARR',forecast:'Commit',additionalContacts:[{contact:'Sarah Chen',role:'Decision maker'}],createdBy:'JK',createdAt:'Feb 10, 2026',lastActivity:'1d ago'},
     {id:7,company:'Nova Growth',value:'$15,500',owner:'RL',ownerColor:'#10b981',tag:'Review',tagBg:'bg-pink-500/15',tagFg:'text-pink-300',age:'2d',score:'warm'}]},
   {key:'negotiation',name:'Negotiation',color:'#fbbf24',count:3,value:'$58k',deals:[
     {id:8,company:'Kapoor & Assoc',value:'$28,000',owner:'MR',ownerColor:'#f59e0b',tag:'Contract sent',tagBg:'bg-amber-500/15',tagFg:'text-amber-300',age:'today',score:'hot'}]},
@@ -7755,7 +7759,7 @@ const DEAL_REQ_FIELDS=[
   {key:'closeDate',label:'Expected close date',type:'date'},
   {key:'primaryContact',label:'Primary contact',type:'contact'},
   {key:'company',label:'Company',type:'companylookup'},
-  {key:'nextAction',label:'Next action',type:'text'},
+  {key:'nextAction',label:'Next action',type:'pill',options:DEAL_NEXT_ACTIONS},
   {key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},
 ];
 function dealFieldEmpty(d,k){
@@ -7910,7 +7914,7 @@ const DEAL_COLS=[
   {key:'pipeline',label:'Pipeline',w:'130px',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.pipeline||'Sales Pipeline'}</p>)},
   {key:'score',label:'Heat',w:'84px',def:false,cell:(d)=>{const m={hot:['#f87171','Hot'],warm:['#fbbf24','Warm'],cold:['#94a3b8','Cold'],won:['#34d399','Won']}[d.score]||['#94a3b8','—'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:m[0]+'1f',color:m[0],boxShadow:'inset 0 0 0 1px '+m[0]+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:m[0]}}/>{m[1]}</span>);}},
   {key:'source',label:'Source',w:'120px',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.source||'—'}</p>)},
-  {key:'nextAction',label:'Next action',w:'1.2fr',def:false,cell:(d)=>(<p className="text-[12.5px] text-white/65 truncate">{d.nextAction||'—'}</p>)},
+  {key:'nextAction',label:'Next action',w:'1.2fr',def:false,cell:(d)=>d.nextAction?(()=>{const _nc=pillC(d.nextAction);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px] font-medium max-w-full" style={{color:_nc,background:_nc+'1f',boxShadow:'inset 0 0 0 1px '+_nc+'40'}}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:_nc}}/><span className="truncate">{d.nextAction}</span></span>);})():<span className="text-white/30 text-[12.5px]">—</span>},
   {key:'tags',label:'Tags',w:'1.2fr',def:false,cell:(d)=>{const t=d.dealTags||d.tags||[];return(<div className="flex flex-wrap gap-1 min-w-0">{t.length?t.slice(0,3).map(x=>(<TagChip key={x} name={x} sm/>)):<span className="text-white/25 text-[12px]">—</span>}</div>);}},
 ];
 function DealRowDyn({d,COL,shownCols,selected,onSelect,ctx,freeze}){
@@ -8345,7 +8349,7 @@ function PipelinePage({goTo,nav}){
           trailing={effCanObject('Deals','edit')?<button onClick={()=>{if(editStages){addStageInline();}else{setEditStages(true);}}} className="w-[150px] shrink-0 self-start mt-0 rounded-2xl border border-dashed border-white/[0.10] hover:border-brand-500/40 hover:bg-white/[0.02] text-white/35 hover:text-white/70 transition-all flex flex-col items-center justify-center gap-2 py-8"><I.Plus size={18} stroke={2.2}/><span className="text-[12px] font-medium">{editStages?'Add stage':'Edit stages'}</span></button>:null}
           renderCard={(d,col,dp,dragging)=>{const stage=col.stage;const rot=dealRotInfo(d,stage);return(<button {...dp} onClick={()=>stage.real&&!editStages&&goTo('deal-detail',d.id)} className={['deal-card w-full rounded-xl p-3.5 text-left group cursor-grab border transition-colors',rot.rotting?'bg-amber-500/[0.04] border-amber-500/30 ring-1 ring-amber-500/20 hover:border-amber-500/45':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]',dragging?'opacity-50 scale-[0.97]':''].join(' ')}>
                     {(cardF.name||cardF.amount)&&<div className="flex items-start justify-between gap-2 mb-2">{cardF.name?<div className="min-w-0 flex-1 flex flex-col gap-0.5"><p className="text-[13px] font-medium text-white leading-tight truncate">{d.name||d.company}</p>{d.name&&d.company&&<p className="text-[11px] text-white/40 leading-tight truncate">{d.company}</p>}</div>:<span/>}{cardF.amount&&<span className="text-[14px] font-semibold text-white tabular-nums shrink-0">{d.value}</span>}</div>}
-                    {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags&&d.nextAction?<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-white/65 bg-white/[0.05] ring-1 ring-white/[0.08] min-w-0" title={'Next action: '+d.nextAction}><I.ArrowRight size={9} className="text-brand-300 shrink-0"/><span className="truncate max-w-[128px]">{d.nextAction}</span></span>:<span/>}{cardF.rot&&(rot.rotting?<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-amber-300 bg-amber-500/12 ring-1 ring-amber-500/25" title={'No activity for '+rot.days+' days — past this stage’s '+rot.thresh+'-day threshold'}><I.AlertTriangle size={9}/>Stale {rot.days}d</span>:<div className="flex items-center gap-1.5 text-[10px] text-white/35" title={'Age '+rot.days+' days'}><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>)}</div>}
+                    {(cardF.tags||cardF.rot)&&<div className="flex items-center justify-between gap-2 mb-2.5">{cardF.tags&&d.nextAction?(()=>{const _nc=pillC(d.nextAction);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium min-w-0" style={{color:_nc,background:_nc+'1f',boxShadow:'inset 0 0 0 1px '+_nc+'40'}} title={'Next action: '+d.nextAction}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:_nc}}/><span className="truncate max-w-[128px]">{d.nextAction}</span></span>);})():<span/>}{cardF.rot&&(rot.rotting?<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-amber-300 bg-amber-500/12 ring-1 ring-amber-500/25" title={'No activity for '+rot.days+' days — past this stage’s '+rot.thresh+'-day threshold'}><I.AlertTriangle size={9}/>Stale {rot.days}d</span>:<div className="flex items-center gap-1.5 text-[10px] text-white/35" title={'Age '+rot.days+' days'}><span className="w-1.5 h-1.5 rounded-full" style={{background:d.score==='hot'?'#f87171':d.score==='warm'?'#fbbf24':d.score==='won'?'#34d399':'#94a3b8'}}/>{d.age}</div>)}</div>}
                     {cardF.contact&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.UserPlus size={11} className="text-white/35 shrink-0"/><span className="truncate">{d.primaryContact||contactsForCompany(d.company)[0]&&contactsForCompany(d.company)[0].name||'No contact'}</span></div>}
                     {cardF.close&&<div className="flex items-center gap-1.5 mb-2.5 text-[11px] text-white/55"><I.Calendar size={11} className="text-white/35 shrink-0"/>{d.closeDate?fmtShortDate(d.closeDate):'No close date'}</div>}
                     <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.04]"><div className="flex items-center gap-1.5"><div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white" style={{background:d.ownerColor}}>{d.owner}</div><span className="text-[10px] text-white/50">{d.owner}</span></div><I.ArrowRight size={10} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity"/></div>
@@ -8605,7 +8609,7 @@ function DealDetailPage({goTo,nav}){
   };
   // Pipeline membership + primary now live ENTIRELY in the hero switcher (arrows, Set-primary, Add, Remove),
   // so the About panel no longer duplicates a "Primary pipeline" field. Probability is stage-derived, read-only.
-  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'probability',label:'Win probability',type:'percent',readOnly:true,hint:(_viewIsPrimary?'from stage':'from '+_primaryPipe.name)},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
+  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [pipeMenuOpen,setPipeMenuOpen]=React.useState(false);const pipeMenuRef=React.useRef(null); // hero pipeline-actions overflow menu (one stable button — no reflow when switching pipelines)
@@ -8647,8 +8651,17 @@ function DealDetailPage({goTo,nav}){
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
                 {/* Name gets its OWN full-width line so a wider stage word (Prospecting vs Qualified) can't push it onto a second line; the stage pill shares the short value's row instead. */}
                 <div className="mb-3">
-                  <h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>
-                  {d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>
+                      {d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}
+                    </div>
+                    {_primProb!=null&&(()=>{const _pc=_primProb>=70?'#34d399':_primProb>=40?'#fbbf24':'#94a3b8';return(
+                    <div className="flex flex-col items-end shrink-0 text-right pt-0.5" title={'Win probability · '+(_viewIsPrimary?'from the current stage':'from the primary pipeline '+_primaryPipe.name)}>
+                      <span className="text-[9px] font-medium text-white/40 uppercase tracking-[0.14em]">Win prob.</span>
+                      <span className="text-[22px] font-bold tabular-nums leading-none mt-0.5" style={{color:_pc}}>{_primProb}%</span>
+                    </div>);})()}
+                  </div>
                   <div className="flex items-center justify-between gap-3 mt-1.5">
                     <p className="text-white text-[32px] font-bold tabular-nums leading-none">{d.value}</p>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1 shrink-0 whitespace-nowrap" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stageShown}</span>
@@ -8851,7 +8864,7 @@ const SALES_KEY_ORDER=STAGES_DATA.map(s=>s.key);
 // The card label used to be a static `tag` string (New lead / Demo done / …) that NEVER updated —
 // dead demo data. It's now the real, editable `nextAction` field. Seed sensible next actions from
 // the old tags so the demo board stays meaningful, then the card reflects whatever the field holds.
-const NEXT_ACTION_FROM_TAG={'New lead':'Qualify & book intro call','Call booked':'Prep and run the call','Follow up':'Send follow-up email','Proposal sent':'Follow up on the proposal','Demo done':'Send the proposal','Negotiating':'Send revised terms','Review':'Review with the team','Contract sent':'Chase the signature','New':'Kick off onboarding','Active':'Continue onboarding setup','Live':'Confirm go-live'};
+const NEXT_ACTION_FROM_TAG={'New lead':'Call','Call booked':'Call','Follow up':'Email / follow-up','Proposal sent':'Email / follow-up','Demo done':'Send proposal','Negotiating':'Negotiate','Review':'Internal review','Contract sent':'Get signature','New':'Onboard','Active':'Onboard','Live':'Onboard'};
 function seedNextAction(d){return d.nextAction?d:{...d,nextAction:NEXT_ACTION_FROM_TAG[d.tag]||''};}
 function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).map(seedOutcomeFor).map(seedNextAction).map(d=>seedHistoryFor(d,SALES_KEY_ORDER)).concat(CO_SEED_DEALS.map(d=>seedHistoryFor(seedNextAction({...d}),CO_STAGE_DEFS.map(s=>s.key))));} // P1-1: Customer Onboarding deals are REAL seed records now
 function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,amount:d.amount!=null?d.amount:(parseMoney(d.value)||undefined),stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines; amount derives from the value string when a seed lacks the numeric (hero showed $18k while About said Empty)
@@ -9351,7 +9364,7 @@ function buildConvertRecords(lead,payload){
   const coNameFinal=coName||lead.company||'';
   const contact={id:contactId,name:cname,first:c.first||'',last:c.last||'',co:coNameFinal,companyId:effCompanyId,email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id};
   let deal=null;
-  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',...dealStageStamp('prospecting',owner),pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),probability:30,amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,...(lead.adSourceKey?{adSourceKey:lead.adSourceKey,adPlatform:lead.adPlatform,adCampaign:lead.adCampaign,adFormName:lead.adFormName,fbclid:lead.fbclid,gclid:lead.gclid}:{})};normalizeDealPipeline(deal,owner);}
+  if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',...dealStageStamp('prospecting',owner),pipeline,closeDate:d.close||'',primaryContact:cname,primaryContactId:contactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,...(lead.adSourceKey?{adSourceKey:lead.adSourceKey,adPlatform:lead.adPlatform,adCampaign:lead.adCampaign,adFormName:lead.adFormName,fbclid:lead.fbclid,gclid:lead.gclid}:{})};normalizeDealPipeline(deal,owner);}
   return {contact,company,deal,companyId:effCompanyId};
 }
 function CvtField({label,children,wide}){return(<div className={wide?'col-span-2':''}><label className="text-[11px] text-white/45 block mb-1.5">{label}</label>{children}</div>);}
@@ -14866,14 +14879,14 @@ function propSeed(){
         F({id:'d_amount',label:'Amount',type:'Currency',create:true,detail:'primary',col:true,important:true}),
         F({id:'d_pipeline',label:'Pipeline',type:'Single select',create:true,detail:'primary',system:true,options:['Sales Pipeline','Customer Onboarding']}),
         F({id:'d_stage',label:'Stage',type:'Single select',create:true,detail:'primary',col:true,system:true,options:['Prospecting','Qualified','Proposal','Negotiation','Won','Lost']}),
-        F({id:'d_prob',label:'Probability',type:'Number',detail:'primary',col:true}),
+        F({id:'d_prob',label:'Probability',type:'Number',detail:'primary',col:false}),
         F({id:'d_close',label:'Expected close date',type:'Date',create:true,detail:'primary',col:true}),
       ]},
       {g:'People & next steps',open:true,fields:[
         F({id:'d_owner',label:'Owner',type:'Lookup',create:true,detail:'primary',col:true}),
         F({id:'d_contact',label:'Primary contact',type:'Lookup',create:true,detail:'primary'}),
         F({id:'d_company',label:'Company',type:'Lookup',create:true,detail:'primary',col:true}),
-        F({id:'d_next',label:'Next action',type:'Text',create:true,detail:'primary'}),
+        F({id:'d_next',label:'Next action',type:'Single select',options:DEAL_NEXT_ACTIONS,create:true,detail:'primary'}),
         F({id:'d_tags',label:'Tags',type:'Multi select',create:true,detail:'primary'}),
       ]},
       {g:'Forecasting',open:false,fields:[
@@ -19218,7 +19231,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       const stageKey=auto.dealStage||'qualified';
       // P2-3: normalize like every other create path — a booking config pointing at a non-default
       // pipeline re-homes the deal into that pipeline's first stage instead of carrying a foreign stageKey.
-      const _bkRec=normalizeDealPipeline({id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,...dealStageStamp(stageKey,rep.avatar),probability:50,primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},rep.avatar);
+      const _bkRec=normalizeDealPipeline({id:Date.now()+1,company:(existing&&existing.co)||'',companyId:(existing&&existing.companyId!=null)?existing.companyId:null,value:dealValue,owner:rep.avatar,ownerColor:rep.color,name:dealName,amount:amt,pipeline:auto.pipeline||'Sales Pipeline',stageKey,...dealStageStamp(stageKey,rep.avatar),primaryContact:nm,primaryContactId:recordKind==='contact'?contactId:null,fromLeadId:recordKind==='lead'?leadId:null,tag:'Booked',tagBg:'bg-brand-500/15',tagFg:'text-brand-300',age:'today',score:'warm',source:'Booking',createdBy:rep.avatar,createdAt:'Today'},rep.avatar);
       if(!_bkRec.dStage){const _s=pipelineStageByKey(_bkRec.stageKey);if(_s)_bkRec.dStage=_s.name;}
       crm.setDeals(arr=>[_bkRec,...arr]);
       dealCreated=true;
@@ -20719,7 +20732,7 @@ function runFunnelSubmit(opts){
     const nmD=(os.dealName||'{{company}} — inbound').replace('{{company}}',rec.company||rec.name);
     // P2-3: normalized — a funnel configured to a non-Sales pipeline lands its deal in that
     // pipeline's first stage instead of carrying a slugified Sales stage name as a foreign key.
-    crm.setDeals(a=>[normalizeDealPipeline({id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,...dealStageStamp(funnelSlugify(stageName),'AM'),pipeline:os.dealPipeline||PROP_PIPELINES[0],probability:20,primaryContact:contactName,primaryContactId:personKind==='contact'?personId:null,fromLeadId:personKind==='lead'?personId:null,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Follow up on funnel lead'},'AM'),...a]);
+    crm.setDeals(a=>[normalizeDealPipeline({id:Date.now()+Math.floor(Math.random()*1e6),name:nmD,company:rec.company||rec.name,value:'$0',amount:0,owner:'AM',ownerColor:'#6366f1',stageKey:funnelSlugify(stageName),stageName:stageName,dStage:stageName,...dealStageStamp(funnelSlugify(stageName),'AM'),pipeline:os.dealPipeline||PROP_PIPELINES[0],primaryContact:contactName,primaryContactId:personKind==='contact'?personId:null,fromLeadId:personKind==='lead'?personId:null,source:'Funnel',dealTags:tags.slice(),createdBy:'AM',createdAt:'Just now',lastActivity:'Just now',nextAction:'Email / follow-up'},'AM'),...a]);
   }
   // 3b. optional TASK
   let taskMade=false;
