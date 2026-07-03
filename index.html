@@ -12343,11 +12343,16 @@ function flowNodeSummary(node){
 function AutoCondEditor({node,onChange}){
   const cfg=React.useContext(FlowCfgCtx);
   const ent=(cfg&&cfg.ent)||'deal';
-  const fields=React.useMemo(()=>autoFieldsFor(ent),[ent]);
+  // Feed live records so value pickers (tags/select/owner options) populate from real data.
+  const rows=({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[ent]||[];
+  const fields=React.useMemo(()=>autoFieldsFor(ent,rows),[ent,rows.length]);
   const model=(node.cond&&node.cond.conds)?node.cond:{match:'AND',conds:[]};
   const hasLegacy=!(node.cond&&node.cond.conds&&node.cond.conds.length)&&!!node.field;
+  const fkeys=fields.map(f=>f.key);
+  const mismatch=(model.conds||[]).some(c=>c&&c.fieldKey&&fkeys.indexOf(c.fieldKey)<0); // conds authored for a different record type (trigger changed)
   return(<div>
     <OmFiltersButton object={ent} fields={fields} model={model} onChange={m=>onChange({cond:m})}/>
+    {mismatch&&(<p className="mt-1.5 text-[11px] text-amber-300/90 leading-relaxed">Some conditions reference fields from a different record type (the trigger changed) and won't apply — re-add them for the current record.</p>)}
     {hasLegacy&&(<p className="mt-1.5 text-[11px] text-white/35 leading-relaxed">A simple condition is in effect: <span className="text-white/60">{node.field} {node.op} {String(node.value)}</span>. Add a condition above to replace it with AND / OR logic.</p>)}
   </div>);
 }
@@ -17315,7 +17320,7 @@ function _autoDelayMs(node){const d=(typeof nodeDelay==='function'?nodeDelay(nod
 // execution (was display-only). Money comparisons are parsed; anything unparseable fails open (runs).
 function dealCondPass(cond,deal){
   if(!cond||!deal)return true;
-  if(cond&&typeof cond==='object'&&cond.conds){return cond.conds.length?omApplyFilter([deal],cond,autoFieldsFor('deal')).length>0:true;} // P1: AND/OR model gate
+  if(cond&&typeof cond==='object'&&cond.conds){if(cond.conds.length){try{return omApplyFilter([deal],cond,autoFieldsFor('deal')).length>0;}catch(e){return true;}}return true;} // P1: AND/OR model gate (fail-open on malformed, symmetric with autoEvalCond)
   const m=String(cond).toLowerCase().match(/(?:deal\s*value|amount|value)\s*(>=|<=|>|<|=)\s*\$?\s*([\d.,]+)\s*(k|m)?/);
   if(!m)return true;
   const amt=(deal.amount!=null?deal.amount:parseMoney(deal.value||''))||0;
