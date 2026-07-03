@@ -1549,10 +1549,10 @@ function seedStatusDefs(){return {
   cstatus:nrturMkStatusList(typeof CONTACT_STATUSES!=='undefined'?CONTACT_STATUSES:['Prospect','Customer','Lost']),
 };}
 // ?? Toggle + Toast + GlowBg ???????????????????????????????????????????????????
-function Toggle({on,onChange}){
+function Toggle({on,onChange,disabled}){
   return(
-    <button onClick={()=>onChange(!on)} role="switch" aria-checked={on}
-      className={['relative w-10 h-6 rounded-full transition-all duration-200 shrink-0',on?'bg-brand-500 shadow-[0_0_0_3px_rgba(99,102,241,0.18),0_0_20px_rgba(99,102,241,0.35)]':'bg-white/[0.08] ring-1 ring-white/[0.08]'].join(' ')}>
+    <button onClick={()=>{if(!disabled)onChange(!on);}} role="switch" aria-checked={on} disabled={disabled}
+      className={['relative w-10 h-6 rounded-full transition-all duration-200 shrink-0',disabled?'opacity-50 cursor-not-allowed':'',on?'bg-brand-500 shadow-[0_0_0_3px_rgba(99,102,241,0.18),0_0_20px_rgba(99,102,241,0.35)]':'bg-white/[0.08] ring-1 ring-white/[0.08]'].join(' ')}>
       <span className={['absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200',on?'left-[18px]':'left-0.5 bg-white/80'].join(' ')}/>
     </button>
   );
@@ -2403,9 +2403,10 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     // Link new records by id (prefer the prefilled id, else resolve the picked name) — completes Wave 3 id-linking for live-created records.
     const _findCo=(id,name)=>(id!=null&&(crm.companies||[]).find(c=>c.id===id))||(name&&(crm.companies||[]).find(c=>c.name===name&&!c.deleted))||null;
     const _findCt=(id,name)=>(id!=null&&(crm.contacts||[]).find(c=>c.id===id&&!c.deleted))||(name&&(crm.contacts||[]).find(c=>c.name===name&&!c.deleted))||null;
+    // P2: assignment rules set the owner FIRST (before pipeline normalization stamps stageHistory), and only to a valid rep.
+    try{const _asg=resolveAssignment(object,rec);if(_asg){const _m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(x=>x.avatar===_asg);if(_m){rec.owner=_asg;rec.ownerColor=_m.color;}}}catch(e){}
     if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
-    try{const _asg=resolveAssignment(object,rec);if(_asg){const _m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(x=>x.avatar===_asg);rec.owner=_asg;if(_m)rec.ownerColor=_m.color;}}catch(e){} // P2: assignment rules set the owner on create
     persist(rec);
     // Fire the "<Entity> created" trigger for every object type (deferred so the record is in state first) — multi-entity event bus.
     if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0);
@@ -6347,14 +6348,14 @@ const ASSIGN_THEN=[['leastBusy','Least busy rep'],['roundRobin','Round-robin'],[
 function AssignRuleRow({rule,fields,reps,readOnly,onChange,onRemove,onMove,idx,total}){
   const M=reps;const tt=rule.thenType||'rep';
   const inPool=(av)=>!(rule.pool&&rule.pool.length)||rule.pool.indexOf(av)>=0;
-  const togglePool=(av)=>{const cur=(rule.pool&&rule.pool.length)?rule.pool.slice():M.map(m=>m.avatar);const nx=cur.indexOf(av)>=0?cur.filter(x=>x!==av):[...cur,av];onChange({pool:nx.length>=M.length?[]:nx});};
+  const togglePool=(av)=>{const cur=(rule.pool&&rule.pool.length)?rule.pool.slice():M.map(m=>m.avatar);const nx=cur.indexOf(av)>=0?cur.filter(x=>x!==av):[...cur,av];if(nx.length===0)return;onChange({pool:nx.length>=M.length?[]:nx});}; // can't empty the pool (empty = all)
   return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
     <div className="flex items-center gap-2.5 mb-3">
       <span className="w-6 h-6 rounded-lg bg-brand-500/12 text-brand-300 text-[11px] font-semibold flex items-center justify-center shrink-0 tabular-nums">{idx+1}</span>
       <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
       <button onClick={()=>onMove(-1)} disabled={idx===0||readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white disabled:opacity-20 hover:bg-white/[0.05] shrink-0"><I.ChevronUp size={14}/></button>
       <button onClick={()=>onMove(1)} disabled={idx===total-1||readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white disabled:opacity-20 hover:bg-white/[0.05] shrink-0"><I.ChevronDown size={14}/></button>
-      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})}/>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
       <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
     </div>
     <div className="flex items-start gap-2 flex-wrap">
@@ -22756,14 +22757,15 @@ function App(){
       const speedy=true; // the Speed-to-lead automation is active → instant SMS + sequence enrol
       const attr={source:src.crmSource,adPlatform:src.platform,adSourceKey:sourceKey,adSourceLabel:adSourceLabel(sourceKey,campaign),adCampaign:campaign,adAdset:(src.platform==='google'?'Search — exact':'Lookalike 1% — US'),adFormName:form.name,utmSource:src.platform==='google'?'google':'fb',utmMedium:src.platform==='google'?'cpc':'paid_social',utmCampaign:adSlug(campaign),[src.clickId]:clickVal,adTs:0,adSms:speedy,adEnrolled:speedy};
       const tags=[form.tag||(adSlug(src.short)+'-lead'),'ad-lead',adSlug(campaign)].filter(Boolean);
-      if(!ownerM){let _rr=null;try{_rr=resolveAssignment('lead',{...person,source:attr.source,status:'New',tags});}catch(e){}if(_rr)owner=_rr;} // P2: assignment rules override the default owner for ad-leads
+      const _adScore=Math.floor(Math.random()*30)+45; // P2: score computed once — used for routing eval AND the created lead
+      if(!ownerM){let _rr=null;try{_rr=resolveAssignment('lead',{...person,source:attr.source,status:'New',tags,score:_adScore});}catch(e){}if(_rr)owner=_rr;} // P2: assignment rules override the default owner for ad-leads
       const ownerColor=(TEAM_MEMBERS.find(m=>m.avatar===owner)||{}).color||'#3b82f6';
       const _np=p=>String(p||'').replace(/D/g,'').slice(-10);const _pe=(person.email||'').toLowerCase(),_pp=_np(person.phone);const _mC=c=>(_pe&&c.email&&c.email.toLowerCase()===_pe)||(_pp&&c.phone&&_np(c.phone)===_pp);const _mL=l=>(_pe&&l.email&&l.email.toLowerCase()===_pe)||(_pp&&l.phone&&_np(l.phone)===_pp);const existing=contacts.find(_mC);
       const existingLead=!existing?leads.find(l=>!l.converted&&!l.deleted&&_mL(l)):null;
       let contactId=null,leadId=null,deduped=false;
       if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0}:c));}
       else if(existingLead){deduped=true;leadId=existingLead.id;setLeads(a=>a.map(l=>l.id===existingLead.id?{...l,...attr,tags:Array.from(new Set([...(l.tags||[]),...tags])),lastActivity:'Just now',days:0}:l));}
-      else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:Math.floor(Math.random()*30)+45,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
+      else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:_adScore,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
       setAdLeads(a=>[{id:'al_'+(contactId||leadId),ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
       if(window.__nrturToast)window.__nrturToast('New '+src.short+' lead'+(campaign?(' · '+campaign):'')+': '+person.name+(deduped?' (updated existing)':'')+(speedy?' · Speed-to-lead fired ⚡':''),'success');
       return {contactId,leadId,deduped,sourceKey};
