@@ -9525,6 +9525,31 @@ const LEAD_DEFAULT_VIEWS=[
   {key:'unworked',label:'No Owner',Icon:I.Ban,pred:l=>!l.owner,dot:'red',empty:'Unassigned leads appear here so nothing slips.'},
 ];
 function LeadStatusDropdown({value,onChange,disabled}){return <ChipSelect value={value} options={LEAD_STATUSES} chipMap={LEAD_STATUS_CHIP} dotMap={LEAD_STATUS_DOT} onChange={onChange} width={156} disabled={disabled}/>;}
+// A lead disqualification captures a reason (parity with deal win/loss capture) instead of a silent status flip.
+const LEAD_DISQ_REASONS=['Not a fit','No budget','No response','Went with a competitor','Bad timing','Duplicate lead','Invalid / spam','Other'];
+function DisqualifyLeadModal({leadName,onConfirm,onClose}){
+  const [reason,setReason]=React.useState(LEAD_DISQ_REASONS[0]);
+  const [note,setNote]=React.useState('');
+  useEscKey(onClose);
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-white/[0.06] text-white/60 ring-white/[0.12]"><I.Ban size={16}/></div>
+        <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Disqualify lead</p><p className="text-white/45 text-[12px] truncate">{leadName||'This lead'} → Disqualified</p></div>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Reason</label>
+          <div className="grid grid-cols-2 gap-2">{LEAD_DISQ_REASONS.map(r=>{const on=reason===r;return(<button key={r} onClick={()=>setReason(r)} className={['px-3 py-2 rounded-xl text-[12.5px] font-medium text-left border transition-all',on?'bg-white/[0.10] text-white border-white/25':'text-white/70 bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}>{r}</button>);})}</div>
+        </div>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Note (optional)</label><textarea rows={2} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add context for the team..." className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none resize-none focus:border-brand-500/40"/></div>
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={()=>onConfirm(reason,note)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-red-500 hover:bg-red-400 transition-all">Disqualify lead</button>
+      </div>
+    </div>
+  </div>);
+}
 function ScoreBadge({score}){const b=leadScoreBucket(score);return(<div className="flex items-center gap-2" title={b.l+' · score '+score}><div className="w-12 h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:score+'%',background:b.c}}/></div><span className="text-[12px] font-medium tabular-nums" style={{color:b.c}}>{score}</span></div>);}
 function LeadRow({l,COL,selected,onSelect,onStatus,onOwner,onConvert,onArchive,onRestore,goTo,last}){
   return(
@@ -9886,7 +9911,10 @@ function LeadDetailPage({goTo,nav}){
   const editGroups=[{title:'Basic info',fields:leadPrimary},{title:'Additional details',fields:leadSecondary}];
   const _ldLay=omLayoutSplit(leadPrimary,leadSecondary,'Leads',_propsCtx);
   const leadMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
-  const onLeadField=(k,v)=>{updateLead(l.id,{[k]:v});if(k==='status')setStatusState(v);};
+  const [disqOpen,setDisqOpen]=React.useState(false);
+  const doDisqualify=(reason,note)=>{updateLead(l.id,{status:'Disqualified',disqualifyReason:reason,disqualifyNote:note||''});setStatusState('Disqualified');setDisqOpen(false);window.__nrturToast&&window.__nrturToast('Lead disqualified — '+reason,'success');};
+  // Changing status to Disqualified (from the properties dropdown too) routes through the reason modal — parity with deal Lost capture.
+  const onLeadField=(k,v)=>{if(k==='status'&&v==='Disqualified'&&l.status!=='Disqualified'){setDisqOpen(true);return;}updateLead(l.id,{[k]:v});if(k==='status')setStatusState(v);};
   const doDelete=()=>openConfirm({title:`Delete ${l.name}?`,body:`This moves ${l.name} to the Recycle Bin. You can restore it within 30 days.`,confirmLabel:'Delete lead',danger:true,requireText:l.name,onConfirm:()=>{crm.setLeads(a=>a.map(x=>x.id===l.id?{...x,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'}:x));window.__nrturToast&&window.__nrturToast(`${l.name} moved to Recycle Bin`,'success');goTo('leads');}});
   const doConvert=(payload)=>{const {contact,company,deal,companyId:coId,contactReused}=buildConvertRecords(l,payload);setContacts(a=>contactReused?a.map(x=>x.id===contact.id?contact:x):[contact,...a]);if(company)setCompanies(a=>[company,...a]);if(deal)setDeals(a=>[deal,...a]);updateLead(l.id,{converted:true,convertedAt:'Just now',convertedToContactId:contact.id,convertedToCompanyId:coId,convertedToDealId:deal?deal.id:null,convContact:contact.name,convCompany:company?company.name:(l.company||''),convDeal:deal?(deal.company+' · '+deal.value):''});setConvertOpen(false);setConvToast(contactReused?('Lead converted — linked to existing contact'+(deal?' · deal created':'')):('Lead converted — Contact'+(company?', Company':'')+(deal?' (and Deal)':'')+' created.'));setTimeout(()=>goTo('contact-detail',contact.id),1100);};
   return(
@@ -9905,6 +9933,7 @@ function LeadDetailPage({goTo,nav}){
               <button onClick={()=>setMoreOpen(o=>!o)} title="More actions" aria-label="More actions" className={['w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0',moreOpen?'text-white bg-white/[0.08] border border-white/[0.12]':'text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.More size={16}/></button>
               {moreOpen&&<div className="absolute right-0 top-[calc(100%+6px)] z-50 w-44 rounded-xl border border-white/[0.08] overflow-hidden py-1" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
                 {canEditLead&&<button onClick={()=>{setMoreOpen(false);setEditOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Edit size={13}/>Edit lead</button>}
+                {canEditLead&&!l.converted&&l.status!=='Disqualified'&&<button onClick={()=>{setMoreOpen(false);setDisqOpen(true);}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors"><I.Ban size={13}/>Disqualify lead</button>}
                 {effCanObject('Leads','delete')&&<button onClick={()=>{setMoreOpen(false);doDelete();}} className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-colors"><I.Trash size={13}/>Delete lead</button>}
               </div>}
             </div>}
@@ -9933,7 +9962,7 @@ function LeadDetailPage({goTo,nav}){
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-medium text-emerald-300 uppercase tracking-[0.14em]">Recommended next action</p>
                     <p className="text-[14px] font-medium text-white mt-1">{l.converted?'Lead converted':(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||'')?'Lead disqualified':(((l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||l.qual)?'Ready to convert':'Qualify before converting'))}</p>
-                    <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.converted?(l.name+' is now a Contact'+(l.convCompany?', Company':'')+(l.convDeal?' and Deal':'')+'. Jump to the new records below.'):(()=>{const _facts=[l.score!=null?(l.score+'/100 score'):null,l.status?String(l.status).toLowerCase():null,l.source?('via '+l.source):null].filter(Boolean).slice(0,2).join(' · ');const _f=_facts?(' ('+_facts+')'):'';if(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||''))return l.name+' was disqualified'+_f+'. No action needed unless they re-engage.';const _ready=(l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||!!l.qual;return _ready?(l.name+' looks ready'+_f+'. Convert to a contact'+(l.estValue?(' and open the '+l.estValue+' opportunity'):'')+' before it cools.'):(l.name+' isn’t qualified yet'+_f+'. Reach out to qualify before converting.');})()}</p>
+                    <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.converted?(l.name+' is now a Contact'+(l.convCompany?', Company':'')+(l.convDeal?' and Deal':'')+'. Jump to the new records below.'):(()=>{const _facts=[l.score!=null?(l.score+'/100 score'):null,l.status?String(l.status).toLowerCase():null,l.source?('via '+l.source):null].filter(Boolean).slice(0,2).join(' · ');const _f=_facts?(' ('+_facts+')'):'';if(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||''))return l.name+' was disqualified'+_f+(l.disqualifyReason?(' — '+l.disqualifyReason):'')+'. No action needed unless they re-engage.'+(l.disqualifyNote?(' Note: '+l.disqualifyNote):'');const _ready=(l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||!!l.qual;return _ready?(l.name+' looks ready'+_f+'. Convert to a contact'+(l.estValue?(' and open the '+l.estValue+' opportunity'):'')+' before it cools.'):(l.name+' isn’t qualified yet'+_f+'. Reach out to qualify before converting.');})()}</p>
                     {l.converted?(<div className="flex items-center gap-2 mt-3 flex-wrap">{l.convContact&&<button onClick={()=>goTo('contact-detail',l.convertedToContactId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.UserPlus size={12}/>{l.convContact}</button>}{l.convCompany&&<button onClick={()=>goTo('company-detail',l.convertedToCompanyId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.Building size={12}/>{l.convCompany}</button>}{l.convDeal&&<button onClick={()=>goTo('deal-detail',l.convertedToDealId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.GitBranch size={12}/>{l.convDeal}</button>}</div>):(<div className="flex items-center gap-2 mt-3"><button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/90 hover:bg-emerald-400 text-[#04140d] shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={12}/>Convert now</button><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Email lead</button><button className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>)}
                   </div>
                 </div>
@@ -9949,6 +9978,7 @@ function LeadDetailPage({goTo,nav}){
       {editOpen&&<RecordEditDrawer title={'Edit '+l.name} Icon={I.Sparkles} groups={editGroups} record={l} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
       {convertOpen&&<ConvertLeadModal lead={l} close={()=>setConvertOpen(false)} onConfirm={doConvert}/>}
       {callModal&&<LogCallModal close={()=>setCallModal(false)} contactName={l.name} onSave={onLogCall}/>}
+      {disqOpen&&<DisqualifyLeadModal leadName={l.name} onConfirm={doDisqualify} onClose={()=>setDisqOpen(false)}/>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={l.email} onSent={(em)=>setExtra(x=>[mkAct('email',{ts:0,by:l.owner||'AM',title:'Email sent'+(em&&em.subject?' — '+em.subject:''),body:(em&&em.body)||('Email sent to '+(l.email||'the lead')+'.')}),...x])}/>}
       {convToast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{convToast}</div>)}
       {schedOpen&&<CalEventFormModal initial={{type:'call',contact:l.name,linkType:'lead',company:l.company}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setExtra(x=>[mkAct('meeting',{ts:0,by:l.owner||'AM',title:ev.title||'Call scheduled',body:(ev.date?('On '+ev.date):'Added to the calendar.')}),...x]);setSchedOpen(false);}}/>}
