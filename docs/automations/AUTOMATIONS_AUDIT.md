@@ -101,7 +101,7 @@ The gap between what you could draw and what actually ran was the whole story. `
 | Multi-entity triggers | ◐→● (created) | ● | ● | ◐ | ● |
 | Date/time/scheduled (cron) | ○ | ● | ● | ◐ | ● |
 | Webhook / inbound (form, email, ad) | ○ | ● | ◐ | ◐ | ● |
-| AND/OR condition grouping | ○ | ● | ● | ◐ | ◐ |
+| AND/OR condition grouping | ◐→● | ● | ● | ◐ | ◐ |
 | If/else branching (canvas) | ◐→● | ● | ● | ○ | ● |
 | Delays / waits | ◐ | ● | ● | ○ | ● |
 | Goal / exit criteria | ◐ | ● | ◐ | ○ | ◐ |
@@ -126,7 +126,7 @@ _● full · ◐ partial · ○ none. `◐→●` = lifted by the #1/#2 fixes._
 - **✅ [was High] No scheduler / clock — SHIPPED (`41487e1`).** A simulated-time engine (`_autoNow` + a "+1 day" control on the Automations header) now scans for elapsed-time breaches and fires "Deal inactive 7 days" / "Task overdue" / "Invoice overdue", and **wait/wait-until nodes now pause and resume** on advance (top-level; nested waits run inline). Real durable timers remain a backend concern.
 - **[High] Edit opens a blank builder.** Every card's Edit calls `goTo('automation-builder')` with no id → always the default flow, and Save creates a **new** record. _Fix: pass `editId`, seed the builder from the record, `savedId = editId`._
 - **✅ [was High] Update / tag / status-change dispatch — SHIPPED (`b4eee2f`, `56d39a0`).** `fireRecordUpdate` now diffs record edits and fires Contact/Lead/Company updated · status · tag · owner triggers from the canonical `update*` helpers, the list inline setters, and the bulk bar.
-- **[High] No AND/OR condition grouping in automations.** Every condition is a single clause; the real AND/OR engine (`omApplyFilter`) is bound to Smart Lists only. _Fix: reuse `omApplyFilter` + its AND/OR toggle in the entry filter and condition nodes (see the rule-based plan)._
+- **✅ [was High] AND/OR condition grouping — SHIPPED (`8d5348e`, `73bdf82`, `ce6d8ab`).** `autoEvalCond`/`dealCondPass` now evaluate a full AND/OR model via the shared `omApplyFilter` engine (type-aware operators: _is any of_, _has all of_, _between_, _is empty_, date ranges), and condition/goal nodes are authored with the embedded Smart-Lists builder (`AutoCondEditor` → `OmFiltersButton`). Legacy single-conditions still evaluate. _The entry-filter ("Only continue if…") still uses a single clause — a fast follow-on._
 - **[Medium] No enrollment ledger / re-enrollment control** at the automation level (enroll action is deduped, but no per-automation enroll-once).
 - **[Medium] No real failure states / retries** — every run is hardcoded `success`.
 - **[Medium] Templates cosmetic (13/14) + two divergent list pages/libraries.**
@@ -141,7 +141,7 @@ _● full · ◐ partial · ○ none. `◐→●` = lifted by the #1/#2 fixes._
 3. ✅ **Scheduler tick** — time/date/inactivity + wait timers (`41487e1`, `56d39a0`).
 4. **Fix Edit** — load the clicked automation, update in place.
 5. ✅ **Extend the bus** — update / tag / status-change dispatch (`b4eee2f`, `56d39a0`).
-6. **AND/OR conditions in automations** — reuse `omApplyFilter`.
+6. ✅ **AND/OR conditions in automations** — reuse `omApplyFilter` (`8d5348e`/`73bdf82`/`ce6d8ab`).
 7. **Rule-based automation layer** — assignment / scoring / validation / SLA / approval rules (see [`RULES_BASED_AUTOMATION.md`](RULES_BASED_AUTOMATION.md)).
 8. **Enrollment ledger + failure states/retries.**
 9. **Real template recipes + collapse legacy duplicates.**
