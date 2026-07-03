@@ -2405,6 +2405,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
     persist(rec);
+    if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0); // non-stage automation: 'Deal created' fires at runtime (deferred so the deal is in state first)
     onToast&&onToast((rec.name||cfg.label)+' created');
     if(another){setVals(buildInitial());setSubmitted(false);setCreateOpen(false);}
     else close();
@@ -8584,6 +8585,7 @@ function DealDetailPage({goTo,nav}){
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
     updateDeal(d.id,{[k]:v});
+    if((k==='amount'||k==='value')&&parseMoney(String(v))!==parseMoney(String(d[k]))){const _amt=k==='amount'?v:parseMoney(String(v));setTimeout(()=>runDealValueAutomations({...d,amount:_amt,value:k==='value'?v:d.value}),0);} // non-stage automation: 'Deal value changed'
   };
   // Pipeline membership + primary now live ENTIRELY in the hero switcher (arrows, Set-primary, Add, Remove),
   // so the About panel no longer duplicates a "Primary pipeline" field. Probability is stage-derived, read-only.
@@ -8594,7 +8596,7 @@ function DealDetailPage({goTo,nav}){
   React.useEffect(()=>{const fn=(e)=>{if(pipeMenuRef.current&&!pipeMenuRef.current.contains(e.target))setPipeMenuOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(moreRef.current&&!moreRef.current.contains(e.target))setMoreOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const onEditSave=(patch)=>{if('pipeline'in patch&&patch.pipeline!==d.pipeline){const _pv=patch.pipeline;delete patch.pipeline;onDealField('pipeline',_pv);}if('primaryContact'in patch||'company'in patch){const _ct=('primaryContact'in patch)?(crm.contacts||[]).find(c=>c.name===patch.primaryContact&&!c.deleted):dealContact;let _co=('company'in patch)?(crm.companies||[]).find(c=>c.name===patch.company&&!c.deleted):companyRec;if(!_co&&_ct&&_ct.companyId!=null)_co=(crm.companies||[]).find(c=>c.id===_ct.companyId);patch.primaryContactId=_ct?_ct.id:null;patch.companyId=_co?_co.id:null;}if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}};
+  const onEditSave=(patch)=>{if('pipeline'in patch&&patch.pipeline!==d.pipeline){const _pv=patch.pipeline;delete patch.pipeline;onDealField('pipeline',_pv);}if('primaryContact'in patch||'company'in patch){const _ct=('primaryContact'in patch)?(crm.contacts||[]).find(c=>c.name===patch.primaryContact&&!c.deleted):dealContact;let _co=('company'in patch)?(crm.companies||[]).find(c=>c.name===patch.company&&!c.deleted):companyRec;if(!_co&&_ct&&_ct.companyId!=null)_co=(crm.companies||[]).find(c=>c.id===_ct.companyId);patch.primaryContactId=_ct?_ct.id:null;patch.companyId=_co?_co.id:null;}const _valChanged=('amount'in patch&&parseMoney(String(patch.amount))!==parseMoney(String(d.amount)))||('value'in patch&&parseMoney(String(patch.value))!==parseMoney(String(d.value)));if('dStage'in patch){const {dStage,...rest}=patch;if(Object.keys(rest).length)updateDeal(d.id,rest);commitStage(dStage);}else{updateDeal(d.id,patch);}if(_valChanged)setTimeout(()=>runDealValueAutomations({...d,...patch}),0);}; // non-stage automation: 'Deal value changed' on edit-drawer save
   const editGroups=[{title:'Deal',fields:dealPrimary},{title:'Additional details',fields:dealSecondary}];
   const _dlLay=omLayoutSplit(dealPrimary,dealSecondary,'Deals',_propsCtx);
   const dealMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'},{key:'lastActivity',label:'Last activity',type:'datetime'}];
@@ -16980,6 +16982,8 @@ const AUTO_INIT=[
   {id:7,name:'Invoice Reminder',trigger:'Invoice overdue',status:'error',runs:53,success:88,lastRun:'2h ago',errStep:'Step 3: Email invalid address',spark:[4,5,6,5,7,6,8,5,3,2,4,3,1,1],steps:[STEP_PRESETS_A.reminder,STEP_PRESETS_A.welcome,STEP_PRESETS_A.flag]},
   {id:8,name:'Quarterly Check-in',trigger:'Deal won + 90 days',status:'draft',runs:0,steps:[STEP_PRESETS_A.task,STEP_PRESETS_A.welcome]},
   {id:9,name:'Payment Received → Onboarding',trigger:'Payment received',status:'active',runs:58,success:100,lastRun:'2h ago',spark:[1,2,2,3,3,4,5,5,6,7,7,8,9,10],steps:[STEP_PRESETS_A.welcome,STEP_PRESETS_A.task,STEP_PRESETS_A.slack]},
+  {id:10,name:'New Deal Kickoff',trigger:'Deal created',status:'active',runs:37,success:100,lastRun:'25m ago',spark:[2,3,3,4,5,4,6,5,7,6,8,7,9,8],steps:[STEP_PRESETS_A.task,STEP_PRESETS_A.slack]}, // non-stage trigger: fires when a new deal opens
+  {id:11,name:'Big Deal Alert',trigger:'Deal value changed',status:'active',runs:12,success:100,lastRun:'1h ago',spark:[1,1,2,1,2,3,2,3,2,4,3,4,3,5],steps:[STEP_PRESETS_A.slack,STEP_PRESETS_A.reminder]}, // non-stage trigger: fires when an amount is edited
 ];
 const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',label:'Active'},paused:{dot:'#fbbf24',badge:'bg-amber-500/12 text-amber-300 ring-amber-500/25',label:'Paused'},error:{dot:'#f87171',badge:'bg-red-500/12 text-red-300 ring-red-500/25',label:'Error'},draft:{dot:'#94a3b8',badge:'bg-white/[0.06] text-white/55 ring-white/[0.10]',label:'Draft'}};
 // ── AUTOMATION RUNTIME ── P0-1: deal stage changes actually execute matching active automations.
@@ -16989,12 +16993,10 @@ const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 r
 // real stage transition: board drag (applyMove), list/bulk moves (via applyMove), and the deal
 // detail's commitStage / outcome confirm.
 let _autoRt=null; // {automations,setAutomations,addAutoLog,addActivity,addTask}
-function runDealAutomations(deal,toName,kind){ // kind: 'won' | 'lost' | null
+// Core engine: fire every active automation whose trigger matches any of `events` for this deal.
+function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
-  const evs=['Deal stage changed','Deal moved to '+toName];
-  if(kind==='won')evs.push('Deal won');
-  if(kind==='lost')evs.push('Deal lost');
-  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&evs.indexOf(a.trigger)>=0);
+  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
   fired.forEach(a=>{
     const stepLabels=(a.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);
     if(stepLabels.some(l=>/task|remind|follow/i.test(l)))_autoRt.addTask({title:a.name+': follow up on '+(deal.name||deal.company),deal,auto:a});
@@ -17005,6 +17007,14 @@ function runDealAutomations(deal,toName,kind){ // kind: 'won' | 'lost' | null
   if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
   return fired;
 }
+function runDealAutomations(deal,toName,kind){ // kind: 'won' | 'lost' | null — STAGE-change events
+  const evs=['Deal stage changed','Deal moved to '+toName];
+  if(kind==='won')evs.push('Deal won');
+  if(kind==='lost')evs.push('Deal lost');
+  return fireDealAutomationEvents(deal,evs);
+}
+function runDealCreatedAutomations(deal){return fireDealAutomationEvents(deal,['Deal created']);} // non-stage: fired on create
+function runDealValueAutomations(deal){return fireDealAutomationEvents(deal,['Deal value changed']);} // non-stage: fired when amount is edited
 const LOG_ST={success:{c:'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25',dot:'#34d399',l:'Success'},failed:{c:'bg-red-500/12 text-red-300 ring-red-500/25',dot:'#f87171',l:'Failed'},warning:{c:'bg-amber-500/12 text-amber-300 ring-amber-500/25',dot:'#fbbf24',l:'Warning'}};
 // Per-automation run log: filter the global feed for this automation, or synthesize plausible runs
 const LOG_SAMPLE_NAMES=[['Olivia Park','OP','#3b82f6'],['Daniel Cho','DC','#8b5cf6'],['Mia Russo','MR','#10b981'],['Noah Kim','NK','#f59e0b'],['Ava Nguyen','AN','#ec4899']];
