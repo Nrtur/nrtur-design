@@ -20504,9 +20504,13 @@ function PayCheckoutPage({goTo,nav}){
   const [card,setCard]=React.useState({num:'',exp:'',cvc:''});
   const [email,setEmail]=React.useState((inv&&inv.email)||'');
   const cardOk=card.num.replace(/\D/g,'').length>=12&&card.exp.length>=4&&card.cvc.length>=3&&/.+@.+\..+/.test(email);
+  // A link "click" is a visit to the hosted page — count it once on mount for a live link. paidCount tracks conversions separately (bumped only on pay).
+  React.useEffect(()=>{if(link&&!linkDisabled&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,clicks:(l.clicks||0)+1}:l));},[]);
   const pay=()=>{if(!cardOk||stage==='processing')return;setStage('processing');setTimeout(()=>{
     if(inv&&crm.setPayInvoices)crm.setPayInvoices(a=>a.map(v=>v.id===inv.id?{...v,status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0}:v));
-    if(link&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,paidCount:(l.paidCount||0)+1,clicks:(l.clicks||0)+1}:l));
+    if(link&&crm.setPayLinks)crm.setPayLinks(a=>a.map(l=>l.id===link.id?{...l,paidCount:(l.paidCount||0)+1}:l));
+    // A paid link records a real transaction so its revenue reaches the Collected KPI (mirrors pay-at-booking). Seed paidCount stays a link-level stat.
+    if(link&&crm.setPayInvoices)crm.setPayInvoices(a=>[{id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:(email.trim()||'Payment link customer'),company:'',email:email.trim(),dealId:null,items:[{desc:link.title,qty:1,price:link.amount}],amount:link.amount,subtotal:link.amount,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Paid via payment link',link:link.url,issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(0)),dueTs:payDayShift(0).getTime(),agoMin:0,paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0,source:'Payment link',currency:link.currency},...a]);
     setStage('done');},1200);};
   const fmtCard=(v)=>v.replace(/\D/g,'').slice(0,16).replace(/(.{4})/g,'$1 ').trim();
   const fmtExp=(v)=>{const d=v.replace(/\D/g,'').slice(0,4);return d.length>2?d.slice(0,2)+'/'+d.slice(2):d;};
