@@ -4158,7 +4158,10 @@ function dashDefaultCols(object){return ({contact:['name','co','cstatus','deal']
 // Base rows for an object from live CRM data.
 function dashObjRows(object,data){
   const D=data||{};
-  if(object==='deal')return effScopeRows('Deals',allDeals(),d=>d.owner);
+  // Report-level date range: deals aren't in reportData (they come from allDeals()), so scope them here.
+  // Guarded by D._dateRange, which only the Reports page sets — the dashboard is unaffected.
+  const _dr=D._dateRange;const _inDR=(r)=>(!_dr||!_dr.preset||_dr.preset==='all')?true:dashDateRangeOk({dateRange:_dr},{get:x=>x.createdAt||x.created},r);
+  if(object==='deal')return effScopeRows('Deals',allDeals(),d=>d.owner).filter(_inDR);
   if(object==='contact')return (D.contacts||CONTACTS_DATA).filter(c=>!c.archived&&!c.deleted);
   if(object==='lead')return (D.leads||LEADS_DATA).filter(l=>!l.archived&&!l.converted&&!l.deleted);
   if(object==='company')return (D.companies||COMPANIES_DATA).filter(c=>!c.archived&&!c.deleted);
@@ -4183,6 +4186,7 @@ function dashDateRangeOk(cfg,field,rec){
   const d=omDate(field.get(rec));if(!d)return true;
   const map={week:'this week',month:'this month',quarter:'this quarter'};
   if(dr.preset==='year'){const n=new Date(OM_NOW);return d.getFullYear()===n.getFullYear();}
+  if(dr.preset==='lastdays'){const c=new Date(OM_NOW);c.setDate(c.getDate()-((dr.days||30)-1));return d>=omSod(c)&&d<=omEod(new Date(OM_NOW));}
   if(dr.preset==='custom'){const a=dr.from?omDate(dr.from):null,b=dr.to?omDate(dr.to):null;if(a&&d<omSod(a))return false;if(b&&d>omEod(b))return false;return true;}
   const r=omRelRange(map[dr.preset]||'this month');return d>=r[0]&&d<=r[1];
 }
@@ -12816,9 +12820,14 @@ function ReportsPage({goTo}){
   const [showExportToast,setShowExportToast]=React.useState(false);
   const rangeRef=React.useRef(null);
   const RANGES=['Last 7 days','Last 30 days','Last 90 days','This quarter','Year to date'];
+  // G059: the picker now actually filters. Map each label to a dateRange the dash engine understands, filter the
+  // report's records by createdAt (fallback created/last), and stamp _dateRange so dashObjRows scopes deals too.
+  const REPORT_DR={'Last 7 days':{preset:'lastdays',days:7},'Last 30 days':{preset:'lastdays',days:30},'Last 90 days':{preset:'lastdays',days:90},'This quarter':{preset:'quarter'},'Year to date':{preset:'year'}};
+  const _reportDr=REPORT_DR[range]||{preset:'all'};
+  const _reportInDR=(r)=>(_reportDr.preset==='all')?true:dashDateRangeOk({dateRange:_reportDr},{get:x=>x.createdAt||x.created||x.last},r);
   React.useEffect(()=>{const fn=e=>{if(rangeRef.current&&!rangeRef.current.contains(e.target))setRangeOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  // Widget data scoped to what the effective role may see (Own / Team / All).
-  const reportData={contacts:effScopeRows('Contacts',crm.contacts.filter(c=>!c.deleted),c=>c.owner),leads:effScopeRows('Leads',crm.leads.filter(l=>!l.deleted),l=>l.owner),companies:effScopeRows('Companies',crm.companies.filter(c=>!c.deleted),c=>c.owner)};
+  // Widget data scoped to what the effective role may see (Own / Team / All), then to the selected date range.
+  const reportData={contacts:effScopeRows('Contacts',crm.contacts.filter(c=>!c.deleted),c=>c.owner).filter(_reportInDR),leads:effScopeRows('Leads',crm.leads.filter(l=>!l.deleted),l=>l.owner).filter(_reportInDR),companies:effScopeRows('Companies',crm.companies.filter(c=>!c.deleted),c=>c.owner).filter(_reportInDR),_dateRange:_reportDr};
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2200);};
   const uidFor=(id)=>id+'-'+Math.random().toString(36).slice(2,7);
   const addWidget=(id)=>{const d=getDef(id);const uid=uidFor(id);const sz=d.defSize||(d.size===2?'M':'S');setLayout(l=>[...l,{id,size:sz,uid}]);setLibraryOpen(false);showToast(d.name+' added');setConfigUid(uid);};
@@ -12862,7 +12871,7 @@ function ReportsPage({goTo}){
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1480px] mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch" style={{gridAutoFlow:'row dense',gridAutoRows:'minmax(140px, auto)'}}>
-              {vis.map((item,idx)=>{const def=getDef(item.id);const cfg=configs[item.uid]||{};return(
+              {vis.map((item,idx)=>{const def=getDef(item.id);const _c0=configs[item.uid]||{};const _hasOwnDr=!!(_c0.dateRange&&_c0.dateRange.preset&&_c0.dateRange.preset!=='all');const cfg=(_reportDr.preset!=='all'&&!_hasOwnDr)?{..._c0,dateRange:_reportDr}:_c0;return(
                 <DashboardWidget key={item.uid} uid={item.uid} item={item} def={def} cfg={cfg} data={reportData} editMode={editMode}
                   configOpen={configUid===item.uid} onConfig={()=>setConfigUid(configUid===item.uid?null:item.uid)} onCloseConfig={()=>setConfigUid(null)}
                   onLiveConfig={(c)=>liveConfig(item.uid,c)} onDoneConfig={doneConfig} onResetConfig={()=>resetConfig(item.uid)}
