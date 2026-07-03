@@ -7798,6 +7798,29 @@ function MergeDealsModal({records,onConfirm,onClose}){
     </div>
   </div>);
 }
+// Add-a-handoff form for the Connected Pipelines modal: when [stage] → [enroll/move] [pipeline] at [stage].
+function HandoffAdder({srcStages,others,onAdd}){
+  const [whenStageKey,setWhenStageKey]=React.useState((srcStages.find(s=>dealTerminalKind(s)==='won')||srcStages[srcStages.length-1]||{}).key);
+  const [mode,setMode]=React.useState('enroll');
+  const [toPipelineId,setToPipelineId]=React.useState(others[0]&&others[0].id);
+  const tp=others.find(p=>p.id===toPipelineId)||others[0];
+  const tstages=tp?realStagesOf(tp):[];
+  const [toStageKey,setToStageKey]=React.useState(tstages[0]&&tstages[0].key);
+  const tsk=tstages.some(s=>s.key===toStageKey)?toStageKey:(tstages[0]&&tstages[0].key);
+  const SEL='px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 appearance-none';
+  return(<div className="mt-1 p-3 rounded-xl border border-dashed border-brand-500/25 bg-brand-500/[0.04] flex flex-col gap-2.5">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-300/80">Add a handoff</p>
+    <div className="flex flex-wrap items-center gap-2 text-[12px] text-white/60">
+      <span>When a deal reaches</span>
+      <select value={whenStageKey} onChange={e=>setWhenStageKey(e.target.value)} className={SEL} style={{colorScheme:'dark'}}>{srcStages.map(s=>(<option key={s.key} value={s.key}>{s.name}</option>))}</select>
+      <select value={mode} onChange={e=>setMode(e.target.value)} className={SEL} style={{colorScheme:'dark'}}><option value="enroll">enroll it in</option><option value="move">move it to</option></select>
+      <select value={toPipelineId} onChange={e=>{setToPipelineId(+e.target.value||e.target.value);setToStageKey(null);}} className={SEL} style={{colorScheme:'dark'}}>{others.map(p=>(<option key={p.id} value={p.id}>{p.name}</option>))}</select>
+      <span>at</span>
+      <select value={tsk||''} onChange={e=>setToStageKey(e.target.value)} className={SEL} style={{colorScheme:'dark'}}>{tstages.map(s=>(<option key={s.key} value={s.key}>{s.name}</option>))}</select>
+    </div>
+    <div className="flex justify-end"><button onClick={()=>{if(whenStageKey&&toPipelineId&&tsk)onAdd({whenStageKey,mode,toPipelineId,toStageKey:tsk});}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all"><I.Plus size={12} stroke={2.4}/>Add handoff</button></div>
+  </div>);
+}
 // D2 phase 2: enroll a deal in an additional pipeline. The new placement gets its own stage;
 // value, forecast and automations stay with the PRIMARY pipeline (no double-counting — the
 // reason classic CRMs refuse this feature entirely).
@@ -8074,6 +8097,8 @@ function PipelinePage({goTo,nav}){
   const _visPipelines=pipelines.filter(pipeAccessible); // per-pipeline access: restricted boards vanish from this role's switcher/board
   const active=_visPipelines.find(p=>p.id===activeId)||_visPipelines[0]||pipelines[0];
   const [accessOpen,setAccessOpen]=React.useState(false); // per-pipeline access editor (admins only)
+  const [handoffOpen,setHandoffOpen]=React.useState(false); // cross-pipeline handoff (connected pipelines) editor
+  const setHandoffs=(fn)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,handoffs:typeof fn==='function'?fn(p.handoffs||[]):fn}:p));
   const [auxPipelines,setAuxPipelines]=React.useState([]);
   const deleteAuxPipeline=(pipeId)=>setAuxPipelines(ps=>ps.filter(p=>p.id!==pipeId));
   const addAuxPipeline=(pipeId)=>{if(auxPipelines.find(p=>p.id===pipeId)){setActiveId(pipeId);return;}if(pipeId.startsWith('cop_')){const oid=pipeId.slice(4);const co=(_customObjects||[]).find(o=>o.id===oid);if(co){setAuxPipelines(ps=>[...ps,{id:pipeId,object:oid,name:co.plural}]);setActiveId(pipeId);}}};
@@ -8109,10 +8134,14 @@ function PipelinePage({goTo,nav}){
   // D2 phase 2: a move on THIS board edits this pipeline's PLACEMENT. When this board is the
   // deal's primary pipeline that also means stageKey/dStage/history/outcome (deal-level truth);
   // when the deal is merely ENROLLED here, only its placement moves — the primary is untouched.
+  // Cross-pipeline automation: fire the source pipeline's handoff rules when a deal reaches a trigger stage.
+  const fireHandoffs=(dealId,reachedStageKey,sourcePipe)=>{const rules=pipelineHandoffsFiring(sourcePipe,reachedStageKey);if(!rules.length)return;
+    setDeals(ds=>ds.map(d=>d.id===dealId?applyHandoffs(d,rules):d));
+    rules.forEach(r=>{const _lbl=handoffLabel(r);if(addActivity)addActivity('deal',dealId,mkAct('sequence',{ts:0,by:CURRENT_USER.avatar,title:'⚡ Pipeline handoff · '+_lbl,body:'Auto-triggered when the deal reached '+(((sourcePipe.stages||[]).find(s=>s.key===reachedStageKey)||{}).name||reachedStageKey)+' in '+sourcePipe.name+'.'}));window.__nrturToast&&window.__nrturToast('⚡ Handoff · '+_lbl,'success');});};
   const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const _term=dealTerminalKind(toStage);if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const _isPrim=_isPrimaryOf(mv,active);const upd=_isPrim
       ?{...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:CURRENT_USER.avatar}],outcome:_term?mv.outcome:null,...dealPlacement(mv,mv.pipeline||pipelines[0].name,toStage.key)}
       :{...mv,...dealPlacement(mv,active.name,toStage.key)};
-      let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _mv=_deals.find(x=>x.id===dd.id);if(_mv&&((_mv.pipeline||pipelines[0].name)===active.name)){const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+      let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _mv=_deals.find(x=>x.id===dd.id);if(_mv&&((_mv.pipeline||pipelines[0].name)===active.name)){const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);fireHandoffs(dd.id,toStage.key,active);}}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const [gatePrompt,setGatePrompt]=React.useState(null); // P1-3: {dd,toStage,missing,deal} — move blocked until required fields are filled
   const [mergeOpen,setMergeOpen]=React.useState(false); // P2-2: merge modal for 2–3 selected deals
   const doMergeDeals=(primaryId)=>{
@@ -8214,6 +8243,7 @@ function PipelinePage({goTo,nav}){
                 <button onClick={delPipeline} disabled={pipelines.length<=1} title={pipelines.length<=1?'Only pipeline — cannot delete':'Delete this pipeline'} aria-label="Delete pipeline" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',pipelines.length<=1?'text-white/20 bg-white/[0.02] border-white/[0.06] cursor-not-allowed':'text-red-300/90 bg-red-500/[0.06] border-red-500/20 hover:bg-red-500/12'].join(' ')}><I.Trash size={14}/></button>
                 <button onClick={()=>setReasonsOpen(true)} title="Win & loss reasons" aria-label="Win and loss reasons" className="inline-flex items-center justify-center w-8 h-8 rounded-lg border text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Trophy size={14}/></button>
                 {settingsIsAdmin()&&<button onClick={()=>setAccessOpen(true)} title="Pipeline access" aria-label="Pipeline access" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',(active.access&&active.access.length)?'text-amber-300 bg-amber-500/12 border-amber-500/25 hover:bg-amber-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.Lock size={14}/></button>}
+                <button onClick={()=>setHandoffOpen(true)} title="Connected pipelines — auto-handoff" aria-label="Connected pipelines" className={['inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-all',(active.handoffs&&active.handoffs.length)?'text-brand-300 bg-brand-500/12 border-brand-500/25 hover:bg-brand-500/[0.16]':'text-white/55 hover:text-white bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'].join(' ')}><I.GitBranch size={14}/></button>
               </React.Fragment>)}
             </div>
             <p className="text-white/45 text-[12.5px] pl-0.5">{_openBd.length} open deal{_openBd.length!==1?'s':''} · {fmtK(_openVal)} pipeline</p>
@@ -8324,6 +8354,30 @@ function PipelinePage({goTo,nav}){
       {/* P1-3: stage gate — fill the missing required fields inline, then the move continues (incl. into the outcome modal for terminal stages) */}
       {gatePrompt&&<StageGateModal deal={gatePrompt.deal} stage={gatePrompt.toStage} missing={gatePrompt.missing} onClose={()=>setGatePrompt(null)} onSave={(patch)=>{const {dd,toStage}=gatePrompt;setDeals(ds=>ds.map(x=>x.id===dd.id?{...x,...patch}:x));setGatePrompt(null);const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);window.__nrturToast&&window.__nrturToast('Saved & moved to '+toStage.name,'success');}}/>}
       {/* Per-pipeline access — restricted roles lose this board everywhere (switcher, enrollment, detail arrows). Owner/Admin always keep access. */}
+      {/* Connected pipelines — cross-pipeline handoff rules ("when a deal reaches X, enroll/move it into pipeline Y") */}
+      {handoffOpen&&(()=>{const _rules=active.handoffs||[];const _others=pipelines.filter(p=>p.id!==active.id&&realStagesOf(p).length);const _srcStages=realStagesOf(active);
+        return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setHandoffOpen(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{width:560}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden max-h-[85vh]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.GitBranch size={16}/></div>
+            <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Connected pipelines</p><p className="text-white/45 text-[12px]">When a deal in {active.name} reaches a stage, auto-hand it off to another pipeline.</p></div>
+          </div>
+          <div className="px-6 py-5 flex flex-col gap-3 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+            {_rules.length===0&&<p className="text-[12.5px] text-white/40">No handoffs yet. Add one below — e.g. a won deal auto-enrolls in onboarding.</p>}
+            {_rules.map(r=>{const ws=_srcStages.find(s=>s.key===r.whenStageKey);return(
+              <div key={r.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/[0.07] bg-white/[0.02]">
+                <span className="text-[12px] text-white/70 min-w-0 flex-1"><span className="text-white/45">When</span> <span className="font-medium text-white">{ws?ws.name:r.whenStageKey}</span> → <span className="font-medium text-brand-200">{handoffLabel(r)}</span></span>
+                <button onClick={()=>setHandoffs(hs=>hs.filter(x=>x.id!==r.id))} className="text-white/30 hover:text-red-300 transition-colors shrink-0" title="Remove handoff"><I.X size={13}/></button>
+              </div>);})}
+            {_others.length>0?(()=>{const _tp=_others[0];return(
+            <HandoffAdder srcStages={_srcStages} others={_others} onAdd={(rule)=>setHandoffs(hs=>[...hs,{id:'ho_'+Date.now(),...rule}])}/>
+            );})():<p className="text-[12px] text-white/35">Create another pipeline first to hand off to.</p>}
+          </div>
+          <div className="flex px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+            <button onClick={()=>setHandoffOpen(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-all">Done</button>
+          </div>
+        </div>
+      </div>);})()}
       {accessOpen&&(()=>{const _acc=active.access||[];const _restricted=_acc.length>0;const _setAcc=(list)=>setPipelines(ps=>ps.map(p=>p.id===active.id?{...p,access:(list&&list.length)?list:null}:p));const _toggle=(r)=>{const cur=active.access||[];_setAcc(cur.includes(r)?cur.filter(x=>x!==r):[...cur,r]);};return(
       <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={()=>setAccessOpen(false)}>
         <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
@@ -8444,13 +8498,15 @@ function DealDetailPage({goTo,nav}){
   const drec={...d,pipeline:d.pipeline||_primaryPipe.name,probability:(_viewStageObj?_viewStageObj.prob:(_pipeStages.find(s=>s.key===d.stageKey)||{}).prob),dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
   const [stageGate,setStageGate]=React.useState(null); // P1-3: {stageName,stage,missing} — stage move blocked until required fields are filled
+  // Cross-pipeline automation — fire the viewed pipeline's handoff rules against FRESH state (crm.setDeals).
+  const fireDetailHandoffs=(reachedStageKey)=>{const rules=pipelineHandoffsFiring(_pipe,reachedStageKey);if(!rules.length)return;crm.setDeals(ds=>ds.map(x=>x.id===d.id?applyHandoffs(x,rules):x));rules.forEach(r=>{const _lbl=handoffLabel(r);crm.addActivity&&crm.addActivity('deal',d.id,mkAct('sequence',{ts:0,by:CURRENT_USER.avatar,title:'⚡ Pipeline handoff · '+_lbl,body:'Auto-triggered when the deal reached '+(((_pipe.stages||[]).find(s=>s.key===reachedStageKey)||{}).name||reachedStageKey)+' in '+_pipe.name+'.'}));window.__nrturToast&&window.__nrturToast('⚡ Handoff · '+_lbl,'success');});};
   const commitStage=(stageName,skipGate)=>{
     if(!_viewIsPrimary){ // D2p2: a move on an ENROLLED view edits only that placement — primary stage/outcome untouched
       const k=_keyByName[stageName];const _tS=_pipeStages.find(s=>s.key===k);if(!_tS||k===_viewPl.stageKey)return;
       if(!skipGate){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}
       updateDeal(d.id,{stagePlacements:_placementsAll.map(p=>p.pipelineId===_viewPl.pipelineId?{...p,stageKey:k,at:Date.now()}:p)});
       window.__nrturToast&&window.__nrturToast('Moved to '+stageName+' in '+_pipe.name,'success');return;}
-    const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
+    const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);fireDetailHandoffs(k);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='pipeline'){ // P1-1 → D2p2: PRIMARY switch is a MOVE. If the deal is already ENROLLED in the target, promote that placement (it continues at its enrolled stage); other enrollments survive, the old primary placement is dropped.
@@ -8562,7 +8618,7 @@ function DealDetailPage({goTo,nav}){
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
         {enrollOpen&&_enrollOpts.length>0&&<EnrollPipelineModal dealName={d.name||d.company} options={_enrollOpts} onClose={()=>setEnrollOpen(false)} onEnroll={(pid,sk)=>{const _pn=(livePipelines().find(p=>p.id===pid)||{}).name||'pipeline';updateDeal(d.id,{stagePlacements:[...dealPlacements(d),{pipelineId:pid,stageKey:sk,primary:false,at:Date.now()}]});crm.addActivity('deal',d.id,mkAct('sequence',{ts:0,by:CURRENT_USER.avatar,title:'➕ Enrolled in '+_pn,body:'Now tracked in '+_pn+' alongside its primary pipeline — independent stage, no double-counted value.'}));setEnrollOpen(false);setViewPipeId(pid);window.__nrturToast&&window.__nrturToast('Enrolled in '+_pn,'success');}}/>}
         {stageGate&&<StageGateModal deal={d} stage={stageGate.stage} missing={stageGate.missing} onClose={()=>setStageGate(null)} onSave={(patch)=>{updateDeal(d.id,patch);const _sn=stageGate.stageName;setStageGate(null);commitStage(_sn,true);}}/>}
-        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],...dealPlacement(d,d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:CURRENT_USER.name}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],...dealPlacement(d,d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:CURRENT_USER.name}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);fireDetailHandoffs(k);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
@@ -8616,7 +8672,7 @@ const CO_STAGE_DEFS=[
 const SALES_REQ={proposal:['amount'],negotiation:['amount','closeDate'],won:['amount','closeDate']}; // P1-3: default stage gates — deals need these filled to enter the stage
 function defaultPipelinesSeed(){
   const base=[
-    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50,required:SALES_REQ[s.key]||[]}))},
+    {id:1,name:'Sales Pipeline',stages:STAGES_DATA.map(s=>({id:'st_'+s.key,key:s.key,real:true,name:s.name,color:s.color,prob:SALES_PROB[s.key]||50,required:SALES_REQ[s.key]||[]})),handoffs:[{id:'ho_won_onb',whenStageKey:'won',mode:'enroll',toPipelineId:2,toStageKey:'ob_kickoff'}]}, // demo handoff: a won deal auto-enrolls in Customer Onboarding at Kickoff
     {id:2,name:'Customer Onboarding',stages:CO_STAGE_DEFS.map(s=>({...s}))},
   ];
   const ex=onbExtraPipeline();return ex?[...base,ex]:base;
@@ -8633,6 +8689,26 @@ function pipeAccessible(p){if(!p)return false;const r=effectiveRole();if(NAV_ADM
 function dealPrimaryPipeId(deal){const pl=((deal&&deal.stagePlacements)||[]).find(p=>p.primary);return pl?pl.pipelineId:null;}
 function pipelineFor(deal){const ps=livePipelines();const real=ps.filter(p=>realStagesOf(p).length);const pid=dealPrimaryPipeId(deal);if(pid!=null){const byId=real.find(p=>p.id===pid)||ps.find(p=>p.id===pid);if(byId)return byId;}const dp=deal&&deal.pipeline;return real.find(p=>p.name===dp)||real[0]||ps[0];}
 function pipelineStageByKey(key){const ps=livePipelines();for(const p of ps){const s=(p.stages||[]).find(x=>x.key===key);if(s)return s;}return STAGE_BY_KEY[key]||null;}
+// Cross-pipeline automation ("connected pipelines" / tunnels): a source pipeline can carry handoff
+// rules — when a deal reaches whenStageKey, it auto-ENROLLs in (keeps its primary) or MOVEs to a
+// target pipeline+stage. The engine reuses the existing placement model, so a handoff is just a
+// programmatic enroll/move fired from the stage-change path.
+function pipelineHandoffsFiring(pipe,reachedStageKey){return ((pipe&&pipe.handoffs)||[]).filter(h=>h&&h.whenStageKey===reachedStageKey&&h.toPipelineId!=null);}
+// Returns a PATCH (or null for a no-op) — callers apply it against FRESH deal state so it never
+// clobbers the stage change that triggered it.
+function handoffPatch(d,rule){
+  const target=livePipelines().find(p=>p.id===rule.toPipelineId);if(!target||!realStagesOf(target).length)return null;
+  const tstage=realStagesOf(target).find(s=>s.key===rule.toStageKey)||realStagesOf(target)[0];const _at=Date.now();
+  if(rule.mode==='move'){ // promote target to primary (swap: old primary stays enrolled)
+    const cur=dealPlacements(d);const has=cur.some(p=>p.pipelineId===target.id);
+    const next=has?cur.map(p=>({...p,primary:p.pipelineId===target.id})):[...cur.map(p=>({...p,primary:false})),{pipelineId:target.id,stageKey:tstage.key,primary:true,at:_at}];
+    return{pipeline:target.name,stageKey:tstage.key,dStage:tstage.name,stageEnteredAt:_at,stagePlacements:next};
+  }
+  if((d.stagePlacements||[]).some(p=>p.pipelineId===target.id))return null; // already enrolled — no-op
+  return{stagePlacements:[...dealPlacements(d),{pipelineId:target.id,stageKey:tstage.key,primary:false,at:_at}]};
+}
+function applyHandoffs(d,rules){return rules.reduce((acc,r)=>{const p=handoffPatch(acc,r);return p?{...acc,...p}:acc;},d);}
+function handoffLabel(rule){const tp=livePipelines().find(p=>p.id===rule.toPipelineId);const ts=tp&&realStagesOf(tp).find(s=>s.key===rule.toStageKey);return(rule.mode==='move'?'Move to ':'Enroll in ')+(tp?tp.name:'pipeline')+(ts?(' · '+ts.name):'');}
 // D3 storage: stagePlacements[{pipelineId,stageKey,primary}] — single primary placement today; the
 // decided multi-placement model extends this array without changing the shape.
 // D2 phase 2: placements MERGE. Updating a pipeline's placement preserves the deal's OTHER
