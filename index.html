@@ -17302,6 +17302,7 @@ function _autoDelayMs(node){const d=(typeof nodeDelay==='function'?nodeDelay(nod
 // execution (was display-only). Money comparisons are parsed; anything unparseable fails open (runs).
 function dealCondPass(cond,deal){
   if(!cond||!deal)return true;
+  if(cond&&typeof cond==='object'&&cond.conds){return cond.conds.length?omApplyFilter([deal],cond,autoFieldsFor('deal')).length>0:true;} // P1: AND/OR model gate
   const m=String(cond).toLowerCase().match(/(?:deal\s*value|amount|value)\s*(>=|<=|>|<|=)\s*\$?\s*([\d.,]+)\s*(k|m)?/);
   if(!m)return true;
   const amt=(deal.amount!=null?deal.amount:parseMoney(deal.value||''))||0;
@@ -17321,9 +17322,18 @@ function autoResolveOwner(assignTo,record){
   if(assignTo==='Round-robin'||assignTo==='Least busy rep'){const m=M[(_autoRR++)%Math.max(1,M.length)];return m?m.avatar:record.owner;}
   const named=M.find(m=>m.name===assignTo||m.avatar===assignTo);return named?named.avatar:record.owner;
 }
-// Evaluate a builder condition/goal node against a deal (deal-relevant fields; fails open on the rest so it never wrongly blocks).
-function autoEvalCond(node,record){
-  if(!node||!record)return true;const f=node.field,op=String(node.op||'').toLowerCase(),v=node.value;
+// P1: resolve the shared omFieldSchema field list for the entity an automation runs on (for AND/OR condition eval). Falls back to 'deal'.
+function autoFieldsFor(ent,rows){
+  const object=({deal:'deal',contact:'contact',lead:'lead',company:'company'})[ent]||'deal';
+  try{return omFieldSchema(object,null,rows||[]);}catch(e){try{return omFieldSchema('deal',null,[]);}catch(_){return [];}}
+}
+// Evaluate a builder condition/goal node against a record. If the node carries an AND/OR model (node.cond={match,conds}),
+// route through the shared Smart-Lists engine (omApplyFilter) for full type-aware AND/OR; else the legacy single field/op/value below.
+function autoEvalCond(node,record,ent){
+  if(!node||!record)return true;
+  const m=node.cond||(node.conds?{match:node.match||'AND',conds:node.conds}:null);
+  if(m&&m.conds&&m.conds.length){try{return omApplyFilter([record],m,autoFieldsFor(ent||'deal')).length>0;}catch(e){return true;}}
+  const f=node.field,op=String(node.op||'').toLowerCase(),v=node.value;
   const eqOp=(a)=>{const eq=String(a==null?'':a)===String(v);return /is not/.test(op)?!eq:eq;};
   if(f==='Deal value'){const amt=(record.amount!=null?record.amount:parseMoney(record.value||''))||0;let t=parseFloat(String(v).replace(/[^0-9.]/g,''))||0;if(/k/i.test(String(v)))t*=1000;if(/m/i.test(String(v)))t*=1000000;if(/greater|more|>/.test(op))return /more/.test(op)?amt>=t:amt>t;if(/less|</.test(op))return amt<t;if(/is not/.test(op))return amt!==t;return amt===t;}
   if(f==='Owner'){const o=((typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(m=>m.avatar===record.owner)||{}).name||record.owner;const eq=(o===v||record.owner===v);return /is not/.test(op)?!eq:eq;}
@@ -17341,9 +17351,9 @@ function autoRunNodes(nodes,record,ctx,out,top){
   const _patch=(fn)=>{const s=ctx.setter&&ctx.setter();if(s)s(l=>l.map(r=>(r&&r.id===record.id)?{...r,...fn(r)}:r));};
   const _cid=ctx.ent==='contact'?record.id:(ctx.ent==='deal'?record.primaryContactId:(record.convertedToContactId!=null?record.convertedToContactId:null));
   for(let i=0;i<(nodes||[]).length&&!out.stop;i++){const n=nodes[i];if(!n)continue;
-    if(n.kind==='condition'){autoRunNodes(autoEvalCond(n,record)?n.yes:n.no,record,ctx,out,false);continue;}
+    if(n.kind==='condition'){autoRunNodes(autoEvalCond(n,record,ctx.ent)?n.yes:n.no,record,ctx,out,false);continue;}
     if(n.kind==='branch'){const lane=(n.lanes||[])[0];if(lane)autoRunNodes(lane.nodes,record,ctx,out,false);continue;}
-    if(n.kind==='goal'){if(autoEvalCond(n,record)){out.effects.push('Goal met → exit');out.stop=true;}continue;}
+    if(n.kind==='goal'){if(autoEvalCond(n,record,ctx.ent)){out.effects.push('Goal met → exit');out.stop=true;}continue;}
     if(n.kind==='wait'||n.kind==='waitUntil'){if(top){_autoWaitQueue.push({record:record,nodes:(nodes||[]).slice(i+1),ctx:ctx,resumeAt:_autoNow+_autoDelayMs(n)});out.effects.push('⏸ '+(n.label||'Wait')+' — paused, resumes on time advance');out.stop=true;}else{out.effects.push('⏸ '+(n.label||'Wait')+' — inline (nested waits are not scheduled)');}continue;}
     if(n.kind!=='action')continue;
     const k=n.key;
