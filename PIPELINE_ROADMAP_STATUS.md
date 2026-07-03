@@ -2,7 +2,7 @@
 
 _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero console errors and pushed to `fix/crm-model-corrections`. Readiness score tracks the [PIPELINE_AUDIT.md](PIPELINE_AUDIT.md) rubric._
 
-**Readiness: 58 → ~96 / 100.**
+**Readiness: 58 → ~99 / 100.** All P0/P1/P2, every High, and every Med item are shipped; only Low / adjacent items remain.
 
 ---
 
@@ -47,6 +47,9 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 | Deal card label is the real, live **Next action** (was a static `tag` string that never updated) | `7790b07` |
 | **Cross-pipeline automation** — connected-pipeline handoffs (enroll/move to another pipeline on a trigger stage; config UI + seeded Won→Onboarding rule) | `8c3907e` |
 | **Gate deal creation** into gated stages — quick-add / "+ Add deal" enforce the stage's required fields (was transitions-only) | `e909b5c` |
+| **Close-date forecast view** — Pipedrive-style period columns (Overdue / months / No date) with weighted totals | `7e703b6` |
+| **Exclude junk lost reasons from win rate** (Capsule `includedForConversion`) — per-reason Target/Ban toggle | `7e183be` |
+| **Per-placement stage history** for enrollments — per-pipeline funnel & time-in-stage for enrolled deals | `0e0af3b` |
 
 ### Research & docs
 | Item | Commit |
@@ -62,9 +65,6 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 ### Pipeline module — behind the leaders (from the verified matrix)
 | Priority | Item | Why / who has it | Est |
 |---|---|---|---|
-| Med | **Close-date forecast view** (kanban by expected-close-date columns) | Pipedrive forecast view | M |
-| Med | **`includedForConversion`** flag on lost reasons (exclude junk losses like duplicates from win-rate) | Capsule — unique, cheap, improves report honesty | S |
-| Med | **Per-placement full history** — secondary placements get only an entered-at timestamp, not a full stageHistory | needed for per-pipeline time-in-stage on enrollments | M |
 | Low | Deeper per-pipeline permissions — per-stage move rights (Bitrix24) / six-role granularity (Streak); record-level hide in global lists/search | Bitrix24, Streak | L |
 | Low | Reason-list edits don't rewrite past closes (market-standard behavior; no merge tool) | matches Pipedrive/HubSpot — mostly fine as-is | — |
 
