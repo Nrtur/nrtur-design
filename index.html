@@ -20228,17 +20228,24 @@ function PayStripeStatus({goTo}){
 function payIsOverdue(inv){return !!(inv&&inv.status==='sent'&&inv.dueTs!=null&&inv.dueTs<Date.now());}
 function payEffStatus(inv){return payIsOverdue(inv)?'overdue':(inv?inv.status:'');}
 function PayRevenueWidget({invoices,subs}){
-  const sum=(st)=>invoices.filter(v=>payEffStatus(v)===st).reduce((a,v)=>a+v.amount,0);
-  const cnt=(st)=>invoices.filter(v=>payEffStatus(v)===st).length;
+  // Revenue KPIs report in ONE base currency — summing amounts across currencies and stamping '$' was
+  // arithmetically wrong (added €5k to $1k → "$6,000"). Base = the most common invoice currency; invoices
+  // in other currencies are excluded from these totals and surfaced as a note rather than silently mis-summed.
+  const _ccyOf=(v)=>(v&&v.currency)||'USD';
+  const baseCcy=(function(){const c={};invoices.forEach(v=>{if(v.status!=='void'&&v.status!=='draft')c[_ccyOf(v)]=(c[_ccyOf(v)]||0)+1;});return Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||'USD';})();
+  const inBase=(v)=>_ccyOf(v)===baseCcy;
+  const sum=(st)=>invoices.filter(v=>payEffStatus(v)===st&&inBase(v)).reduce((a,v)=>a+v.amount,0);
+  const cnt=(st)=>invoices.filter(v=>payEffStatus(v)===st&&inBase(v)).length;
   // "Collected" is a flow — money received in the last 30 days (uses paidAgoMin). Outstanding/Overdue are current balances.
-  const PAY_WINDOW_DAYS=30;const paidWin=invoices.filter(v=>v.status==='paid'&&v.paidAgoMin!=null&&v.paidAgoMin<=PAY_WINDOW_DAYS*1440);
+  const PAY_WINDOW_DAYS=30;const paidWin=invoices.filter(v=>v.status==='paid'&&inBase(v)&&v.paidAgoMin!=null&&v.paidAgoMin<=PAY_WINDOW_DAYS*1440);
   const collected=paidWin.reduce((a,v)=>a+v.amount,0),outstanding=sum('sent'),overdue=sum('overdue');
-  const mrr=subs.filter(s=>s.status==='active').reduce((a,s)=>a+(s.interval==='year'?s.amount/12:s.amount),0);
+  const mrr=subs.filter(s=>s.status==='active'&&((s.currency||'USD')===baseCcy)).reduce((a,s)=>a+(s.interval==='year'?s.amount/12:s.amount),0);
+  const otherCcy=invoices.filter(v=>!inBase(v)&&v.status!=='void'&&v.status!=='draft').length;
   const KPI=[
-    {l:'Collected · 30 days',v:payMoney(collected),Icon:I.Check,accent:'emerald',sub:paidWin.length+' paid · last 30 days'},
-    {l:'Outstanding',v:payMoney(outstanding),Icon:I.Clock,accent:'blue',sub:cnt('sent')+' awaiting payment'},
-    {l:'Overdue',v:payMoney(overdue),Icon:I.AlertTriangle,accent:'red',sub:cnt('overdue')+' past due'},
-    {l:'Recurring / mo (MRR)',v:payMoney(Math.round(mrr)),Icon:I.History,accent:'violet',sub:subs.filter(s=>s.status==='active').length+' active subscriptions'},
+    {l:'Collected · 30 days',v:payMoney(collected,baseCcy),Icon:I.Check,accent:'emerald',sub:paidWin.length+' paid · last 30 days'},
+    {l:'Outstanding',v:payMoney(outstanding,baseCcy),Icon:I.Clock,accent:'blue',sub:cnt('sent')+' awaiting payment'},
+    {l:'Overdue',v:payMoney(overdue,baseCcy),Icon:I.AlertTriangle,accent:'red',sub:cnt('overdue')+' past due'},
+    {l:'Recurring / mo (MRR)',v:payMoney(Math.round(mrr),baseCcy),Icon:I.History,accent:'violet',sub:subs.filter(s=>s.status==='active').length+' active subscriptions'},
   ];
   const ACC={emerald:'bg-emerald-500/10 text-emerald-300 ring-emerald-500/20',blue:'bg-blue-500/10 text-blue-300 ring-blue-500/20',red:'bg-red-500/10 text-red-300 ring-red-500/20',violet:'bg-violet-500/10 text-violet-300 ring-violet-500/20'};
   const bars=[{l:'Collected',v:collected,c:'#34d399'},{l:'Outstanding',v:outstanding,c:'#60a5fa'},{l:'Overdue',v:overdue,c:'#f87171'}];
@@ -20250,8 +20257,8 @@ function PayRevenueWidget({invoices,subs}){
       <p className="text-[11px] text-white/40 mt-2">{k.sub}</p>
     </div>))}</div>
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-      <div className="flex items-center justify-between mb-4"><p className="text-[13px] font-semibold text-white">Invoice revenue by status</p><span className="text-[11px] text-white/40">Collected = last 30 days</span></div>
-      <div className="flex flex-col gap-3">{bars.map(b=>(<div key={b.l}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:b.c}}/><span className="text-[12px] font-medium text-white/70">{b.l}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{payMoney(b.v)}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:Math.max(2,(b.v/max)*100)+'%',background:b.c}}/></div></div>))}</div>
+      <div className="flex items-center justify-between mb-4"><p className="text-[13px] font-semibold text-white">Invoice revenue by status</p><span className="text-[11px] text-white/40">{baseCcy} · Collected = last 30 days{otherCcy?(' · '+otherCcy+' in other currencies not shown'):''}</span></div>
+      <div className="flex flex-col gap-3">{bars.map(b=>(<div key={b.l}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:b.c}}/><span className="text-[12px] font-medium text-white/70">{b.l}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{payMoney(b.v,baseCcy)}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:Math.max(2,(b.v/max)*100)+'%',background:b.c}}/></div></div>))}</div>
     </div>
   </div>);
 }
@@ -20308,7 +20315,7 @@ function PayLinkModal({onClose,onSave}){
 }
 // ── Subscription modal (simulated) ──────────────────────────────────────────
 function PaySubModal({products,onClose,onSave}){
-  const recurring=products.filter(p=>p.billing==='recurring');
+  const recurring=products.filter(p=>p.billing==='recurring'&&p.active!==false);
   const [customer,setCustomer]=React.useState('');
   const [planId,setPlanId]=React.useState(recurring[0]?recurring[0].id:'');
   const [seats,setSeats]=React.useState('1');
@@ -20362,7 +20369,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const rmItem=(i)=>setItems(its=>its.filter((_,j)=>j!==i));
   const dueDays=(PAY_DUE_PRESETS.find(p=>p[0]===duePreset)||[,,14])[2];
   const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',currency:ccy,notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),dueTs:payDayShift(dueDays).getTime(),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes,currency:ccy}:_b;};
-  const canSave=contact.trim()&&items.length>0&&amount>0;
+  const canSave=contact.trim()&&items.length>0&&total>0;
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -20513,13 +20520,13 @@ function PayCheckoutPage({goTo,nav}){
         <div className="p-7 sm:p-9 flex flex-col" style={{background:'var(--s900,#12121c)'}}>
           <div className="flex items-center gap-2.5 mb-8"><span className="w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></span><span className="text-[15px] font-semibold text-white">nrtur</span></div>
           <p className="text-[13px] text-white/50">{alreadyPaid?'Receipt for':'Pay'} {title}</p>
-          <p className="text-[40px] font-bold text-white tabular-nums mt-1 leading-none">{payMoney(amount)}</p>
+          <p className="text-[40px] font-bold text-white tabular-nums mt-1 leading-none">{payMoney(amount,inv&&inv.currency)}</p>
           {sub&&<p className="text-[13px] text-white/55 mt-2">{sub}</p>}
           {inv&&inv.items&&<div className="mt-7 flex flex-col gap-2 border-t border-white/[0.07] pt-5">
-            {inv.items.map((it,i)=>(<div key={i} className="flex items-center justify-between text-[13px]"><span className="text-white/65 truncate pr-3">{it.desc} <span className="text-white/35">× {it.qty}</span></span><span className="text-white/80 tabular-nums shrink-0">{payMoney(it.qty*it.price)}</span></div>))}
+            {inv.items.map((it,i)=>(<div key={i} className="flex items-center justify-between text-[13px]"><span className="text-white/65 truncate pr-3">{it.desc} <span className="text-white/35">× {it.qty}</span></span><span className="text-white/80 tabular-nums shrink-0">{payMoney(it.qty*it.price,inv&&inv.currency)}</span></div>))}
             {inv.discount>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Discount</span><span className="tabular-nums text-emerald-300">-{payMoney(inv.discount,inv.currency)}</span></div>}
             {inv.tax>0&&<div className="flex items-center justify-between text-[13px]"><span className="text-white/65">Tax{inv.taxRate?(' ('+inv.taxRate+'%)'):''}</span><span className="tabular-nums text-white/80">{payMoney(inv.tax)}</span></div>}
-            <div className="flex items-center justify-between text-[14px] font-semibold border-t border-white/[0.07] pt-2.5 mt-1"><span className="text-white">Total due</span><span className="text-white tabular-nums">{payMoney(amount)}</span></div>
+            <div className="flex items-center justify-between text-[14px] font-semibold border-t border-white/[0.07] pt-2.5 mt-1"><span className="text-white">Total due</span><span className="text-white tabular-nums">{payMoney(amount,inv&&inv.currency)}</span></div>
             {inv.due&&<p className="text-[11.5px] text-white/40 mt-1">Due {inv.due}</p>}
           </div>}
           {link&&link.desc&&<p className="mt-7 text-[13px] text-white/55 leading-relaxed border-t border-white/[0.07] pt-5">{link.desc}</p>}
@@ -20529,7 +20536,7 @@ function PayCheckoutPage({goTo,nav}){
           {stage==='done'?(<div className="flex flex-col items-center text-center gap-3">
             <span className="w-14 h-14 rounded-full bg-emerald-500/12 ring-1 ring-emerald-500/30 text-emerald-300 flex items-center justify-center"><I.Check size={26} stroke={2.4}/></span>
             <p className="text-[18px] font-semibold text-white">Payment successful</p>
-            <p className="text-[13px] text-white/55 max-w-[260px]">{payMoney(amount)} paid to nrtur. A receipt has been sent{email?(' to '+email):''}.</p>
+            <p className="text-[13px] text-white/55 max-w-[260px]">{payMoney(amount,inv&&inv.currency)} paid to nrtur. A receipt has been sent{email?(' to '+email):''}.</p>
             <button onClick={()=>goTo('payments')} className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/75 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Done</button>
           </div>):stage==='closed'?(<div className="flex flex-col items-center text-center gap-3">
             <span className="w-14 h-14 rounded-full bg-white/[0.05] text-white/45 flex items-center justify-center"><I.Check size={24}/></span>
@@ -20546,7 +20553,7 @@ function PayCheckoutPage({goTo,nav}){
                 <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">CVC</label><input value={card.cvc} onChange={e=>setCard(c=>({...c,cvc:e.target.value.replace(/\D/g,'').slice(0,4)}))} inputMode="numeric" placeholder="123" className={INP}/></div>
               </div>
             </div>
-            <button onClick={pay} disabled={!cardOk||!stripeOn||stage==='processing'} className={['mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-all',(cardOk&&stripeOn&&stage!=='processing')?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{stage==='processing'?'Processing…':('Pay '+payMoney(amount))}</button>
+            <button onClick={pay} disabled={!cardOk||!stripeOn||stage==='processing'} className={['mt-6 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-all',(cardOk&&stripeOn&&stage!=='processing')?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{stage==='processing'?'Processing…':('Pay '+payMoney(amount,inv&&inv.currency))}</button>
             {stripeOn?<p className="text-[11px] text-white/35 text-center mt-3 flex items-center justify-center gap-1.5"><I.ShieldCheck size={11} className="text-emerald-400/70"/>Test mode — use 4242 4242 4242 4242. No real charge.</p>:<p className="text-[11px] text-amber-300/80 text-center mt-3 flex items-center justify-center gap-1.5"><I.AlertTriangle size={11}/>This merchant hasn't finished connecting Stripe — payments are disabled.</p>}
           </React.Fragment>)}
         </div>
@@ -20626,7 +20633,7 @@ function PaymentsPage({goTo,nav}){
   // mutations
   const createInvoice=(invoice,status)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}crm.setPayInvoices(a=>[{...invoice,owner:invoice.owner||CURRENT_USER_CODE},...a]);setNewInv(false);const _linked=(crm.contacts||[]).some(c=>c.name===((invoice.contact||'').trim()));showToast(status==='draft'?('Draft '+invoice.number+' saved'):('Invoice '+invoice.number+' sent ✓ · payment link generated'+(_linked?(' · logged to '+invoice.contact+'’s timeline'):'')));};
   const saveEditInvoice=(obj)=>{if(!effCanPay('edit')){showToast('Your role can’t edit invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===obj.id?obj:v));setEditInv(null);showToast('Invoice '+obj.number+' updated ✓');};
-  const duplicateInvoice=(src)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const copy={...src,id:'inv_'+Date.now(),number:payNextInvoiceNo(),status:'draft',issued:payDateLabel(payDayShift(0)),agoMin:0,paidDate:null,paidAgoMin:null,link:null,fromQuote:undefined};crm.setPayInvoices(a=>[copy,...a]);setOpenInv(null);showToast('Duplicated as '+copy.number+' (draft) ✓');};
+  const duplicateInvoice=(src)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}const copy={...src,id:'inv_'+Date.now(),number:payNextInvoiceNo(),status:'draft',issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(14)),dueTs:payDayShift(14).getTime(),agoMin:0,paidDate:null,paidAgoMin:null,link:null,fromQuote:undefined};crm.setPayInvoices(a=>[copy,...a]);setOpenInv(null);showToast('Duplicated as '+copy.number+' (draft) ✓');};
   const updateInvoice=(id,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change invoices.');return;}crm.setPayInvoices(a=>a.map(v=>v.id===id?{...v,...patch}:v));};
   const saveProduct=(p)=>{if(!(effCanPay('create')||effCanPay('edit'))){showToast('Your role can’t change products.');return;}crm.setPayProducts(a=>a.some(x=>x.id===p.id)?a.map(x=>x.id===p.id?p:x):[p,...a]);setProdModal(null);showToast(p.name+' saved');};
   const delProduct=(p)=>{setProdMenu(null);if(!effCanPay('delete')){showToast('Your role can’t delete products.');return;}openConfirm({title:'Delete '+p.name+'?',body:'This removes the product from your catalog. Existing invoices keep their line items.',confirmLabel:'Delete product',danger:true,onConfirm:()=>{crm.setPayProducts(a=>a.filter(x=>x.id!==p.id));showToast('Product deleted');}});};
