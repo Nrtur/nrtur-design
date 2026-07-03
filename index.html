@@ -8919,33 +8919,10 @@ function DealDetailPage({goTo,nav}){
   );
 }
 function AddDealPage({goTo}){
-  return(
-    <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="pipeline" goTo={goTo}/>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-2 text-[13px]"><button onClick={()=>goTo('pipeline')} className="text-white/45 hover:text-white transition-colors">Pipeline</button><I.ChevronRight size={12} className="text-white/25"/><span className="text-white font-medium">New deal</span></div><button onClick={()=>goTo('pipeline')} className="text-white/40 hover:text-white"><I.X size={16}/></button></header>
-        <div className="flex-1 overflow-y-auto scroll-area">
-          <div className="px-7 py-6 max-w-4xl mx-auto">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="w-11 h-11 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.GitBranch size={18}/></span>
-              <div><h2 className="text-white text-[22px] font-semibold leading-tight">Add a deal</h2><p className="text-white/45 text-[13px] mt-0.5">Start tracking a new opportunity in your pipeline.</p></div>
-            </div>
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Deal name</label><input placeholder="e.g. Q3 Retainer" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
-                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Company</label><input placeholder="Search or add..." className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40"/></div>
-                <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Deal value</label><div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] focus-within:border-brand-500/40 transition-all"><span className="text-white/40 text-[13px]">$</span><input placeholder="0" className="flex-1 bg-transparent outline-none text-[13px] text-white font-mono placeholder:text-white/25"/></div></div>
-                <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Close date</label><input type="date" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}/></div>
-                <div className="col-span-2"><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Stage</label><select className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark'}}>{DEAL_STAGE_ORDER.map(s=>(<option key={s}>{s}</option>))}</select></div>
-              </div>
-              <div className="flex gap-3"><button onClick={()=>goTo('pipeline')} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>goTo('deal-detail')} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Create deal</button></div>
-            </div>
-          </div>
-        </div>
-        <AppFooter/>
-      </div>
-    </div>
-  );
+  // The full-page add-deal form was a non-functional duplicate (dead inputs, no create).
+  // The real add-deal UI is the quick-add drawer; funnel this route into it and show the board.
+  React.useEffect(()=>{if(window.__nrturQuickAdd)window.__nrturQuickAdd('deal');goTo('pipeline');},[]);
+  return null;
 }
 // ?? Companies + Leads shared helpers ?????????????????????????????????????????
 const parseMoney=(s)=>{const m=(s||'').replace(/[,\s]/g,'').match(/([\d.]+)\s*([kKmM])?/);if(!m)return 0;let n=parseFloat(m[1])||0;const u=(m[2]||'').toLowerCase();if(u==='k')n*=1000;if(u==='m')n*=1000000;return n;};
@@ -9927,8 +9904,8 @@ function LeadDetailPage({goTo,nav}){
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.Sparkles size={16}/></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-medium text-emerald-300 uppercase tracking-[0.14em]">Recommended next action</p>
-                    <p className="text-[14px] font-medium text-white mt-1">{l.converted?'Lead converted':'This lead is ready to convert'}</p>
-                    <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.converted?(l.name+' is now a Contact'+(l.convCompany?', Company':'')+(l.convDeal?' and Deal':'')+'. Jump to the new records below.'):(l.name+' scores '+l.score+'/100 and engaged twice this week. Convert to a contact and open the '+l.estValue+' opportunity before it cools.')}</p>
+                    <p className="text-[14px] font-medium text-white mt-1">{l.converted?'Lead converted':(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||'')?'Lead disqualified':(((l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||l.qual)?'Ready to convert':'Qualify before converting'))}</p>
+                    <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.converted?(l.name+' is now a Contact'+(l.convCompany?', Company':'')+(l.convDeal?' and Deal':'')+'. Jump to the new records below.'):(()=>{const _facts=[l.score!=null?(l.score+'/100 score'):null,l.status?String(l.status).toLowerCase():null,l.source?('via '+l.source):null].filter(Boolean).slice(0,2).join(' · ');const _f=_facts?(' ('+_facts+')'):'';if(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||''))return l.name+' was disqualified'+_f+'. No action needed unless they re-engage.';const _ready=(l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||!!l.qual;return _ready?(l.name+' looks ready'+_f+'. Convert to a contact'+(l.estValue?(' and open the '+l.estValue+' opportunity'):'')+' before it cools.'):(l.name+' isn’t qualified yet'+_f+'. Reach out to qualify before converting.');})()}</p>
                     {l.converted?(<div className="flex items-center gap-2 mt-3 flex-wrap">{l.convContact&&<button onClick={()=>goTo('contact-detail',l.convertedToContactId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.UserPlus size={12}/>{l.convContact}</button>}{l.convCompany&&<button onClick={()=>goTo('company-detail',l.convertedToCompanyId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.Building size={12}/>{l.convCompany}</button>}{l.convDeal&&<button onClick={()=>goTo('deal-detail',l.convertedToDealId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.GitBranch size={12}/>{l.convDeal}</button>}</div>):(<div className="flex items-center gap-2 mt-3"><button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/90 hover:bg-emerald-400 text-[#04140d] shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={12}/>Convert now</button><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Email lead</button><button className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>)}
                   </div>
                 </div>
