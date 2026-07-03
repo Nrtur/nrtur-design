@@ -20170,10 +20170,10 @@ function paySeedInvoices(){
 }
 function paySeedSubs(){
   return [
-    {id:'sub_1',customer:'Halcyon Media',contact:'Derek Sloane',plan:'Pro plan — annual',amount:590*3,interval:'year',status:'active',nextBill:payDateLabel(payDayShift(118)),seats:3},
-    {id:'sub_2',customer:'Summit Digital',contact:'James Rivera',plan:'Pro plan — monthly',amount:59*8,interval:'month',status:'active',nextBill:payDateLabel(payDayShift(12)),seats:8},
-    {id:'sub_3',customer:'Vertex Labs',contact:'Ravi Lee',plan:'Pro plan — monthly',amount:59*5,interval:'month',status:'past-due',nextBill:payDateLabel(payDayShift(-3)),seats:5},
-    {id:'sub_4',customer:'Forge & Co',contact:'Emily Tran',plan:'Strategy retainer',amount:2500,interval:'month',status:'cancelled',nextBill:'—',seats:1},
+    {id:'sub_1',customer:'Halcyon Media',contact:'Derek Sloane',plan:'Pro plan — annual',amount:590*3,interval:'year',status:'active',nextBill:payDateLabel(payDayShift(118)),nextBillTs:payDayShift(118).getTime(),seats:3},
+    {id:'sub_2',customer:'Summit Digital',contact:'James Rivera',plan:'Pro plan — monthly',amount:59*8,interval:'month',status:'active',nextBill:payDateLabel(payDayShift(12)),nextBillTs:payDayShift(12).getTime(),seats:8},
+    {id:'sub_3',customer:'Vertex Labs',contact:'Ravi Lee',plan:'Pro plan — monthly',amount:59*5,interval:'month',status:'past-due',nextBill:payDateLabel(payDayShift(-3)),nextBillTs:payDayShift(-3).getTime(),seats:5},
+    {id:'sub_4',customer:'Forge & Co',contact:'Emily Tran',plan:'Strategy retainer',amount:2500,interval:'month',status:'cancelled',nextBill:'—',nextBillTs:null,seats:1},
   ];
 }
 // A subscription billing cycle IS an invoice (mirrors Stripe). Build a paid invoice for the current
@@ -20230,6 +20230,8 @@ function payEffStatus(inv){return payIsOverdue(inv)?'overdue':(inv?inv.status:''
 // Quotes expire the same way: a sent/accepted quote past its validUntil reads 'expired' and can't be accepted or converted.
 function payQuoteExpired(q){return !!(q&&(q.status==='sent'||q.status==='accepted')&&q.validUntilTs!=null&&q.validUntilTs<Date.now());}
 function payQuoteEff(q){return payQuoteExpired(q)?'expired':(q?q.status:'');}
+// Advance a billing anchor by exactly one interval using real calendar math (a month is not 30 days).
+function payAddInterval(ts,interval){var d=new Date(ts);if(interval==='year')d.setFullYear(d.getFullYear()+1);else d.setMonth(d.getMonth()+1);return d.getTime();}
 function PayRevenueWidget({invoices,subs}){
   // Revenue KPIs report in ONE base currency — summing amounts across currencies and stamping '$' was
   // arithmetically wrong (added €5k to $1k → "$6,000"). Base = the most common invoice currency; invoices
@@ -20242,13 +20244,13 @@ function PayRevenueWidget({invoices,subs}){
   // "Collected" is a flow — money received in the last 30 days (uses paidAgoMin). Outstanding/Overdue are current balances.
   const PAY_WINDOW_DAYS=30;const paidWin=invoices.filter(v=>v.status==='paid'&&inBase(v)&&v.paidAgoMin!=null&&v.paidAgoMin<=PAY_WINDOW_DAYS*1440);
   const collected=paidWin.reduce((a,v)=>a+v.amount,0),outstanding=sum('sent'),overdue=sum('overdue');
-  const mrr=subs.filter(s=>s.status==='active'&&((s.currency||'USD')===baseCcy)).reduce((a,s)=>a+(s.interval==='year'?s.amount/12:s.amount),0);
+  const mrr=subs.filter(s=>(s.status==='active'||s.status==='past-due')&&((s.currency||'USD')===baseCcy)).reduce((a,s)=>a+(s.interval==='year'?s.amount/12:s.amount),0);
   const otherCcy=invoices.filter(v=>!inBase(v)&&v.status!=='void'&&v.status!=='draft').length;
   const KPI=[
     {l:'Collected · 30 days',v:payMoney(collected,baseCcy),Icon:I.Check,accent:'emerald',sub:paidWin.length+' paid · last 30 days'},
     {l:'Outstanding',v:payMoney(outstanding,baseCcy),Icon:I.Clock,accent:'blue',sub:cnt('sent')+' awaiting payment'},
     {l:'Overdue',v:payMoney(overdue,baseCcy),Icon:I.AlertTriangle,accent:'red',sub:cnt('overdue')+' past due'},
-    {l:'Recurring / mo (MRR)',v:payMoney(Math.round(mrr),baseCcy),Icon:I.History,accent:'violet',sub:subs.filter(s=>s.status==='active').length+' active subscriptions'},
+    {l:'Recurring / mo (MRR)',v:payMoney(Math.round(mrr),baseCcy),Icon:I.History,accent:'violet',sub:(function(){const a=subs.filter(s=>s.status==='active').length,p=subs.filter(s=>s.status==='past-due').length;return a+' active'+(p?(' · '+p+' past-due'):'')+' subscription'+(a+p===1?'':'s');})()},
   ];
   const ACC={emerald:'bg-emerald-500/10 text-emerald-300 ring-emerald-500/20',blue:'bg-blue-500/10 text-blue-300 ring-blue-500/20',red:'bg-red-500/10 text-red-300 ring-red-500/20',violet:'bg-violet-500/10 text-violet-300 ring-violet-500/20'};
   const bars=[{l:'Collected',v:collected,c:'#34d399'},{l:'Outstanding',v:outstanding,c:'#60a5fa'},{l:'Overdue',v:overdue,c:'#f87171'}];
@@ -20327,7 +20329,7 @@ function PaySubModal({products,onClose,onSave}){
   const seatsN=Math.max(1,parseInt(seats,10)||1);
   const amount=plan?plan.price*seatsN:0;
   const ok=customer.trim()&&plan;
-  const save=()=>{if(!ok)return;onSave({id:'sub_'+Date.now(),customer:customer.trim(),contact:customer.trim(),plan:plan.name,amount,interval:plan.interval||'month',status:'active',nextBill:payDateLabel(payDayShift(plan.interval==='year'?365:30)),seats:seatsN});};
+  const save=()=>{if(!ok)return;onSave({id:'sub_'+Date.now(),customer:customer.trim(),contact:customer.trim(),plan:plan.name,amount,interval:plan.interval||'month',status:'active',nextBill:payDateLabel(payDayShift(plan.interval==='year'?365:30)),nextBillTs:payDayShift(plan.interval==='year'?365:30).getTime(),seats:seatsN});};
   return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
     <div role="dialog" aria-modal="true" className="w-full max-w-[440px] rounded-2xl border border-white/[0.10] p-5" style={{background:'var(--pop)'}}>
       <div className="flex items-center justify-between mb-4"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.History size={15} className="text-brand-300"/>New subscription</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
@@ -20646,8 +20648,8 @@ function PaymentsPage({goTo,nav}){
   const createLink=(l)=>{if(!effCanPay('create')){showToast('Your role can’t create payment links.');return;}crm.setPayLinks(a=>[l,...a]);setLinkModal(false);showToast('Payment link created ✓');};
   const setLinkStatus=(l,st)=>{if(!effCanPay('edit')){showToast('Your role can’t change payment links.');return;}crm.setPayLinks(a=>a.map(x=>x.id===l.id?{...x,status:st}:x));setLinkMenu(null);showToast('Link '+(st==='disabled'?'disabled':'reactivated'));};
   const createSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t start subscriptions.');return;}crm.setPaySubs(a=>[s,...a]);crm.setPayInvoices(a=>[paySubInvoice(s),...a]);setSubModal(false);showToast('Subscription started ✓ · first invoice issued');};
-  const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,status:st}:x));setSubMenu(null);showToast(label);};
-  const billSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t bill subscriptions.');return;}crm.setPayInvoices(a=>[paySubInvoice(s),...a]);crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,nextBill:payDateLabel(payDayShift(s.interval==='year'?365:30))}:x));setSubMenu(null);showToast('Invoice generated for '+(s.customer||s.plan)+' ✓ · counts in revenue');};
+  const setSubStatus=(s,st,label)=>{if(!effCanPay('edit')){showToast('Your role can’t change subscriptions.');return;}crm.setPaySubs(a=>a.map(x=>{if(x.id!==s.id)return x;const patch={status:st};if(st==='active'&&(x.nextBillTs==null||x.nextBillTs<Date.now())){const ts=payAddInterval(Date.now(),x.interval);patch.nextBillTs=ts;patch.nextBill=payDateLabel(new Date(ts));}return {...x,...patch};}));setSubMenu(null);showToast(label);};
+  const billSub=(s)=>{if(!effCanPay('create')){showToast('Your role can’t bill subscriptions.');return;}const wasPastDue=s.status==='past-due';const anchor=(s.nextBillTs!=null?s.nextBillTs:Date.now());const nextTs=payAddInterval(anchor,s.interval);crm.setPayInvoices(a=>[paySubInvoice(s),...a]);crm.setPaySubs(a=>a.map(x=>x.id===s.id?{...x,nextBill:payDateLabel(new Date(nextTs)),nextBillTs:nextTs,status:x.status==='past-due'?'active':x.status}:x));setSubMenu(null);showToast(wasPastDue?('Payment collected for '+(s.customer||s.plan)+' ✓ · subscription active again'):('Invoice generated for '+(s.customer||s.plan)+' ✓ · counts in revenue'));};
   const createQuote=(q,status)=>{if(!effCanPay('create')){showToast('Your role can’t create quotes.');return;}const quote={...q,kind:'quote',id:'qot_'+Date.now(),number:'QUO-'+String(Date.now()).slice(-4),status:status==='sent'?'sent':'draft',validUntil:(q.due||payDateLabel(new Date(q.dueTs!=null?q.dueTs:payDayShift(14).getTime()))),validUntilTs:(q.dueTs!=null?q.dueTs:payDayShift(14).getTime()),link:null,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayQuotes(a=>[quote,...a]);setNewQuote(false);showToast(status==='draft'?('Quote '+quote.number+' saved'):('Quote '+quote.number+' sent ✓'));};
   const setQuoteStatus=(q,st,label,patch)=>{if(!effCanPay('edit')){showToast('Your role can’t change quotes.');return;}if(st==='accepted'&&payQuoteExpired(q)){showToast('This quote expired — re-issue it before it can be accepted.');return;}crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:st,...(patch||{})}:x));showToast(label);};
   const convertQuote=(q)=>{if(!effCanPay('create')){showToast('Your role can’t create invoices.');return;}if(payQuoteExpired(q)){showToast('This quote expired — re-issue it before converting to an invoice.');return;}const inv={...q,id:'inv_'+Date.now(),number:payNextInvoiceNo(),kind:'invoice',status:'sent',fromQuote:q.id,link:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(14)),dueTs:payDayShift(14).getTime(),agoMin:0,paidDate:null,paidAgoMin:null,owner:q.owner||CURRENT_USER_CODE};crm.setPayInvoices(a=>[inv,...a]);crm.setPayQuotes(a=>a.map(x=>x.id===q.id?{...x,status:'converted',invoiceId:inv.id}:x));setOpenQuoteId(null);showToast('Quote '+q.number+' → Invoice '+inv.number+' created ✓');};
@@ -20745,7 +20747,7 @@ function PaymentsPage({goTo,nav}){
               <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(s.amount)}</span><span className="text-[11px] text-white/40">/{s.interval==='year'?'yr':'mo'}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_SUB_ST} k={s.status}/></span></div>
               <span className="hidden sm:block"><PayPill map={PAY_SUB_ST} k={s.status}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{s.nextBill}</span>
-              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{s.status==='active'&&<button onClick={()=>billSub(s)} className={menuItem}><I.Note size={13}/>Bill this period</button>}{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active','Subscription reactivated')} className={menuItem}><I.Check size={13}/>Mark active</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>setSubStatus(s,'cancelled','Subscription cancelled')} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
+              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{(s.status==='active'||s.status==='past-due')&&<button onClick={()=>billSub(s)} className={menuItem}><I.Note size={13}/>{s.status==='past-due'?'Collect payment':'Bill this period'}</button>}{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active',s.status==='cancelled'?'Subscription reactivated':'Subscription marked active')} className={menuItem}><I.Check size={13}/>{s.status==='cancelled'?'Reactivate':'Mark active'}</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>setSubStatus(s,'cancelled','Subscription cancelled')} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
             </div>))}
         </div>)}
 
