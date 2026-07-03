@@ -17182,7 +17182,7 @@ const AUTO_INIT=[
   {id:9700,name:'New User Welcome (Push + In-app)',trigger:'Contact created',status:'draft',runs:0,steps:[STEP_PRESETS_A.sendInApp,STEP_PRESETS_A.sendPush]},
   {id:9501,name:'Speed-to-lead',trigger:'New ad lead received',status:'active',runs:142,success:99,lastRun:'3m ago',spark:[3,5,6,9,8,12,14,11,16,18,17,22,21,26],steps:[STEP_PRESETS_A.sms,STEP_PRESETS_A.task,STEP_PRESETS_A.enrollEmail]},
   {id:1,name:'New Lead Welcome Sequence',trigger:'Contact created',status:'active',runs:284,success:100,lastRun:'12m ago',spark:[4,6,5,8,12,9,11,14,12,16,18,15,22,24],steps:[STEP_PRESETS_A.assign,STEP_PRESETS_A.welcome,STEP_PRESETS_A.task],cond:'Deal value > $10k'},
-  {id:2,name:'Proposal Follow-Up',trigger:'Deal moved to Proposal',status:'active',runs:91,success:97,lastRun:'1h ago',spark:[2,3,1,4,5,3,6,4,7,5,8,6,9,7],steps:[STEP_PRESETS_A.proposal,STEP_PRESETS_A.slack,STEP_PRESETS_A.reminder]},
+  {id:2,name:'Proposal Follow-Up',trigger:'Deal moved to Proposal',status:'active',runs:91,success:97,lastRun:'1h ago',spark:[2,3,1,4,5,3,6,4,7,5,8,6,9,7],steps:[STEP_PRESETS_A.proposal,STEP_PRESETS_A.slack,STEP_PRESETS_A.reminder],cond:'Deal value > $20k'},
   {id:3,name:'Deal Won Celebration',trigger:'Deal moved to Won',status:'active',runs:62,success:100,lastRun:'3h ago',spark:[1,2,2,3,4,3,5,4,6,5,7,6,8,7],steps:[STEP_PRESETS_A.celebrate,STEP_PRESETS_A.welcome,STEP_PRESETS_A.task]},
   {id:4,name:'Weekly Pipeline Digest',trigger:'Every Monday 8am',status:'active',runs:18,success:100,lastRun:'2d ago',spark:[1,1,1,1,1,1,1,1,1,1,1,1,1,1],steps:[STEP_PRESETS_A.report,STEP_PRESETS_A.slack]},
   {id:5,name:'Re-engagement Campaign',trigger:'Deal inactive 7 days',status:'paused',runs:47,pausedSince:'Apr 12',lastRun:'3 weeks ago',spark:[3,5,4,6,7,5,4,3,2,1,1,0,0,0],steps:[STEP_PRESETS_A.reengage,STEP_PRESETS_A.flag],cond:'No reply in 7d'},
@@ -17202,17 +17202,31 @@ const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 r
 // detail's commitStage / outcome confirm.
 let _autoRt=null; // {automations,setAutomations,addAutoLog,addActivity,addTask}
 // Core engine: fire every active automation whose trigger matches any of `events` for this deal.
+// Condition gating: an automation's `cond` is now EVALUATED against the deal so it actually gates
+// execution (was display-only). Money comparisons are parsed; anything unparseable fails open (runs).
+function dealCondPass(cond,deal){
+  if(!cond||!deal)return true;
+  const m=String(cond).toLowerCase().match(/(?:deal\s*value|amount|value)\s*(>=|<=|>|<|=)\s*\$?\s*([\d.,]+)\s*(k|m)?/);
+  if(!m)return true;
+  const amt=(deal.amount!=null?deal.amount:parseMoney(deal.value||''))||0;
+  let tgt=parseFloat(m[2].replace(/,/g,''))||0;if(m[3]==='k')tgt*=1000;if(m[3]==='m')tgt*=1000000;
+  switch(m[1]){case '>':return amt>tgt;case '>=':return amt>=tgt;case '<':return amt<tgt;case '<=':return amt<=tgt;case '=':return amt===tgt;default:return true;}
+}
 function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
-  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
+  const matched=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
+  const fired=[],skipped=[];
+  matched.forEach(a=>{(dealCondPass(a.cond,deal)?fired:skipped).push(a);}); // condition gates whether it runs for THIS deal
   fired.forEach(a=>{
     const stepLabels=(a.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);
     if(stepLabels.some(l=>/task|remind|follow/i.test(l)))_autoRt.addTask({title:a.name+': follow up on '+(deal.name||deal.company),deal,auto:a});
-    _autoRt.addActivity('deal',deal.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+a.name+'" ran',body:(stepLabels.length?stepLabels.join(' → ')+' · ':'')+'Trigger: '+a.trigger}));
+    _autoRt.addActivity('deal',deal.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+a.name+'" ran',body:(stepLabels.length?stepLabels.join(' → ')+' · ':'')+'Trigger: '+a.trigger+(a.cond?(' · condition '+a.cond+' ✓'):'')}));
     _autoRt.setAutomations(list=>list.map(x=>x.id===a.id?{...x,runs:(x.runs||0)+1,lastRun:'Just now',success:x.success==null?100:x.success}:x));
     _autoRt.addAutoLog({auto:a.name,contact:deal.name||deal.company||'Deal',avatar:arInitials(deal.name||deal.company||'D'),color:'#6366f1',status:'success',steps:(a.steps||[]).length+'/'+(a.steps||[]).length,time:'Just now'});
   });
-  if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
+  skipped.forEach(a=>{_autoRt.addActivity('deal',deal.id,mkAct('field',{ts:0,by:'nrtur',title:'Automation "'+a.name+'" did not run',body:'Condition not met — '+a.cond+' (deal is '+(deal.value||('$'+(deal.amount||0)))+')'}));});
+  if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran'))+(skipped.length?(' · '+skipped.length+' skipped'):''),'success');
+  else if(skipped.length&&window.__nrturToast)window.__nrturToast(skipped.length+' automation'+(skipped.length>1?'s':'')+' skipped — condition not met','warning');
   return fired;
 }
 function runDealAutomations(deal,toName,kind){ // kind: 'won' | 'lost' | null — STAGE-change events
