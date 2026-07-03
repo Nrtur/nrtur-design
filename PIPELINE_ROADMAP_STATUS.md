@@ -71,7 +71,7 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 ### Adjacent (flagged in earlier audits, not pipeline-core)
 | Item | Notes |
 |---|---|
-| Non-stage automation triggers don't fire at runtime | only stage-change triggers execute; "deal created / field changed" etc. are matched but not run |
+| ~~Non-stage automation triggers don't fire at runtime~~ | ✅ DONE (`19645d5`) — Deal created + Deal value changed now fire; engine refactored to a reusable core for adding more |
 | Automation branching not evaluated at runtime | conditions render but don't gate execution |
 | Contact-stage fixes | from the contact-stage audit: track changes, unify the 3 conflicting vocabularies, deal-won→Customer auto-advance, wire the Status-changed trigger |
 | `AddDealPage` stub | legacy full-page add-deal route superseded by the quick-add drawer — candidate for the next dead-code sweep |
