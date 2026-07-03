@@ -46,6 +46,7 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 | **Pipeline membership is id-based** (`stagePlacements` pipelineId), not the name string — survives renames | `17008c3` |
 | Deal card label is the real, live **Next action** (was a static `tag` string that never updated) | `7790b07` |
 | **Cross-pipeline automation** — connected-pipeline handoffs (enroll/move to another pipeline on a trigger stage; config UI + seeded Won→Onboarding rule) | `8c3907e` |
+| **Gate deal creation** into gated stages — quick-add / "+ Add deal" enforce the stage's required fields (was transitions-only) | `e909b5c` |
 
 ### Research & docs
 | Item | Commit |
@@ -61,7 +62,6 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 ### Pipeline module — behind the leaders (from the verified matrix)
 | Priority | Item | Why / who has it | Est |
 |---|---|---|---|
-| High | **Gate deal *creation*** into a gated stage (gates currently fire only on transitions) | HubSpot conditional stage properties fire on create-in-stage too | S |
 | Med | **Close-date forecast view** (kanban by expected-close-date columns) | Pipedrive forecast view | M |
 | Med | **`includedForConversion`** flag on lost reasons (exclude junk losses like duplicates from win-rate) | Capsule — unique, cheap, improves report honesty | S |
 | Med | **Per-placement full history** — secondary placements get only an entered-at timestamp, not a full stageHistory | needed for per-pipeline time-in-stage on enrollments | M |
