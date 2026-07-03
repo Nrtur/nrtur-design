@@ -100,7 +100,7 @@ _Compiled 2026-07-03 · 23 products + nrtur · sources and per-claim verificatio
 
 | CRM | Delete a pipeline holding deals | Per-pipeline permissions |
 |---|---|---|
-| **nrtur** | ✅ auto-reassign to next pipeline's first stage, history stamped, never orphans | ❌ (role scopes only — backlog) |
+| **nrtur** | ✅ auto-reassign to next pipeline's first stage, history stamped, never orphans + enrollments stripped | ✅ per-role access per pipeline (Everyone default, Owner/Admin always, switcher/board/enrollment enforced) |
 | Pipedrive | ⚠️ stage delete KILLS its deals (30-day restore) | ❓ |
 | HubSpot | ✅ blocked until evacuated | ✅ manage access + team restriction (Pro+) |
 | Salesforce | ⚠️ stage delete prompts remap; process deactivation ❓ | ⚠️ via profiles ("not an access control mechanism") |
@@ -164,4 +164,4 @@ _Compiled 2026-07-03 · 23 products + nrtur · sources and per-claim verificatio
 
 **Now also ahead:** multi-pipeline enrollment shipped (D2 phase 2) — one deal in several pipelines with independent stages, view-switching hero, and no double-counted value; among all 23 competitors only Dynamics (BPF instances) and Attio (list entries) have an equivalent, and neither puts it on the deal card.
 
-**Still behind (honest backlog):** per-pipeline permissions (Bitrix24/Streak/Attio lead) · pipeline referenced by name-string not id · creation into a gated stage is ungated · no close-date forecast kanban (Pipedrive) · no cross-pipeline automation (Bigin Connected Pipelines / Bitrix24 tunnels) · `includedForConversion` on lost reasons not implemented · secondary placements get entered-at timestamps but not full per-placement history · closing from a secondary placement's terminal stage moves only the placement (deal-level outcome stays with the primary).
+**Still behind (honest backlog):** pipeline referenced by name-string not id · creation into a gated stage is ungated · no close-date forecast kanban (Pipedrive) · no cross-pipeline automation (Bigin Connected Pipelines / Bitrix24 tunnels) · `includedForConversion` on lost reasons not implemented · secondary placements get entered-at timestamps but not full per-placement history · closing from a secondary placement's terminal stage moves only the placement (deal-level outcome stays with the primary) · pipeline access is visibility-only (no per-stage move rights like Bitrix24, no six-role granularity like Streak) and deal records in restricted pipelines still appear in global lists/search.
