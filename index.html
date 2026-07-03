@@ -17289,7 +17289,12 @@ const AUTO_ST={active:{dot:'#34d399',badge:'bg-emerald-500/12 text-emerald-300 r
 // entry on the deal, an incremented run count + lastRun, and a live Logs row. Fired from EVERY
 // real stage transition: board drag (applyMove), list/bulk moves (via applyMove), and the deal
 // detail's commitStage / outcome confirm.
-let _autoRt=null; // {automations,setAutomations,addAutoLog,addActivity,addTask}
+let _autoRt=null; // {automations,setAutomations,addAutoLog,addActivity,addTask,deals,calItems,payInvoices}
+// P0 scheduler: a simulated clock so time-based triggers & wait nodes can run in the prototype (advances only via _autoAdvance).
+let _autoNow=Date.now(); const _autoStart=_autoNow;
+const _autoFired=new Set();      // dedupe key `trigger:id` so a breach fires once
+let _autoWaitQueue=[];           // wait-node continuations: {record,nodes,ctx,resumeAt}
+function _autoDelayMs(node){const d=(typeof nodeDelay==='function'?nodeDelay(node):null)||{};let n=parseInt(d.n,10);if(isNaN(n))n=0;const u=String(d.unit||'days');const per=u.indexOf('min')>=0?6e4:u.indexOf('hour')>=0?36e5:u.indexOf('week')>=0?6048e5:864e5;return Math.max(0,n)*per;}
 // Core engine: fire every active automation whose trigger matches any of `events` for this deal.
 // Condition gating: an automation's `cond` is now EVALUATED against the deal so it actually gates
 // execution (was display-only). Money comparisons are parsed; anything unparseable fails open (runs).
@@ -17337,7 +17342,7 @@ function autoRunNodes(nodes,record,ctx,out){
     if(n.kind==='condition'){autoRunNodes(autoEvalCond(n,record)?n.yes:n.no,record,ctx,out);continue;}
     if(n.kind==='branch'){const lane=(n.lanes||[])[0];if(lane)autoRunNodes(lane.nodes,record,ctx,out);continue;}
     if(n.kind==='goal'){if(autoEvalCond(n,record)){out.effects.push('Goal met → exit');out.stop=true;}continue;}
-    if(n.kind==='wait'||n.kind==='waitUntil'){out.effects.push('⏸ '+(n.label||'Wait')+' (skipped — no scheduler)');continue;}
+    if(n.kind==='wait'||n.kind==='waitUntil'){_autoWaitQueue.push({record:record,nodes:(nodes||[]).slice(i+1),ctx:ctx,resumeAt:_autoNow+_autoDelayMs(n)});out.effects.push('⏸ '+(n.label||'Wait')+' — paused, resumes on time advance');out.stop=true;continue;}
     if(n.kind!=='action')continue;
     const k=n.key;
     if(k==='task'||k==='reminder'||k==='flag'){if(_autoRt&&_autoRt.addTask)_autoRt.addTask({title:(n.taskTitle||n.note||n.reason||'Follow up')+' — '+(record.name||record.company||'record'),deal:ctx.ent==='deal'?record:null,auto:{name:'automation'}});out.effects.push('✓ Task: '+(n.taskTitle||n.note||n.reason||'Follow up'));continue;}
@@ -17406,6 +17411,27 @@ function fireRecordUpdate(ent,before,after){
   if(!evs.length)return;
   const uniq=Array.from(new Set(evs));
   setTimeout(function(){try{fireEntityAutomationEvents(ent,a,uniq);}catch(e){}},0);
+}
+// P0 scheduler: fire time-based triggers ONCE each (deduped) against the simulated clock; reuses the existing interpreter/bus.
+function scanBreaches(){
+  if(!_autoRt)return {};
+  const advDays=Math.max(0,Math.floor((_autoNow-_autoStart)/864e5));const n={inactive:0,taskOverdue:0,invOverdue:0};
+  const fire=(key,ent,rec,ev)=>{if(!rec||_autoFired.has(key))return false;_autoFired.add(key);try{if(ent==='deal')fireDealAutomationEvents(rec,[ev]);else fireEntityAutomationEvents(ent,rec,[ev]);}catch(e){}return true;};
+  // Deal inactive 7 days — open deals whose time-in-stage (real seed age + simulated advance) >= 7d
+  ((_autoRt.deals)||[]).forEach(d=>{if(!d||d.deleted)return;if(/won|lost|closed/i.test(String(d.stageKey||'')+' '+String(d.dStage||'')+' '+String(d.outcome||'')))return;const age=(typeof dashDealAgeDays==='function'?dashDealAgeDays(d):0)+advDays;if(age>=7&&fire('deal-inactive:'+d.id,'deal',d,'Deal inactive 7 days'))n.inactive++;});
+  // Task overdue — incomplete calendar tasks past their due date
+  ((_autoRt.calItems)||[]).forEach(t=>{if(!t||t.type!=='task'||t.done||t.deleted||!t.date||/^Created by automation/.test(String(t.notes||'')))return;const ts=(t.date instanceof Date)?t.date.getTime():+t.date;if(ts<_autoNow&&fire('task-overdue:'+t.id,'contact',{id:(t.contactId!=null?t.contactId:'task-'+t.id),name:t.title||'Task',company:t.company||'',primaryContactId:(t.contactId!=null?t.contactId:null)},'Task overdue'))n.taskOverdue++;});
+  // Invoice overdue — sent/unpaid invoices past their due timestamp
+  ((_autoRt.payInvoices)||[]).forEach(inv=>{if(!inv||inv.status==='paid'||inv.status==='draft'||inv.dueTs==null)return;if(inv.dueTs<_autoNow&&fire('inv-overdue:'+inv.id,'contact',{id:inv.id,name:inv.contact||inv.company||inv.number||'Invoice',company:inv.company||''},'Invoice overdue'))n.invOverdue++;});
+  return n;
+}
+// Advance the simulated clock, resume any due wait-node continuations, then rescan breaches.
+function _autoAdvance(ms){
+  _autoNow+=(ms||864e5);
+  const due=_autoWaitQueue.filter(w=>w.resumeAt<=_autoNow);_autoWaitQueue=_autoWaitQueue.filter(w=>w.resumeAt>_autoNow);
+  due.forEach(w=>{try{autoRunNodes(w.nodes,w.record,w.ctx,{effects:[],stop:false});}catch(e){}});
+  const n=scanBreaches();
+  return {now:_autoNow,resumed:due.length,pending:_autoWaitQueue.length,fired:n};
 }
 function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
@@ -17667,7 +17693,7 @@ function SettingsAutomationsPage({goTo}){
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="settings-automations" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
-        <AppTopbar goTo={goTo} title="Automations" subtitle={`${nActive} active · ${nPaused} paused · 389 runs this month`} rightSlot={!readOnly&&<button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Automation</button>}/>
+        <AppTopbar goTo={goTo} title="Automations" subtitle={`${nActive} active · ${nPaused} paused · 389 runs this month`} rightSlot={!readOnly&&<div className="flex items-center gap-2"><button onClick={()=>{if(typeof _autoAdvance==='function'){const r=_autoAdvance(864e5);const f=(r&&r.fired)||{};const nb=(f.inactive||0)+(f.taskOverdue||0)+(f.invOverdue||0);window.__nrturToast&&window.__nrturToast('⏩ Simulated +1 day'+(r&&r.resumed?(' · '+r.resumed+' waited step'+(r.resumed>1?'s':'')+' resumed'):'')+(nb?(' · '+nb+' time trigger'+(nb>1?'s':'')+' fired'):' · no time triggers due'),'success');}}} title="Advance the automation clock by one day and fire any due time-based triggers (dev control)" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/80 bg-white/[0.06] border border-white/10 hover:bg-white/[0.1] transition-all"><I.Clock size={14} stroke={2.2}/>+1 day</button><button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Automation</button></div>}/>
         <div className="flex-1 flex min-h-0">
           <SettingsSubNav active="settings-automations" goTo={goTo}/>
           <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">
@@ -22671,7 +22697,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
