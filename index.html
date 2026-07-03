@@ -2405,7 +2405,9 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
     persist(rec);
-    if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0); // non-stage automation: 'Deal created' fires at runtime (deferred so the deal is in state first)
+    // Fire the "<Entity> created" trigger for every object type (deferred so the record is in state first) — multi-entity event bus.
+    if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0);
+    else{const _ct={contact:'Contact created',lead:'Lead created',company:'Company created'}[object];if(_ct)setTimeout(()=>fireEntityAutomationEvents(object,rec,[_ct]),0);}
     onToast&&onToast((rec.name||cfg.label)+' created');
     if(another){setVals(buildInitial());setSubmitted(false);setCreateOpen(false);}
     else close();
@@ -17302,40 +17304,51 @@ function dealCondPass(cond,deal){
 // P0: the runtime is now an INTERPRETER of the authored node tree (was: fire one generic task).
 // Round-robin counter for 'assign' actions.
 let _autoRR=0;
-function autoResolveOwner(assignTo,deal){
+function autoCtx(ent){
+  const setter={deal:()=>_autoRt&&_autoRt.setDeals,contact:()=>_autoRt&&_autoRt.setContacts,lead:()=>_autoRt&&_autoRt.setLeads,company:()=>_autoRt&&_autoRt.setCompanies}[ent]||(()=>null);
+  return {ent:ent||'deal',tagField:ent==='deal'?'dealTags':'tags',setter};
+}
+function autoResolveOwner(assignTo,record){
   const M=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
-  if(!assignTo||assignTo==='Deal owner')return deal.owner;
-  if(assignTo==='Round-robin'||assignTo==='Least busy rep'){const m=M[(_autoRR++)%Math.max(1,M.length)];return m?m.avatar:deal.owner;}
-  const named=M.find(m=>m.name===assignTo||m.avatar===assignTo);return named?named.avatar:deal.owner;
+  if(!assignTo||assignTo==='Deal owner')return record.owner;
+  if(assignTo==='Round-robin'||assignTo==='Least busy rep'){const m=M[(_autoRR++)%Math.max(1,M.length)];return m?m.avatar:record.owner;}
+  const named=M.find(m=>m.name===assignTo||m.avatar===assignTo);return named?named.avatar:record.owner;
 }
 // Evaluate a builder condition/goal node against a deal (deal-relevant fields; fails open on the rest so it never wrongly blocks).
-function autoEvalCond(node,deal){
-  if(!node)return true;const f=node.field,op=String(node.op||'').toLowerCase(),v=node.value;
-  if(f==='Deal value'){const amt=(deal.amount!=null?deal.amount:parseMoney(deal.value||''))||0;let t=parseFloat(String(v).replace(/[^0-9.]/g,''))||0;if(/k/i.test(String(v)))t*=1000;if(/m/i.test(String(v)))t*=1000000;if(/greater|more|>/.test(op))return /more/.test(op)?amt>=t:amt>t;if(/less|</.test(op))return amt<t;if(/is not/.test(op))return amt!==t;return amt===t;}
-  if(f==='Owner'){const o=((typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(m=>m.avatar===deal.owner)||{}).name||deal.owner;const eq=(o===v||deal.owner===v);return /is not/.test(op)?!eq:eq;}
-  if(f==='Tag'){const tags=[].concat(deal.dealTags||[],deal.tags||[]);const has=tags.indexOf(v)>=0;return /is not|removed/.test(op)?!has:has;}
+function autoEvalCond(node,record){
+  if(!node||!record)return true;const f=node.field,op=String(node.op||'').toLowerCase(),v=node.value;
+  const eqOp=(a)=>{const eq=String(a==null?'':a)===String(v);return /is not/.test(op)?!eq:eq;};
+  if(f==='Deal value'){const amt=(record.amount!=null?record.amount:parseMoney(record.value||''))||0;let t=parseFloat(String(v).replace(/[^0-9.]/g,''))||0;if(/k/i.test(String(v)))t*=1000;if(/m/i.test(String(v)))t*=1000000;if(/greater|more|>/.test(op))return /more/.test(op)?amt>=t:amt>t;if(/less|</.test(op))return amt<t;if(/is not/.test(op))return amt!==t;return amt===t;}
+  if(f==='Owner'){const o=((typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(m=>m.avatar===record.owner)||{}).name||record.owner;const eq=(o===v||record.owner===v);return /is not/.test(op)?!eq:eq;}
+  if(f==='Tag'){const tags=[].concat(record.dealTags||[],record.tags||[]);const has=tags.indexOf(v)>=0;return /is not|removed/.test(op)?!has:has;}
+  if(f==='Status'||f==='Lead status')return eqOp(record.status!=null?record.status:record.cstatus);
+  if(f==='Lead source')return eqOp(record.source);
+  if(f==='Company type')return eqOp(record.type);
+  if(f==='Company industry')return eqOp(record.industry);
   return true;
 }
 // Walk the authored node tree for a deal: real in-memory effects where clean (assign/tag/owner/enroll), distinct
 // observable activity labels otherwise (email/SMS/notify/…). Waits are noted+skipped (no scheduler yet). Returns effect labels.
-function autoRunNodes(nodes,deal,out){
-  out=out||{effects:[],stop:false};const TM=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
+function autoRunNodes(nodes,record,ctx,out){
+  ctx=ctx||autoCtx('deal');out=out||{effects:[],stop:false};const TM=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
+  const _patch=(fn)=>{const s=ctx.setter&&ctx.setter();if(s)s(l=>l.map(r=>(r&&r.id===record.id)?{...r,...fn(r)}:r));};
+  const _cid=ctx.ent==='contact'?record.id:(ctx.ent==='deal'?record.primaryContactId:(record.convertedToContactId!=null?record.convertedToContactId:null));
   for(let i=0;i<(nodes||[]).length&&!out.stop;i++){const n=nodes[i];if(!n)continue;
-    if(n.kind==='condition'){autoRunNodes(autoEvalCond(n,deal)?n.yes:n.no,deal,out);continue;}
-    if(n.kind==='branch'){const lane=(n.lanes||[])[0];if(lane)autoRunNodes(lane.nodes,deal,out);continue;}
-    if(n.kind==='goal'){if(autoEvalCond(n,deal)){out.effects.push('Goal met → exit');out.stop=true;}continue;}
+    if(n.kind==='condition'){autoRunNodes(autoEvalCond(n,record)?n.yes:n.no,record,ctx,out);continue;}
+    if(n.kind==='branch'){const lane=(n.lanes||[])[0];if(lane)autoRunNodes(lane.nodes,record,ctx,out);continue;}
+    if(n.kind==='goal'){if(autoEvalCond(n,record)){out.effects.push('Goal met → exit');out.stop=true;}continue;}
     if(n.kind==='wait'||n.kind==='waitUntil'){out.effects.push('⏸ '+(n.label||'Wait')+' (skipped — no scheduler)');continue;}
     if(n.kind!=='action')continue;
     const k=n.key;
-    if(k==='task'||k==='reminder'||k==='flag'){if(_autoRt&&_autoRt.addTask)_autoRt.addTask({title:(n.taskTitle||n.note||n.reason||'Follow up')+' — '+(deal.name||deal.company||'deal'),deal,auto:{name:'automation'}});out.effects.push('✓ Task: '+(n.taskTitle||n.note||n.reason||'Follow up'));continue;}
-    if(k==='assign'){const nw=autoResolveOwner(n.assignTo,deal);const mem=TM.find(m=>m.avatar===nw)||{};if(nw&&nw!==deal.owner&&_autoRt&&_autoRt.setDeals)_autoRt.setDeals(l=>l.map(d=>d.id===deal.id?{...d,owner:nw,ownerColor:mem.color||d.ownerColor}:d));out.effects.push('👤 Assigned to '+(mem.name||nw));continue;}
-    if(k==='addTag'){const tg=n.tag;if(tg&&_autoRt&&_autoRt.setDeals)_autoRt.setDeals(l=>l.map(d=>d.id===deal.id?{...d,dealTags:Array.from(new Set([...(d.dealTags||[]),tg]))}:d));out.effects.push("🏷 Tagged '"+tg+"'");continue;}
-    if(k==='removeTag'){const tg=n.tag;if(tg&&_autoRt&&_autoRt.setDeals)_autoRt.setDeals(l=>l.map(d=>d.id===deal.id?{...d,dealTags:(d.dealTags||[]).filter(x=>x!==tg)}:d));out.effects.push("🏷 Removed tag '"+tg+"'");continue;}
-    if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar&&_autoRt&&_autoRt.setDeals)_autoRt.setDeals(l=>l.map(d=>d.id===deal.id?{...d,owner:mem.avatar,ownerColor:mem.color||d.ownerColor}:d));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Priority'){if(_autoRt&&_autoRt.setDeals)_autoRt.setDeals(l=>l.map(d=>d.id===deal.id?{...d,priority:n.setValue}:d));out.effects.push('✎ Priority → '+(n.setValue||''));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
+    if(k==='task'||k==='reminder'||k==='flag'){if(_autoRt&&_autoRt.addTask)_autoRt.addTask({title:(n.taskTitle||n.note||n.reason||'Follow up')+' — '+(record.name||record.company||'record'),deal:ctx.ent==='deal'?record:null,auto:{name:'automation'}});out.effects.push('✓ Task: '+(n.taskTitle||n.note||n.reason||'Follow up'));continue;}
+    if(k==='assign'){const nw=autoResolveOwner(n.assignTo,record);const mem=TM.find(m=>m.avatar===nw)||{};if(nw&&nw!==record.owner)_patch(()=>({owner:nw,ownerColor:mem.color||record.ownerColor}));out.effects.push('👤 Assigned to '+(mem.name||nw));continue;}
+    if(k==='addTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:Array.from(new Set([...(r[ctx.tagField]||[]),tg]))}));out.effects.push("🏷 Tagged '"+tg+"'");continue;}
+    if(k==='removeTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:(r[ctx.tagField]||[]).filter(x=>x!==tg)}));out.effects.push("🏷 Removed tag '"+tg+"'");continue;}
+    if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
     if(k==='welcome'||k==='proposal'||k==='reengage'){out.effects.push('✉ Email sent · '+(n.template||'template'));continue;}
     if(k==='sms'){out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;}
     if(k==='slack'||k==='celebrate'){out.effects.push('🔔 '+(n.channel||'#sales')+' notified');continue;}
-    if(k==='enrollEmail'||k==='enrollSms'){if(deal.primaryContactId!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===deal.primaryContactId&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:deal.primaryContactId,dealId:deal.id,stage:deal.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
+    if(k==='enrollEmail'||k==='enrollSms'){if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
     if(k==='sendPush'){out.effects.push('📲 Push sent');continue;}
     if(k==='sendInApp'){out.effects.push('📲 In-app sent');continue;}
     if(k==='webhook'){out.effects.push('🔗 '+(n.method||'POST')+' webhook');continue;}
@@ -17346,24 +17359,31 @@ function autoRunNodes(nodes,deal,out){
   }
   return out;
 }
+// Shared executor: run a fired automation for a record (interpret its node tree, else the legacy label behaviour) + write timeline/log.
+function autoExecuteFired(a,record,ctx){
+  let effects,nStep;
+  if(Array.isArray(a.nodes)&&a.nodes.length){effects=autoRunNodes(a.nodes,record,ctx,null).effects;nStep=a.nodes.length;}
+  else{const stepLabels=(a.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);if(stepLabels.some(l=>/task|remind|follow/i.test(l))&&_autoRt.addTask)_autoRt.addTask({title:a.name+': follow up on '+(record.name||record.company||'record'),deal:ctx.ent==='deal'?record:null,auto:a});effects=stepLabels;nStep=(a.steps||[]).length;}
+  _autoRt.addActivity(ctx.ent,record.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+a.name+'" ran',body:(effects.length?effects.join(' · ')+' · ':'')+'Trigger: '+a.trigger+(a.cond?(' · condition '+a.cond+' ✓'):'')}));
+  _autoRt.setAutomations(list=>list.map(x=>x.id===a.id?{...x,runs:(x.runs||0)+1,lastRun:'Just now',success:x.success==null?100:x.success}:x));
+  _autoRt.addAutoLog({auto:a.name,contact:record.name||record.company||'Record',avatar:arInitials(record.name||record.company||'R'),color:'#6366f1',status:'success',steps:nStep+'/'+nStep,time:'Just now'});
+}
+// Generic entity event bus: fire active automations whose trigger matches, for a contact/lead/company/custom record.
+function fireEntityAutomationEvents(ent,record,events){
+  if(!_autoRt||!record)return [];
+  const ctx=autoCtx(ent);
+  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
+  fired.forEach(a=>autoExecuteFired(a,record,ctx));
+  if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
+  return fired;
+}
 function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
   const matched=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
   const fired=[],skipped=[];
   matched.forEach(a=>{(dealCondPass(a.cond,deal)?fired:skipped).push(a);}); // condition gates whether it runs for THIS deal
-  fired.forEach(a=>{
-    let effects,nStep;
-    if(Array.isArray(a.nodes)&&a.nodes.length){ // builder-authored flow → INTERPRET the tree (real effects)
-      effects=autoRunNodes(a.nodes,deal,null).effects;nStep=a.nodes.length;
-    }else{ // seeded/legacy automations without a node tree → the original label behaviour
-      const stepLabels=(a.steps||[]).map(s=>(s&&s.label)||'').filter(Boolean);
-      if(stepLabels.some(l=>/task|remind|follow/i.test(l)))_autoRt.addTask({title:a.name+': follow up on '+(deal.name||deal.company),deal,auto:a});
-      effects=stepLabels;nStep=(a.steps||[]).length;
-    }
-    _autoRt.addActivity('deal',deal.id,mkAct('sequence',{ts:0,by:'nrtur',title:'⚡ Automation "'+a.name+'" ran',body:(effects.length?effects.join(' · ')+' · ':'')+'Trigger: '+a.trigger+(a.cond?(' · condition '+a.cond+' ✓'):'')}));
-    _autoRt.setAutomations(list=>list.map(x=>x.id===a.id?{...x,runs:(x.runs||0)+1,lastRun:'Just now',success:x.success==null?100:x.success}:x));
-    _autoRt.addAutoLog({auto:a.name,contact:deal.name||deal.company||'Deal',avatar:arInitials(deal.name||deal.company||'D'),color:'#6366f1',status:'success',steps:nStep+'/'+nStep,time:'Just now'});
-  });
+  const ctx=autoCtx('deal');
+  fired.forEach(a=>autoExecuteFired(a,deal,ctx));
   skipped.forEach(a=>{_autoRt.addActivity('deal',deal.id,mkAct('field',{ts:0,by:'nrtur',title:'Automation "'+a.name+'" did not run',body:'Condition not met — '+a.cond+' (deal is '+(deal.value||('$'+(deal.amount||0)))+')'}));});
   if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran'))+(skipped.length?(' · '+skipped.length+' skipped'):''),'success');
   else if(skipped.length&&window.__nrturToast)window.__nrturToast(skipped.length+' automation'+(skipped.length>1?'s':'')+' skipped — condition not met','warning');
@@ -22621,7 +22641,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setSeqEnrollments,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
