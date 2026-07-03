@@ -2384,7 +2384,12 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     return set(f.id,v);
   };
   const emailRe=/\S+@\S+\.\S+/;
-  const errorFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());if(f.required&&empty)return'Required';if(f.type==='Email'&&!empty&&!emailRe.test(v))return'Enter a valid email';return'';};
+  // Gate-on-creation (P1-3 extended): if a deal is being created INTO a stage that has required
+  // fields, those fields become required in the create form too — not just on later stage moves.
+  const stageReqIds=React.useMemo(()=>{if(object!=='deal')return[];try{const pipe=livePipelines().find(p=>p.name===vals['d_pipeline'])||livePipelines()[0];const stage=realStagesOf(pipe).find(s=>s.name===vals['d_stage']);const MAP={amount:'d_amount',closeDate:'d_close',primaryContact:'d_contact',company:'d_company',nextAction:'d_next',source:'d_source'};return((stage&&stage.required)||[]).map(k=>MAP[k]).filter(Boolean);}catch(e){return[];}},[object,vals['d_pipeline'],vals['d_stage']]);
+  const isReq=(f)=>f.required||stageReqIds.includes(f.id);
+  const augReq=(f)=>stageReqIds.includes(f.id)&&!f.required?{...f,required:true}:f; // so the field renders its required asterisk
+  const errorFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());if(isReq(f)&&empty)return'Required';if(f.type==='Email'&&!empty&&!emailRe.test(v))return'Enter a valid email';return'';};
   const nudgeFor=(f)=>{const v=vals[f.id];const empty=(Array.isArray(v)?v.length===0:!String(v||'').trim());return(f.important&&empty)?'Recommended':'';};
   const allValid=fields.every(f=>!errorFor(f));
   const addCompanyRec=(name)=>{const id=Date.now()+Math.floor(Math.random()*1000);crm.setCompanies(a=>[{id,name,domain:'',industry:INDUSTRIES[0],type:'Prospect',owner:'AM',ownerColor:'#3b82f6',avatar:arInitials(name),color:arPick(),size:null,tags:[],days:0,last:'Just now',archived:false},...a]);};
@@ -2424,11 +2429,11 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
       {mode==='single'?(<React.Fragment>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
           <div className="grid grid-cols-2 gap-4">
-            {primary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}
+            {primary.map(f=>(<ARField key={f.id} f={augReq(f)} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}
           </div>
           {secondary.length>0&&<div className="mt-4">
             <button onClick={()=>setShowMore(o=>!o)} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.ChevronDown size={14} style={{transform:showMore?'rotate(180deg)':'none',transition:'transform .15s'}}/>{showMore?'Hide':'Show more fields'}<span className="text-white/35 font-normal">({secondary.length})</span></button>
-            {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={f} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
+            {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={augReq(f)} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
           </div>}
         </div>
         <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
