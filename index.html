@@ -4511,7 +4511,7 @@ function DashWinLoss({def,cfg,goTo}){
   const amt=(d)=>(typeof d.amount==='number'?d.amount:parseMoney(d.value))||0;
   const won=deals.filter(d=>d.stageKey==='won'),lost=deals.filter(d=>d.stageKey==='lost');
   if(!won.length&&!lost.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No closed deals yet"/>);
-  const rate=Math.round(won.length*100/(won.length+lost.length));
+  const {won:_wc,lost:_lc}=winRateParts(deals);const rate=(_wc+_lc)?Math.round(_wc*100/(_wc+_lc)):0;const _excl=lost.length-_lc; // some lost reasons are excluded from win rate (Capsule pattern)
   const group=(list)=>{const m={};list.forEach(d=>{const r=(d.outcome&&d.outcome.reason)||'No reason recorded';if(!m[r])m[r]={reason:r,n:0,val:0};m[r].n++;m[r].val+=amt(d);});return Object.keys(m).map(k=>m[k]).sort((a,b)=>b.n-a.n);};
   const col=(title,list,color)=>{const rows=group(list);const max=Math.max(1,...rows.map(r=>r.n));const tot=list.reduce((a,d)=>a+amt(d),0);
     return(<div key={title} className="min-w-0 flex-1">
@@ -4523,7 +4523,7 @@ function DashWinLoss({def,cfg,goTo}){
       </div>
     </div>);};
   return(<div className="flex flex-col h-full">
-    <DashHdr name={name} sub={rate+'% win rate · '+won.length+' won / '+lost.length+' lost'} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+    <DashHdr name={name} sub={rate+'% win rate · '+won.length+' won / '+lost.length+' lost'+(_excl>0?(' · '+_excl+' not counted'):'')} action={<button onClick={()=>goTo('pipeline')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
     <div className={view==='both'?'p-5 flex-1 flex gap-6':'p-5 flex-1 flex flex-col gap-6'}>
       {(view==='both'||view==='won')&&col('Won',won,'#34d399')}
       {(view==='both'||view==='lost')&&col('Lost',lost,'#f87171')}
@@ -4688,7 +4688,7 @@ function dashStatLive(id,data){
     const open=deals.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');
     if(id==='pipeline-value')return fmtK(Math.round(open.reduce((a,d)=>a+amt(d),0)));
     if(id==='weighted-forecast')return fmtK(Math.round(open.reduce((a,d)=>a+amt(d)*((d.probability||0)/100),0)));
-    if(id==='win-rate'){const w=deals.filter(d=>d.stageKey==='won').length,l=deals.filter(d=>d.stageKey==='lost').length;return (w+l)?Math.round(w/(w+l)*100)+'%':'—';}
+    if(id==='win-rate'){const {won:w,lost:l}=winRateParts(deals);return (w+l)?Math.round(w/(w+l)*100)+'%':'—';}
     if(id==='avg-cycle'){const ds=deals.filter(d=>d.stageKey==='won').map(d=>{const a=omDate(d.createdAt),b=omDate(d.closeDate);return (a&&b)?Math.max(0,Math.round((b-a)/86400000)):null;}).filter(x=>x!=null);return ds.length?Math.round(ds.reduce((a,b)=>a+b,0)/ds.length)+'d':'—';}
   }catch(e){}
   return null;
@@ -7690,10 +7690,14 @@ function OmViewMenu({views,activeKey,onSelect,favs,onToggleFav,onSaveView,dirty,
 // list AND deal detail) reads one source of truth.
 const DEFAULT_DEAL_REASONS={
   won:['Best fit / value','Competitive price','Strong relationship','Product capabilities','Good timing','Other'],
-  lost:['Price too high','Chose a competitor','No budget','No decision / timing','Went silent','Not a fit']
+  lost:['Price too high','Chose a competitor','No budget','No decision / timing','Went silent','Not a fit','Duplicate / not a real deal'],
+  lostExcluded:['Duplicate / not a real deal'] // Capsule includedForConversion: these lost reasons DON'T count against win rate (junk losses)
 };
 let _liveDealReasons=null; // set by App each render (mirrors _liveDeals)
 function liveDealReasons(){return _liveDealReasons||DEFAULT_DEAL_REASONS;}
+// A lost deal counts toward win-rate/conversion unless its reason is flagged excluded (junk loss).
+function lostReasonCountsForRate(reason){return ((liveDealReasons().lostExcluded)||[]).indexOf(reason)<0;}
+function winRateParts(deals){const won=deals.filter(d=>d.stageKey==='won').length;const lost=deals.filter(d=>d.stageKey==='lost'&&lostReasonCountsForRate(d.outcome&&d.outcome.reason)).length;return{won,lost};}
 // Lightweight reason capture when a deal is dragged into a Won/Lost stage.
 function DealOutcomeModal({kind,dealName,stageName,onConfirm,onClose}){
   const won=kind==='won';
@@ -8182,12 +8186,13 @@ function PipelinePage({goTo,nav}){
   const _lostBd=allVisible.filter(d=>d.stageKey==='lost');
   const _openVal=_openBd.reduce((a,d)=>a+parseMoney(d.value),0);
   const _wonVal=_wonBd.reduce((a,d)=>a+parseMoney(d.value),0);
-  const _winRate=(_wonBd.length+_lostBd.length)?Math.round(_wonBd.length*100/(_wonBd.length+_lostBd.length)):null;
+  const _lostCountable=_lostBd.filter(d=>lostReasonCountsForRate(d.outcome&&d.outcome.reason)).length; // junk losses (excluded reasons) don't drag win rate
+  const _winRate=(_wonBd.length+_lostCountable)?Math.round(_wonBd.length*100/(_wonBd.length+_lostCountable)):null;
   const METRICS=[
     {label:'Pipeline',value:fmtK(_openVal),delta:_openBd.length+' open',up:null,Icon:I.GitBranch,colors:'bg-brand-500/10 border-brand-500/20 text-brand-300'},
     {label:'Won',value:fmtK(_wonVal),delta:_wonBd.length+' won',up:true,Icon:I.TrendUp,colors:'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'},
     {label:'Avg deal',value:_openBd.length?fmtK(_openVal/_openBd.length):'—',delta:'open avg',up:null,Icon:I.BarChart,colors:'bg-violet-500/10 border-violet-500/20 text-violet-300'},
-    {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostBd.length+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
+    {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostCountable+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
   ];
   // Stage rollups shared by the List + Forecast views and the topbar weighted total.
   const fc_stageRows=active.stages.map(s=>{const sd=dealsFor(s);const val=sd.reduce((a,d)=>a+parseMoney(d.value),0);return{stage:s,deals:sd,val,weighted:val*((s.prob||0)/100)};});
@@ -8464,7 +8469,8 @@ function PipelinePage({goTo,nav}){
                   {(dealReasons[rk]||[]).map((r,i)=>(
                     <div key={rk+'-'+i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-white/[0.07] bg-white/[0.02]">
                       <input value={r} onChange={e=>setDealReasons(cur=>({...cur,[rk]:cur[rk].map((x,xi)=>xi===i?e.target.value:x)}))} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}} onBlur={e=>{if(!e.target.value.trim())setDealReasons(cur=>({...cur,[rk]:cur[rk].map((x,xi)=>xi===i?'Other':x)}));}} className="flex-1 bg-transparent text-[12.5px] text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5 min-w-0"/>
-                      <button onClick={()=>setDealReasons(cur=>({...cur,[rk]:cur[rk].filter((_,xi)=>xi!==i)}))} disabled={(dealReasons[rk]||[]).length<=1} className={(dealReasons[rk]||[]).length<=1?'text-white/15 cursor-not-allowed':'text-white/25 hover:text-red-400 transition-colors'} title="Remove reason"><I.X size={12}/></button>
+                      {rk==='lost'&&(()=>{const _ex=(dealReasons.lostExcluded||[]).includes(r);return(<button onClick={()=>setDealReasons(cur=>{const ex=cur.lostExcluded||[];return{...cur,lostExcluded:_ex?ex.filter(x=>x!==r):[...ex,r]};})} title={_ex?'Excluded from win rate — click to count it':'Counts toward win rate — click to exclude (junk loss)'} className={['shrink-0 transition-colors',_ex?'text-white/30 hover:text-white/55':'text-emerald-400/80 hover:text-emerald-300'].join(' ')}>{_ex?<I.Ban size={12}/>:<I.Target size={12}/>}</button>);})()}
+                      <button onClick={()=>setDealReasons(cur=>({...cur,[rk]:cur[rk].filter((_,xi)=>xi!==i),...(rk==='lost'?{lostExcluded:(cur.lostExcluded||[]).filter(x=>x!==r)}:{})}))} disabled={(dealReasons[rk]||[]).length<=1} className={(dealReasons[rk]||[]).length<=1?'text-white/15 cursor-not-allowed':'text-white/25 hover:text-red-400 transition-colors'} title="Remove reason"><I.X size={12}/></button>
                     </div>))}
                 </div>
                 <button onClick={()=>setDealReasons(cur=>({...cur,[rk]:[...(cur[rk]||[]),'New reason']}))} className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12} stroke={2.4}/>Add reason</button>
@@ -8793,7 +8799,7 @@ function calLinkIds(relType,name){const n=(name||'').trim();let contactId=null,l
   return {contactId,leadId,companyId};} // always emit all three keys so re-linking / clearing overwrites a stale id (calUpdateItem shallow-merges)
 // P1-2: seeded closed deals get a deterministic demo outcome (reason cycled by id, closedAt from
 // closeDate) so Win/Loss Analysis has data day one instead of a wall of "No reason recorded".
-function seedOutcomeFor(d){const k=d.stageKey==='won'?'won':d.stageKey==='lost'?'lost':null;if(!k||d.outcome)return d;const R=DEFAULT_DEAL_REASONS[k];const _dt=omDate(d.closeDate);return{...d,outcome:{result:k,reason:R[(d.id||0)%R.length],note:'',closedAt:_dt?_dt.getTime():Date.now(),closedBy:CURRENT_USER.name}};}
+function seedOutcomeFor(d){const k=d.stageKey==='won'?'won':d.stageKey==='lost'?'lost':null;if(!k||d.outcome)return d;const _ex=DEFAULT_DEAL_REASONS.lostExcluded||[];const R=(DEFAULT_DEAL_REASONS[k]||[]).filter(r=>k!=='lost'||_ex.indexOf(r)<0);const _dt=omDate(d.closeDate);return{...d,outcome:{result:k,reason:R[(d.id||0)%R.length],note:'',closedAt:_dt?_dt.getTime():Date.now(),closedBy:CURRENT_USER.name}};}
 // P2: deterministic stage-history backfill for seeded deals. The funnel and time-in-stage reports
 // aggregate real stageHistory intervals; seeds predate P0-2 stamping, so synthesize a plausible
 // path — won deals walked every open stage, lost deals died at an id-cycled stage, open deals
