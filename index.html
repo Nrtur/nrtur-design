@@ -2404,6 +2404,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     const _findCt=(id,name)=>(id!=null&&(crm.contacts||[]).find(c=>c.id===id&&!c.deleted))||(name&&(crm.contacts||[]).find(c=>c.name===name&&!c.deleted))||null;
     if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
+    try{const _asg=resolveAssignment(object,rec);if(_asg){const _m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(x=>x.avatar===_asg);rec.owner=_asg;if(_m)rec.ownerColor=_m.color;}}catch(e){} // P2: assignment rules set the owner on create
     persist(rec);
     // Fire the "<Entity> created" trigger for every object type (deferred so the record is in state first) — multi-entity event bus.
     if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0);
@@ -11830,6 +11831,12 @@ function nodeDelay(node){return node.delay||parseDelay(node.dur)||{n:2,unit:'day
 function nodeTimeout(node){return node.timeoutDelay||parseDelay(node.timeout)||{n:7,unit:'days'};}
 // Option lists for action-node configuration dropdowns
 const REP_OPTS=['Round-robin','Deal owner','Least busy rep',...TEAM_MEMBERS.map(m=>m.name)];
+// P2: Assignment / Routing Rules — a shared per-object rule table (IF AND/OR conds THEN assign to rep/round-robin/least-busy).
+// First matching rule per object wins on record create + ad-lead capture. Seeded rules are armed (fire on the next matching create).
+const ASSIGN_RULES_SEED=[
+  {id:'ar_lead_hot',object:'lead',name:'Hot leads (score > 70) → least busy rep',enabled:true,conds:{match:'AND',conds:[{id:'c1',fieldKey:'score',op:'>',value:'70',value2:''}]},thenType:'leastBusy',pool:[]},
+  {id:'ar_deal_ent',object:'deal',name:'Enterprise deals (> $25k) → Sarah Chen',enabled:true,conds:{match:'AND',conds:[{id:'c1',fieldKey:'amount',op:'>',value:'25000',value2:''}]},thenType:'rep',rep:'SC'},
+];
 const SLACK_CHANNELS=['#sales','#leads','#wins','#alerts','#support'];
 const FLAG_REASONS=['Needs review','At risk','Manual check required','Data looks wrong','High-value — escalate'];
 const REPORT_OPTS=['Pipeline digest','Activity summary','Win / loss report','Lead-source breakdown'];
@@ -17337,8 +17344,34 @@ function autoCtx(ent){
 function autoResolveOwner(assignTo,record){
   const M=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
   if(!assignTo||assignTo==='Deal owner')return record.owner;
-  if(assignTo==='Round-robin'||assignTo==='Least busy rep'){const m=M[(_autoRR++)%Math.max(1,M.length)];return m?m.avatar:record.owner;}
+  if(assignTo==='Least busy rep')return autoLeastBusy(null)||record.owner; // P2: REAL least-busy (was aliased to round-robin)
+  if(assignTo==='Round-robin'){const m=M[(_autoRR++)%Math.max(1,M.length)];return m?m.avatar:record.owner;}
   const named=M.find(m=>m.name===assignTo||m.avatar===assignTo);return named?named.avatar:record.owner;
+}
+// P2: real workload metric — count a rep's OPEN deals + active (unconverted) leads across the live pointers.
+function autoOpenCount(av){
+  const d=((typeof _liveDeals!=='undefined'&&_liveDeals)||[]).filter(x=>x&&!x.deleted&&x.owner===av&&!/won|lost|closed/i.test(String(x.stageKey||'')+' '+String(x.dStage||'')+' '+String(x.outcome||''))).length;
+  const l=((typeof _liveLeads!=='undefined'&&_liveLeads)||[]).filter(x=>x&&!x.deleted&&!x.converted&&x.owner===av).length;
+  return d+l;
+}
+function autoPoolAvatars(pool){const M=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);return (pool&&pool.length)?pool:M.map(m=>m.avatar);}
+function autoLeastBusy(pool){const avs=autoPoolAvatars(pool);if(!avs.length)return null;let best=avs[0],bestN=autoOpenCount(avs[0]);for(let i=1;i<avs.length;i++){const n=autoOpenCount(avs[i]);if(n<bestN){bestN=n;best=avs[i];}}return best;}
+let _rrPool={};
+function autoPoolRR(pool){const avs=autoPoolAvatars(pool);if(!avs.length)return null;const key=avs.join(',');const i=(_rrPool[key]||0);_rrPool[key]=i+1;return avs[i%avs.length];}
+function autoRepAvatar(v){const M=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);const m=M.find(x=>x.name===v||x.avatar===v);return m?m.avatar:v;}
+// Evaluate the per-object routing-rule table (first match wins) → an owner avatar, or null if no rule matches.
+function resolveAssignment(object,record){
+  if(!_autoRt||!record)return null;
+  const rules=(_autoRt.routingRules||[]).filter(r=>r&&r.enabled!==false&&r.object===object);
+  for(let i=0;i<rules.length;i++){const r=rules[i];let match=true;
+    if(r.conds&&r.conds.conds&&r.conds.conds.length){try{match=omApplyFilter([record],r.conds,autoFieldsFor(object)).length>0;}catch(e){match=true;}}
+    if(!match)continue;
+    const t=r.thenType||'rep';
+    if(t==='leastBusy')return autoLeastBusy(r.pool)||record.owner;
+    if(t==='roundRobin')return autoPoolRR(r.pool)||record.owner;
+    return autoRepAvatar(r.rep)||record.owner;
+  }
+  return null;
 }
 // P1: resolve the shared omFieldSchema field list for the entity an automation runs on (for AND/OR condition eval). Falls back to 'deal'.
 function autoFieldsFor(ent,rows){
@@ -22644,6 +22677,7 @@ function App(){
   const [payLinks,setPayLinks]=React.useState(paySeedLinks);
   const [payQuotes,setPayQuotes]=React.useState(paySeedQuotes);
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
+  const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
   _liveCustomObjects=customObjects; // mirror for nav/search helpers
   // ── Ad lead capture (Meta / Google) — connection state, lead-form mappings, intake feed, ingest ──
   const [adState,setAdState]=React.useState({'meta-ads':{connected:true,accounts:['Bloom Creative'],assets:['Bloom Creative','Bloom Real Estate']},'google-ads':{connected:false}});
@@ -22665,11 +22699,12 @@ function App(){
       const campaign=form.campaign||(src.assets[0]||{}).name||'Campaign';
       const clickVal=adFakeClickId(src.platform);
       const ownerM=(form.owner&&form.owner!=='Round-robin')?TEAM_MEMBERS.find(m=>m.name===form.owner):null;
-      const owner=(ownerM&&ownerM.avatar)||['AM','JK','SC','RL'][Math.floor(Math.random()*4)];
-      const ownerColor=(TEAM_MEMBERS.find(m=>m.avatar===owner)||{}).color||'#3b82f6';
+      let owner=(ownerM&&ownerM.avatar)||autoLeastBusy(null)||['AM','JK','SC','RL'][Math.floor(Math.random()*4)]; // P2: least-busy default (was random)
       const speedy=true; // the Speed-to-lead automation is active → instant SMS + sequence enrol
       const attr={source:src.crmSource,adPlatform:src.platform,adSourceKey:sourceKey,adSourceLabel:adSourceLabel(sourceKey,campaign),adCampaign:campaign,adAdset:(src.platform==='google'?'Search — exact':'Lookalike 1% — US'),adFormName:form.name,utmSource:src.platform==='google'?'google':'fb',utmMedium:src.platform==='google'?'cpc':'paid_social',utmCampaign:adSlug(campaign),[src.clickId]:clickVal,adTs:0,adSms:speedy,adEnrolled:speedy};
       const tags=[form.tag||(adSlug(src.short)+'-lead'),'ad-lead',adSlug(campaign)].filter(Boolean);
+      if(!ownerM){let _rr=null;try{_rr=resolveAssignment('lead',{...person,source:attr.source,status:'New',tags});}catch(e){}if(_rr)owner=_rr;} // P2: assignment rules override the default owner for ad-leads
+      const ownerColor=(TEAM_MEMBERS.find(m=>m.avatar===owner)||{}).color||'#3b82f6';
       const _np=p=>String(p||'').replace(/D/g,'').slice(-10);const _pe=(person.email||'').toLowerCase(),_pp=_np(person.phone);const _mC=c=>(_pe&&c.email&&c.email.toLowerCase()===_pe)||(_pp&&c.phone&&_np(c.phone)===_pp);const _mL=l=>(_pe&&l.email&&l.email.toLowerCase()===_pe)||(_pp&&l.phone&&_np(l.phone)===_pp);const existing=contacts.find(_mC);
       const existingLead=!existing?leads.find(l=>!l.converted&&!l.deleted&&_mL(l)):null;
       let contactId=null,leadId=null,deduped=false;
@@ -22691,6 +22726,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
+    routingRules,setRoutingRules,
     payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     updateCustomObject:(id,patch)=>setCustomObjects(a=>a.map(o=>o.id===id?{...o,...patch}:o)),
@@ -22711,7 +22747,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -22727,7 +22763,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
