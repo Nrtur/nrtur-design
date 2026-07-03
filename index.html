@@ -8509,7 +8509,15 @@ function DealDetailPage({goTo,nav}){
           <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
-                <div className="flex items-start justify-between mb-3"><div><h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>{d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}<p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stageShown}</span></div>
+                {/* Name gets its OWN full-width line so a wider stage word (Prospecting vs Qualified) can't push it onto a second line; the stage pill shares the short value's row instead. */}
+                <div className="mb-3">
+                  <h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>
+                  {d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}
+                  <div className="flex items-center justify-between gap-3 mt-1.5">
+                    <p className="text-white text-[32px] font-bold tabular-nums leading-none">{d.value}</p>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1 shrink-0 whitespace-nowrap" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stageShown}</span>
+                  </div>
+                </div>
                 {/* D2p2: pipeline SWITCHER — ‹ › steps through the pipelines the deal lives in (view only). Home marks the primary; Set-primary/Remove act on the viewed enrollment; Add enrolls in another. All pipeline control lives here, so About drops the field. */}
                 {(()=>{const _vc=(realStagesOf(_pipe).find(s=>s.key===_viewPl.stageKey)||{}).color||'#818cf8';const _multi=_placements.length>1;const _canEd=effCanObject('Deals','edit');return(
                 <div className="flex items-center flex-wrap gap-2 mb-3">
