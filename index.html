@@ -7797,6 +7797,42 @@ function MergeDealsModal({records,onConfirm,onClose}){
     </div>
   </div>);
 }
+// D2 phase 2: enroll a deal in an additional pipeline. The new placement gets its own stage;
+// value, forecast and automations stay with the PRIMARY pipeline (no double-counting — the
+// reason classic CRMs refuse this feature entirely).
+function EnrollPipelineModal({dealName,options,onEnroll,onClose}){
+  const [pid,setPid]=React.useState(options[0]&&options[0].id);
+  const sel=options.find(o=>o.id===pid)||options[0];
+  const stages=sel?realStagesOf(sel).filter(s=>!dealTerminalKind(s)):[];
+  const [sk,setSk]=React.useState('');
+  const stageKey=stages.some(s=>s.key===sk)?sk:(stages[0]&&stages[0].key);
+  useEscKey(onClose);
+  return(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{width:440}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center ring-1 bg-brand-500/12 text-brand-300 ring-brand-500/25"><I.GitBranch size={16}/></div>
+        <div className="min-w-0"><p className="text-white text-[15px] font-semibold">Enroll in a pipeline</p><p className="text-white/45 text-[12px] truncate">{dealName} gets an independent stage there — value & forecast stay with the primary.</p></div>
+      </div>
+      <div className="px-6 py-5 flex flex-col gap-4" style={{background:'var(--s850)'}}>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-2">Pipeline</label>
+          <div className="flex flex-col gap-1.5">{options.map(p=>{const on=pid===p.id;return(
+            <button key={p.id} onClick={()=>{setPid(p.id);setSk('');}} className={['w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all',on?'bg-brand-500/12 border-brand-500/35':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]'].join(' ')}>
+              <span className={['w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',on?'border-brand-400':'border-white/25'].join(' ')}>{on&&<span className="w-2 h-2 rounded-full bg-brand-400"/>}</span>
+              <span className="flex-1 text-[13px] font-medium text-white truncate">{p.name}</span>
+              <span className="text-[11px] text-white/35 shrink-0">{realStagesOf(p).length} stages</span>
+            </button>);})}</div>
+        </div>
+        <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Enter at stage</label>
+          <select value={stageKey||''} onChange={e=>setSk(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark'}}>{stages.map(s=>(<option key={s.key} value={s.key}>{s.name}</option>))}</select>
+        </div>
+      </div>
+      <div className="flex gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
+        <button onClick={()=>sel&&stageKey&&onEnroll(sel.id,stageKey)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 transition-all">Enroll</button>
+      </div>
+    </div>
+  </div>);
+}
 // ── Pipeline LIST view ── reuses the Contacts/Companies list infra (cols, sort, bulk, column-manager) ──
 // Inline stage dropdown for the list (stages are dynamic per pipeline, so colors come from the stage object).
 function DealStageDropdown({stage,stages,onChange,disabled}){
@@ -8051,7 +8087,7 @@ function PipelinePage({goTo,nav}){
   const dupPipeline=()=>{const id=Date.now();setPipelines(ps=>[...ps,{id,name:'Copy of '+active.name,stages:active.stages.map((s,i)=>({...s,id:'s'+id+'_'+i,key:'s'+id+'_'+i,real:s.real===true,demo:undefined}))}]);setActiveId(id);};
   const delPipeline=()=>{if(pipelines.length<=1)return;const _inPipe=_deals.filter(d=>!d.deleted&&(d.pipeline||pipelines[0].name)===active.name);const next=pipelines.find(p=>p.id!==active.id);const _first=(next.stages||[]).filter(s=>s.real)[0];
     openConfirm({title:'Delete "'+active.name+'" pipeline?',body:_inPipe.length?('This pipeline holds '+_inPipe.length+' deal'+(_inPipe.length>1?'s':'')+' — they will be moved to "'+next.name+'"'+(_first?(' ('+_first.name+' stage)'):'')+' so nothing is orphaned.'):('All '+active.stages.length+' stages in this pipeline will be removed. This can\'t be undone.'),confirmLabel:'Delete pipeline',danger:true,requireText:active.name,onConfirm:()=>{
-      if(_inPipe.length&&_first){const _at=Date.now();setDeals(ds=>ds.map(d=>(!d.deleted&&(d.pipeline||pipelines[0].name)===active.name)?{...d,pipeline:next.name,stageKey:_first.key,dStage:_first.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_first.key,at:_at,by:CURRENT_USER.avatar}],...dealPlacement(next.name,_first.key)}:d));} // D4: delete never orphans — block-or-reassign
+      {const _at=Date.now();setDeals(ds=>ds.map(d=>{if(d.deleted)return d;const _enr=(d.stagePlacements||[]).some(p=>p.pipelineId===active.id);const _prim=(d.pipeline||pipelines[0].name)===active.name;if(!_prim&&!_enr)return d;const _stripped={...d,stagePlacements:(d.stagePlacements||[]).filter(p=>p.pipelineId!==active.id)};if(_prim&&_first)return{..._stripped,pipeline:next.name,stageKey:_first.key,dStage:_first.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_first.key,at:_at,by:CURRENT_USER.avatar}],...dealPlacement(_stripped,next.name,_first.key,true)};return _stripped;}));} // D4: delete never orphans — primaries reassign, secondary enrollments are stripped
       setPipelines(ps=>ps.filter(p=>p.id!==active.id));setActiveId(next.id);}});};
   const renameStage=(id,name)=>setStages(s=>s.map(x=>x.id===id?{...x,name}:x));
   const setProb=(id,prob)=>setStages(s=>s.map(x=>x.id===id?{...x,prob:+prob}:x));
@@ -8066,7 +8102,13 @@ function PipelinePage({goTo,nav}){
   // Insert a brand-new stage at a specific position (between existing stages).
   const insertStageAt=(index)=>{const id='st'+Date.now();setStages(s=>{const ns={id,key:id,name:'New stage',color:STAGE_COLORS[s.length%STAGE_COLORS.length],prob:50,demo:[]};const a=[...s];a.splice(Math.max(0,Math.min(index,a.length)),0,ns);return a;});setFocusStageId(id);setEditStages(true);};
   const [outcomePrompt,setOutcomePrompt]=React.useState(null); // {dd,toStage,kind:'won'|'lost'} — pending terminal move awaiting a reason
-  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const _term=dealTerminalKind(toStage);if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const upd={...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:CURRENT_USER.avatar}],outcome:_term?mv.outcome:null,...dealPlacement(mv.pipeline||pipelines[0].name,toStage.key)};let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;const _mv=_deals.find(x=>x.id===dd.id);if(_mv)runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
+  // D2 phase 2: a move on THIS board edits this pipeline's PLACEMENT. When this board is the
+  // deal's primary pipeline that also means stageKey/dStage/history/outcome (deal-level truth);
+  // when the deal is merely ENROLLED here, only its placement moves — the primary is untouched.
+  const applyMove=(dd,toStage)=>{const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;const _term=dealTerminalKind(toStage);if(fromStage.real&&toStage.real){setDeals(ds=>{const mv=ds.find(d=>d.id===dd.id);if(!mv)return ds;let rest=ds.filter(d=>d.id!==dd.id);const _at=Date.now();const _isPrim=((mv.pipeline||pipelines[0].name)===active.name);const upd=_isPrim
+      ?{...mv,stageKey:toStage.key,dStage:toStage.name,stageEnteredAt:_at,stageHistory:[...(mv.stageHistory||[]),{stageKey:toStage.key,at:_at,by:CURRENT_USER.avatar}],outcome:_term?mv.outcome:null,...dealPlacement(mv,mv.pipeline||pipelines[0].name,toStage.key)}
+      :{...mv,...dealPlacement(mv,active.name,toStage.key)};
+      let last=-1;rest.forEach((d,i)=>{if(d.stageKey===toStage.key)last=i;});if(last>=0)rest.splice(last+1,0,upd);else rest.push(upd);return rest;});const _mv=_deals.find(x=>x.id===dd.id);if(_mv&&((_mv.pipeline||pipelines[0].name)===active.name)){const _nm=(toStage.name||'').toLowerCase();const _kind=/lost/.test(_nm)?'lost':/won|live/.test(_nm)?'won':null;runDealAutomations({..._mv,stageKey:toStage.key,dStage:toStage.name},toStage.name,_kind);}}else{setStages(ss=>{let mv=null;let cleaned=ss.map(s=>{if((s.demo||[]).some(d=>d.id===dd.id)){mv=s.demo.find(d=>d.id===dd.id);return{...s,demo:s.demo.filter(d=>d.id!==dd.id)};}return s;});if(!mv)return ss;return cleaned.map(s=>s.id===toStage.id?{...s,demo:[...(s.demo||[]),mv]}:s);});}};
   const [gatePrompt,setGatePrompt]=React.useState(null); // P1-3: {dd,toStage,missing,deal} — move blocked until required fields are filled
   const [mergeOpen,setMergeOpen]=React.useState(false); // P2-2: merge modal for 2–3 selected deals
   const doMergeDeals=(primaryId)=>{
@@ -8085,8 +8127,9 @@ function PipelinePage({goTo,nav}){
   const moveDeal=(toStage)=>{const dd=dragDeal;setDragDeal(null);setDropStageId(null);if(!dd||!effCanObject('Deals','edit'))return;const fromStage=active.stages.find(s=>s.id===dd.fromStageId);if(!fromStage||fromStage.id===toStage.id)return;if(gateCheck(dd,toStage))return;const kind=dealTerminalKind(toStage);if(kind){setOutcomePrompt({dd,toStage,kind});return;}applyMove(dd,toStage);};
   const _defPipe=(pipelines[0]||{}).name; // deals with no pipeline belong to the first (default) pipeline
   const _realPipeNames=pipelines.filter(p=>(p.stages||[]).some(s=>s.real)).map(p=>p.name); // pipelines whose board can hold real deals
-  const dealInActivePipe=(d)=>{const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+: scope the board to its pipeline; a deal carrying a legacy/renamed pipeline value with no real board falls back to the default pipeline so it is never invisible
-  const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>d.stageKey===stage.key&&!d.deleted&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
+  const dealInActivePipe=(d)=>{if((d.stagePlacements||[]).some(p=>p.pipelineId===active.id))return true;const dp=d.pipeline||_defPipe;return dp===active.name||(!_realPipeNames.includes(dp)&&active.id===(pipelines[0]||{}).id);}; // R2+ · D2p2: a deal belongs to this board if it has a PLACEMENT here (primary or enrolled); legacy/renamed pipeline values fall back to the default board so deals are never invisible
+  const _stageKeyHere=(d)=>{const pl=(d.stagePlacements||[]).find(p=>p.pipelineId===active.id);return pl?pl.stageKey:d.stageKey;}; // the deal's stage ON THIS BOARD (its placement here, else its primary stage)
+  const dealsFor=(stage)=>{let arr=stage.real?_deals.filter(d=>_stageKeyHere(d)===stage.key&&!d.deleted&&dealInActivePipe(d)):(stage.demo||[]);arr=omApplyFilter(arr,workFilter,dealFields);arr=omSortRows(arr,workSort,'deal',dealFields);return arr;};
   React.useEffect(()=>{if(!pipeMenu)return;const fn=e=>{if(!e.target.closest('[data-pipe-menu]'))setPipeMenu(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[pipeMenu]);
   React.useEffect(()=>{setSelected([]);},[activeId,activeViewKey,boardView]);
   React.useEffect(()=>{if(colorEdit===null)return;const fn=e=>{if(!e.target.closest('[data-color-pop]'))setColorEdit(null);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[colorEdit]);
@@ -8338,32 +8381,54 @@ function DealDetailPage({goTo,nav}){
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('deal',(d||{}).id,_a[0]);};
   const addDealNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:d.owner||'AM',title:'Note added',body:text}),...x]);
   const [schedOpen,setSchedOpen]=React.useState(false);
-  // P1-1: the stage UI follows the DEAL'S pipeline — switching Pipeline switches the ladder + pill options.
-  const _pipe=pipelineFor(d);
+  // P1-1 → D2 phase 2: the hero follows the VIEWED placement. A deal has one PRIMARY pipeline
+  // (it owns stageKey/value/forecast/automations) and may be ENROLLED in others, each placement
+  // holding its own independent stage. The hero arrows switch which placement is shown; the
+  // About "Primary pipeline" field stays ownership, not view.
+  const [viewPipeId,setViewPipeId]=React.useState(null);
+  const [enrollOpen,setEnrollOpen]=React.useState(false);
+  const _placements=dealPlacements(d);
+  const _primaryPl=_placements.find(p=>p.primary)||_placements[0];
+  const _viewPl=(viewPipeId!=null&&_placements.find(p=>p.pipelineId===viewPipeId))||_primaryPl;
+  const _viewIsPrimary=_viewPl===_primaryPl;
+  const _pipe=(_viewIsPrimary?pipelineFor(d):livePipelines().find(p=>p.id===_viewPl.pipelineId))||pipelineFor(d);
   const _pipeStages=realStagesOf(_pipe);
   const _stageNames=_pipeStages.map(s=>s.name);
   const _keyByName=Object.fromEntries(_pipeStages.map(s=>[s.name,s.key]));
   const _colorByName=Object.fromEntries(_pipeStages.map(s=>[s.name,s.color]));
   const _ladder=_pipeStages.filter(s=>s.key!=='lost').map(s=>s.name);
-  const stageIdx=_ladder.indexOf(stage);const nextStage=_ladder[stageIdx+1];const color=_colorByName[stage]||DEAL_STAGE_COLOR[stage];
+  const _viewStageObj=_pipeStages.find(s=>s.key===_viewPl.stageKey);
+  const stageShown=_viewIsPrimary?stage:((_viewStageObj&&_viewStageObj.name)||'—');
+  const stageIdx=_ladder.indexOf(stageShown);const nextStage=_viewIsPrimary?_ladder[stageIdx+1]:null;const color=_colorByName[stageShown]||DEAL_STAGE_COLOR[stageShown];
+  const _enrollOpts=livePipelines().filter(p=>realStagesOf(p).length&&!_placements.some(x=>x.pipelineId===p.id));
   const drec={...d,dStage:stage,dStatus:(stage==='Won'?'Won':stage==='Lost'?'Lost':'Open'),primaryContact:d.primaryContact!=null?d.primaryContact:(dealContact?dealContact.name:'')};
   const [dealOutcome,setDealOutcome]=React.useState(null); // {stageName,kind} — closing to Won/Lost from the detail page awaits a reason (mirrors the board's DealOutcomeModal)
   const [stageGate,setStageGate]=React.useState(null); // P1-3: {stageName,stage,missing} — stage move blocked until required fields are filled
-  const commitStage=(stageName,skipGate)=>{const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
+  const commitStage=(stageName,skipGate)=>{
+    if(!_viewIsPrimary){ // D2p2: a move on an ENROLLED view edits only that placement — primary stage/outcome untouched
+      const k=_keyByName[stageName];const _tS=_pipeStages.find(s=>s.key===k);if(!_tS||k===_viewPl.stageKey)return;
+      if(!skipGate){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}
+      updateDeal(d.id,{stagePlacements:_placements.map(p=>p===_viewPl?{...p,stageKey:k,at:Date.now()}:p)});
+      window.__nrturToast&&window.__nrturToast('Moved to '+stageName+' in '+_pipe.name,'success');return;}
+    const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
-    if(k==='pipeline'){ // P1-1: switching pipeline re-homes the deal into that pipeline's stages
+    if(k==='pipeline'){ // P1-1 → D2p2: PRIMARY switch is a MOVE. If the deal is already ENROLLED in the target, promote that placement (it continues at its enrolled stage); other enrollments survive, the old primary placement is dropped.
       const _t=livePipelines().find(p=>p.name===v);const _ts=realStagesOf(_t||{});
       if(!_t||!_ts.length){updateDeal(d.id,{pipeline:v});return;}
-      const _keep=_ts.find(s=>s.key===d.stageKey);const _ns=_keep||_ts[0];const _at=Date.now();
-      setStage(_ns.name);
-      updateDeal(d.id,{pipeline:v,stageKey:_ns.key,dStage:_ns.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_ns.key,at:_at,by:CURRENT_USER.avatar}],outcome:dealTerminalKind(_ns)?d.outcome:null,...dealPlacement(v,_ns.key)});
-      window.__nrturToast&&window.__nrturToast('Moved to '+v+(_keep?'':' · enters at '+_ns.name),'success');return;}
+      const _pls=dealPlacements(d);
+      const _enr=_pls.find(p=>p.pipelineId===_t.id&&!p.primary);
+      const _keep=_enr?_ts.find(s=>s.key===_enr.stageKey):_ts.find(s=>s.key===d.stageKey);
+      const _ns=_keep||_ts[0];const _at=Date.now();
+      const _next=[..._pls.filter(p=>!p.primary&&p.pipelineId!==_t.id),{pipelineId:_t.id,stageKey:_ns.key,primary:true,at:_at}];
+      setStage(_ns.name);setViewPipeId(null);
+      updateDeal(d.id,{pipeline:v,stageKey:_ns.key,dStage:_ns.name,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:_ns.key,at:_at,by:CURRENT_USER.avatar}],outcome:dealTerminalKind(_ns)?d.outcome:null,stagePlacements:_next});
+      window.__nrturToast&&window.__nrturToast(_enr?('Primary pipeline is now '+v+' · continuing at '+_ns.name):('Moved to '+v+(_keep?'':' · enters at '+_ns.name)),'success');return;}
     if(k==='primaryContact'){const _ct=(crm.contacts||[]).find(c=>c.name===v&&!c.deleted);const _p={primaryContact:v,primaryContactId:_ct?_ct.id:null};if(_ct){const _co=(_ct.companyId!=null?(crm.companies||[]).find(c=>c.id===_ct.companyId):null)||(_ct.co?(crm.companies||[]).find(c=>c.name===_ct.co):null);if(_co&&!(d.company&&String(d.company).trim())){_p.company=_co.name;_p.companyId=_co.id;}}updateDeal(d.id,_p);return;}
     if(k==='company'){const _co=(crm.companies||[]).find(c=>c.name===v&&!c.deleted);updateDeal(d.id,{company:v,companyId:_co?_co.id:null});return;}
     updateDeal(d.id,{[k]:v});
   };
-  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Pipeline',type:'select',options:livePipelines().filter(p=>realStagesOf(p).length).map(p=>p.name)},{key:'dStage',label:'Stage',type:'pill',options:_stageNames},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
+  const dealPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'amount',label:'Amount',type:'currency',sensitive:true},{key:'pipeline',label:'Primary pipeline',type:'select',options:livePipelines().filter(p=>realStagesOf(p).length).map(p=>p.name)},{key:'probability',label:'Probability',type:'percent'},{key:'closeDate',label:'Expected close date',type:'date'},{key:'owner',label:'Owner',type:'owner'},{key:'primaryContact',label:'Primary contact',type:'lookup',icon:I.UserPlus,go:(g)=>g('contact-detail',dealContact&&dealContact.id)},{key:'company',label:'Company',type:'lookup',go:(g)=>g('company-detail',companyRec&&companyRec.id)},{key:'nextAction',label:'Next action',type:'text'},{key:'dealTags',label:'Tags',type:'tags'},{key:'dStatus',label:'Status',type:'pill',readOnly:true}];
   const dealSecondary=[{key:'additionalContacts',label:'Additional contacts',type:'relcontacts'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'amountType',label:'Amount type',type:'select',options:['One-time','ACV','TCV','ARR','MRR']},{key:'forecast',label:'Forecast category',type:'select',options:['Pipeline','Best case','Commit','Closed','Omitted']}];
   const [editOpen,setEditOpen]=React.useState(false);
   const [moreOpen,setMoreOpen]=React.useState(false);const moreRef=React.useRef(null);
@@ -8401,8 +8466,22 @@ function DealDetailPage({goTo,nav}){
           <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
-                <div className="flex items-start justify-between mb-4"><div><h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>{d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}<p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stage}</span></div>
-                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}{d.stageEnteredAt!=null&&!d.outcome&&<p className="text-[10.5px] text-white/35 mb-3 flex items-center gap-1"><I.Clock size={10}/>In {stage} for {(()=>{const _d=Math.max(0,Math.floor((Date.now()-d.stageEnteredAt)/864e5));return _d===0?'less than a day':_d+(_d===1?' day':' days');})()}{(d.stageHistory||[]).length>1?' · '+d.stageHistory.length+' stage moves':''}</p>}<div className="flex items-center gap-2 mb-6">{_ladder.map((s,i)=>{const done=i<=stageIdx;const cur=s===stage;const c=_colorByName[s]||DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;commitStage(s);}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<_ladder.length-1&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
+                <div className="flex items-start justify-between mb-3"><div><h2 className="text-white text-[24px] font-bold leading-tight">{d.name||d.company}</h2>{d.company&&<p className="text-[12.5px] font-medium text-white/45 mt-1 truncate">{d.company}</p>}<p className="text-white text-[32px] font-bold tabular-nums mt-1">{d.value}</p></div><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium ring-1" style={{background:`${color}18`,color,boxShadow:`0 0 0 1px ${color}40`}}><span className="w-2 h-2 rounded-full" style={{background:color}}/>{stageShown}</span></div>
+                {/* D2p2: placement strip — which pipeline the hero shows, arrows across enrollments, enroll more */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1 min-w-0">
+                    {_placements.length>1&&<button onClick={()=>{const i=_placements.indexOf(_viewPl);setViewPipeId(_placements[(i-1+_placements.length)%_placements.length].pipelineId);}} title="Previous pipeline" className="w-5 h-5 rounded-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-all shrink-0"><I.ChevronRight size={11} className="rotate-180"/></button>}
+                    <span className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] truncate">{_pipe.name}</span>
+                    {!_viewIsPrimary&&<span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 shrink-0">Enrolled</span>}
+                    {_placements.length>1&&<button onClick={()=>{const i=_placements.indexOf(_viewPl);setViewPipeId(_placements[(i+1)%_placements.length].pipelineId);}} title="Next pipeline" className="w-5 h-5 rounded-md flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] transition-all shrink-0"><I.ChevronRight size={11}/></button>}
+                    {_placements.length>1&&<span className="text-[9px] font-mono text-white/30 shrink-0">{_placements.indexOf(_viewPl)+1}/{_placements.length}</span>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!_viewIsPrimary&&effCanObject('Deals','edit')&&<button onClick={()=>{openConfirm({title:'Remove from '+_pipe.name+'?',body:(d.name||d.company)+' will no longer be tracked in this pipeline. Its primary pipeline is unaffected.',confirmLabel:'Remove',danger:true,onConfirm:()=>{updateDeal(d.id,{stagePlacements:_placements.filter(p=>p!==_viewPl)});setViewPipeId(null);window.__nrturToast&&window.__nrturToast('Removed from '+_pipe.name,'success');}});}} title="Remove from this pipeline" className="w-5 h-5 rounded-md flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 transition-all"><I.X size={11}/></button>}
+                    {effCanObject('Deals','edit')&&_enrollOpts.length>0&&<button onClick={()=>setEnrollOpen(true)} title="Enroll this deal in another pipeline" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-medium text-brand-300 bg-brand-500/10 ring-1 ring-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={10} stroke={2.6}/>Add</button>}
+                  </div>
+                </div>
+                {d.outcome&&<p className="text-[11.5px] font-medium mb-3" style={{color:d.outcome.result==='won'?'#34d399':'#f87171'}}>{d.outcome.result==='won'?'Won':'Lost'} · {d.outcome.reason}{d.outcome.note?' — '+d.outcome.note:''}</p>}{(()=>{const _inSince=_viewIsPrimary?d.stageEnteredAt:(_viewPl.at||null);if(_inSince==null||(d.outcome&&_viewIsPrimary))return null;return(<p className="text-[10.5px] text-white/35 mb-3 flex items-center gap-1"><I.Clock size={10}/>In {stageShown} for {(()=>{const _d=Math.max(0,Math.floor((Date.now()-_inSince)/864e5));return _d===0?'less than a day':_d+(_d===1?' day':' days');})()}{_viewIsPrimary&&(d.stageHistory||[]).length>1?' · '+d.stageHistory.length+' stage moves':''}</p>);})()}<div className="flex items-center gap-2 mb-6">{_ladder.map((s,i)=>{const done=i<=stageIdx;const cur=s===stageShown;const c=_colorByName[s]||DEAL_STAGE_COLOR[s];return(<React.Fragment key={s}><button type="button" onClick={()=>{if(cur)return;commitStage(s);}} title={cur?s+' · current stage':'Move to '+s} aria-current={cur?'step':undefined} className="group flex flex-col items-center gap-1 outline-none focus-visible:opacity-100"><div className={['w-2.5 h-2.5 rounded-full transition-all group-hover:scale-125',done?'':'bg-white/[0.08] group-hover:bg-white/25'].join(' ')} style={done?{background:c,boxShadow:cur?`0 0 0 3px ${c}33, 0 0 10px ${c}99`:`0 0 8px ${c}80`}:{}}/><span className={['text-[9px] font-medium whitespace-nowrap transition-colors',cur?'text-white':done?'text-white/70 group-hover:text-white':'text-white/25 group-hover:text-white/60'].join(' ')}>{s}</span></button>{i<_ladder.length-1&&<div className={['flex-1 h-px transition-all mb-3',done&&i<stageIdx?'bg-brand-500':'bg-white/[0.06]'].join(' ')}/>}</React.Fragment>);})}</div>
 
               </div>
               <RecordProperties record={drec} primary={_dlLay.primary} secondary={_dlLay.secondary} onChange={onDealField} goTo={goTo} readOnly={!effCanObject('Deals','edit')}/>
@@ -8417,8 +8496,9 @@ function DealDetailPage({goTo,nav}){
         </div>
         {editOpen&&<RecordEditDrawer title={'Edit '+dealName} Icon={I.Target} groups={editGroups} record={drec} onSave={onEditSave} onClose={()=>setEditOpen(false)}/>}
         {schedOpen&&<CalEventFormModal initial={{type:'meeting',deal:d.company+' · '+d.value,company:d.company,contact:dealContact&&dealContact.name,linkType:dealContact?'contact':null}} onClose={()=>setSchedOpen(false)} onSave={(ev)=>{calAddItem(ev);setSchedOpen(false);}}/>}
+        {enrollOpen&&_enrollOpts.length>0&&<EnrollPipelineModal dealName={d.name||d.company} options={_enrollOpts} onClose={()=>setEnrollOpen(false)} onEnroll={(pid,sk)=>{const _pn=(livePipelines().find(p=>p.id===pid)||{}).name||'pipeline';updateDeal(d.id,{stagePlacements:[...dealPlacements(d),{pipelineId:pid,stageKey:sk,primary:false,at:Date.now()}]});crm.addActivity('deal',d.id,mkAct('sequence',{ts:0,by:CURRENT_USER.avatar,title:'➕ Enrolled in '+_pn,body:'Now tracked in '+_pn+' alongside its primary pipeline — independent stage, no double-counted value.'}));setEnrollOpen(false);setViewPipeId(pid);window.__nrturToast&&window.__nrturToast('Enrolled in '+_pn,'success');}}/>}
         {stageGate&&<StageGateModal deal={d} stage={stageGate.stage} missing={stageGate.missing} onClose={()=>setStageGate(null)} onSave={(patch)=>{updateDeal(d.id,patch);const _sn=stageGate.stageName;setStageGate(null);commitStage(_sn,true);}}/>}
-        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],...dealPlacement(d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:CURRENT_USER.name}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
+        {dealOutcome&&<DealOutcomeModal kind={dealOutcome.kind} dealName={d.name||d.company} stageName={dealOutcome.stageName} onClose={()=>setDealOutcome(null)} onConfirm={(reason,note)=>{const k=_keyByName[dealOutcome.stageName]||DEAL_STAGE_KEY_BY_NAME[dealOutcome.stageName]||d.stageKey;setStage(dealOutcome.stageName);updateDeal(d.id,{dStage:dealOutcome.stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],...dealPlacement(d,d.pipeline||_pipe.name,k),outcome:{result:dealOutcome.kind,reason:reason,note:note||'',closedAt:Date.now(),closedBy:CURRENT_USER.name}});runDealAutomations({...d,stageKey:k,dStage:dealOutcome.stageName},dealOutcome.stageName,dealOutcome.kind);window.__nrturToast&&window.__nrturToast('Deal marked '+(dealOutcome.kind==='won'?'Won':'Lost')+(reason?' · '+reason:''),'success');if(dealOutcome.kind==='won'&&d.adSourceKey)setTimeout(()=>ads.reportConversion(d.adSourceKey,d.name||d.company),700);setDealOutcome(null);}}/>}
         {confirmNode}
         <AppFooter/>
       </div>
@@ -8484,9 +8564,22 @@ function pipelineFor(deal){const ps=livePipelines();const real=ps.filter(p=>real
 function pipelineStageByKey(key){const ps=livePipelines();for(const p of ps){const s=(p.stages||[]).find(x=>x.key===key);if(s)return s;}return STAGE_BY_KEY[key]||null;}
 // D3 storage: stagePlacements[{pipelineId,stageKey,primary}] — single primary placement today; the
 // decided multi-placement model extends this array without changing the shape.
-function dealPlacement(pipelineName,stageKey){const ps=livePipelines();const p=ps.find(x=>x.name===pipelineName)||ps[0];return {stagePlacements:[{pipelineId:p?p.id:1,stageKey,primary:true}]};}
+// D2 phase 2: placements MERGE. Updating a pipeline's placement preserves the deal's OTHER
+// enrollments (one deal, several pipelines, independent stages). forcePrimary promotes the
+// target placement (used when the primary pipeline itself is switched).
+function dealPlacement(rec,pipelineName,stageKey,forcePrimary){
+  const ps=livePipelines();const p=ps.find(x=>x.name===pipelineName)||ps[0];if(!p)return{};
+  const cur=(rec&&rec.stagePlacements)||[];
+  const isPrimary=forcePrimary||!cur.length||!cur.some(x=>x.primary)||((rec&&rec.pipeline)||ps[0].name)===pipelineName;
+  let found=false;
+  let next=cur.map(x=>{if(x.pipelineId!==p.id)return isPrimary?{...x,primary:false}:x;found=true;return{...x,stageKey,at:Date.now(),primary:isPrimary?true:!!x.primary};});
+  if(!found)next=[...next,{pipelineId:p.id,stageKey,at:Date.now(),primary:isPrimary}];
+  return{stagePlacements:next};
+}
+function dealPlacements(d){const pls=(d&&d.stagePlacements)||[];if(pls.length)return pls;const p=pipelineFor(d);return[{pipelineId:p?p.id:1,stageKey:d?d.stageKey:null,primary:true}];}
+function placementFor(d,pipeId){return ((d&&d.stagePlacements)||[]).find(x=>x.pipelineId===pipeId)||null;}
 // New deals created into a non-default pipeline must enter one of ITS stages (not a Sales stageKey).
-function normalizeDealPipeline(rec,by){const p=livePipelines().find(x=>x.name===rec.pipeline);const first=p?realStagesOf(p)[0]:null;if(p&&first&&!realStagesOf(p).some(s=>s.key===rec.stageKey)){rec.stageKey=first.key;rec.dStage=first.name;const st=dealStageStamp(first.key,by);rec.stageEnteredAt=st.stageEnteredAt;rec.stageHistory=st.stageHistory;}Object.assign(rec,dealPlacement(rec.pipeline||(livePipelines()[0]||{}).name,rec.stageKey));return rec;}
+function normalizeDealPipeline(rec,by){const p=livePipelines().find(x=>x.name===rec.pipeline);const first=p?realStagesOf(p)[0]:null;if(p&&first&&!realStagesOf(p).some(s=>s.key===rec.stageKey)){rec.stageKey=first.key;rec.dStage=first.name;const st=dealStageStamp(first.key,by);rec.stageEnteredAt=st.stageEnteredAt;rec.stageHistory=st.stageHistory;}Object.assign(rec,dealPlacement(rec,rec.pipeline||(livePipelines()[0]||{}).name,rec.stageKey,true));return rec;}
 const CO_SEED_DEALS=[
   {id:9101,name:'Acme Inc — Onboarding',company:'Acme Inc',value:'$12,000',amount:12000,owner:'AM',ownerColor:'#6366f1',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'2d',score:'cold',pipeline:'Customer Onboarding',stageKey:'ob_kickoff',dStage:'Kickoff',createdAt:'Jun 30, 2026'},
   {id:9102,name:'Bloom Studio — Onboarding',company:'Bloom Studio',value:'$8,500',amount:8500,owner:'SC',ownerColor:'#3b82f6',tag:'New',tagBg:'bg-blue-500/15',tagFg:'text-blue-300',age:'4d',score:'cold',pipeline:'Customer Onboarding',stageKey:'ob_kickoff',dStage:'Kickoff',createdAt:'Jun 28, 2026'},
@@ -8527,7 +8620,7 @@ function seedHistoryFor(d,stageOrder){
 }
 const SALES_KEY_ORDER=STAGES_DATA.map(s=>s.key);
 function dealsSeed(){return STAGES_DATA.flatMap(s=>s.deals.map(d=>({...d,stageKey:s.key}))).map(seedOutcomeFor).map(d=>seedHistoryFor(d,SALES_KEY_ORDER)).concat(CO_SEED_DEALS.map(d=>seedHistoryFor({...d},CO_STAGE_DEFS.map(s=>s.key))));} // P1-1: Customer Onboarding deals are REAL seed records now
-function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines
+function allDeals(){return (_liveDeals||dealsSeed()).filter(d=>!d.deleted).map(d=>{const s=STAGE_BY_KEY[d.stageKey]||pipelineStageByKey(d.stageKey)||{};return {...d,amount:d.amount!=null?d.amount:(parseMoney(d.value)||undefined),stageName:s.name,stageColor:s.color};});} // stage display resolves across ALL pipelines; amount derives from the value string when a seed lacks the numeric (hero showed $18k while About said Empty)
 function contactsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const src=_liveContacts||CONTACTS_DATA;return src.filter(c=>!c.deleted&&((id!=null&&c.companyId===id)||((c.companyId==null||id==null)&&c.co===name)));}
 function dealsForCompany(co){const name=typeof co==='string'?co:(co&&co.name);const id=typeof co==='string'?null:(co&&co.id);const list=allDeals().filter(d=>(id!=null&&d.companyId===id)||((d.companyId==null||id==null)&&d.company===name));const open=list.filter(d=>d.stageKey!=='won'&&d.stageKey!=='lost');const openValue=open.reduce((a,d)=>a+parseMoney(d.value),0);return {list,open:open.length,openValue,total:list.reduce((a,d)=>a+parseMoney(d.value),0)};}
 // Reusable chip dropdown (used for Company type + Lead status) — mirrors ContactStatusDropdown
@@ -21747,7 +21840,7 @@ function migrateLinks(companiesSeed,contactsSeed,dealsSeed){
     if(d.additionalContactIds==null)d.additionalContactIds=(d.additionalContacts||[]).map(a=>contactByName(a&&a.contact,d.companyId)).filter(x=>x!=null);
     if(d.stageEnteredAt==null)d.stageEnteredAt=Date.now()-(dashDealAgeDays(d)||0)*864e5; // P0-2 backfill: derive the stamp from the seeded age string once
     if(!Array.isArray(d.stageHistory))d.stageHistory=[{stageKey:d.stageKey,at:d.stageEnteredAt,by:d.owner||'AM'}];
-    if(!Array.isArray(d.stagePlacements))d.stagePlacements=dealPlacement(d.pipeline||'Sales Pipeline',d.stageKey).stagePlacements; // D3 storage backfill
+    if(!Array.isArray(d.stagePlacements))d.stagePlacements=dealPlacement(d,d.pipeline||'Sales Pipeline',d.stageKey,true).stagePlacements; // D3 storage backfill
   });
   return {companies,contacts,deals};
 }
