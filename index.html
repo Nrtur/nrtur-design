@@ -6368,6 +6368,7 @@ function SlaRuleRow({rule,fields,reps,readOnly,onChange,onRemove}){
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-[11px] font-semibold text-white/35 shrink-0">FOR</span>
       <div className="min-w-0"><OmFiltersButton object={rule.object} fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})} disabled={readOnly}/></div>
+      {!(rule.when&&rule.when.conds&&rule.when.conds.length)&&<span className="text-[10.5px] text-amber-300/80 shrink-0" title="An SLA rule with no conditions applies to every record of this type">· all records</span>}
       <span className="text-[11px] font-semibold text-white/35 shrink-0">UNTOUCHED</span>
       <div className="flex items-center gap-1">
         <button onClick={()=>onChange({withinDays:Math.max(1,wd-1)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">−</button>
@@ -6393,7 +6394,7 @@ function SettingsSlaPage({goTo}){
   const liveRows=({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[obj]||[];
   const fields=React.useMemo(()=>autoFieldsFor(obj,liveRows),[obj,liveRows.length]);
   const objRules=rules.filter(r=>r.object===obj);
-  const addRule=()=>setRules(l=>[...l,{id:'sla'+Date.now(),object:obj,name:'New SLA rule',enabled:true,when:{match:'AND',conds:[]},withinDays:3,then:{task:'',notify:'',assignTo:'',tag:''}}]);
+  const addRule=()=>setRules(l=>[...l,{id:'sla'+Date.now(),object:obj,name:'New SLA rule',enabled:false,when:{match:'AND',conds:[]},withinDays:3,then:{task:'',notify:'',assignTo:'',tag:''}}]); // P5c: start disabled (draft) so an empty-condition rule can't flood before it's configured
   const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
   const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
   return(<SettingsShell active="settings-sla" goTo={goTo} subtitle="Stop records from rotting. When a matching record sits untouched past the threshold, its actions fire automatically.">
@@ -9774,6 +9775,8 @@ function DisqualifyLeadModal({leadName,onConfirm,onClose}){
   </div>);
 }
 function ScoreBadge({score}){const b=leadScoreBucket(score);return(<div className="flex items-center gap-2" title={b.l+' · score '+score}><div className="w-12 h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:score+'%',background:b.c}}/></div><span className="text-[12px] font-medium tabular-nums" style={{color:b.c}}>{score}</span></div>);}
+// P5: SLA badge — shows the first applicable SLA rule's countdown / breach for a record (null when no SLA rule applies).
+function SlaBadge({object,rec}){const s=(typeof slaStatus==='function')?slaStatus(object,rec):null;if(!s)return null;return(<div className={['mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium',s.breached?'bg-red-500/12 text-red-300 ring-1 ring-red-500/25':'bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20'].join(' ')} title={'SLA · '+s.name}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>{s.breached?('SLA breached · untouched '+s.age+'d'):('SLA · '+s.daysLeft+'d left')}</div>);}
 function LeadRow({l,COL,selected,onSelect,onStatus,onOwner,onConvert,onArchive,onRestore,goTo,last}){
   return(
     <div className={['crm-list-row w-full grid items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors group',!last?'border-b border-white/[0.03]':'',selected?'bg-brand-500/[0.04]':''].join(' ')} style={{gridTemplateColumns:COL}}>
@@ -10171,7 +10174,7 @@ function LeadDetailPage({goTo,nav}){
                   <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-[20px] font-semibold ring-2 ring-white/[0.06]" style={{background:l.color}}>{l.avatar}</div>
                   <div><div className="flex items-center gap-2 flex-wrap"><h2 className="text-white text-[20px] font-semibold">{l.name}</h2>{l.qual&&<QualBadge status={l.qual.status}/>}</div><p className="text-[13px] text-white/55 mt-1">{l.title} · {l.company}</p><div className="mt-2"><LeadStatusDropdown value={status} onChange={(s)=>{setStatusState(s);updateLead(l.id,{status:s});}} disabled={!canEditLead}/></div></div>
                 </div>
-                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-bold tabular-nums" style={{color:b.c}}>{l.score}</span></div></div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 flex items-center justify-between"><div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Lead score</p><p className="text-[12px] mt-0.5" style={{color:b.c}}>{b.l} · likely to convert</p></div><div className="flex items-center gap-2"><div className="w-20 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:l.score+'%',background:b.c}}/></div><span className="text-[18px] font-bold tabular-nums" style={{color:b.c}}>{l.score}</span></div></div><SlaBadge object="lead" rec={l}/>
               </div>
               </div>
               <RecordProperties record={l} primary={_ldLay.primary} secondary={_ldLay.secondary} onChange={onLeadField} goTo={goTo} readOnly={!canEditLead}/>
