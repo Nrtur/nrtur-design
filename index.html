@@ -1635,6 +1635,7 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Duplicates',page:'settings-duplicates'},
     {label:'Assignment rules',page:'settings-assignment'},
     {label:'Lead scoring',page:'settings-scoring'},
+    {label:'Validation rules',page:'settings-validation'},
     {label:'Automations',page:'settings-automations'},
     {label:'Sequences',page:'settings-sequences'},
     {label:'Forms',page:'settings-forms'},
@@ -3108,6 +3109,7 @@ const SETTINGS_GROUPS=[
     {label:'Duplicates',page:'settings-duplicates',Icon:I.Copy},
     {label:'Assignment rules',page:'settings-assignment',Icon:I.GitBranch},
     {label:'Lead scoring',page:'settings-scoring',Icon:I.Target},
+    {label:'Validation rules',page:'settings-validation',Icon:I.ShieldCheck},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
     {label:'Recycle bin',page:'settings-recycle-bin',Icon:I.History},
     {label:'Delete workspace',page:'settings-delete-workspace',Icon:I.Trash,danger:true,ownerOnly:true},
@@ -6349,6 +6351,47 @@ function DuplicatesView({object,showToolbar}){
   </div>);
 }
 // -- Part D: global Settings -> Duplicates page --
+// P4: Validation Rules console — author per-object rules that block a bad save with a custom error.
+const VALIDATION_OBJECTS=[['deal','Deals'],['lead','Leads'],['contact','Contacts'],['company','Companies']];
+function ValidationRuleRow({rule,fields,readOnly,onChange,onRemove}){
+  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="w-7 h-7 rounded-lg bg-amber-500/12 text-amber-300 flex items-center justify-center shrink-0"><I.AlertTriangle size={14}/></span>
+      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
+      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
+    </div>
+    <div className="flex items-start gap-2 flex-wrap">
+      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">REJECT WHEN</span>
+      <div className="min-w-0"><OmFiltersButton object={rule.object} fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})}/></div>
+      <span className="text-[10.5px] text-white/30 mt-2">{(rule.when&&rule.when.conds&&rule.when.conds.length)?'':'(no conditions — this rule is inactive)'}</span>
+    </div>
+    <div className="flex items-center gap-2 mt-3">
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">ERROR</span>
+      <input value={rule.message||''} onChange={e=>onChange({message:e.target.value})} disabled={readOnly} placeholder="Message shown when the save is blocked" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
+    </div>
+  </div>);
+}
+function SettingsValidationPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const rules=crm.validationRules||[];const setRules=crm.setValidationRules;
+  const readOnly=!settingsIsAdmin();
+  const [obj,setObj]=React.useState('deal');
+  const liveRows=({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[obj]||[];
+  const fields=React.useMemo(()=>autoFieldsFor(obj,liveRows),[obj,liveRows.length]);
+  const objRules=rules.filter(r=>r.object===obj);
+  const addRule=()=>setRules(l=>[...l,{id:'vr'+Date.now(),object:obj,name:'New validation rule',enabled:true,when:{match:'AND',conds:[]},message:'This record can’t be saved.'}]);
+  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
+  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
+  return(<SettingsShell active="settings-validation" goTo={goTo} subtitle="Guard data quality at the point of entry. When a rule's condition matches on create, the save is blocked with your message.">
+    <div className="max-w-3xl">
+      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] mb-5">{VALIDATION_OBJECTS.map(([k,l])=>{const n=rules.filter(r=>r.object===k).length;return(<button key={k} onClick={()=>setObj(k)} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',obj===k?'bg-brand-500/20 text-brand-200':'text-white/55 hover:text-white'].join(' ')}>{l}{n?<span className="ml-1 text-white/35 tabular-nums">{n}</span>:null}</button>);})}</div>
+      <div className="flex items-start gap-2 rounded-xl bg-white/[0.03] border border-white/[0.07] px-3.5 py-2.5 mb-4"><I.AlertTriangle size={13} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11.5px] text-white/55 leading-relaxed">A rule describes the <span className="text-white/80 font-medium">invalid</span> state — e.g. <span className="text-white/70">stage is Won AND amount &lt; 1</span>. If it matches, the create is rejected with the error. Cross-field rules reuse the same AND/OR condition builder as smart lists.</p></div>
+      <div className="flex flex-col gap-3">{objRules.length?objRules.map(r=>(<ValidationRuleRow key={r.id} rule={r} fields={fields} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.ShieldCheck size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No validation rules for these records — every save is allowed.</p></div>)}</div>
+      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+    </div>
+  </SettingsShell>);
+}
 // P3: Lead Scoring console — author scorecard rules (points per matching condition) that compute the lead score.
 function ScoreRuleRow({rule,fields,readOnly,onChange,onRemove}){
   const pts=parseInt(rule.points,10)||0;
@@ -13049,7 +13092,7 @@ function ReportsPage({goTo}){
 const SETTINGS_PAGE_META={
   'settings-general':'General','settings-properties':'Custom fields','settings-team':'Team','settings-permissions':'Permissions','settings-permission-matrix':'Permission matrix','settings-billing':'Billing',
   'settings-tags':'Tags','settings-statuses':'Statuses',
-  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
+  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-validation':'Validation rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
   'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
   // Personal
@@ -13061,7 +13104,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-validation','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -23008,6 +23051,7 @@ function App(){
       {page==='settings-duplicates' && <SettingsDuplicatesPage {...p}/>}
       {page==='settings-assignment' && <SettingsAssignmentPage {...p}/>}
       {page==='settings-scoring' && <SettingsScoringPage {...p}/>}
+      {page==='settings-validation' && <SettingsValidationPage {...p}/>}
       {page==='settings-tags' && <SettingsTagsPage {...p}/>}
       {page==='settings-statuses' && <SettingsStatusesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
