@@ -12,7 +12,7 @@ _Companion to [`AUTOMATIONS_AUDIT.md`](AUTOMATIONS_AUDIT.md). Where the audit co
 
 nrtur now has a genuinely **excellent visual flow builder that executes real effects** — the interpreter walks the authored node tree ([`autoRunNodes`, index.html:17332](../../index.html)) and actually mutates records (assign/round-robin, add/remove tag, `updateField` Owner/Status/Priority, enroll, branch), fed by a multi-entity created-event bus (`fireEntityAutomationEvents`, 17372) plus full deal-lifecycle firing. **What it lacks is the paradigm every serious CRM ships _next to_ the canvas:** a per-object **rule layer** — Assignment/routing, Scoring, Validation, SLA/Escalation, and Approval as declarative IF-condition-THEN rows an admin configures in seconds, evaluated on **create / edit / save** (not just create). This is exactly where Zoho and Salesforce win, and it's the highest-leverage thing nrtur can add.
 
-**Readiness (rule-based automation dimension): `46 / 100` at research time → `~72 / 100` now that Phase 0 (trigger substrate), Phase 1 (unified AND/OR conditions), and Phase 2 (Assignment Rules — the first true rule-list) have shipped → `88 / 100` once the rest of §6 is built.**
+**Readiness (rule-based automation dimension): `46 / 100` at research time → `~78 / 100` now that Phases 0–3 have shipped (trigger substrate · unified AND/OR conditions · Assignment Rules · Scoring Rules) → `88 / 100` once the rest of §6 is built.**
 
 ---
 
@@ -52,7 +52,7 @@ The 14 rule types that make up the rule-based paradigm across Salesforce, Zoho, 
 |---|---|:--:|---|
 | 1 | **Workflow Rules** (IF-condition-THEN on create/edit/save) | ◐ | Has the interpreter; has no rule-list console — every rule must be **drawn** as a flow. |
 | 2 | **Assignment / Routing Rules** (round-robin, load-balance, territory, weighted, skill) | ◐→● | **Shipped:** shared per-object rule table + real least-busy. Territory/weighted/skill still to add. |
-| 3 | **Lead / Deal Scoring Rules** (demographic + behavioral scorecard) | ○ | Score is a **static random seed** (2354); the score action is a label-only no-op (17347). |
+| 3 | **Lead / Deal Scoring Rules** (demographic + behavioral scorecard) | ○→● | **Shipped:** `scoreRules` scorecard + `recomputeScore` (real number, no random); score action + threshold trigger wired. Behavioral inputs + deal scoring to add. |
 | 4 | **Validation Rules** (block a bad save via custom expression) | ◐ | Only hardcoded required/email + field-presence stage gates — no cross-field/formula rule. |
 | 5 | **Escalation / SLA / Time-based Rules** | ○ | **No scheduler** — waits are noted-and-skipped (17340); "SLA" is only marketing copy. |
 | 6 | **Approval Processes** | ○ | Nothing — stage gates check field presence, not human sign-off. |
@@ -81,7 +81,7 @@ Every automation use case a CRM is expected to handle, judged **post-fix** (afte
 | Web-form / ad-lead capture creates a record | ◐ | Create fires "Lead created" so a flow can react; **no standalone capture→route→respond rule**. |
 | Lead assignment / round-robin | ◐ | `assign` mutates owner via a real counter — but naive global, fake least-busy, no shared table. |
 | Territory / skill / weighted routing | ○ | None; the one true routing list (19923) is booking-scoped + not persisted. |
-| Lead scoring (demographic + behavioral) | ○ | Static seed (2354); score action is a no-op (17347); no scorecard, no recompute. |
+| Lead scoring (demographic + behavioral) | ○→● | **Shipped:** `recomputeScore` scorecard (Settings › Lead scoring), computed on create + edit; threshold fires "Lead score reached". Behavioral inputs still to add. |
 | Lead qualification rules | ◐ | Real & executing — but **locked to the booking widget** (`qualEvaluate` 19029). |
 | Lead nurture / drip enrollment | ◐ | Enroll **works** (17351); drip **cadence never advances** — waits skipped (no scheduler). |
 | Lead re-engagement / cold-lead revival | ○ | No "untouched N days" fire — needs scheduler + inactivity dispatch. |
@@ -188,8 +188,8 @@ _nrtur's single biggest competitive win in this space — now real._ A per-objec
 
 ### 🔶 High
 
-**4 · Lead / Deal Scoring Rules — a scorecard that computes a real number**
-`scoreRules:[{when:conditionModel, points}]` per object (reuse the unified condition editor). A `recomputeScore(record)` sums matching rows; call it on create, on the new update-event dispatch, and on activity events. **Store the computed number on `record.score`, replacing the seed at 2354**, and let `leadScoreBucket` (9446) bucket the real value. Wire the `updateField→'Lead score'` branch (17347) to add/subtract, and dispatch "Lead score reached" when a recompute crosses a threshold. Pure in-memory.
+**4 · Lead / Deal Scoring Rules — a scorecard that computes a real number** &nbsp;✅ **SHIPPED** (`4bd2319` · `a8bd929` · `be81e3d` · `c4c29e5`)
+`scoreRules:[{when:conditionModel, points}]` in CrmDataContext (seeded 4 lead rules), authored at **Settings › Lead scoring**. `recomputeScore(object,record)` = base(25) + Σ points for each matching rule (via `omApplyFilter`), clamped 0–100 — and it runs on **every lead-create path** and on **edit**, so `record.score` is a real number (the random seeds are gone) that `leadScoreBucket` buckets. The dead `updateField→'Lead score'` action is wired (add/subtract/reset), and **"Lead score reached" dispatches on threshold crossing** (create/edit/interpreter). _Verified headless (exact sums, +N/Reset action, single crossing fire, multi-action accumulation) + adversarial-review hardening. Deal scoring reuses the same engine — a fast follow-on._
 
 **5 · Validation Rules — block a bad save with a custom error**
 `validationRules:[{when:conditionModel, message}]` per object (reuse the unified condition editor, including cross-field ops). Evaluate inside the existing `errorFor` (2392) for create/edit and inside `dealMissingFor`'s caller for stage moves — return the first matching rule's message, reusing the exact block-and-highlight plumbing `StageGateModal` (7786) already uses. No new save-flow machinery.
@@ -214,7 +214,7 @@ Ordered so each phase unblocks the next; every phase is in-memory-feasible.
 0. ✅ **Foundation — trigger substrate (SHIPPED, `b4eee2f`/`41487e1`/`56d39a0`).** Edit/tag/status emitters at the mutation sites + a simulated-time scheduler that drains waits and scans breaches. _Unblocked everything below._
 1. ✅ **Unified condition model (SHIPPED, `8d5348e`/`73bdf82`/`ce6d8ab`).** `autoEvalCond` + `dealCondPass` evaluate the `omApplyFilter` AND/OR model; condition nodes authored with the embedded `OmFiltersButton`. _Every rule and flow can now express AND/OR._
 2. ✅ **Assignment / Routing Rules (SHIPPED, `b238602`/`11d082d`/`73ba9cf`).** Per-object rule table at Settings › Assignment rules; `resolveAssignment` via `omApplyFilter`; real least-busy (`autoOpenCount` argmin) + per-pool round-robin; wired into create + ad-lead.
-3. **Scoring Rules.** Scorecard config + `recomputeScore`; replace the static seed; wire the score action + threshold dispatch.
+3. ✅ **Scoring Rules (SHIPPED, `4bd2319`/`a8bd929`/`be81e3d`/`c4c29e5`).** `scoreRules` scorecard + `recomputeScore` on every create + edit; random seeds removed; score action + "Lead score reached" threshold dispatch wired.
 4. **Validation Rules.** Per-object validation list evaluated in `errorFor` + the stage-gate caller, custom error via existing plumbing.
 5. **SLA / Escalation Rules.** On the Phase-0 scheduler: breach ladders firing existing interpreter actions + an SLA badge.
 6. **Approval + Blueprint.** In-memory approval request + inbox card gating stage-commit; `allowedNext:[]` transition guards.
