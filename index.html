@@ -1634,6 +1634,7 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Statuses',page:'settings-statuses'},
     {label:'Duplicates',page:'settings-duplicates'},
     {label:'Assignment rules',page:'settings-assignment'},
+    {label:'Lead scoring',page:'settings-scoring'},
     {label:'Automations',page:'settings-automations'},
     {label:'Sequences',page:'settings-sequences'},
     {label:'Forms',page:'settings-forms'},
@@ -3102,6 +3103,7 @@ const SETTINGS_GROUPS=[
     {label:'Export data',page:'settings-export',Icon:I.Download},
     {label:'Duplicates',page:'settings-duplicates',Icon:I.Copy},
     {label:'Assignment rules',page:'settings-assignment',Icon:I.GitBranch},
+    {label:'Lead scoring',page:'settings-scoring',Icon:I.Target},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
     {label:'Recycle bin',page:'settings-recycle-bin',Icon:I.History},
     {label:'Delete workspace',page:'settings-delete-workspace',Icon:I.Trash,danger:true,ownerOnly:true},
@@ -6343,6 +6345,54 @@ function DuplicatesView({object,showToolbar}){
   </div>);
 }
 // -- Part D: global Settings -> Duplicates page --
+// P3: Lead Scoring console — author scorecard rules (points per matching condition) that compute the lead score.
+function ScoreRuleRow({rule,fields,readOnly,onChange,onRemove}){
+  const pts=parseInt(rule.points,10)||0;
+  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className={['w-11 h-7 rounded-lg text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums',pts>=0?'bg-emerald-500/12 text-emerald-300':'bg-red-500/12 text-red-300'].join(' ')}>{pts>=0?'+':''}{pts}</span>
+      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
+      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
+    </div>
+    <div className="flex items-start gap-2 flex-wrap">
+      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">WHEN</span>
+      <div className="min-w-0"><OmFiltersButton object="lead" fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})}/></div>
+      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">ADD</span>
+      <div className="flex items-center gap-1 mt-0.5">
+        <button onClick={()=>onChange({points:Math.max(-100,pts-5)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">−</button>
+        <input value={pts} onChange={e=>onChange({points:Math.max(-100,Math.min(100,parseInt(e.target.value,10)||0))})} disabled={readOnly} inputMode="numeric" className="w-14 text-center px-1 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-semibold text-white outline-none focus:border-brand-500/40 tabular-nums"/>
+        <button onClick={()=>onChange({points:Math.min(100,pts+5)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">+</button>
+        <span className="text-[11px] text-white/35 ml-1">points</span>
+      </div>
+    </div>
+  </div>);
+}
+function SettingsScoringPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const rules=(crm.scoreRules||[]).filter(r=>r.object==='lead');const setRules=crm.setScoreRules;
+  const readOnly=!settingsIsAdmin();
+  const liveLeads=(typeof _liveLeads!=='undefined'&&_liveLeads)||[];
+  const fields=React.useMemo(()=>autoFieldsFor('lead',liveLeads),[liveLeads.length]);
+  const addRule=()=>setRules(l=>[...l,{id:'sc'+Date.now(),object:'lead',name:'New scoring rule',enabled:true,points:10,when:{match:'AND',conds:[]}}]);
+  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
+  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
+  const maxPossible=(typeof SCORE_BASE!=='undefined'?SCORE_BASE:25)+rules.filter(r=>r.enabled!==false&&(parseInt(r.points,10)||0)>0).reduce((a,r)=>a+(parseInt(r.points,10)||0),0);
+  return(<SettingsShell active="settings-scoring" goTo={goTo} subtitle="Score leads automatically. Each rule adds or subtracts points when its condition matches; the total drives the Hot / Warm / Cold badge.">
+    <div className="max-w-3xl">
+      <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3 mb-4">
+        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Base</p><p className="text-[18px] font-bold text-white/90 tabular-nums">{typeof SCORE_BASE!=='undefined'?SCORE_BASE:25}</p></div>
+        <div className="w-px h-8 bg-white/[0.08]"/>
+        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Hot at</p><p className="text-[18px] font-bold text-red-300 tabular-nums">≥ {typeof SCORE_HOT!=='undefined'?SCORE_HOT:70}</p></div>
+        <div className="w-px h-8 bg-white/[0.08]"/>
+        <div className="min-w-0"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Max possible</p><p className="text-[18px] font-bold text-emerald-300 tabular-nums">{Math.min(100,maxPossible)}</p></div>
+        <p className="text-[11.5px] text-white/45 leading-relaxed ml-auto max-w-[240px]">Scores clamp to 0–100 and recompute on create + edit. Crossing the hot threshold fires the <span className="text-white/70">Lead score reached</span> trigger.</p>
+      </div>
+      <div className="flex flex-col gap-3">{rules.length?rules.map(r=>(<ScoreRuleRow key={r.id} rule={r} fields={fields} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.Target size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No scoring rules yet — every lead scores the base value.</p></div>)}</div>
+      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+    </div>
+  </SettingsShell>);
+}
 // P2: Assignment / Routing Rules console — author per-object rules that set a new record's owner on create.
 const ASSIGN_OBJECTS=[['lead','Leads'],['contact','Contacts'],['company','Companies'],['deal','Deals']];
 const ASSIGN_THEN=[['leastBusy','Least busy rep'],['roundRobin','Round-robin'],['rep','Specific rep']];
@@ -12989,7 +13039,7 @@ function ReportsPage({goTo}){
 const SETTINGS_PAGE_META={
   'settings-general':'General','settings-properties':'Custom fields','settings-team':'Team','settings-permissions':'Permissions','settings-permission-matrix':'Permission matrix','settings-billing':'Billing',
   'settings-tags':'Tags','settings-statuses':'Statuses',
-  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
+  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
   'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
   // Personal
@@ -13001,7 +13051,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -22935,6 +22985,7 @@ function App(){
       {page==='settings-privacy'  && <SettingsPrivacyPage {...p}/>}
       {page==='settings-duplicates' && <SettingsDuplicatesPage {...p}/>}
       {page==='settings-assignment' && <SettingsAssignmentPage {...p}/>}
+      {page==='settings-scoring' && <SettingsScoringPage {...p}/>}
       {page==='settings-tags' && <SettingsTagsPage {...p}/>}
       {page==='settings-statuses' && <SettingsStatusesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
