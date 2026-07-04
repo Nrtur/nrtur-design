@@ -1637,6 +1637,7 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Lead scoring',page:'settings-scoring'},
     {label:'Validation rules',page:'settings-validation'},
     {label:'SLA rules',page:'settings-sla'},
+    {label:'Approvals',page:'settings-approvals'},
     {label:'Automations',page:'settings-automations'},
     {label:'Sequences',page:'settings-sequences'},
     {label:'Forms',page:'settings-forms'},
@@ -3112,6 +3113,7 @@ const SETTINGS_GROUPS=[
     {label:'Lead scoring',page:'settings-scoring',Icon:I.Target},
     {label:'Validation rules',page:'settings-validation',Icon:I.ShieldCheck},
     {label:'SLA rules',page:'settings-sla',Icon:I.Clock},
+    {label:'Approvals',page:'settings-approvals',Icon:I.CheckSquare},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
     {label:'Recycle bin',page:'settings-recycle-bin',Icon:I.History},
     {label:'Delete workspace',page:'settings-delete-workspace',Icon:I.Trash,danger:true,ownerOnly:true},
@@ -6353,6 +6355,55 @@ function DuplicatesView({object,showToolbar}){
   </div>);
 }
 // -- Part D: global Settings -> Duplicates page --
+// P6: Approvals console — a pending-approval inbox (approve/reject) + the deal approval rules.
+function ApprovalRuleRow({rule,fields,reps,readOnly,onChange,onRemove}){
+  const inp="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 disabled:opacity-60";
+  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 flex items-center justify-center shrink-0"><I.ShieldCheck size={14}/></span>
+      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className={"flex-1 min-w-0 text-[13px] font-medium "+inp}/>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
+      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
+    </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">REQUIRE WHEN</span>
+      <div className="min-w-0"><OmFiltersButton object="deal" fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})} disabled={readOnly}/></div>
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">APPROVER</span>
+      <select value={rule.approver||''} onChange={e=>onChange({approver:e.target.value})} disabled={readOnly} style={{colorScheme:'dark'}} className={"max-w-[180px] "+inp}>{reps.map(m=>(<option key={m.avatar} value={m.name} style={{background:'var(--s900)'}}>{m.name}</option>))}</select>
+    </div>
+  </div>);
+}
+function SettingsApprovalsPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const rules=(crm.approvalRules||[]).filter(r=>r.object==='deal');const setRules=crm.setApprovalRules;
+  const pending=(crm.approvals||[]).filter(a=>a.status==='pending');
+  const decided=(crm.approvals||[]).filter(a=>a.status!=='pending').slice(0,4);
+  const readOnly=!settingsIsAdmin();
+  const reps=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
+  const liveDeals=(typeof _liveDeals!=='undefined'&&_liveDeals)||[];
+  const fields=React.useMemo(()=>autoFieldsFor('deal',liveDeals),[liveDeals.length]);
+  const addRule=()=>setRules(l=>[...l,{id:'ap'+Date.now(),object:'deal',name:'New approval rule',enabled:true,when:{match:'AND',conds:[]},approver:(reps[0]&&reps[0].name)||''}]);
+  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
+  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
+  const repColor=(name)=>(reps.find(m=>m.name===name)||{}).color||'#6366f1';
+  return(<SettingsShell active="settings-approvals" goTo={goTo} subtitle="Gate risky deal moves behind sign-off. A move that matches a rule is blocked until its approver decides — pending requests land here.">
+    <div className="max-w-3xl">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2.5"><span className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Pending approvals</span>{pending.length>0&&<span className="px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[10px] font-semibold tabular-nums">{pending.length}</span>}</div>
+        {pending.length?(<div className="flex flex-col gap-2">{pending.map(a=>(<div key={a.id} className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] p-3.5 flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:repColor(a.approver)}}>{arInitials(a.approver||'?')}</span>
+          <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{a.recordName} → <span className="text-amber-200">{a.targetName}</span></p><p className="text-[11.5px] text-white/50 mt-0.5 truncate">{a.ruleName} · approver {a.approver}</p></div>
+          <button onClick={()=>crm.decideApproval(a.id,'rejected')} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-300/90 bg-red-500/[0.08] border border-red-500/20 hover:bg-red-500/[0.14] transition-all shrink-0">Reject</button>
+          <button onClick={()=>crm.decideApproval(a.id,'approved')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-emerald-500/90 hover:bg-emerald-500 transition-all shrink-0"><I.Check size={13} stroke={2.6}/>Approve</button>
+        </div>))}</div>):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-6 text-center"><p className="text-[12.5px] text-white/45">No pending approvals — matching deal moves will appear here for sign-off.</p></div>)}
+        {decided.length>0&&<div className="mt-2 flex flex-wrap gap-1.5">{decided.map(a=>(<span key={a.id} className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium',a.status==='approved'?'bg-emerald-500/12 text-emerald-300':'bg-red-500/12 text-red-300'].join(' ')}>{a.status==='approved'?'✓':'✕'} {a.recordName} · {a.status}</span>))}</div>}
+      </div>
+      <div className="flex items-center gap-2 mb-3"><span className="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]">Approval rules</span><span className="text-[11px] text-white/35">— on deal stage moves</span></div>
+      <div className="flex flex-col gap-3">{rules.length?rules.map(r=>(<ApprovalRuleRow key={r.id} rule={r} fields={fields} reps={reps} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.ShieldCheck size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No approval rules — every deal move commits directly.</p></div>)}</div>
+      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+    </div>
+  </SettingsShell>);
+}
 // P5: SLA / Escalation console — author per-object time-breach rules (untouched N days -> actions).
 const SLA_OBJECTS=[['lead','Leads'],['deal','Deals'],['contact','Contacts'],['company','Companies']];
 function SlaRuleRow({rule,fields,reps,readOnly,onChange,onRemove}){
@@ -9029,6 +9080,11 @@ function DealDetailPage({goTo,nav}){
       window.__nrturToast&&window.__nrturToast('Moved to '+stageName+' in '+_pipe.name,'success');return;}
     const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];
     if(!skipGate&&!blueprintAllows(d.stageKey,k)){window.__nrturToast&&window.__nrturToast('Blueprint · '+(d.dStage||d.stageName||'this deal')+' can only move to '+((DEAL_BLUEPRINT[d.stageKey]||[]).map(x=>(STAGE_BY_KEY[x]||{}).name||x).join(', ')||'—'),'warning');return;} // P6: blueprint transition guard
+    {const _apr=(typeof needsApproval==='function')?needsApproval('deal',{...d,stageName:stageName}):null; // P6: approval gate — a matching move needs sign-off
+      if(_apr){const _rec=(crm.approvals||[]).find(a=>a.recordId===d.id&&a.targetKey===k);
+        if(_rec&&_rec.status==='approved'){crm.consumeApproval&&crm.consumeApproval(_rec.id);} // already signed off → let it through
+        else{if(!_rec&&crm.requestApproval)crm.requestApproval({ruleId:_apr.id,ruleName:_apr.name,object:'deal',recordId:d.id,recordName:d.name||d.company||('Deal #'+d.id),targetKey:k,targetName:stageName,approver:_apr.approver});
+          window.__nrturToast&&window.__nrturToast(_rec?('⏳ '+(_rec.status==='rejected'?'Approval was rejected':'Awaiting approval')+' · '+_apr.name):('⏳ Sent to '+_apr.approver+' for approval · '+_apr.name),'warning');return;}}}
     if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);fireDetailHandoffs(k);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
@@ -12070,6 +12126,10 @@ const SLA_RULES_SEED=[
   {id:'sla_lead_stale',object:'lead',name:'New lead untouched 3 days',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'status',op:'is any of',value:['New','Contacted']}]},withinDays:3,then:{task:'Follow up — SLA breach',notify:'#sales',assignTo:'',tag:'sla-breach'}},
   {id:'sla_deal_rot',object:'deal',name:'Open deal no activity 7 days',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'stageName',op:'is none of',value:['Won']}]},withinDays:7,then:{task:'Re-engage stalled deal',notify:'',assignTo:'',tag:'stalled'}},
 ];
+// P6: Approval Rules — a move whose target+record matches a rule is blocked until the approver signs off (an in-memory approval request).
+const APPROVAL_RULES_SEED=[
+  {id:'ap_bigwin',object:'deal',name:'Deals over $50k need sign-off to close',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'stageName',op:'is any of',value:['Won']},{id:'c2',fieldKey:'amount',op:'>',value:'50000',value2:''}]},approver:'Alex Morgan'},
+];
 const SLACK_CHANNELS=['#sales','#leads','#wins','#alerts','#support'];
 const FLAG_REASONS=['Needs review','At risk','Manual check required','Data looks wrong','High-value — escalate'];
 const REPORT_OPTS=['Pipeline digest','Activity summary','Win / loss report','Lead-source breakdown'];
@@ -13159,7 +13219,7 @@ function ReportsPage({goTo}){
 const SETTINGS_PAGE_META={
   'settings-general':'General','settings-properties':'Custom fields','settings-team':'Team','settings-permissions':'Permissions','settings-permission-matrix':'Permission matrix','settings-billing':'Billing',
   'settings-tags':'Tags','settings-statuses':'Statuses',
-  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-validation':'Validation rules','settings-sla':'SLA rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
+  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-validation':'Validation rules','settings-sla':'SLA rules','settings-approvals':'Approvals','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
   'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
   // Personal
@@ -13171,7 +13231,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-validation','settings-sla','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-validation','settings-sla','settings-approvals','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -17625,6 +17685,17 @@ function validateRecord(object,record){
     if(!r.when||!r.when.conds||!r.when.conds.length)continue; // an empty rule can't invalidate everything
     let bad=false;try{bad=omApplyFilter([record],r.when,autoFieldsFor(object)).length>0;}catch(e){bad=false;} // fail-open: a broken rule never locks out the save
     if(bad)return r.message||'This record doesn’t meet a validation rule.';
+  }
+  return null;
+}
+// P6: does a record (with its target state merged in) match any enabled approval rule? → the first matching rule, or null.
+function needsApproval(object,record){
+  if(!_autoRt||!record)return null;
+  const rules=((_autoRt.approvalRules)||[]).filter(r=>r&&r.enabled!==false&&r.object===object);
+  for(let i=0;i<rules.length;i++){const r=rules[i];
+    if(!r.when||!r.when.conds||!r.when.conds.length)continue;
+    let m=false;try{m=omApplyFilter([record],r.when,autoFieldsFor(object)).length>0;}catch(e){m=false;}
+    if(m)return r;
   }
   return null;
 }
@@ -22963,6 +23034,8 @@ function App(){
   const [scoreRules,setScoreRules]=React.useState(SCORE_RULES_SEED); // P3: scorecard rule table
   const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
   const [slaRules,setSlaRules]=React.useState(SLA_RULES_SEED); // P5: SLA/escalation rule table
+  const [approvalRules,setApprovalRules]=React.useState(APPROVAL_RULES_SEED); // P6: approval rule table
+  const [approvals,setApprovals]=React.useState([]); // P6: in-memory approval requests (inbox)
   _liveCustomObjects=customObjects; // mirror for nav/search helpers
   // ── Ad lead capture (Meta / Google) — connection state, lead-form mappings, intake feed, ingest ──
   const [adState,setAdState]=React.useState({'meta-ads':{connected:true,accounts:['Bloom Creative'],assets:['Bloom Creative','Bloom Real Estate']},'google-ads':{connected:false}});
@@ -23023,6 +23096,11 @@ function App(){
     updateLead:(id,patch)=>{const _bef=(_liveLeads||[]).find(l=>l.id===id);const _after=_bef?{..._bef,...patch}:null;if(_bef)fireRecordUpdate('lead',_bef,_after);let _sc=null;try{if(_after&&patch&&!('score'in patch))_sc=recomputeScore('lead',_after);}catch(e){}setLeads(a=>a.map(l=>l.id===id?{...l,...patch,...(_sc!=null?{score:_sc}:{})}:l));if(_sc!=null&&_bef&&(_bef.score||0)<SCORE_HOT&&_sc>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{..._after,score:_sc},['Lead score reached']);}catch(e){}},0);}, // P3: recompute score on edit + fire on crossing
     updateCompany:(id,patch)=>{const _befC=(_liveCompanies||[]).find(c=>c.id===id);if(_befC)fireRecordUpdate('company',_befC,{..._befC,...patch});setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
+    approvalRules,setApprovalRules,approvals,setApprovals, // P6: approval rules + inbox
+    requestApproval:(req)=>setApprovals(a=>[{id:'apr'+Date.now()+Math.floor(Math.random()*1e4),status:'pending',at:Date.now(),requestedBy:CURRENT_USER.avatar,...req},...a]),
+    consumeApproval:(idv)=>setApprovals(a=>a.filter(x=>x.id!==idv)),
+    // Approve → apply the (deal) stage move the request was gating; reject → leave it in place. Both stamp the decision.
+    decideApproval:(idv,decision)=>{const ap=(approvals||[]).find(x=>x.id===idv);setApprovals(a=>a.map(x=>x.id===idv?{...x,status:decision,decidedAt:Date.now(),decidedBy:CURRENT_USER.avatar}:x));if(decision==='approved'&&ap&&ap.object==='deal'&&ap.recordId!=null){const _term=/won|lost/i.test(String(ap.targetKey||''));const _at=Date.now();setDeals(ds=>ds.map(d=>d.id===ap.recordId?{...d,dStage:ap.targetName||d.dStage,stageKey:ap.targetKey||d.stageKey,stageEnteredAt:_at,stageHistory:[...(d.stageHistory||[]),{stageKey:ap.targetKey,at:_at,by:CURRENT_USER.avatar}],outcome:_term?{result:ap.targetKey==='won'?'won':'lost',reason:'Approved',by:CURRENT_USER.avatar}:null}:d));if(window.__nrturToast)window.__nrturToast('✓ Approved · '+(ap.recordName||'deal')+' → '+(ap.targetName||'moved'),'success');}else if(decision==='rejected'&&window.__nrturToast)window.__nrturToast('Approval rejected · '+((ap&&ap.recordName)||'deal'),'warning');},
     // Lifecycle: winning a deal advances its primary contact to Customer (unless already Customer/Lost), logged on the contact's Changes tab.
     promoteWonContact:(deal)=>{if(!deal||deal.primaryContactId==null)return;const ct=contacts.find(x=>x.id===deal.primaryContactId);if(!ct||ct.cstatus==='Customer'||ct.cstatus==='Lost')return;setContacts(cs=>cs.map(x=>x.id===deal.primaryContactId?{...x,cstatus:'Customer'}:x));setActivities(a=>[{...mkAct('field',{ts:0,by:'nrtur',title:'Status → Customer',body:'Auto-set when “'+(deal.name||deal.company||'a deal')+'” was won.'}),subjectType:'contact',subjectId:deal.primaryContactId},...a]);},
     activities,
@@ -23033,7 +23111,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -23049,7 +23127,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,approvalRules,setApprovalRules,approvals,setApprovals,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
@@ -23148,6 +23226,7 @@ function App(){
       {page==='settings-scoring' && <SettingsScoringPage {...p}/>}
       {page==='settings-validation' && <SettingsValidationPage {...p}/>}
       {page==='settings-sla' && <SettingsSlaPage {...p}/>}
+      {page==='settings-approvals' && <SettingsApprovalsPage {...p}/>}
       {page==='settings-tags' && <SettingsTagsPage {...p}/>}
       {page==='settings-statuses' && <SettingsStatusesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
