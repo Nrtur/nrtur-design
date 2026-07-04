@@ -12003,6 +12003,11 @@ const VALIDATION_RULES_SEED=[
   {id:'vr_lead_sr',object:'lead',name:'Sales-Ready leads need an email',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'status',op:'is any of',value:['Sales-Ready']},{id:'c2',fieldKey:'email',op:'is empty',value:''}]},message:'A Sales-Ready lead needs an email address.'},
   {id:'vr_contact_cust',object:'contact',name:'Customers need an email',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'cstatus',op:'is any of',value:['Customer']},{id:'c2',fieldKey:'email',op:'is empty',value:''}]},message:'A Customer contact needs an email address.'},
 ];
+// P5: SLA / Escalation Rules — per-object time-breach rules; on the simulated clock, a record untouched past withinDays fires the rule's actions.
+const SLA_RULES_SEED=[
+  {id:'sla_lead_stale',object:'lead',name:'New lead untouched 3 days',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'status',op:'is any of',value:['New','Contacted']}]},withinDays:3,then:{task:'Follow up — SLA breach',notify:'#sales',assignTo:'',tag:'sla-breach'}},
+  {id:'sla_deal_rot',object:'deal',name:'Open deal no activity 7 days',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'stageName',op:'is none of',value:['Won']}]},withinDays:7,then:{task:'Re-engage stalled deal',notify:'',assignTo:'',tag:'stalled'}},
+];
 const SLACK_CHANNELS=['#sales','#leads','#wins','#alerts','#support'];
 const FLAG_REASONS=['Needs review','At risk','Manual check required','Data looks wrong','High-value — escalate'];
 const REPORT_OPTS=['Pipeline digest','Activity summary','Win / loss report','Lead-source breakdown'];
@@ -17664,9 +17669,27 @@ function fireRecordUpdate(ent,before,after){
   setTimeout(function(){try{fireEntityAutomationEvents(ent,a,uniq);}catch(e){}},0);
 }
 // P0 scheduler: fire time-based triggers ONCE each (deduped) against the simulated clock; reuses the existing interpreter/bus.
+// P5: SLA helpers — record age in days, compile a rule's actions into interpreter nodes, and the badge status.
+function slaAgeDays(object,rec){return object==='deal'?(typeof dashDealAgeDays==='function'?dashDealAgeDays(rec):(rec.days||0)):(rec.days!=null?rec.days:0);}
+function slaThenNodes(then){if(!then)return [];const nodes=[];if(then.task)nodes.push({kind:'action',key:'task',taskTitle:then.task});if(then.notify)nodes.push({kind:'action',key:'slack',channel:then.notify});if(then.assignTo)nodes.push({kind:'action',key:'assign',assignTo:then.assignTo});if(then.tag)nodes.push({kind:'action',key:'addTag',tag:then.tag});return nodes;}
+function _slaRecs(obj){return ({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[obj]||[];}
+function _slaOpenDeal(rec){return !/won|lost|closed/i.test(String(rec.stageKey||'')+' '+String(rec.dStage||'')+' '+String(rec.outcome||''));}
+// The first applicable SLA rule for a record → {name,within,age,breached,daysLeft} (for the badge), or null.
+function slaStatus(object,rec){
+  if(!_autoRt||!rec||rec.deleted)return null;
+  const advDays=Math.max(0,Math.floor((_autoNow-_autoStart)/864e5));
+  const rules=(_autoRt.slaRules||[]).filter(r=>r&&r.enabled!==false&&r.object===object);
+  for(let i=0;i<rules.length;i++){const r=rules[i];
+    if(object==='deal'&&!_slaOpenDeal(rec))continue;
+    if(r.when&&r.when.conds&&r.when.conds.length){try{if(!omApplyFilter([rec],r.when,autoFieldsFor(object)).length)continue;}catch(e){continue;}}
+    const within=parseInt(r.withinDays,10)||1;const age=slaAgeDays(object,rec)+advDays;
+    return {name:r.name,within,age,breached:age>=within,daysLeft:Math.max(0,within-age)};
+  }
+  return null;
+}
 function scanBreaches(){
   if(!_autoRt)return {};
-  const advDays=Math.max(0,Math.floor((_autoNow-_autoStart)/864e5));const n={inactive:0,taskOverdue:0,invOverdue:0};
+  const advDays=Math.max(0,Math.floor((_autoNow-_autoStart)/864e5));const n={inactive:0,taskOverdue:0,invOverdue:0,sla:0};
   const fire=(key,ent,rec,ev)=>{if(!rec||_autoFired.has(key))return false;_autoFired.add(key);try{if(ent==='deal')fireDealAutomationEvents(rec,[ev]);else fireEntityAutomationEvents(ent,rec,[ev]);}catch(e){}return true;};
   // Deal inactive 7 days — open deals whose time-in-stage (real seed age + simulated advance) >= 7d
   ((_autoRt.deals)||[]).forEach(d=>{if(!d||d.deleted)return;if(/won|lost|closed/i.test(String(d.stageKey||'')+' '+String(d.dStage||'')+' '+String(d.outcome||'')))return;const age=(typeof dashDealAgeDays==='function'?dashDealAgeDays(d):0)+advDays;if(age>=7&&fire('deal-inactive:'+d.id,'deal',d,'Deal inactive 7 days'))n.inactive++;});
@@ -17674,6 +17697,15 @@ function scanBreaches(){
   ((_autoRt.calItems)||[]).forEach(t=>{if(!t||t.type!=='task'||t.done||t.deleted||!t.date||/^Created by automation/.test(String(t.notes||'')))return;const ts=(t.date instanceof Date)?t.date.getTime():+t.date;if(ts<_autoNow&&fire('task-overdue:'+t.id,'contact',{id:(t.contactId!=null?t.contactId:'task-'+t.id),name:t.title||'Task',company:t.company||'',primaryContactId:(t.contactId!=null?t.contactId:null)},'Task overdue'))n.taskOverdue++;});
   // Invoice overdue — sent/unpaid invoices past their due timestamp
   ((_autoRt.payInvoices)||[]).forEach(inv=>{if(!inv||inv.status==='paid'||inv.status==='draft'||inv.dueTs==null)return;if(inv.dueTs<_autoNow&&fire('inv-overdue:'+inv.id,'contact',{id:inv.id,name:inv.contact||inv.company||inv.number||'Invoice',company:inv.company||''},'Invoice overdue'))n.invOverdue++;});
+  // P5: SLA / Escalation rules — a matching record untouched past withinDays fires the rule's actions once (deduped).
+  ((_autoRt.slaRules)||[]).forEach(r=>{if(!r||r.enabled===false||!r.object)return;const obj=r.object;const ctx=autoCtx(obj);let fields=[];try{fields=autoFieldsFor(obj);}catch(e){}
+    _slaRecs(obj).forEach(rec=>{if(!rec||rec.deleted)return;if(obj==='deal'&&!_slaOpenDeal(rec))return;
+      if(r.when&&r.when.conds&&r.when.conds.length){try{if(!omApplyFilter([rec],r.when,fields).length)return;}catch(e){return;}}
+      const age=slaAgeDays(obj,rec)+advDays;if(age<(parseInt(r.withinDays,10)||1))return;
+      const key='sla:'+r.id+':'+rec.id;if(_autoFired.has(key))return;_autoFired.add(key);
+      try{const nodes=slaThenNodes(r.then);if(nodes.length)autoRunNodes(nodes,rec,ctx,{effects:[],stop:false});_autoRt.addActivity(obj,rec.id,mkAct('field',{ts:0,by:'nrtur',title:'⏱ SLA breach · '+(r.name||'SLA rule'),body:'Untouched '+age+'d — SLA target '+(parseInt(r.withinDays,10)||1)+'d.'}));n.sla++;}catch(e){}
+    });
+  });
   return n;
 }
 // Advance the simulated clock, resume any due wait-node continuations, then rescan breaches.
@@ -22868,6 +22900,7 @@ function App(){
   const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
   const [scoreRules,setScoreRules]=React.useState(SCORE_RULES_SEED); // P3: scorecard rule table
   const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
+  const [slaRules,setSlaRules]=React.useState(SLA_RULES_SEED); // P5: SLA/escalation rule table
   _liveCustomObjects=customObjects; // mirror for nav/search helpers
   // ── Ad lead capture (Meta / Google) — connection state, lead-form mappings, intake feed, ingest ──
   const [adState,setAdState]=React.useState({'meta-ads':{connected:true,accounts:['Bloom Creative'],assets:['Bloom Creative','Bloom Real Estate']},'google-ads':{connected:false}});
@@ -22917,7 +22950,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
-    routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,
+    routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,
     payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     updateCustomObject:(id,patch)=>setCustomObjects(a=>a.map(o=>o.id===id?{...o,...patch}:o)),
@@ -22938,7 +22971,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -22954,7 +22987,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
