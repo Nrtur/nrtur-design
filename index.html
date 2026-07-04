@@ -7840,6 +7840,9 @@ function AddContactPage({goTo,nav}){
   );
 }
 // ?? Pipeline ??????????????????????????????????????????????????????????????????
+// P6: Blueprint — allowed stage transitions for the standard sales pipeline (adjacent forward/back, Lost anytime, reopen from terminal). Custom-pipeline stages (not listed) are unrestricted.
+const DEAL_BLUEPRINT={prospecting:['qualified','lost'],qualified:['prospecting','proposal','lost'],proposal:['qualified','negotiation','lost'],negotiation:['proposal','won','lost'],won:['prospecting','qualified','proposal','negotiation'],lost:['prospecting','qualified','proposal','negotiation']};
+function blueprintAllows(fromKey,toKey){if(!fromKey||!toKey||fromKey===toKey)return true;const nx=DEAL_BLUEPRINT[fromKey];if(!nx)return true;return nx.indexOf(toKey)>=0;}
 const STAGES_DATA=[
   {key:'prospecting',name:'Prospecting',color:'#94a3b8',count:8,value:'$42k',deals:[
     {id:120,company:'Northpeak Co',value:'$4,000',owner:'AM',ownerColor:'#3b82f6',tag:'Lost',tagBg:'bg-red-500/15',tagFg:'text-red-300',age:'4w',score:'cold',name:'Northpeak — Pilot',amount:4000,pipeline:'Sales Pipeline',primaryContact:'Greg Mason',dealTags:['cold'],deleted:true,deletedAt:Date.now()-14*864e5,deletedBy:'Jamie Kim'},
@@ -9024,7 +9027,9 @@ function DealDetailPage({goTo,nav}){
       if(!skipGate){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}
       {const _mAt=Date.now();updateDeal(d.id,{stagePlacements:_placementsAll.map(p=>p.pipelineId===_viewPl.pipelineId?{...p,stageKey:k,at:_mAt,history:_plHist(p,k,_mAt)}:p)});}
       window.__nrturToast&&window.__nrturToast('Moved to '+stageName+' in '+_pipe.name,'success');return;}
-    const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);fireDetailHandoffs(k);}; // non-terminal move → outcome cleared (P1-5)
+    const k=_keyByName[stageName]||DEAL_STAGE_KEY_BY_NAME[stageName]||d.stageKey;const _tS=_pipeStages.find(s=>s.key===k)||STAGE_BY_KEY[k];
+    if(!skipGate&&!blueprintAllows(d.stageKey,k)){window.__nrturToast&&window.__nrturToast('Blueprint · '+(d.dStage||d.stageName||'this deal')+' can only move to '+((DEAL_BLUEPRINT[d.stageKey]||[]).map(x=>(STAGE_BY_KEY[x]||{}).name||x).join(', ')||'—'),'warning');return;} // P6: blueprint transition guard
+    if(!skipGate&&_tS){const missing=dealMissingFor(d,_tS);if(missing.length){setStageGate({stageName,stage:_tS,missing});return;}}const kind=dealTerminalKind({key:k,name:stageName});if(kind){setDealOutcome({stageName,kind});return;}setStage(stageName);updateDeal(d.id,{dStage:stageName,stageKey:k,stageEnteredAt:Date.now(),stageHistory:[...(d.stageHistory||[]),{stageKey:k,at:Date.now(),by:CURRENT_USER.avatar}],outcome:null,...dealPlacement(d,d.pipeline||_pipe.name,k)});runDealAutomations({...d,stageKey:k,dStage:stageName},stageName,null);fireDetailHandoffs(k);}; // non-terminal move → outcome cleared (P1-5)
   const onDealField=(k,v)=>{
     if(k==='dStage'){commitStage(v);return;}
     if(k==='pipeline'){ // P1-1 → D2p2: PRIMARY switch is a MOVE. If the deal is already ENROLLED in the target, promote that placement (it continues at its enrolled stage); other enrollments survive, the old primary placement is dropped.
