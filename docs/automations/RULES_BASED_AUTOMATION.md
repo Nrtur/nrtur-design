@@ -12,7 +12,7 @@ _Companion to [`AUTOMATIONS_AUDIT.md`](AUTOMATIONS_AUDIT.md). Where the audit co
 
 nrtur now has a genuinely **excellent visual flow builder that executes real effects** — the interpreter walks the authored node tree ([`autoRunNodes`, index.html:17332](../../index.html)) and actually mutates records (assign/round-robin, add/remove tag, `updateField` Owner/Status/Priority, enroll, branch), fed by a multi-entity created-event bus (`fireEntityAutomationEvents`, 17372) plus full deal-lifecycle firing. **What it lacks is the paradigm every serious CRM ships _next to_ the canvas:** a per-object **rule layer** — Assignment/routing, Scoring, Validation, SLA/Escalation, and Approval as declarative IF-condition-THEN rows an admin configures in seconds, evaluated on **create / edit / save** (not just create). This is exactly where Zoho and Salesforce win, and it's the highest-leverage thing nrtur can add.
 
-**Readiness (rule-based automation dimension): `46 / 100` at research time → `~86 / 100` now that Phases 0–5 have shipped (trigger substrate · unified AND/OR conditions · Assignment · Scoring · Validation · SLA Rules) → `88 / 100` once the rest of §6 (Approval + the unified rules console) is built.**
+**Readiness (rule-based automation dimension): `46 / 100` at research time → `~88 / 100` now that Phases 0–6 have shipped (trigger substrate · unified AND/OR conditions · Assignment · Scoring · Validation · SLA · Approval + Blueprint) — the in-memory-feasible ceiling. The remaining ~12 points are backend-only (durable persistence · server-side rule evaluation · a real durable scheduler/queue), out of scope for the prototype by design. Phase 7 (a unified `Settings › Rules` console + thin follow-ons: auto-response · data-transform · duplicate config · field-dependency) consolidates and rounds out the layer without moving the in-memory ceiling.**
 
 ---
 
@@ -55,8 +55,8 @@ The 14 rule types that make up the rule-based paradigm across Salesforce, Zoho, 
 | 3 | **Lead / Deal Scoring Rules** (demographic + behavioral scorecard) | ○→● | **Shipped:** `scoreRules` scorecard + `recomputeScore` (real number, no random); score action + threshold trigger wired. Behavioral inputs + deal scoring to add. |
 | 4 | **Validation Rules** (block a bad save via custom expression) | ◐→● | **Shipped:** `validateRecord` blocks create + bulk import with a custom cross-field message. Detail-edit / stage-move to add. |
 | 5 | **Escalation / SLA / Time-based Rules** | ○→● | **Shipped:** `slaRules` on the scheduler fire task/notify/assign/tag on breach (deduped) + an SLA badge. Multi-tier ladders + durable timer to add. |
-| 6 | **Approval Processes** | ○ | Nothing — stage gates check field presence, not human sign-off. |
-| 7 | **Blueprint / State-machine** (guided transitions) | ◐ | Gates enforce mandatory fields, but any stage can move to any stage — no `allowedNext`. |
+| 6 | **Approval Processes** | ○→● | **Shipped:** approval rules + an inbox gate a matching deal move behind sign-off; Approve applies the move. |
+| 7 | **Blueprint / State-machine** (guided transitions) | ◐→● | **Shipped:** `DEAL_BLUEPRINT` allowed-transition guard on deal moves (no arbitrary stage jumps). Per-transition owner/permission to add. |
 | 8 | **Duplicate Rules** (configurable match keys / policy) | ◐ | Detection + merge ship; match keys/thresholds/policy are **fixed** — no admin config. |
 | 9 | **Field-dependency Rules** (cascading picklists) | ○ | Drawers render all fields independently — no controlling-field logic. |
 | 10 | **Auto-response Rules** (declarative send-on-event) | ◐ | Exists only as an ad-hoc flow action — no standalone form/inbound → send-template rule. |
@@ -135,7 +135,7 @@ Every automation use case a CRM is expected to handle, judged **post-fix** (afte
 ### Approval
 | Use case | Support | Note / what's needed |
 |---|:--:|---|
-| Discount / refund / high-value approval | ○ | No approval process of any kind. |
+| Discount / refund / high-value approval | ○→● | **Shipped:** an approval rule ("deals > $50k need sign-off to close") gates the deal move; the approver decides in the inbox. |
 
 ### Lifecycle / renewal
 | Use case | Support | Note / what's needed |
@@ -199,8 +199,8 @@ Built on the Phase-0 scheduler. `slaRules:[{object, when, withinDays, then:{task
 
 ### ◆ Medium
 
-**7 · Approval Processes + Blueprint transition guards**
-_(a) Approval:_ an in-memory `approvals:[]` array + an inbox card (approve/reject) + a guard in the stage-commit paths (`applyMove`/`commitStage`) that blocks advance while a matching pending approval exists — reuses the `StageGateModal` block point. _(b) Blueprint:_ add `allowedNext:[]` to the stage seed (alongside the existing `required:[]` ~8971) and check it in the move paths, so not every stage can jump to every stage. Both extend existing gate plumbing.
+**7 · Approval Processes + Blueprint transition guards** &nbsp;✅ **SHIPPED** (`b5ae4ae` · `245df19` · `0beddbb`)
+_(a) Approval:_ `approvalRules` (seeded: deals > $50k need sign-off to close) + an in-memory `approvals` inbox at **Settings › Approvals**. `needsApproval` matches the deal (target stage merged) via `omApplyFilter`; the deal-detail `commitStage` gate creates a **pending approval and blocks** the move; the inbox's Approve applies the gated move (firing the same won/lost automations + contact promotion as a normal move), Reject leaves it. _(b) Blueprint:_ `DEAL_BLUEPRINT` allowed-transition map + `blueprintAllows(from,to)` enforced in `commitStage` — a deal can only move to a sanctioned next stage (adjacent/Lost/reopen); custom-pipeline stages stay unrestricted. _Verified headless (gate matches / Approve moves + fires the won lifecycle; blueprint blocks skips) + adversarial-review hardening (won-lifecycle parity, permission-gated inbox). Board/list enforcement + a stage-config UI are fast follow-ons._
 
 **8 · Per-object Workflow Rule console + fast follow-ons**
 The umbrella UI: `Settings > <Object> > Rules` listing all rule types as plain IF-THEN rows **compiled into the same interpreter** (`autoRunNodes`) — an admin never draws a flow for routine logic. Plus thin presets over the same primitives: **Auto-response** (form/inbound → send template), **Data-transform** (title-case/format-phone/trim-tags on save, as new small interpreter actions beside `updateField`), configurable **Duplicate** match-keys/threshold/policy (feeding `detectDuplicates` 6112 + `DuplicateDetectionModal` 5497), and **Field-dependency** (a per-field "controlled by" map applied in the drawer render).
