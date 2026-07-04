@@ -12,7 +12,7 @@ _Companion to [`AUTOMATIONS_AUDIT.md`](AUTOMATIONS_AUDIT.md). Where the audit co
 
 nrtur now has a genuinely **excellent visual flow builder that executes real effects** — the interpreter walks the authored node tree ([`autoRunNodes`, index.html:17332](../../index.html)) and actually mutates records (assign/round-robin, add/remove tag, `updateField` Owner/Status/Priority, enroll, branch), fed by a multi-entity created-event bus (`fireEntityAutomationEvents`, 17372) plus full deal-lifecycle firing. **What it lacks is the paradigm every serious CRM ships _next to_ the canvas:** a per-object **rule layer** — Assignment/routing, Scoring, Validation, SLA/Escalation, and Approval as declarative IF-condition-THEN rows an admin configures in seconds, evaluated on **create / edit / save** (not just create). This is exactly where Zoho and Salesforce win, and it's the highest-leverage thing nrtur can add.
 
-**Readiness (rule-based automation dimension): `46 / 100` at research time → `~82 / 100` now that Phases 0–4 have shipped (trigger substrate · unified AND/OR conditions · Assignment · Scoring · Validation Rules) → `88 / 100` once the rest of §6 is built.**
+**Readiness (rule-based automation dimension): `46 / 100` at research time → `~86 / 100` now that Phases 0–5 have shipped (trigger substrate · unified AND/OR conditions · Assignment · Scoring · Validation · SLA Rules) → `88 / 100` once the rest of §6 (Approval + the unified rules console) is built.**
 
 ---
 
@@ -54,7 +54,7 @@ The 14 rule types that make up the rule-based paradigm across Salesforce, Zoho, 
 | 2 | **Assignment / Routing Rules** (round-robin, load-balance, territory, weighted, skill) | ◐→● | **Shipped:** shared per-object rule table + real least-busy. Territory/weighted/skill still to add. |
 | 3 | **Lead / Deal Scoring Rules** (demographic + behavioral scorecard) | ○→● | **Shipped:** `scoreRules` scorecard + `recomputeScore` (real number, no random); score action + threshold trigger wired. Behavioral inputs + deal scoring to add. |
 | 4 | **Validation Rules** (block a bad save via custom expression) | ◐→● | **Shipped:** `validateRecord` blocks create + bulk import with a custom cross-field message. Detail-edit / stage-move to add. |
-| 5 | **Escalation / SLA / Time-based Rules** | ○ | **No scheduler** — waits are noted-and-skipped (17340); "SLA" is only marketing copy. |
+| 5 | **Escalation / SLA / Time-based Rules** | ○→● | **Shipped:** `slaRules` on the scheduler fire task/notify/assign/tag on breach (deduped) + an SLA badge. Multi-tier ladders + durable timer to add. |
 | 6 | **Approval Processes** | ○ | Nothing — stage gates check field presence, not human sign-off. |
 | 7 | **Blueprint / State-machine** (guided transitions) | ◐ | Gates enforce mandatory fields, but any stage can move to any stage — no `allowedNext`. |
 | 8 | **Duplicate Rules** (configurable match keys / policy) | ◐ | Detection + merge ship; match keys/thresholds/policy are **fixed** — no admin config. |
@@ -122,8 +122,8 @@ Every automation use case a CRM is expected to handle, judged **post-fix** (afte
 ### SLA / escalation
 | Use case | Support | Note / what's needed |
 |---|:--:|---|
-| First-response SLA timer | ○ | No SLA clock anywhere; "SLA" is plan copy only (3231). |
-| Resolution / no-touch SLA breach | ○ | Time triggers never dispatch. |
+| First-response SLA timer | ○→● | **Shipped:** an SLA rule ("New lead untouched N days") fires escalation actions on breach + shows a countdown badge. |
+| Resolution / no-touch SLA breach | ○→● | **Shipped:** per-object SLA rules ("open deal no activity N days") fire task/notify/assign on the scheduler. |
 
 ### Notification
 | Use case | Support | Note / what's needed |
@@ -194,8 +194,8 @@ _nrtur's single biggest competitive win in this space — now real._ A per-objec
 **5 · Validation Rules — block a bad save with a custom error** &nbsp;✅ **SHIPPED** (`7702142` · `5c85e0d` · `96f526e`)
 `validationRules:[{when:conditionModel, message}]` per object (seeded 3 cross-field rules), authored at **Settings › Validation rules**. `validateRecord(object,record)` returns the first matching rule's message (via `omApplyFilter`) — the rule describes the **invalid** state. Wired into the create drawer (a red banner blocks the save before persist) and the **bulk import** (invalid rows are skipped with a count); empty/malformed rules fail open. Reuses the Phase-1 AND/OR condition builder. _Verified headless (exact block messages, valid/non-matching pass, safe on empty/malformed) + adversarial-review hardening (permission-gate the condition editor, bulk-import coverage). Deferred: detail-edit / stage-move / lead-conversion validation — the conversion path is a deliberate transform, not fresh manual entry._
 
-**6 · SLA / Escalation Rules — time-breach ladders on the new scheduler**
-Built directly on #1. `slaRules:[{when, withinHours, thenActions, escalateTo}]`; the scan tick computes elapsed-since-create/lastActivity and, on breach, fires the interpreter's **already-implemented** task/notify/assign actions. Surface a small SLA countdown/breach badge on list rows + detail.
+**6 · SLA / Escalation Rules — time-breach ladders on the scheduler** &nbsp;✅ **SHIPPED** (`5aa2929` · `0e3f86e` · `e22523e`)
+Built on the Phase-0 scheduler. `slaRules:[{object, when, withinDays, then:{task,notify,assignTo,tag}}]` (seeded 2), authored at **Settings › SLA rules**. `scanBreaches` now scans each SLA rule: a matching record whose age (days-since-activity + simulated advance) ≥ `withinDays` fires the rule's actions **once** (deduped) via the interpreter (task/notify/assign/tag) and logs an SLA-breach note; open-deal guard skips won/lost. `slaStatus(object,rec)` drives a countdown/breach **badge** on the lead detail ("SLA · 2d left" / "SLA breached"). _Verified headless (breach fires on +N-day advance, dedupe holds, badge renders) + adversarial-review hardening (new rules start disabled; empty-condition = "all records" warning). Breaches evaluate on the manual "+1 day" control (a durable server timer is the one backend line)._
 
 ### ◆ Medium
 
@@ -216,7 +216,7 @@ Ordered so each phase unblocks the next; every phase is in-memory-feasible.
 2. ✅ **Assignment / Routing Rules (SHIPPED, `b238602`/`11d082d`/`73ba9cf`).** Per-object rule table at Settings › Assignment rules; `resolveAssignment` via `omApplyFilter`; real least-busy (`autoOpenCount` argmin) + per-pool round-robin; wired into create + ad-lead.
 3. ✅ **Scoring Rules (SHIPPED, `4bd2319`/`a8bd929`/`be81e3d`/`c4c29e5`).** `scoreRules` scorecard + `recomputeScore` on every create + edit; random seeds removed; score action + "Lead score reached" threshold dispatch wired.
 4. ✅ **Validation Rules (SHIPPED, `7702142`/`5c85e0d`/`96f526e`).** `validationRules` + `validateRecord` block a bad save in the create drawer + bulk import with a custom message; authored at Settings › Validation rules.
-5. **SLA / Escalation Rules.** On the Phase-0 scheduler: breach ladders firing existing interpreter actions + an SLA badge.
+5. ✅ **SLA / Escalation Rules (SHIPPED, `5aa2929`/`0e3f86e`/`e22523e`).** `slaRules` scanned by `scanBreaches`; breach fires interpreter actions (task/notify/assign/tag) deduped; `slaStatus` badge on the lead detail; authored at Settings › SLA rules.
 6. **Approval + Blueprint.** In-memory approval request + inbox card gating stage-commit; `allowedNext:[]` transition guards.
 7. **Rules console + fast follow-ons.** The `Settings > <Object> > Rules` console (compiles IF-THEN rows into `autoRunNodes`); Auto-response, Data-transform, Duplicate config, Field-dependency.
 
