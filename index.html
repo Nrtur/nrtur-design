@@ -1636,6 +1636,7 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Assignment rules',page:'settings-assignment'},
     {label:'Lead scoring',page:'settings-scoring'},
     {label:'Validation rules',page:'settings-validation'},
+    {label:'SLA rules',page:'settings-sla'},
     {label:'Automations',page:'settings-automations'},
     {label:'Sequences',page:'settings-sequences'},
     {label:'Forms',page:'settings-forms'},
@@ -3110,6 +3111,7 @@ const SETTINGS_GROUPS=[
     {label:'Assignment rules',page:'settings-assignment',Icon:I.GitBranch},
     {label:'Lead scoring',page:'settings-scoring',Icon:I.Target},
     {label:'Validation rules',page:'settings-validation',Icon:I.ShieldCheck},
+    {label:'SLA rules',page:'settings-sla',Icon:I.Clock},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
     {label:'Recycle bin',page:'settings-recycle-bin',Icon:I.History},
     {label:'Delete workspace',page:'settings-delete-workspace',Icon:I.Trash,danger:true,ownerOnly:true},
@@ -6351,6 +6353,58 @@ function DuplicatesView({object,showToolbar}){
   </div>);
 }
 // -- Part D: global Settings -> Duplicates page --
+// P5: SLA / Escalation console — author per-object time-breach rules (untouched N days -> actions).
+const SLA_OBJECTS=[['lead','Leads'],['deal','Deals'],['contact','Contacts'],['company','Companies']];
+function SlaRuleRow({rule,fields,reps,readOnly,onChange,onRemove}){
+  const then=rule.then||{};const setThen=(patch)=>onChange({then:{...then,...patch}});const wd=parseInt(rule.withinDays,10)||1;
+  const inp="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white outline-none focus:border-brand-500/40 disabled:opacity-60";
+  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="w-7 h-7 rounded-lg bg-amber-500/12 text-amber-300 flex items-center justify-center shrink-0"><I.Clock size={14}/></span>
+      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className={"flex-1 min-w-0 text-[13px] font-medium "+inp}/>
+      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
+      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
+    </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">FOR</span>
+      <div className="min-w-0"><OmFiltersButton object={rule.object} fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})} disabled={readOnly}/></div>
+      <span className="text-[11px] font-semibold text-white/35 shrink-0">UNTOUCHED</span>
+      <div className="flex items-center gap-1">
+        <button onClick={()=>onChange({withinDays:Math.max(1,wd-1)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">−</button>
+        <input value={wd} onChange={e=>onChange({withinDays:Math.max(1,Math.min(365,parseInt(e.target.value,10)||1))})} disabled={readOnly} inputMode="numeric" className={"w-12 text-center font-semibold "+inp}/>
+        <button onClick={()=>onChange({withinDays:Math.min(365,wd+1)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">+</button>
+        <span className="text-[11px] text-white/35 ml-1">days →</span>
+      </div>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+      <div className="flex items-center gap-1.5"><span className="text-[10.5px] text-white/35 w-12 shrink-0">Task</span><input value={then.task||''} onChange={e=>setThen({task:e.target.value})} disabled={readOnly} placeholder="Create a follow-up task…" className={"flex-1 min-w-0 "+inp}/></div>
+      <div className="flex items-center gap-1.5"><span className="text-[10.5px] text-white/35 w-12 shrink-0">Notify</span><input value={then.notify||''} onChange={e=>setThen({notify:e.target.value})} disabled={readOnly} placeholder="#channel / rep" className={"flex-1 min-w-0 "+inp}/></div>
+      <div className="flex items-center gap-1.5"><span className="text-[10.5px] text-white/35 w-12 shrink-0">Escalate</span><select value={then.assignTo||''} onChange={e=>setThen({assignTo:e.target.value})} disabled={readOnly} style={{colorScheme:'dark'}} className={"flex-1 min-w-0 "+inp}><option value="" style={{background:'var(--s900)'}}>— keep owner —</option>{reps.map(m=>(<option key={m.avatar} value={m.name} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>
+      <div className="flex items-center gap-1.5"><span className="text-[10.5px] text-white/35 w-12 shrink-0">Tag</span><input value={then.tag||''} onChange={e=>setThen({tag:e.target.value})} disabled={readOnly} placeholder="add a tag…" className={"flex-1 min-w-0 "+inp}/></div>
+    </div>
+  </div>);
+}
+function SettingsSlaPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const rules=crm.slaRules||[];const setRules=crm.setSlaRules;
+  const readOnly=!settingsIsAdmin();
+  const [obj,setObj]=React.useState('lead');
+  const reps=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]);
+  const liveRows=({deal:(typeof _liveDeals!=='undefined'&&_liveDeals)||[],contact:(typeof _liveContacts!=='undefined'&&_liveContacts)||[],lead:(typeof _liveLeads!=='undefined'&&_liveLeads)||[],company:(typeof _liveCompanies!=='undefined'&&_liveCompanies)||[]})[obj]||[];
+  const fields=React.useMemo(()=>autoFieldsFor(obj,liveRows),[obj,liveRows.length]);
+  const objRules=rules.filter(r=>r.object===obj);
+  const addRule=()=>setRules(l=>[...l,{id:'sla'+Date.now(),object:obj,name:'New SLA rule',enabled:true,when:{match:'AND',conds:[]},withinDays:3,then:{task:'',notify:'',assignTo:'',tag:''}}]);
+  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
+  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
+  return(<SettingsShell active="settings-sla" goTo={goTo} subtitle="Stop records from rotting. When a matching record sits untouched past the threshold, its actions fire automatically.">
+    <div className="max-w-3xl">
+      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] mb-5">{SLA_OBJECTS.map(([k,l])=>{const n=rules.filter(r=>r.object===k).length;return(<button key={k} onClick={()=>setObj(k)} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',obj===k?'bg-brand-500/20 text-brand-200':'text-white/55 hover:text-white'].join(' ')}>{l}{n?<span className="ml-1 text-white/35 tabular-nums">{n}</span>:null}</button>);})}</div>
+      <div className="flex items-start gap-2 rounded-xl bg-white/[0.03] border border-white/[0.07] px-3.5 py-2.5 mb-4"><I.Clock size={13} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11.5px] text-white/55 leading-relaxed">Breaches are evaluated on the automation clock — use <span className="text-white/80 font-medium">+1 day</span> on the Automations page to simulate time. Each breach fires once per record and logs an SLA-breach note.</p></div>
+      <div className="flex flex-col gap-3">{objRules.length?objRules.map(r=>(<SlaRuleRow key={r.id} rule={r} fields={fields} reps={reps} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.Clock size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No SLA rules for these records yet.</p></div>)}</div>
+      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+    </div>
+  </SettingsShell>);
+}
 // P4: Validation Rules console — author per-object rules that block a bad save with a custom error.
 const VALIDATION_OBJECTS=[['deal','Deals'],['lead','Leads'],['contact','Contacts'],['company','Companies']];
 function ValidationRuleRow({rule,fields,readOnly,onChange,onRemove}){
@@ -13097,7 +13151,7 @@ function ReportsPage({goTo}){
 const SETTINGS_PAGE_META={
   'settings-general':'General','settings-properties':'Custom fields','settings-team':'Team','settings-permissions':'Permissions','settings-permission-matrix':'Permission matrix','settings-billing':'Billing',
   'settings-tags':'Tags','settings-statuses':'Statuses',
-  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-validation':'Validation rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
+  'settings-duplicates':'Duplicates','settings-assignment':'Assignment rules','settings-scoring':'Lead scoring','settings-validation':'Validation rules','settings-sla':'SLA rules','settings-integrations':'Integrations','settings-ad-leads':'Ad lead sources',
   'settings-suppression':'Suppression list','settings-notifications':'Notifications','settings-notification-defaults':'Notification defaults','settings-privacy':'Privacy & data retention',
   'settings-frequency':'Message frequency','settings-reengagement':'Re-engagement','settings-tasks':'Tasks & reminders',
   // Personal
@@ -13109,7 +13163,7 @@ const SETTINGS_PAGE_META={
 };
 // IA split: workspace settings are admin-governed shared truth; personal settings are per-user.
 // Gating reuses the existing role system (NAV_ADMIN_ROLES / CURRENT_USER_ROLE) — no parallel model.
-const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-validation','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
+const WORKSPACE_SETTINGS_PAGES=new Set(['settings-general','settings-properties','settings-team','settings-permissions','settings-permission-matrix','settings-billing','settings-tags','settings-statuses','settings-duplicates','settings-assignment','settings-scoring','settings-validation','settings-sla','settings-automations','settings-sequences','email-templates','settings-forms','settings-integrations','settings-ad-leads','settings-suppression','settings-unsubscribes','settings-privacy','settings-notification-defaults','settings-frequency','settings-reengagement','settings-tasks','settings-nav-customize','settings-dash-customize','settings-record-layouts','settings-list-views','settings-branding','settings-themes','settings-custom-objects','settings-import','settings-export','settings-recycle-bin','settings-delete-workspace']);
 function settingsIsAdmin(){return NAV_ADMIN_ROLES.indexOf(effectiveRole())>=0;}
 // Read-only banner for workspace pages that render their own layout (outside SettingsShell).
 function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200 mb-5"><I.Lock size={14} className="shrink-0"/><span><span className="font-semibold">Managed by your admin.</span> {label||'This workspace asset is read-only for your role.'}</span></div>);}
@@ -23085,6 +23139,7 @@ function App(){
       {page==='settings-assignment' && <SettingsAssignmentPage {...p}/>}
       {page==='settings-scoring' && <SettingsScoringPage {...p}/>}
       {page==='settings-validation' && <SettingsValidationPage {...p}/>}
+      {page==='settings-sla' && <SettingsSlaPage {...p}/>}
       {page==='settings-tags' && <SettingsTagsPage {...p}/>}
       {page==='settings-statuses' && <SettingsStatusesPage {...p}/>}
       {page==='profile'           && <ProfilePage {...p}/>}
