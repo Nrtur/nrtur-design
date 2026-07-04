@@ -2370,10 +2370,11 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const [vals,setVals]=React.useState(buildInitial);
   const [showMore,setShowMore]=React.useState(false);
   const [submitted,setSubmitted]=React.useState(false);
+  const [recError,setRecError]=React.useState(''); // P4: record-level validation-rule error (blocks the save)
   const [createOpen,setCreateOpen]=React.useState(false);
   const createRef=React.useRef(null);
   React.useEffect(()=>{const fn=(e)=>{if(createRef.current&&!createRef.current.contains(e.target))setCreateOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const set=(id,v)=>setVals(s=>({...s,[id]:v}));
+  const set=(id,v)=>{if(recError)setRecError('');setVals(s=>({...s,[id]:v}));};
   // Auto-fill Company from the picked Contact's linked company (Wave 3: contacts carry companyId).
   // Switching the contact updates the company too — unless the company was set manually.
   const _coAuto=React.useRef(false);
@@ -2381,6 +2382,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
   const _companyFld=fields.find(f=>f.type==='Lookup'&&/company/.test((f.label||'').toLowerCase()));
   const _contactCompanyName=(name)=>{const ct=(crm.contacts||[]).find(c=>c.name===name&&!c.deleted);if(!ct)return'';const co=(ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null)||(ct.co?(crm.companies||[]).find(c=>c.name===ct.co):null);return co?co.name:(ct.co||'');};
   const onFieldChange=(f,v)=>{
+    if(recError)setRecError(''); // P4: any edit clears a prior validation-rule error
     if(_companyFld&&f.id===_companyFld.id){_coAuto.current=false;return setVals(s=>({...s,[f.id]:v,_companyId:null}));} // user chose the company manually → respect it, drop any prefilled id
     if(_contactFld&&_companyFld&&f.id===_contactFld.id){return setVals(s=>{const next={...s,[f.id]:v,_contactId:null};const coName=_contactCompanyName(v);const cur=String(s[_companyFld.id]||'').trim();if(coName&&(!cur||_coAuto.current)){next[_companyFld.id]=coName;next._companyId=null;_coAuto.current=true;}return next;});}
     return set(f.id,v);
@@ -2409,6 +2411,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     try{const _asg=resolveAssignment(object,rec);if(_asg){const _m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(x=>x.avatar===_asg);if(_m){rec.owner=_asg;rec.ownerColor=_m.color;}}}catch(e){}
     if(object==='deal'){const ct=_findCt(vals._contactId,rec.primaryContact);const co=_findCo(vals._companyId,rec.company)||(ct&&ct.companyId!=null?(crm.companies||[]).find(c=>c.id===ct.companyId):null);if(ct)rec.primaryContactId=ct.id;if(co)rec.companyId=co.id;if(!Array.isArray(rec.additionalContactIds))rec.additionalContactIds=[];normalizeDealPipeline(rec,rec.owner||'AM');}
     else if(object==='contact'){const co=_findCo(vals._companyId,rec.co);if(co)rec.companyId=co.id;}
+    const _vmsg=validateRecord(object,rec);if(_vmsg){setRecError(_vmsg);setSubmitted(true);return;} // P4: validation rules block a bad save with a custom message
     persist(rec);
     // Fire the "<Entity> created" trigger for every object type (deferred so the record is in state first) — multi-entity event bus.
     if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0);
@@ -2444,6 +2447,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
             {showMore&&<div className="grid grid-cols-2 gap-4 mt-3 pt-4 border-t border-white/[0.06]">{secondary.map(f=>(<ARField key={f.id} f={augReq(f)} value={vals[f.id]} onChange={v=>onFieldChange(f,v)} error={submitted?errorFor(f):''} nudge={nudgeFor(f)} crm={crm} onCreateCompany={addCompanyRec} onCreateContact={addContactRec}/>))}</div>}
           </div>}
         </div>
+        {recError&&<div className="mx-6 mt-3 flex items-start gap-2 rounded-xl bg-red-500/[0.08] border border-red-500/25 px-3.5 py-2.5"><I.AlertTriangle size={14} className="text-red-300 shrink-0 mt-0.5"/><p className="text-[12.5px] text-red-200/90 leading-relaxed">{recError}</p></div>}
         <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
           <button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
           <div ref={createRef} className="relative ml-auto flex items-stretch rounded-xl overflow-hidden shadow-brand">
@@ -11950,6 +11954,12 @@ const SCORE_RULES_SEED=[
   {id:'sc_co',object:'lead',name:'Has a company',enabled:true,points:10,when:{match:'AND',conds:[{id:'c1',fieldKey:'company',op:'is not empty',value:''}]}},
   {id:'sc_val',object:'lead',name:'High estimated value (> $15k)',enabled:true,points:25,when:{match:'AND',conds:[{id:'c1',fieldKey:'estValueNum',op:'>',value:'15000',value2:''}]}},
 ];
+// P4: Validation Rules — a per-object rule list; if a rule's AND/OR condition matches on save, the save is BLOCKED with its message.
+const VALIDATION_RULES_SEED=[
+  {id:'vr_deal_won',object:'deal',name:'Won deals need an amount',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'stageName',op:'is any of',value:['Won']},{id:'c2',fieldKey:'amount',op:'<',value:'1',value2:''}]},message:'A won deal needs an amount above $0.'},
+  {id:'vr_lead_sr',object:'lead',name:'Sales-Ready leads need an email',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'status',op:'is any of',value:['Sales-Ready']},{id:'c2',fieldKey:'email',op:'is empty',value:''}]},message:'A Sales-Ready lead needs an email address.'},
+  {id:'vr_contact_cust',object:'contact',name:'Customers need an email',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'cstatus',op:'is any of',value:['Customer']},{id:'c2',fieldKey:'email',op:'is empty',value:''}]},message:'A Customer contact needs an email address.'},
+];
 const SLACK_CHANNELS=['#sales','#leads','#wins','#alerts','#support'];
 const FLAG_REASONS=['Needs review','At risk','Manual check required','Data looks wrong','High-value — escalate'];
 const REPORT_OPTS=['Pipeline digest','Activity summary','Win / loss report','Lead-source breakdown'];
@@ -17497,6 +17507,17 @@ function recomputeScore(object,record){
   }
   return Math.max(0,Math.min(100,s));
 }
+// P4: run the object's validation rules against a record — returns the first matching rule's error message (blocks the save), or null.
+function validateRecord(object,record){
+  if(!record)return null;
+  const rules=((_autoRt&&_autoRt.validationRules)||[]).filter(r=>r&&r.enabled!==false&&r.object===object);
+  for(let i=0;i<rules.length;i++){const r=rules[i];
+    if(!r.when||!r.when.conds||!r.when.conds.length)continue; // an empty rule can't invalidate everything
+    let bad=false;try{bad=omApplyFilter([record],r.when,autoFieldsFor(object)).length>0;}catch(e){bad=false;} // fail-open: a broken rule never locks out the save
+    if(bad)return r.message||'This record doesn’t meet a validation rule.';
+  }
+  return null;
+}
 // P1: resolve the shared omFieldSchema field list for the entity an automation runs on (for AND/OR condition eval). Falls back to 'deal'.
 function autoFieldsFor(ent,rows){
   const object=({deal:'deal',contact:'contact',lead:'lead',company:'company'})[ent]||'deal';
@@ -22803,6 +22824,7 @@ function App(){
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
   const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
   const [scoreRules,setScoreRules]=React.useState(SCORE_RULES_SEED); // P3: scorecard rule table
+  const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
   _liveCustomObjects=customObjects; // mirror for nav/search helpers
   // ── Ad lead capture (Meta / Google) — connection state, lead-form mappings, intake feed, ingest ──
   const [adState,setAdState]=React.useState({'meta-ads':{connected:true,accounts:['Bloom Creative'],assets:['Bloom Creative','Bloom Real Estate']},'google-ads':{connected:false}});
@@ -22852,7 +22874,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
-    routingRules,setRoutingRules,scoreRules,setScoreRules,
+    routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,
     payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     updateCustomObject:(id,patch)=>setCustomObjects(a=>a.map(o=>o.id===id?{...o,...patch}:o)),
@@ -22873,7 +22895,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -22889,7 +22911,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,subjectType:kind,subjectId:recId},...a]),
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
