@@ -6492,51 +6492,61 @@ function SettingsValidationPage({goTo}){
     </div>
   </SettingsShell>);
 }
-// P3: Lead Scoring console — author scorecard rules (points per matching condition) that compute the lead score.
-function ScoreRuleRow({rule,fields,readOnly,onChange,onRemove}){
-  const pts=parseInt(rule.points,10)||0;
-  return(<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-    <div className="flex items-center gap-2.5 mb-3">
-      <span className={['w-11 h-7 rounded-lg text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums',pts>=0?'bg-emerald-500/12 text-emerald-300':'bg-red-500/12 text-red-300'].join(' ')}>{pts>=0?'+':''}{pts}</span>
-      <input value={rule.name||''} onChange={e=>onChange({name:e.target.value})} disabled={readOnly} placeholder="Rule name" className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-medium text-white outline-none focus:border-brand-500/40 disabled:opacity-60"/>
-      <Toggle on={rule.enabled!==false} onChange={v=>onChange({enabled:v})} disabled={readOnly}/>
-      <button onClick={onRemove} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.Trash size={13}/></button>
-    </div>
-    <div className="flex items-start gap-2 flex-wrap">
-      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">WHEN</span>
-      <div className="min-w-0"><OmFiltersButton object="lead" fields={fields} model={rule.when||{match:'AND',conds:[]}} onChange={m=>onChange({when:m})} disabled={readOnly}/></div>
-      <span className="text-[11px] font-semibold text-white/35 mt-2 shrink-0">ADD</span>
-      <div className="flex items-center gap-1 mt-0.5">
-        <button onClick={()=>onChange({points:Math.max(-100,pts-5)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">−</button>
-        <input value={pts} onChange={e=>onChange({points:Math.max(-100,Math.min(100,parseInt(e.target.value,10)||0))})} disabled={readOnly} inputMode="numeric" className="w-14 text-center px-1 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-semibold text-white outline-none focus:border-brand-500/40 tabular-nums"/>
-        <button onClick={()=>onChange({points:Math.min(100,pts+5)})} disabled={readOnly} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white bg-white/[0.04] border border-white/[0.10] disabled:opacity-30">+</button>
-        <span className="text-[11px] text-white/35 ml-1">points</span>
-      </div>
-    </div>
+// P3: Lead Scoring — READ-ONLY explainer. Scoring is owned + computed by the backend (activity + fit + decay).
+// This page documents what moves the score; it does not configure it. The prototype's client-side recomputeScore
+// is a SIMULATION stand-in so the Hot/Warm/Cold badge works with no backend — not a second production engine.
+function ScoreSignalRow({label,detail,points,muted}){
+  const pts=parseInt(points,10)||0;
+  return(<div className={['flex items-center gap-3 rounded-xl border px-3.5 py-2.5',muted?'border-white/[0.055] bg-white/[0.015]':'border-white/[0.08] bg-white/[0.025]'].join(' ')}>
+    <span className={['w-11 h-7 rounded-lg text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums',pts>=0?'bg-emerald-500/12 text-emerald-300':'bg-red-500/12 text-red-300'].join(' ')}>{pts>=0?'+':''}{pts}</span>
+    <div className="min-w-0"><p className="text-[13px] font-medium text-white/90 truncate">{label}</p>{detail&&<p className="text-[11.5px] text-white/45 truncate">{detail}</p>}</div>
   </div>);
 }
+const SCORE_ACTIVITY_EG=[ // example engagement weights — the backend team sets the real values
+  {label:'Booked a meeting',detail:'Highest-intent signal',points:20},
+  {label:'Replied to an email',detail:'Two-way engagement',points:15},
+  {label:'Visited pricing / demo page',detail:'Buying intent',points:10},
+  {label:'Clicked a tracked link',detail:'Active interest',points:8},
+  {label:'Opened an email',detail:'Light touch',points:3},
+];
 function SettingsScoringPage({goTo}){
   const crm=React.useContext(CrmDataContext);
-  const rules=(crm.scoreRules||[]).filter(r=>r.object==='lead');const setRules=crm.setScoreRules;
-  const readOnly=!settingsIsAdmin();
-  const liveLeads=(typeof _liveLeads!=='undefined'&&_liveLeads)||[];
-  const fields=React.useMemo(()=>autoFieldsFor('lead',liveLeads),[liveLeads.length]);
-  const addRule=()=>setRules(l=>[...l,{id:'sc'+Date.now(),object:'lead',name:'New scoring rule',enabled:true,points:10,when:{match:'AND',conds:[]}}]);
-  const patchRule=(id,patch)=>setRules(l=>l.map(r=>r.id===id?{...r,...patch}:r));
-  const rmRule=(id)=>setRules(l=>l.filter(r=>r.id!==id));
-  const maxPossible=(typeof SCORE_BASE!=='undefined'?SCORE_BASE:25)+rules.filter(r=>r.enabled!==false&&(parseInt(r.points,10)||0)>0).reduce((a,r)=>a+(parseInt(r.points,10)||0),0);
-  return(<SettingsShell active="settings-scoring" goTo={goTo} subtitle="Score leads automatically. Each rule adds or subtracts points when its condition matches; the total drives the Hot / Warm / Cold badge.">
-    <div className="max-w-3xl">
-      <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3 mb-4">
-        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Base</p><p className="text-[18px] font-bold text-white/90 tabular-nums">{typeof SCORE_BASE!=='undefined'?SCORE_BASE:25}</p></div>
-        <div className="w-px h-8 bg-white/[0.08]"/>
-        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Hot at</p><p className="text-[18px] font-bold text-red-300 tabular-nums">≥ {typeof SCORE_HOT!=='undefined'?SCORE_HOT:70}</p></div>
-        <div className="w-px h-8 bg-white/[0.08]"/>
-        <div className="min-w-0"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Max possible</p><p className="text-[18px] font-bold text-emerald-300 tabular-nums">{Math.min(100,maxPossible)}</p></div>
-        <p className="text-[11.5px] text-white/45 leading-relaxed ml-auto max-w-[240px]">Scores clamp to 0–100 and recompute on create + edit. Crossing the hot threshold fires the <span className="text-white/70">Lead score reached</span> trigger.</p>
+  const fit=(crm.scoreRules||[]).filter(r=>r.object==='lead'&&r.enabled!==false);
+  const base=typeof SCORE_BASE!=='undefined'?SCORE_BASE:25;
+  const hot=typeof SCORE_HOT!=='undefined'?SCORE_HOT:70;
+  const eg=(<span className="ml-2 px-1.5 py-0.5 rounded-full bg-white/[0.05] text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/40 align-middle">example</span>);
+  const SEC="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]";
+  return(<SettingsShell active="settings-scoring" goTo={goTo} subtitle="How a lead's score is calculated. Scoring is computed by your backend — this is a read-only view of the signals that move it.">
+    <div className="max-w-3xl flex flex-col gap-5">
+      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-start gap-2.5">
+        <I.Lock size={14} className="text-brand-300 shrink-0 mt-0.5"/>
+        <p className="text-[12.5px] text-white/70 leading-relaxed"><span className="font-semibold text-white/90">Scoring runs on the backend.</span> Your team owns the weights and decay logic — they aren't edited here. Each lead's score surfaces as the <span className="text-white/80 font-medium">Hot / Warm / Cold</span> badge, and crossing <span className="text-white/80 font-medium">≥ {hot}</span> can trigger routing or alerts.</p>
       </div>
-      <div className="flex flex-col gap-3">{rules.length?rules.map(r=>(<ScoreRuleRow key={r.id} rule={r} fields={fields} readOnly={readOnly} onChange={p=>patchRule(r.id,p)} onRemove={()=>rmRule(r.id)}/>)):(<div className="rounded-2xl border border-dashed border-white/[0.10] p-8 text-center"><I.Target size={18} className="text-white/25 mx-auto mb-2"/><p className="text-[13px] text-white/50">No scoring rules yet — every lead scores the base value.</p></div>)}</div>
-      {!readOnly&&<button onClick={addRule} className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Plus size={14}/>Add rule</button>}
+      <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3">
+        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Base</p><p className="text-[18px] font-bold text-white/90 tabular-nums">{base}</p></div>
+        <div className="w-px h-8 bg-white/[0.08]"/>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sky-500/12 text-sky-300 text-[11px] font-medium">Cold &lt; 45</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/12 text-amber-300 text-[11px] font-medium">Warm 45–{hot-1}</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/12 text-red-300 text-[11px] font-medium">Hot ≥ {hot}</span>
+        </div>
+        <p className="text-[11.5px] text-white/45 leading-relaxed ml-auto max-w-[190px]">The score is a live 0–100 blend of the three signal groups below.</p>
+      </div>
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 mb-0.5"><I.Target size={13} className="text-brand-300"/><span className={SEC}>Fit signals · who the lead is</span></div>
+        {fit.length?fit.map(r=>(<ScoreSignalRow key={r.id} label={r.name} points={r.points}/>)):<p className="text-[12.5px] text-white/40">No fit signals configured.</p>}
+      </section>
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 mb-0.5"><I.Zap size={13} className="text-brand-300"/><span className={SEC}>Engagement signals · what the lead does</span>{eg}</div>
+        {SCORE_ACTIVITY_EG.map(a=>(<ScoreSignalRow key={a.label} label={a.label} detail={a.detail} points={a.points} muted/>))}
+      </section>
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 mb-0.5"><I.Clock size={13} className="text-brand-300"/><span className={SEC}>Score decay</span>{eg}</div>
+        <div className="flex items-center gap-3 rounded-xl border border-white/[0.055] bg-white/[0.015] px-3.5 py-2.5">
+          <span className="w-11 h-7 rounded-lg bg-red-500/12 text-red-300 text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums">−5</span>
+          <div className="min-w-0"><p className="text-[13px] font-medium text-white/90">Every 14 days with no engagement</p><p className="text-[11.5px] text-white/45">Eases a quiet lead back toward base so it can't stay Hot forever.</p></div>
+        </div>
+      </section>
     </div>
   </SettingsShell>);
 }
