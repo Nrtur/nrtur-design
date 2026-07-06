@@ -1633,9 +1633,6 @@ function GlobalSearchOverlay({close,goTo}){
     {label:'Tags',page:'settings-tags'},
     {label:'Statuses',page:'settings-statuses'},
     {label:'Duplicates',page:'settings-duplicates'},
-    {label:'Assignment rules',page:'settings-assignment'},
-    {label:'Lead scoring',page:'settings-scoring'},
-    {label:'Validation rules',page:'settings-validation'},
     {label:'SLA rules',page:'settings-sla'},
     {label:'Approvals',page:'settings-approvals'},
     {label:'Automations',page:'settings-automations'},
@@ -3109,9 +3106,6 @@ const SETTINGS_GROUPS=[
     {label:'Import data',page:'settings-import',Icon:I.Upload},
     {label:'Export data',page:'settings-export',Icon:I.Download},
     {label:'Duplicates',page:'settings-duplicates',Icon:I.Copy},
-    {label:'Assignment rules',page:'settings-assignment',Icon:I.GitBranch},
-    {label:'Lead scoring',page:'settings-scoring',Icon:I.Target},
-    {label:'Validation rules',page:'settings-validation',Icon:I.ShieldCheck},
     {label:'SLA rules',page:'settings-sla',Icon:I.Clock},
     {label:'Approvals',page:'settings-approvals',Icon:I.CheckSquare},
     {label:'Privacy & data retention',page:'settings-privacy',Icon:I.ShieldCheck},
@@ -22871,6 +22865,7 @@ const ENGAGE_REDIRECT={
 const ENGAGE_TABS=[
   {k:'sequences',  label:'Sequences',      Icon:I.Layers},
   {k:'automations',label:'Automations',    Icon:I.Zap},
+  {k:'rules',      label:'Rules',          Icon:I.SliderH},
   {k:'funnels',    label:'Funnels',        Icon:I.Filter},
   {k:'forms',      label:'Forms',          Icon:I.Note},
   {k:'templates',  label:'Templates',      Icon:I.Mail},
@@ -22899,15 +22894,27 @@ function EngageDelivery({sub,setSub,goTo}){
     <div className="flex-1 min-h-0">{body}</div>
   </React.Fragment>);
 }
+// Rules — the everyday rule-based automations (assignment / scoring / validation) live here, next to Flows,
+// so "automation" is one place instead of buried in Settings. SLA + Approvals stay in Settings › Data management (advanced).
+function EngageRules({sub,setSub,goTo}){
+  const items=[{k:'assignment',label:'Assignment',Icon:I.GitBranch},{k:'scoring',label:'Lead scoring',Icon:I.Target},{k:'validation',label:'Validation',Icon:I.ShieldCheck}];
+  const body=sub==='scoring'?<SettingsScoringPage goTo={goTo}/>:sub==='validation'?<SettingsValidationPage goTo={goTo}/>:<SettingsAssignmentPage goTo={goTo}/>;
+  return(<React.Fragment>
+    <EngageSubBar items={items} value={sub} onChange={setSub}/>
+    <div className="flex-1 min-h-0">{body}</div>
+  </React.Fragment>);
+}
 function EngageHub({goTo,nav}){
   const [tab,setTab]=React.useState((nav&&nav.tab)||'sequences');
   const [tplSub,setTplSub]=React.useState((nav&&nav.tab==='templates'&&nav.sub)||'email');
   const [delSub,setDelSub]=React.useState((nav&&nav.tab==='delivery'&&nav.sub)||'frequency');
+  const [rulesSub,setRulesSub]=React.useState((nav&&nav.tab==='rules'&&nav.sub)||'assignment');
   React.useEffect(()=>{
     if(!nav||!nav.tab)return;
     setTab(nav.tab);
     if(nav.tab==='templates'&&nav.sub)setTplSub(nav.sub);
     if(nav.tab==='delivery'&&nav.sub)setDelSub(nav.sub);
+    if(nav.tab==='rules'&&nav.sub)setRulesSub(nav.sub);
   },[nav]);
   const tabRail=(<div className="cal-tab-group flex items-center gap-1 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto max-w-full">
     {ENGAGE_TABS.map(t=>{const a=tab===t.k;return(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.label}</button>);})}
@@ -22915,6 +22922,7 @@ function EngageHub({goTo,nav}){
   let body;
   if(tab==='templates')body=<EngageTemplates sub={tplSub} setSub={setTplSub} goTo={goTo}/>;
   else if(tab==='delivery')body=<EngageDelivery sub={delSub} setSub={setDelSub} goTo={goTo}/>;
+  else if(tab==='rules')body=<EngageRules sub={rulesSub} setSub={setRulesSub} goTo={goTo}/>;
   else{
     const single=tab==='automations'?<SettingsAutomationsPage goTo={goTo}/>:tab==='funnels'?<FunnelsPage goTo={goTo}/>:tab==='forms'?<SettingsFormsPage goTo={goTo}/>:tab==='adleads'?<SettingsAdLeadsPage goTo={goTo}/>:<SettingsSequencesPage goTo={goTo}/>;
     body=<div className="flex-1 min-h-0">{single}</div>;
