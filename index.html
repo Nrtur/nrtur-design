@@ -15105,6 +15105,8 @@ function PermRoleModal({mode,sourceRole,roles,onClose,onCreate}){
 function SettingsPermissionsPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   const navPermCtx=React.useContext(NavConfigContext);
+  const _permCrm=React.useContext(CrmDataContext);
+  const coObjects=(_permCrm&&_permCrm.customObjects||[]).filter(o=>!o.deleted);
   const [navAdminOpen,setNavAdminOpen]=React.useState(false);
   const [roles,setRoles]=React.useState(()=>PERM_ROLE_SEED.map(r=>({...r,perms:permClone(r.perms)})));
   const [selKey,setSelKey]=React.useState('Owner');
@@ -15117,11 +15119,12 @@ function SettingsPermissionsPage({goTo}){
   const isOwner=sel.key==='Owner';
   const patchSel=(fn)=>{setRoles(rs=>rs.map(r=>r.key===selKey?{...r,perms:fn(permClone(r.perms))}:r));setDirty(true);};
   const toggleObj=(ob,a)=>{
-    const next=!sel.perms.objects[ob][a];
+    const cur=sel.perms.objects[ob]||CO_PERM_DEFAULT;
+    const next=!cur[a];
     if(sel.key==='Read Only'&&a!=='view'&&next)showToast('Heads up: Read Only normally has no '+PERM_ACTION_LABEL[a].toLowerCase()+' access.','warning');
-    patchSel(p=>{p.objects[ob][a]=next;return p;});
+    patchSel(p=>{if(!p.objects[ob])p.objects[ob]={...CO_PERM_DEFAULT};p.objects[ob][a]=next;return p;});
   };
-  const setScope=(ob,scope)=>patchSel(p=>{p.objects[ob].scope=scope;return p;});
+  const setScope=(ob,scope)=>patchSel(p=>{if(!p.objects[ob])p.objects[ob]={...CO_PERM_DEFAULT};p.objects[ob].scope=scope;return p;});
   const toggleReport=(a)=>patchSel(p=>{p.report[a]=!p.report[a];return p;});
   const toggleFeature=(k)=>patchSel(p=>{p.features[k]=!p.features[k];return p;});
   const onBilling=()=>{ if(isOwner)showToast('The Owner always manages billing — it can’t be turned off.','warning'); else showToast('Only the Owner can manage billing.','warning'); };
@@ -15185,11 +15188,17 @@ function SettingsPermissionsPage({goTo}){
             <div className="overflow-x-auto scroll-area">
               <div className="min-w-[640px]">
                 <div className="grid items-center px-5 py-2.5 border-b border-white/[0.05] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:OBJ_COL}}><span>Object</span>{PERM_ACTIONS.map(a=>(<span key={a} className="text-center">{PERM_ACTION_LABEL[a]}</span>))}<span className="text-right">Scope</span></div>
-                {PERM_OBJECTS.map((ob,i)=>(<div key={ob} className={['grid items-center px-5 py-2.5 hover:bg-white/[0.015] transition-colors',i<PERM_OBJECTS.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:OBJ_COL}}>
+                {PERM_OBJECTS.map((ob,i)=>(<div key={ob} className="grid items-center px-5 py-2.5 hover:bg-white/[0.015] transition-colors border-b border-white/[0.03]" style={{gridTemplateColumns:OBJ_COL}}>
                   <span className="text-[13px] font-medium text-white">{ob}</span>
                   {PERM_ACTIONS.map(a=>(<div key={a} className="flex justify-center"><Toggle on={op[ob][a]} onChange={()=>toggleObj(ob,a)}/></div>))}
                   <div className="flex justify-end"><PermScopeSelect value={op[ob].scope} onChange={v=>setScope(ob,v)} disabled={!op[ob].view&&!op[ob].create&&!op[ob].edit&&!op[ob].delete}/></div>
                 </div>))}
+                {coObjects.length>0&&<div className="grid items-center px-5 py-1.5 bg-white/[0.015] border-b border-white/[0.04] text-[9.5px] font-semibold text-white/35 uppercase tracking-[0.16em]" style={{gridTemplateColumns:OBJ_COL}}><span>Custom objects</span><span/><span/><span/><span/><span/></div>}
+                {coObjects.map((o,i)=>{const key=coPermKey(o);const P=op[key]||CO_PERM_DEFAULT;return(<div key={key} className={['grid items-center px-5 py-2.5 hover:bg-white/[0.015] transition-colors',i<coObjects.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:OBJ_COL}}>
+                  <span className="text-[13px] font-medium text-white flex items-center gap-2 min-w-0">{React.createElement(coIco(o.icon),{size:13,style:{color:o.color||'#a78bfa'}})}<span className="truncate">{o.plural}</span></span>
+                  {PERM_ACTIONS.map(a=>(<div key={a} className="flex justify-center"><Toggle on={!!P[a]} onChange={()=>toggleObj(key,a)}/></div>))}
+                  <div className="flex justify-end"><PermScopeSelect value={P.scope} onChange={v=>setScope(key,v)} disabled={!P.view&&!P.create&&!P.edit&&!P.delete}/></div>
+                </div>);})}
               </div>
             </div>
           </Card>
@@ -22226,7 +22235,17 @@ function coOmType(t){switch(t){case 'Number':return 'number';case 'Currency':ret
 function coFieldOpts(f){return f.type==='Boolean'?['Yes','No']:(f.options||[]);}
 // Permission proxy: custom records reuse the role's uniform CRUD capability (effCanObject applies the
 // same action set to every object, so 'Contacts' is a faithful stand-in). The builder is admin-gated.
-function effCanCustom(act){return effCanObject('Contacts',act);}
+const CO_PERM_DEFAULT={view:true,create:true,edit:true,delete:false,scope:'all'};
+function coPermKey(def){return 'co:'+((def&&def.id)||'');}
+// Custom objects are first-class in the permission matrix: read this object's own row if the admin configured it,
+// else fall back to Contacts perms (legacy behavior) so existing objects/roles never regress.
+function effCanCustom(def,act){
+  // Back-compat: older call sites passed just the action string.
+  if(typeof def==='string'){act=def;def=null;}
+  const p=effPerms();const key=coPermKey(def);
+  if(def&&p&&p.objects&&p.objects[key])return !!p.objects[key][act];
+  return effCanObject('Contacts',act);
+}
 // Om filter/sort field schema for a custom object definition.
 function coOmFields(def,crm){
   const out=[{key:'name',label:def.primaryLabel||'Name',type:'text',get:r=>r.name}];
@@ -22315,7 +22334,13 @@ const CO_MAX_OBJECTS=5;
 const CO_MAX_FIELDS=25;
 const CO_MAX_RELS=5;
 // Per-object visibility lock: an 'admins' object is hidden from non-admins everywhere it surfaces.
-function coCanView(def){return !def||def.visibility!=='admins'||settingsIsAdmin();}
+function coCanView(def){
+  if(!def)return true;
+  if(def.visibility==='admins'&&!settingsIsAdmin())return false; // legacy admin-only flag
+  const p=effPerms();const key=coPermKey(def);
+  if(p&&p.objects&&p.objects[key])return !!p.objects[key].view; // matrix row wins when configured
+  return true;
+}
 // Reverse lookup: all custom-object records linked TO a given contact/company/lead/deal.
 // Link values at rest are MIXED (drawer saves ids, seeds hold names) so match id OR name — mirrors coResolveLink.
 function coReverseLinks(crm,targetType,targetRec){
@@ -22571,7 +22596,7 @@ function CustomObjectListPage({goTo,nav}){
   const [coGroupBy,setCoGroupBy]=React.useState((_selFields[0]&&_selFields[0].key)||'');
   const [dragRec,setDragRec]=React.useState(null);
   const [dropCol,setDropCol]=React.useState(null);
-  const canCreate=effCanCustom('create'),canEdit=effCanCustom('edit'),canDelete=effCanCustom('delete')&&effCanBulkDelete();
+  const canCreate=effCanCustom(def,'create'),canEdit=effCanCustom(def,'edit'),canDelete=effCanCustom(def,'delete')&&effCanBulkDelete();
   const cols=[{key:'name',w:'1.6fr',label:def.primaryLabel||'Name',cell:(r)=>(<button onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="flex items-center gap-3 min-w-0 text-left w-full"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:15})}</span><span className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{r.r_company||r.createdAt||''}</p></span></button>)}];
   (def.fields||[]).filter(f=>f.col).forEach(f=>cols.push({key:f.key,w:'130px',label:f.label,cell:(r)=>coCellRender(f,r[f.key])}));
   cols.push({key:'owner',w:'130px',label:'Owner',cell:(r)=>{const m=coMember(r.owner);return(<span className="inline-flex items-center gap-2 min-w-0"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12px] text-white/65 truncate hidden lg:inline">{m.name}</span></span>);}});
@@ -22587,7 +22612,7 @@ function CustomObjectListPage({goTo,nav}){
     const cols=opts.map(o=>({o,rows:list.filter(r=>String(r[gf.key]==null?'':r[gf.key])===o)}));
     const unc=list.filter(r=>{const v=String(r[gf.key]==null?'':r[gf.key]);return !opts.includes(v);});
     if(unc.length)cols.push({o:'',rows:unc});
-    const canDrag=effCanCustom('edit');
+    const canDrag=effCanCustom(def,'edit');
     const move=(r,toOpt)=>{if(!canDrag){showToast('Your role can’t move '+def.plural.toLowerCase());return;}crm.updateCustomRecord(def.id,r.id,{[gf.key]:toOpt});showToast((r.name||def.singular)+' → '+(toOpt||'Uncategorized'));};
     return(<React.Fragment><style>{".crm-list-head{display:none}"}</style><KanbanBoard
       wrapClass="overflow-x-auto scroll-area px-4 sm:px-7 py-4" boardClass="flex gap-3 items-start" placeholder={false}
@@ -22664,7 +22689,7 @@ function CustomRecordDetailPage({goTo,nav}){
   const [editOpen,setEditOpen]=React.useState(false);
   if(!def||!rec)return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Record"/><div className="flex-1 flex items-center justify-center text-[13px] text-white/40">Record not found.</div></div></div>);
   if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.singular}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">Restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view {def.plural}.</p></div></div></div></div>);
-  const canEdit=effCanCustom('edit'),canDelete=effCanCustom('delete');
+  const canEdit=effCanCustom(def,'edit'),canDelete=effCanCustom(def,'delete');
   const m=coMember(rec.owner);
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:'AM',title:'Note added',body:text}),...x]);
