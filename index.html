@@ -17,6 +17,11 @@ html,body,#root{height:100%;margin:0}
 body{background:#07070f;color:#fff;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
 .brand-wordmark{font-family:'Inter',system-ui,sans-serif;font-style:normal;font-weight:600;letter-spacing:-0.01em}
 ::selection{background:rgba(99,102,241,0.35)}
+.rt-edit ul,.rt-view ul{list-style:disc;padding-left:1.25rem;margin:0.25rem 0}
+.rt-edit ol,.rt-view ol{list-style:decimal;padding-left:1.25rem;margin:0.25rem 0}
+.rt-edit a,.rt-view a{color:#a5b4fc;text-decoration:underline}
+.rt-edit b,.rt-view b,.rt-edit strong,.rt-view strong{font-weight:700}
+.rt-edit:empty::before{content:attr(data-ph);color:rgba(255,255,255,0.28)}
 .app-shell input[type="date"],.app-shell input[type="time"]{color-scheme:dark}
 [data-theme="light"] .app-shell input[type="date"],[data-theme="light"] .app-shell input[type="time"]{color-scheme:light}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -2200,12 +2205,14 @@ function arFieldKind(f){
   if(f.type==='Date')return'date';
   if(f.type==='Date range')return'date';
   if(f.type==='Long text')return'longtext';
+  if(f.type==='Rich text')return'richtext';
+  if(f.type==='Attachment')return'file';
   if(f.type==='Boolean')return'boolean';
   if(f.type==='Email')return'email';
   if(f.type==='Phone')return'phone';
   return'text';
 }
-function arIsWide(f){const k=arFieldKind(f);return k==='tags'||k==='longtext'||k==='lookup-company'||k==='lookup-contact'||/email|address/i.test(f.label||'');}
+function arIsWide(f){const k=arFieldKind(f);return k==='tags'||k==='longtext'||k==='richtext'||k==='file'||k==='lookup-company'||k==='lookup-contact'||/email|address/i.test(f.label||'');}
 function arPillColor(label,v){if(/stage/i.test(label)){return (typeof DEAL_STAGE_COLOR!=='undefined'&&DEAL_STAGE_COLOR[v])||'#818cf8';}return pillC(v);}
 // ── searchable lookup with inline "+ Create new" ──
 function ARLookup({value,onChange,options,placeholder,onCreateNew,Icon,error}){
@@ -2301,6 +2308,54 @@ function AROwner({value,onChange}){
     </div>,document.body)}
   </div>);
 }
+// Documents that already exist in the workspace (reused from mail/messaging demo data) — the "attach existing" source.
+const EXISTING_DOCS=[
+  {name:'proposal.pdf',size:'940 KB'},{name:'contract.docx',size:'310 KB'},{name:'pricing.xlsx',size:'88 KB'},
+  {name:'floor-plan-final.pdf',size:'820 KB'},{name:'Meridian-Q3-Notes.pdf',size:'184 KB'},{name:'spec-sheet.pdf',size:'1.1 MB'},
+];
+const docExt=(n)=>((n||'').split('.').pop()||'').toUpperCase();
+// Attachment field — upload a (simulated) new doc or attach one that already exists on the record's Files. Value = [{name,size}].
+function CoFileField({value,onChange,error}){
+  const files=Array.isArray(value)?value:[];
+  const [pick,setPick]=React.useState(false);const ref=React.useRef(null);
+  useClickOutside(ref,()=>setPick(false));
+  const add=(f)=>{if(!files.some(x=>x.name===f.name))onChange([...files,f]);setPick(false);};
+  const remove=(n)=>onChange(files.filter(f=>f.name!==n));
+  const upload=()=>onChange([...files,{name:'document-'+(files.length+1)+'.pdf',size:(120+files.length*40)+' KB',uploaded:true}]);
+  const avail=EXISTING_DOCS.filter(d=>!files.some(f=>f.name===d.name));
+  return(<div className={['rounded-xl bg-white/[0.04] border p-2.5',error?'border-red-500/50':'border-white/[0.10]'].join(' ')}>
+    {files.length>0&&<div className="flex flex-col gap-1.5 mb-2">{files.map(f=>(<div key={f.name} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+      <span className="w-7 h-7 rounded-lg bg-brand-500/12 text-brand-300 flex items-center justify-center shrink-0"><I.Note size={13}/></span>
+      <span className="min-w-0 flex-1"><span className="block text-[12px] font-medium text-white/85 truncate">{f.name}</span><span className="block text-[10px] text-white/40">{f.size} · {docExt(f.name)}</span></span>
+      <button type="button" onClick={()=>remove(f.name)} className="w-6 h-6 rounded-md flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 shrink-0"><I.X size={12}/></button>
+    </div>))}</div>}
+    <div ref={ref} className="relative flex items-center gap-1.5">
+      <button type="button" onClick={upload} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all"><I.Upload size={12}/>Upload</button>
+      <button type="button" onClick={()=>setPick(p=>!p)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.10] hover:text-white hover:border-white/[0.18] transition-all"><I.Paperclip size={12}/>Attach existing</button>
+      {pick&&<div className="absolute left-0 top-full mt-1.5 z-30 w-60 rounded-xl border border-white/[0.10] shadow-xl p-1.5 max-h-56 overflow-y-auto" style={{background:'var(--s850)'}}>
+        {avail.length?avail.map(d=>(<button key={d.name} type="button" onClick={()=>add(d)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.05] transition-colors"><I.Note size={12} className="text-white/45 shrink-0"/><span className="min-w-0 flex-1"><span className="block text-[12px] text-white/80 truncate">{d.name}</span><span className="block text-[10px] text-white/40">{d.size}</span></span></button>)):<p className="px-2 py-2 text-[11.5px] text-white/40">All documents attached.</p>}
+      </div>}
+    </div>
+  </div>);
+}
+// Rich-text field — a contenteditable with a small toolbar. Uncontrolled (initial HTML on mount) so the caret never jumps; value is HTML.
+function RichTextField({value,onChange,error}){
+  const ref=React.useRef(null);
+  const sync=()=>{if(ref.current)onChange(ref.current.innerHTML);};
+  const cmd=(c)=>{document.execCommand(c,false,null);sync();if(ref.current)ref.current.focus();};
+  const link=()=>{const u=window.prompt&&window.prompt('Link URL','https://');if(u)document.execCommand('createLink',false,u);sync();};
+  const btn="w-7 h-7 rounded-md flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors";
+  return(<div className={['rounded-xl bg-white/[0.04] border overflow-hidden',error?'border-red-500/50':'border-white/[0.10] focus-within:border-brand-500/40'].join(' ')}>
+    <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-white/[0.07] bg-white/[0.02]">
+      <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>cmd('bold')} className={btn} title="Bold"><b className="text-[13px] leading-none">B</b></button>
+      <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>cmd('italic')} className={btn} title="Italic"><i className="text-[13px] leading-none">I</i></button>
+      <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>cmd('insertUnorderedList')} className={btn} title="Bullet list"><I.List size={13}/></button>
+      <div className="w-px h-4 bg-white/[0.08] mx-0.5"/>
+      <button type="button" onMouseDown={e=>e.preventDefault()} onClick={link} className={btn} title="Add link"><I.Globe size={13}/></button>
+    </div>
+    <div ref={ref} contentEditable suppressContentEditableWarning dir="ltr" data-ph="Write formatted text…" onInput={sync} onBlur={sync} className="rt-edit px-3 py-2.5 text-[13px] text-white/90 leading-relaxed outline-none min-h-[72px]" dangerouslySetInnerHTML={{__html:value||''}}/>
+  </div>);
+}
 function ARField({f,value,onChange,error,nudge,crm,onCreateCompany,onCreateContact}){
   const kind=arFieldKind(f);
   const L='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5';
@@ -2316,6 +2371,8 @@ function ARField({f,value,onChange,error,nudge,crm,onCreateCompany,onCreateConta
   else if(kind==='number')ctrl=<input type="number" value={value} onChange={e=>onChange(e.target.value)} placeholder="0" className={INP}/>;
   else if(kind==='date')ctrl=<input type="date" value={value} onChange={e=>onChange(e.target.value)} className={INP} style={{colorScheme:'dark'}}/>;
   else if(kind==='longtext')ctrl=<textarea rows={2} value={value} onChange={e=>onChange(e.target.value)} placeholder={'Enter '+(f.label||'').toLowerCase()} className={INP+' resize-none leading-relaxed'}/>;
+  else if(kind==='richtext')ctrl=<RichTextField value={value} onChange={onChange} error={error}/>;
+  else if(kind==='file')ctrl=<CoFileField value={value} onChange={onChange} error={error}/>;
   else if(kind==='boolean')ctrl=<div className="pt-1"><Toggle on={value===true||value==='true'} onChange={v=>onChange(v)}/></div>;
   else ctrl=<input type={kind==='email'?'email':'text'} value={value} onChange={e=>onChange(e.target.value)} placeholder={'Enter '+(f.label||'').toLowerCase()} className={INP}/>;
   return(<div className={arIsWide(f)?'col-span-2':''}>
@@ -2331,6 +2388,7 @@ function arBuildInitial(fields,object){
     const k=arFieldKind(f);const l=(f.label||'').toLowerCase();
     if(k==='owner')o[f.id]=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS[0].avatar:'AM');
     else if(k==='tags')o[f.id]=[];
+    else if(k==='file')o[f.id]=[];
 
     else if(/^status$/.test(l))o[f.id]=f.defaultValue||'New';
     else if(/pipeline/.test(l))o[f.id]=f.defaultValue||(f.options&&f.options[0])||'';
@@ -6996,6 +7054,9 @@ const drEditable=(f)=>!f.readOnly&&!DR_RO_TYPES.includes(f.type);
 const drEq=(a,b)=>JSON.stringify(a==null?'':a)===JSON.stringify(b==null?'':b);
 const DR_INP="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors";
 const DR_SEL="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none";
+// Common job titles — suggestions for the Job-title autocomplete. Free entry still allowed (native datalist),
+// so real-world titles ("VP of Growth & Partnerships") aren't lost; Seniority + Job function stay the structured axes.
+const COMMON_JOB_TITLES=['CEO','CTO','CFO','COO','CMO','Founder','Co-Founder','President','Owner','Partner','VP of Sales','VP of Marketing','VP of Engineering','VP of Product','Head of Growth','Head of Product','Head of Operations','Head of Sales','Director of Sales','Director of Marketing','Director of Operations','Sales Manager','Marketing Manager','Product Manager','Engineering Manager','Operations Manager','Account Executive','Account Manager','Business Development Manager','Software Engineer','Product Designer','Consultant','Office Manager'];
 function DrawerField({f,value,onChange}){
   const _crm=React.useContext(CrmDataContext);
   const label=(<label className="block text-[11px] font-medium text-white/45 mb-1.5">{f.label}{f.required&&<span className="text-red-400/70 ml-0.5">*</span>}</label>);
@@ -7035,8 +7096,10 @@ function DrawerField({f,value,onChange}){
       return(<div>{label}<input type="date" value={value||''} onChange={e=>onChange(e.target.value)} className={DR_INP} style={{colorScheme:'dark'}}/></div>);
     case 'textarea':
       return(<div>{label}<textarea value={value==null?'':value} onChange={e=>onChange(e.target.value)} rows={3} placeholder={f.placeholder||''} className={DR_INP+' resize-none'}/></div>);
-    default:
-      return(<div>{label}<input type={f.type==='email'?'email':f.type==='phone'?'tel':'text'} value={value==null?'':value} onChange={e=>onChange(e.target.value)} placeholder={f.placeholder||''} className={DR_INP}/></div>);
+    default:{
+      const dl=(f.autocomplete&&(f.options||[]).length)?('dl_'+f.key):null;
+      return(<div>{label}<input list={dl||undefined} type={f.type==='email'?'email':f.type==='phone'?'tel':'text'} value={value==null?'':value} onChange={e=>onChange(e.target.value)} placeholder={f.placeholder||(dl?'Start typing…':'')} className={DR_INP}/>{dl&&<datalist id={dl}>{(f.options||[]).map(o=><option key={o} value={o}/>)}</datalist>}</div>);
+    }
   }
 }
 function RecordEditDrawer({title,Icon,groups,record,onSave,onClose}){
@@ -7739,7 +7802,7 @@ function ContactDetailPage({goTo,nav}){
   const _fldFmt=(k,val)=>{if(val==null||val==='')return'empty';if(Array.isArray(val))return val.length?val.join(', '):'empty';if(typeof val==='object')return'updated';if(k==='owner'){const u=userByCode(val);return u?u.name:String(val);}return String(val);};
   const _logField=(k,oldV,newV)=>{if(String(oldV==null?'':oldV)===String(newV==null?'':newV))return;setExtra(x=>[mkAct('field',{ts:0,by:CURRENT_USER.avatar,title:_fldLabel(k)+' updated',body:_fldFmt(k,oldV)+'  →  '+_fldFmt(k,newV)}),...x]);};
   const onFieldChange=(k,v)=>{const _old=crec[k];if(k==='first'||k==='last'){const nf=k==='first'?v:crec.first;const nl=k==='last'?v:crec.last;updateContact(c.id,{[k]:v,name:(nf+' '+nl).trim()});}else if(k==='co'){const _co=(crm.companies||[]).find(x=>x.name===v&&!x.deleted);updateContact(c.id,{co:v,companyId:_co?_co.id:null});}else if(k==='owner'){updateContact(c.id,{owner:v,ownerColor:arOwnerColor(v)});}else{updateContact(c.id,{[k]:v});}_logField(k,_old,v);};
-  const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text'},{key:'co',label:'Company',type:'companylookup',go:(g)=>{const co=(c.companyId!=null?crm.companies.find(x=>x.id===c.companyId):null)||crm.companies.find(x=>x.name===c.co);g('company-detail',co&&co.id);}},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'}];
+  const cPrimary=[{key:'first',label:'First name',type:'text',required:true},{key:'last',label:'Last name',type:'text',required:true},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'title',label:'Job title',type:'text',autocomplete:true,options:COMMON_JOB_TITLES},{key:'co',label:'Company',type:'companylookup',go:(g)=>{const co=(c.companyId!=null?crm.companies.find(x=>x.id===c.companyId):null)||crm.companies.find(x=>x.name===c.co);g('company-detail',co&&co.id);}},{key:'owner',label:'Owner',type:'owner'},{key:'cstatus',label:'Status',type:'pill',options:CONTACT_STATUSES},{key:'tags',label:'Tags',type:'tags'}];
   const cSecondary=[{key:'seniority',label:'Seniority',type:'select',options:['Individual Contributor','Entry / Junior','Senior / Lead','Manager','Director','VP','C-Level / Owner / Founder','Other']},{key:'jobFunction',label:'Job function',type:'select',options:['Executive / GM','Sales','Marketing','Finance / Accounting','Operations','Product','Engineering / IT','Customer Success','Human Resources','Legal / Compliance','Procurement','Administration','Other']},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Meta Ads','Google Ads','Form','Manual','Import','Other']},{key:'salutation',label:'Salutation',type:'select',options:['Mr.','Mrs.','Ms.','Dr.']},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'},{key:'address',label:'Mailing address',type:'address'},{key:'linkedin',label:'LinkedIn URL',type:'url',linkKind:'url'},{key:'lastActivity',label:'Last activity',type:'datetime'},{key:'lastContacted',label:'Last contacted',type:'datetime'}];
   const cMeta=[{key:'createdBy',label:'Created by',type:'user'},{key:'createdAt',label:'Created at',type:'datetime'}];
   const [editOpen,setEditOpen]=React.useState(false);
@@ -10192,7 +10255,7 @@ function LeadDetailPage({goTo,nav}){
   const {confirmNode,openConfirm}=useConfirm();
   const b=leadScoreBucket(l.score);
   const canEditLead=effCanObject('Leads','edit')&&!l.converted; // converted leads are locked read-only
-  const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text'},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:LEAD_STATUSES},{key:'estValueNum',label:'Estimated value',type:'currency',sensitive:true},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
+  const leadPrimary=[{key:'name',label:'Name',type:'text',required:true},{key:'company',label:'Company name',type:'text'},{key:'title',label:'Job title',type:'text',autocomplete:true,options:COMMON_JOB_TITLES},{key:'companyDomain',label:'Company domain',type:'text'},{key:'email',label:'Primary email',type:'email',linkKind:'email'},{key:'phone',label:'Phone',type:'phone',linkKind:'phone'},{key:'source',label:'Source',type:'select',options:['Website','Referral','LinkedIn','Cold outreach','Event','Other']},{key:'status',label:'Status',type:'pill',options:LEAD_STATUSES},{key:'estValueNum',label:'Estimated value',type:'currency',sensitive:true},{key:'owner',label:'Owner',type:'owner'},{key:'tags',label:'Tags',type:'tags'}];
   const leadSecondaryBase=[{key:'industry',label:'Industry',type:'select',options:['Software','Finance','Healthcare','Retail','Manufacturing','Education','Real Estate','Other']},{key:'employeesSize',label:'Employees size',type:'number'},{key:'emails',label:'Additional emails',type:'list',kind:'email'},{key:'phones',label:'Additional phones',type:'list',kind:'phone'}];
   const leadSecondary=l.converted?[...leadSecondaryBase,{key:'_conv',label:'Converted to',type:'converted'}]:leadSecondaryBase;
   const [editOpen,setEditOpen]=React.useState(false);
@@ -15413,8 +15476,8 @@ function SettingsTeamPage({goTo}){
   );
 }
 // ?? Settings Properties ??????????????????????????????????????????????????????
-const PROP_TYPES=['Text','Long text','Number','Currency','Single select','Multi select','Date','Date range','Boolean','Email','Phone','URL','Lookup','Autocomplete'];
-const PROP_TYPE_ICON={'Text':I.Note,'Long text':I.Note,'Number':I.Hash,'Currency':I.Dollar,'Single select':I.ChevronDown,'Multi select':I.Layers,'Date':I.Calendar,'Date range':I.Calendar,'Boolean':I.Check,'Email':I.Mail,'Phone':I.Phone,'URL':I.Globe,'Lookup':I.Building,'Autocomplete':I.Search};
+const PROP_TYPES=['Text','Long text','Rich text','Number','Currency','Single select','Multi select','Date','Date range','Boolean','Email','Phone','URL','Lookup','Autocomplete','Attachment'];
+const PROP_TYPE_ICON={'Text':I.Note,'Long text':I.Note,'Rich text':I.Edit,'Number':I.Hash,'Currency':I.Dollar,'Single select':I.ChevronDown,'Multi select':I.Layers,'Date':I.Calendar,'Date range':I.Calendar,'Boolean':I.Check,'Email':I.Mail,'Phone':I.Phone,'URL':I.Globe,'Lookup':I.Building,'Autocomplete':I.Search,'Attachment':I.Paperclip};
 const PROP_PIPELINES=['Sales Pipeline','Customer Onboarding'];
 const PROP_STAGES=['Qualified','Proposal','Negotiation','Won','Lost'];
 function propSeed(){
@@ -15587,6 +15650,8 @@ function PropPreview({label,type,options,help,required,defaultValue}){
   const INP='w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.10] text-[13px] text-white outline-none';
   let ctrl;
   if(type==='Long text')ctrl=<textarea rows={2} defaultValue={defaultValue} placeholder={'Enter '+(label||'value').toLowerCase()} className={INP+' resize-none'}/>;
+  else if(type==='Rich text')ctrl=<div className="rounded-lg bg-white/[0.05] border border-white/[0.10] overflow-hidden"><div className="flex items-center gap-1.5 px-2 py-1 border-b border-white/[0.07]"><b className="text-white/50 text-[12px]">B</b><i className="text-white/50 text-[12px]">I</i><I.List size={12} className="text-white/40"/><I.Globe size={12} className="text-white/40"/></div><div className="px-3 py-2 text-[13px] text-white/35">Formatted text…</div></div>;
+  else if(type==='Attachment')ctrl=<div className="flex items-center gap-1.5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] text-brand-200 bg-brand-500/10 border border-brand-500/25"><I.Upload size={11}/>Upload</span><span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] text-white/55 bg-white/[0.04] border border-white/[0.10]"><I.Paperclip size={11}/>Attach existing</span></div>;
   else if(type==='Boolean')ctrl=<Toggle on={defaultValue==='true'||defaultValue===true} onChange={()=>{}}/>;
   else if(type==='Single select'||type==='Lookup'||type==='Autocomplete')ctrl=<select className={INP} style={{background:'var(--s850)',colorScheme:'dark'}}><option value="">{type==='Lookup'?'Search…':'Select…'}</option>{(options||[]).map(o=>(<option key={o}>{o}</option>))}</select>;
   else if(type==='Multi select')ctrl=<div className="flex flex-wrap gap-1.5">{(options&&options.length?options:['Option A','Option B']).slice(0,4).map(o=>(<span key={o} className="px-2 py-0.5 rounded-full text-[11px] bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20">{o}</span>))}<span className="px-2 py-0.5 rounded-full text-[11px] text-white/35 ring-1 ring-dashed ring-white/15">+ Add</span></div>;
@@ -22228,13 +22293,15 @@ function coSeedObjects(){
       {id:'f_due',key:'f_due',label:'Due date',type:'Date',detail:'primary',col:true},
       {id:'f_priority',key:'f_priority',label:'Priority',type:'Single select',options:['Low','Medium','High'],detail:'secondary',col:true},
       {id:'f_notes',key:'f_notes',label:'Notes',type:'Long text',detail:'secondary'},
+      {id:'f_brief',key:'f_brief',label:'Brief',type:'Rich text',detail:'secondary'},
+      {id:'f_docs',key:'f_docs',label:'Documents',type:'Attachment',detail:'secondary'},
     ],
     relationships:[
       {id:'r_company',key:'r_company',label:'Company',target:'company',many:false},
       {id:'r_contacts',key:'r_contacts',label:'Team contacts',target:'contact',many:true},
     ],
     records:[
-      {id:'rec_1',name:'Meridian website rebuild',owner:'AM',ownerColor:'#3b82f6',tags:['priority','q3'],f_stage:'In progress',f_budget:24000,f_due:'2026-08-15',f_priority:'High',f_notes:'Full marketing-site rebuild on a new CMS, with phased content migration.',r_company:'Meridian Agency',r_contacts:['Sarah Chen'],createdBy:'AM',createdAt:'Jun 2, 2026',agoMin:ago(15),archived:false,deleted:false,acts:[{type:'note',ts:ago(2),title:'Kickoff call done',body:'Aligned on scope and timeline with the client.'},{type:'field',ts:ago(6),title:'Stage → In progress',body:'Moved from Planning after the SOW was signed.'}]},
+      {id:'rec_1',name:'Meridian website rebuild',owner:'AM',ownerColor:'#3b82f6',tags:['priority','q3'],f_stage:'In progress',f_budget:24000,f_due:'2026-08-15',f_priority:'High',f_notes:'Full marketing-site rebuild on a new CMS, with phased content migration.',f_brief:'<b>Goal:</b> rebuild the marketing site on a modern CMS.<ul><li>Phase 1 — content audit &amp; migration</li><li>Phase 2 — new design system</li><li>Phase 3 — launch &amp; QA</li></ul>',f_docs:[{name:'proposal.pdf',size:'940 KB'},{name:'floor-plan-final.pdf',size:'820 KB'}],r_company:'Meridian Agency',r_contacts:['Sarah Chen'],createdBy:'AM',createdAt:'Jun 2, 2026',agoMin:ago(15),archived:false,deleted:false,acts:[{type:'note',ts:ago(2),title:'Kickoff call done',body:'Aligned on scope and timeline with the client.'},{type:'field',ts:ago(6),title:'Stage → In progress',body:'Moved from Planning after the SOW was signed.'}]},
       {id:'rec_2',name:'Summit onboarding rollout',owner:'JK',ownerColor:'#8b5cf6',tags:['onboarding'],f_stage:'Planning',f_budget:12000,f_due:'2026-09-01',f_priority:'Medium',f_notes:'Phased onboarding across eight seats.',r_company:'Summit Digital',r_contacts:['James Rivera'],createdBy:'JK',createdAt:'Jun 8, 2026',agoMin:ago(9),archived:false,deleted:false,acts:[]},
       {id:'rec_3',name:'Forge expansion plan',owner:'AM',ownerColor:'#3b82f6',tags:['expansion'],f_stage:'On hold',f_budget:44000,f_due:'2026-10-10',f_priority:'High',f_notes:'Awaiting Q4 budget sign-off before resuming.',r_company:'Forge & Co',r_contacts:['Emily Tran'],createdBy:'AM',createdAt:'May 28, 2026',agoMin:ago(20),archived:false,deleted:false,acts:[{type:'note',ts:ago(3),title:'Paused pending budget',body:'Client paused until Q4 budget is confirmed.'}]},
       {id:'rec_4',name:'Internal CRM cleanup',owner:'SC',ownerColor:'#10b981',tags:[],f_stage:'Complete',f_budget:0,f_due:'2026-06-01',f_priority:'Low',f_notes:'Dedupe and re-tag legacy records.',r_company:'',r_contacts:[],createdBy:'SC',createdAt:'May 1, 2026',agoMin:ago(40),archived:false,deleted:false,acts:[]},
@@ -22404,13 +22471,18 @@ function CustomRecordDrawer({mode,def,record,crm,onClose,onSave}){
 // ── Field value renderers (list cell + detail row) ──
 function coCellRender(f,val){
   if(val==null||val===''||(Array.isArray(val)&&!val.length))return <span className="text-white/25 text-[12px]">—</span>;
+  if(f.type==='Attachment'){const arr=Array.isArray(val)?val:[val];return <span className="inline-flex items-center gap-1.5 text-[12px] text-white/70"><I.Paperclip size={11} className="text-white/40"/>{arr.length} file{arr.length===1?'':'s'}</span>;}
+  if(f.type==='Rich text')return <span className="text-[12.5px] text-white/70 truncate block">{String(val).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()||'—'}</span>;
   if(f.type==='Currency')return <span className="text-[13px] font-semibold text-white tabular-nums">{fmtMoney(val)}</span>;
   if(f.type==='Single select'||f.type==='Boolean')return <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 bg-white/[0.05] text-white/70 ring-white/[0.12] whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full" style={{background:arHashColor(String(val))}}/>{String(val)}</span>;
   if(f.type==='Multi select')return <div className="flex flex-wrap gap-1">{(Array.isArray(val)?val:[val]).slice(0,2).map(x=><TagChip key={x} name={String(x)} sm/>)}</div>;
   return <span className="text-[13px] text-white/75 truncate block">{String(val)}</span>;
 }
 function CoFieldDisplay({f,val}){
-  if(val==null||val===''||(Array.isArray(val)&&!val.length))return <span className="text-[13px] text-white/30">—</span>;
+  const rtEmpty=f.type==='Rich text'&&String(val||'').replace(/<[^>]+>/g,'').trim()==='';
+  if(val==null||val===''||rtEmpty||(Array.isArray(val)&&!val.length))return <span className="text-[13px] text-white/30">—</span>;
+  if(f.type==='Rich text')return <div className="rt-view text-[13px] text-white/85 leading-relaxed break-words" dangerouslySetInnerHTML={{__html:String(val)}}/>;
+  if(f.type==='Attachment')return <div className="flex flex-col gap-1.5">{(Array.isArray(val)?val:[val]).map((d,i)=>(<span key={(d&&d.name)||i} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07] w-fit max-w-full"><I.Note size={12} className="text-brand-300 shrink-0"/><span className="text-[12px] text-white/80 truncate">{(d&&d.name)||String(d)}</span>{d&&d.size&&<span className="text-[10px] text-white/40 shrink-0">{d.size}</span>}</span>))}</div>;
   if(f.type==='Currency')return <span className="text-[13px] font-semibold text-white tabular-nums">{fmtMoney(val)}</span>;
   if(f.type==='Single select'||f.type==='Boolean')return <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-white/[0.05] text-white/75 ring-white/[0.12]"><span className="w-1.5 h-1.5 rounded-full" style={{background:arHashColor(String(val))}}/>{String(val)}</span>;
   if(f.type==='Multi select')return <div className="flex flex-wrap gap-1">{(Array.isArray(val)?val:[val]).map(x=><TagChip key={x} name={String(x)} sm/>)}</div>;
