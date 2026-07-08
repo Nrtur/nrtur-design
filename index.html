@@ -17011,7 +17011,7 @@ function IntegBrowser({cards}){
 const PHONE_VERTICALS=['Professional Services','Software / SaaS','Real Estate','Healthcare','Retail / E-commerce','Finance','Education','Other'];
 const A2P_USE_CASES=['Low-volume mixed','Mixed (sales & support)','Marketing','Customer care'];
 const A2P_OPTIN_METHODS=['Website form','Verbal / phone call','Paper form','Keyword / text-to-join'];
-function PhoneChip({s}){const M={active:['Active','#34d399'],verified:['Verified','#34d399'],approved:['Approved','#34d399'],ok:['Ready to send','#34d399'],pending:['Pending review','#fbbf24'],needs:['Needs registration','#fbbf24'],porting:['Porting in','#60a5fa'],unverified:['Unverified','#f87171'],rejected:['Rejected','#f87171'],none:['Not registered','#94a3b8']};const st=M[s]||[String(s),'#94a3b8'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap" style={{background:st[1]+'14',color:st[1],boxShadow:'inset 0 0 0 1px '+st[1]+'33'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st[1]}}/>{st[0]}</span>);}
+function PhoneChip({s}){const M={active:['Active','#34d399'],verified:['Verified','#34d399'],approved:['Approved','#34d399'],ok:['Ready to send','#34d399'],pending:['Pending review','#fbbf24'],queued:['Queued','#818cf8'],needs:['Needs registration','#fbbf24'],porting:['Porting in','#60a5fa'],unverified:['Unverified','#f87171'],rejected:['Rejected','#f87171'],none:['Not registered','#94a3b8']};const st=M[s]||[String(s),'#94a3b8'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap" style={{background:st[1]+'14',color:st[1],boxShadow:'inset 0 0 0 1px '+st[1]+'33'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st[1]}}/>{st[0]}</span>);}
 function PortNumberModal({close,onPort}){
   const [f,setF]=React.useState({number:'',carrier:'',account:'',pin:''});
   useEscKey(close);const set=(k,v)=>setF(x=>({...x,[k]:v}));
@@ -17177,6 +17177,127 @@ function A2pCampaignModal({close,onSubmit}){
     </div>
   </React.Fragment>);
 }
+// ── Unified A2P registration wizard — ONE guided flow (eligibility → profile → brand → campaign → consent → review),
+// submitted as a single bundle; downstream stages sit 'queued' and auto-cascade as each carrier approval lands
+// (see _autoAdvance). This is the primary registration path; the Trust-center cards become a status dashboard.
+function TrustRegistrationWizard({close,onSubmit,initial}){
+  const P=(initial&&initial.profile)||{},B=(initial&&initial.brand)||{},C=(initial&&initial.campaign)||{};
+  const [step,setStep]=React.useState(0);
+  const [f,setF]=React.useState({
+    bt:B.type||'standard',
+    entityType:P.entityType||'LLC',legalName:P.legalName||'',ein:P.ein||'',address:P.address||'',website:P.website||'',
+    repName:(P.rep&&P.rep.name)||'',repTitle:(P.rep&&P.rep.title)||'',repEmail:(P.rep&&P.rep.email)||'',repPhone:(P.rep&&P.rep.phone)||'',
+    vertical:B.vertical||PHONE_VERTICALS[0],mobile:B.mobile||'',
+    useCase:C.useCase||A2P_USE_CASES[1],s1:(C.samples&&C.samples[0])||'',s2:(C.samples&&C.samples[1])||'',
+    optInMethod:C.optInMethod||A2P_OPTIN_METHODS[0],optInDesc:C.optInDesc||'',
+    optInConfirm:C.optInConfirm||`You're subscribed to {{business}} alerts. Msg & data rates may apply. Reply HELP for help, STOP to cancel.`,
+    stopMsg:C.stopMsg||`You're unsubscribed and won't receive more messages. Reply START to resubscribe.`,
+    helpMsg:C.helpMsg||`{{business}}: reply here or call us. Msg & data rates may apply. Reply STOP to cancel.`,
+    optOut:C.optOut!==false,privacyUrl:C.privacyUrl||'',termsUrl:C.termsUrl||'',
+  });
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const sole=f.bt==='soleProp';
+  const okUrl=(u)=>/^https?:\/\/[^\s.]+\.[^\s]+$/i.test((u||'').trim());
+  const okEmail=(e)=>/\S+@\S+\.\S+/.test((e||'').trim());
+  const mktUse=/market|mixed/i.test(f.useCase);
+  const valid=[true,
+    !!(f.legalName.trim()&&f.address.trim()&&f.repName.trim()&&okEmail(f.repEmail)&&(sole||f.ein.trim())),
+    !!(f.vertical&&(!sole||f.mobile.replace(/\D/g,'').length>=10)),
+    !!(f.s1.trim()&&(!mktUse||f.s2.trim())),
+    !!(f.optInDesc.trim()&&f.optInConfirm.trim()&&okUrl(f.privacyUrl)&&okUrl(f.termsUrl)),
+    true];
+  const STEPS=[{n:'Eligibility'},{n:'Business profile'},{n:'A2P brand'},{n:'Campaign'},{n:'Consent & policies'},{n:'Review'}];
+  const go=(n)=>{if(n>step){for(let i=step;i<n;i++)if(!valid[i]){setStep(i);return;}}setStep(Math.max(0,Math.min(STEPS.length-1,n)));};
+  const doSubmit=()=>{for(let i=0;i<valid.length;i++)if(!valid[i]){setStep(i);return;}onSubmit({
+    profile:{entityType:sole?'Sole proprietorship':f.entityType,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)}},
+    brand:{type:f.bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),mobile:sole?fmtPhone(f.mobile):''},
+    campaign:{useCase:f.useCase,samples:[f.s1.trim(),f.s2.trim()].filter(Boolean),optInMethod:f.optInMethod,optInDesc:f.optInDesc.trim(),optInConfirm:f.optInConfirm.trim(),stopMsg:f.stopMsg.trim(),helpMsg:f.helpMsg.trim(),optOut:f.optOut,privacyUrl:f.privacyUrl.trim(),termsUrl:f.termsUrl.trim()},
+  });};
+  const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
+  const LBL='block text-[11px] font-medium text-white/45 mb-1.5';const TA=INP+' resize-none leading-relaxed';
+  const Chev=(node)=>(<div className="relative">{node}<I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div>);
+  const InheritChip=({l,v})=>(<div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"><span className="text-[11px] text-white/40 shrink-0">{l}</span><span className={['text-[12px] truncate ml-2',v?'text-white/80':'text-amber-300'].join(' ')}>{v||'— add in profile'}</span></div>);
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[185] bg-black/50" onClick={close}/>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[760px] max-w-[95vw] max-h-[92vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Register for SMS · A2P 10DLC</p><p className="text-[11.5px] text-white/45 mt-0.5">One guided registration — fill it once; carriers review each stage in turn.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 px-5 py-3 border-b border-white/[0.05] overflow-x-auto scroll-area"><div className="flex items-center gap-1 w-max">{STEPS.map((s,i)=>{const done=i<step&&valid[i];const cur=i===step;const locked=i>step&&!valid.slice(0,i).every(Boolean);return(<React.Fragment key={i}>{i>0&&<span className="w-4 h-px bg-white/10 shrink-0"/>}<button onClick={()=>go(i)} disabled={locked} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all',cur?'bg-brand-500 text-white shadow-brand':done?'text-emerald-300 bg-emerald-500/10':locked?'text-white/25 cursor-not-allowed':'text-white/50 hover:text-white bg-white/[0.03]'].join(' ')}><span className={['w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold',cur?'bg-white/25':done?'bg-emerald-500/25':'bg-white/[0.08]'].join(' ')}>{done?<I.Check size={9} stroke={3}/>:i+1}</span>{s.n}</button></React.Fragment>);})}</div></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
+        {step===0&&(<React.Fragment>
+          <p className="text-[13px] text-white/70">Does your business have a Tax ID (EIN in the US / BN in Canada)?</p>
+          <div className="grid grid-cols-2 gap-3">{[['standard','Registered business','Has a tax ID. Full messaging throughput and multiple campaigns.'],['soleProp','Sole proprietor','No tax ID — verified by a mobile code. Limited to 1 campaign + 1 number, low volume.']].map(([k,l,d])=>(<button key={k} onClick={()=>set('bt',k)} className={['text-left rounded-xl border p-4 transition-all',f.bt===k?'border-brand-500/50 bg-brand-500/[0.08]':'border-white/[0.07] bg-white/[0.03] hover:border-white/[0.16]'].join(' ')}><p className="text-[13.5px] font-semibold text-white flex items-center gap-2">{l}{f.bt===k&&<I.Check size={13} className="text-brand-300"/>}</p><p className="text-[11.5px] text-white/45 mt-1 leading-relaxed">{d}</p></button>))}</div>
+          <p className="text-[11.5px] text-white/40 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5 leading-relaxed">This forks the whole registration. Most businesses — even single-owner LLCs — are a registered business; pick sole proprietor only if you have no EIN/BN.</p>
+        </React.Fragment>)}
+        {step===1&&(<React.Fragment>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Entity type</label>{sole?<div className={INP+' text-white/50'}>Sole proprietorship</div>:Chev(<select value={f.entityType} onChange={e=>set('entityType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{['LLC','Corporation','Partnership','Non-profit'].map(o=><option key={o}>{o}</option>)}</select>)}</div>
+            <div><label className={LBL}>Legal business name{sole?' (your full legal name)':''}</label><input value={f.legalName} onChange={e=>set('legalName',e.target.value)} placeholder={sole?'Alex Morgan':'Acme Digital LLC'} className={INP}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {!sole&&<div><label className={LBL}>Tax ID (EIN / BN)</label><input value={f.ein} onChange={e=>set('ein',e.target.value)} placeholder="82-0000000" className={INP}/></div>}
+            <div className={sole?'col-span-2':''}><label className={LBL}>Website</label><input value={f.website} onChange={e=>set('website',e.target.value)} placeholder="https://…" className={INP}/></div>
+          </div>
+          <div><label className={LBL}>Business address</label><input value={f.address} onChange={e=>set('address',e.target.value)} placeholder="Street, city, state" className={INP}/></div>
+          <p className="text-[10.5px] font-medium text-white/35 uppercase tracking-[0.14em] pt-1">Authorized representative</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Full name</label><input value={f.repName} onChange={e=>set('repName',e.target.value)} placeholder="Alex Morgan" className={INP}/></div>
+            <div><label className={LBL}>Job title</label><input value={f.repTitle} onChange={e=>set('repTitle',e.target.value)} placeholder="Owner" className={INP}/></div>
+            <div><label className={LBL}>Work email</label><input value={f.repEmail} onChange={e=>set('repEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
+            <div><label className={LBL}>Phone</label><input value={f.repPhone} onChange={e=>set('repPhone',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>
+          </div>
+        </React.Fragment>)}
+        {step===2&&(<React.Fragment>
+          <p className="text-[12px] text-white/55 leading-relaxed">Your A2P brand is your identity at The Campaign Registry. It <span className="text-white/80">inherits from your business profile</span> — only these are new.</p>
+          <div className="grid grid-cols-2 gap-2.5"><InheritChip l="Legal name" v={f.legalName.trim()}/>{!sole?<InheritChip l="Tax ID" v={f.ein.trim()}/>:<InheritChip l="Entity" v="Sole proprietor"/>}<InheritChip l="Address" v={f.address.trim()}/><InheritChip l="Website" v={f.website.trim()}/></div>
+          <button onClick={()=>setStep(1)} className="self-start text-[11.5px] font-medium text-brand-300 hover:text-brand-200">Edit these in Business profile →</button>
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div><label className={LBL}>Industry vertical</label>{Chev(<select value={f.vertical} onChange={e=>set('vertical',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{PHONE_VERTICALS.map(v=><option key={v}>{v}</option>)}</select>)}</div>
+            {sole&&<div><label className={LBL}>Your mobile (one-time code)</label><input value={f.mobile} onChange={e=>set('mobile',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>}
+          </div>
+          {sole&&<p className="text-[11px] text-white/40 leading-relaxed">Carriers text a one-time code to a real mobile (not a CRM/VoIP number). One mobile can verify at most 3 brands, ever.</p>}
+        </React.Fragment>)}
+        {step===3&&(<React.Fragment>
+          <div><label className={LBL}>Use case</label>{Chev(<select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select>)}{mktUse&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.Info size={10}/>Marketing / mixed use cases get closer carrier review and need two sample messages.</p>}</div>
+          <div><label className={LBL}>Sample message 1 <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.s1} onChange={e=>set('s1',e.target.value)} placeholder="Hi {{first_name}}, thanks for reaching out — free for a quick call this week?" className={TA}/></div>
+          <div><label className={LBL}>Sample message 2 {mktUse?<span className="text-red-300/80">*</span>:<span className="text-white/30">(optional)</span>}</label><textarea rows={2} value={f.s2} onChange={e=>set('s2',e.target.value)} placeholder="Your proposal is ready: {{deal_link}}. Reply STOP to opt out." className={TA}/></div>
+          <p className="text-[11px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Carriers read these to confirm your messages match the use case — use realistic examples with the {'{{merge_fields}}'} you actually send.</p>
+        </React.Fragment>)}
+        {step===4&&(<React.Fragment>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>How do contacts opt in?</label>{Chev(<select value={f.optInMethod} onChange={e=>set('optInMethod',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_OPTIN_METHODS.map(u=><option key={u}>{u}</option>)}</select>)}</div>
+            <div className="flex items-end pb-1"><label className="flex items-center gap-2.5 text-[12.5px] text-white/70 cursor-pointer"><Toggle on={f.optOut} onChange={v=>set('optOut',v)}/>Auto-append “Reply STOP to opt out”</label></div>
+          </div>
+          <div><label className={LBL}>Describe the opt-in (carriers read this) <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.optInDesc} onChange={e=>set('optInDesc',e.target.value)} placeholder="Contacts check an SMS-consent box on our website / booking form before we ever text them." className={TA}/></div>
+          <div><label className={LBL}>Opt-in confirmation message <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.optInConfirm} onChange={e=>set('optInConfirm',e.target.value)} className={TA}/></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>STOP reply</label><textarea rows={2} value={f.stopMsg} onChange={e=>set('stopMsg',e.target.value)} className={TA}/></div>
+            <div><label className={LBL}>HELP reply</label><textarea rows={2} value={f.helpMsg} onChange={e=>set('helpMsg',e.target.value)} className={TA}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Privacy policy URL <span className="text-red-300/80">*</span></label><input value={f.privacyUrl} onChange={e=>set('privacyUrl',e.target.value)} placeholder="https://yoursite.com/privacy" className={INP+(f.privacyUrl&&!okUrl(f.privacyUrl)?' border-red-500/40':'')}/></div>
+            <div><label className={LBL}>Terms &amp; conditions URL <span className="text-red-300/80">*</span></label><input value={f.termsUrl} onChange={e=>set('termsUrl',e.target.value)} placeholder="https://yoursite.com/terms" className={INP+(f.termsUrl&&!okUrl(f.termsUrl)?' border-red-500/40':'')}/></div>
+          </div>
+          <p className="text-[11px] text-white/45 leading-relaxed rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-2.5 flex items-start gap-2"><I.Info size={11} className="text-amber-300 shrink-0 mt-0.5"/>Carriers now require a public Privacy Policy and Terms URL plus working STOP/HELP replies — missing them is the top cause of campaign rejection.</p>
+        </React.Fragment>)}
+        {step===5&&(()=>{const Grp=({title,i,rows})=>(<div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"><div className="flex items-center justify-between mb-2.5"><p className="text-[12.5px] font-semibold text-white">{title}</p><button onClick={()=>setStep(i)} className="text-[11px] font-medium text-brand-300 hover:text-brand-200">Edit</button></div><div className="flex flex-col gap-1.5">{rows.filter(Boolean).map(([l,v],j)=>(<div key={j} className="flex items-start justify-between gap-3 text-[12px]"><span className="text-white/40 shrink-0">{l}</span><span className="text-white/80 text-right min-w-0 break-words">{v||'—'}</span></div>))}</div></div>);return(<React.Fragment>
+          <p className="text-[12px] text-white/55">Review everything before you submit — jump back to any step to fix it.</p>
+          <Grp title="Business profile" i={1} rows={[['Business',f.legalName+(sole?' · Sole proprietor':f.ein?(' · '+f.ein):'')],['Address',f.address],['Website',f.website],['Rep',f.repName+(f.repEmail?(' · '+f.repEmail):'')]]}/>
+          <Grp title="A2P brand" i={2} rows={[['Type',sole?'Sole proprietor':'Registered business'],['Vertical',f.vertical],sole&&['Mobile',f.mobile]]}/>
+          <Grp title="Campaign" i={3} rows={[['Use case',f.useCase],['Sample 1',f.s1],f.s2&&['Sample 2',f.s2]]}/>
+          <Grp title="Consent & policies" i={4} rows={[['Opt-in',f.optInMethod],['Privacy',f.privacyUrl],['Terms',f.termsUrl]]}/>
+          <div className="rounded-xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-white">Fees</p><p className="text-[11px] text-white/50 mt-0.5">One-time $15 campaign vetting, debited from your wallet on submit. Recurring monthly carrier fees apply by use case.</p></div><span className="text-[16px] font-semibold text-white tabular-nums shrink-0">$15</span></div>
+        </React.Fragment>);})()}
+      </div>
+      <div className="shrink-0 flex items-center gap-3 px-5 py-4 border-t border-white/[0.06]">
+        <button onClick={step===0?close:()=>setStep(step-1)} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{step===0?'Cancel':'Back'}</button>
+        <span className="text-[11px] text-white/35 ml-1 hidden sm:inline">Step {step+1} of {STEPS.length}</span>
+        {step<STEPS.length-1
+          ?<button onClick={()=>go(step+1)} disabled={!valid[step]} className={['ml-auto px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid[step]?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Continue</button>
+          :<button onClick={doSubmit} className="ml-auto px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Submit registration · $15</button>}
+      </div>
+    </div>
+  </React.Fragment>);
+}
 function SettingsPhoneNumbersPage({goTo}){
   const crm=React.useContext(CrmDataContext);
   const {confirmNode,openConfirm}=useConfirm();
@@ -17191,6 +17312,7 @@ function SettingsPhoneNumbersPage({goTo}){
   const [brandOpen,setBrandOpen]=React.useState(false);
   const [campOpen,setCampOpen]=React.useState(false);
   const [profileOpen,setProfileOpen]=React.useState(false); // Trust Hub step 1: business/customer profile
+  const [wizardOpen,setWizardOpen]=React.useState(false); // unified A2P registration wizard (primary path; the 3 cards below are the status dashboard + per-stage edit)
   const [cnamDraft,setCnamDraft]=React.useState('');
   const profile=crm.trustProfile;
   const soleProp=brand&&brand.type==='soleProp';
@@ -17204,6 +17326,21 @@ function SettingsPhoneNumbersPage({goTo}){
   const onPort=(o)=>{crm.setPhoneNumbers(a=>[...a,{id:'pn_'+Date.now(),number:o.number,label:'Porting from '+o.carrier,country:'US',type:'local',caps:{voice:true,sms:true,mms:true},assignedTo:null,isDefault:false,monthly:1.15,purchasedAt:'Port in progress',status:'porting',portAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);setPortOpen(false);toast('Port started for '+o.number+' — lands in ~2 simulated days');};
   const release=(n)=>openConfirm({title:'Release '+n.number+'?',body:'The number returns to the carrier pool immediately and can be claimed by anyone else. Monthly billing stops. This cannot be undone.',confirmLabel:'Release number',danger:true,onConfirm:()=>{crm.setPhoneNumbers(a=>a.map(x=>x.id===n.id?{...x,released:true,isDefault:false}:x));toast('Released '+n.number);}});
   const advanceReview=()=>{try{const r=_autoAdvance(864e5);toast('Simulated +1 day of carrier review');}catch(e){}};
+  // Wizard submit: write all three stages as ONE bundle. If the profile is already approved, brand goes straight to
+  // 'pending'; otherwise brand + campaign sit 'queued' and _autoAdvance cascades them as each upstream stage clears.
+  const submitRegistration=(data)=>{const now=(typeof _autoNow!=='undefined'?_autoNow:Date.now());
+    const profApproved=profile&&profile.status==='approved';
+    const brandVerified=brand&&brand.status==='verified';
+    const firstCamp=(camps&&camps[0])||null;
+    const campSettled=!!(firstCamp&&(firstCamp.status==='approved'||firstCamp.status==='pending')); // already at the carrier — a "Review registration" re-submit must NOT reset it (that would take live SMS offline + re-charge)
+    crm.setTrustProfile({...data.profile,status:profApproved?'approved':'pending',atNow:now,note:profApproved?(profile.note||'Approved after review'):'Submitted just now'});
+    // Keep a verified brand VERIFIED on re-submit (else a review knocks it back to 'pending' and messaging goes dark for days); else submit/queue per the profile gate.
+    crm.setSmsBrand({...data.brand,status:brandVerified?'verified':(profApproved?'pending':'queued'),atNow:now,note:brandVerified?(brand.note||'Verified after review'):(profApproved?'Submitted — in review':'Queued — submits when profile approves')});
+    if(campSettled){/* reviewing an already-submitted registration — leave the campaigns array untouched, no re-charge */}
+    else{crm.setSmsCampaigns(a=>{const list=(a||[]);const rest=(firstCamp?list.slice(1):list).filter(Boolean);return [{id:(firstCamp&&firstCamp.id)||'cmp_'+Date.now(),...data.campaign,status:'queued',submittedDaysAgo:0,fee:15,submittedAtNow:now,note:'Queued — submits when brand verifies'},...rest];}); // reconcile: replace only the wizard-owned first campaign, preserve any others a standard brand added via the card
+      if(crm.walletDebit)crm.walletDebit(15,'A2P campaign verification fee');} // charge ONLY when a new campaign is actually submitted
+    setWizardOpen(false);toast(campSettled?'Registration reviewed — your live campaign is unchanged.':'Registration submitted — watch each stage clear here, or Simulate +1 day.');};
+  const regDone=[profile&&profile.status==='approved',brand&&brand.status==='verified',camps.some(c=>c&&c.status==='approved')].filter(Boolean).length;
   const CARD='rounded-2xl border border-white/[0.06] bg-white/[0.03]';
   const tabsCtl=(<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] w-fit">{[['numbers','Numbers'],['trust','Trust center'],['wallet','Wallet & usage']].map(([k,l])=>(<button key={k} onClick={()=>setTab(k)} className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',tab===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>);
   return(<SettingsShell active="settings-phone-numbers" goTo={goTo} subtitle="Buy and manage workspace numbers, register messaging with carriers, and fund usage from the wallet." tabs={tabsCtl}>
@@ -17230,6 +17367,11 @@ function SettingsPhoneNumbersPage({goTo}){
       </div>))}</div>)}
     </div>)}
     {tab==='trust'&&(<div className="flex flex-col gap-4">
+      {/* Primary registration path — one guided wizard. The three numbered cards below are now the STATUS dashboard + per-stage edit-and-resubmit. */}
+      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-xl bg-brand-500/15 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.ShieldCheck size={16}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white">SMS registration · A2P 10DLC</p><p className="text-[12px] text-white/50 mt-0.5">{comp.ok?'All set — your numbers are registered and approved for SMS.':(regDone+' of 3 stages complete — fill it once; carriers review each in turn.')}</p></div></div>
+        {!readOnly&&<button onClick={()=>setWizardOpen(true)} className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.ShieldCheck size={13}/>{comp.ok?'Review registration':(profile?'Continue registration':'Start registration')}</button>}
+      </div>
       <div className={CARD+' px-5 py-4'}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[13px] font-bold">1</span><div><p className="text-[14px] font-semibold text-white flex items-center gap-2">Business profile {profile?<PhoneChip s={profile.status}/>:<PhoneChip s="none"/>}</p><p className="text-[12px] text-white/45 mt-0.5">{profile?(profile.legalName+' · '+profile.entityType+(profile.rep&&profile.rep.name?(' · Rep: '+profile.rep.name):'')):'Your verified legal identity — carriers check this first; brand, campaigns and number trust hang off it.'}</p></div></div>
@@ -17311,6 +17453,7 @@ function SettingsPhoneNumbersPage({goTo}){
     {brandOpen&&<A2pBrandModal close={()=>setBrandOpen(false)} initial={brand||(profile?{legalName:profile.legalName,ein:profile.ein,address:profile.address,website:profile.website}:null)} onSubmit={(b)=>{crm.setSmsBrand({...b,atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())});setBrandOpen(false);toast('Brand submitted — verification usually takes minutes to 24h');}}/>}
     {campOpen&&<A2pCampaignModal close={()=>setCampOpen(false)} onSubmit={(c)=>{crm.setSmsCampaigns(a=>[...a,{...c,submittedAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);if(crm.walletDebit)crm.walletDebit(15,'A2P campaign verification fee');setCampOpen(false);toast('Campaign submitted for carrier review · $15 verification fee from wallet');}}/>}
     {profileOpen&&<TrustProfileModal close={()=>setProfileOpen(false)} initial={profile} onSubmit={(p)=>{crm.setTrustProfile({...p,atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())});setProfileOpen(false);toast('Business profile submitted — usually approved within a day');}}/>}
+    {wizardOpen&&<TrustRegistrationWizard close={()=>setWizardOpen(false)} onSubmit={submitRegistration} initial={{profile,brand,campaign:(camps&&camps[0])||null}}/>}
     {confirmNode}
   </SettingsShell>);
 }
@@ -19097,6 +19240,11 @@ function _autoAdvance(ms){
     if(_autoRt&&_autoRt.setPhoneNumbers&&(_livePhoneNumbers||[]).some(n=>n&&(n.tfStatus==='pending'||n.status==='porting')))_autoRt.setPhoneNumbers(a=>a.map(n=>{if(!n)return n;let x=n;if(x.tfStatus==='pending'&&_age(x.tfAtNow,0)>=1)x={...x,tfStatus:'verified'};if(x.status==='porting'&&_age(x.portAtNow,0)>=2)x={...x,status:'active',label:x.label||'Ported number'};return x;}));
     if(_autoRt&&_autoRt.setRegBundles&&(_liveRegBundles||[]).some(b=>b&&b.status==='pending'))_autoRt.setRegBundles(bs=>bs.map(b=>b&&b.status==='pending'&&_age(b.atNow,0)>=1?{...b,status:'approved'}:b));
     if(_autoRt&&_autoRt.setTrustProfile&&_liveTrustProfile&&_liveTrustProfile.status==='pending'&&_age(_liveTrustProfile.atNow,0)>=1)_autoRt.setTrustProfile(p=>p&&p.status==='pending'?{...p,status:'approved',note:'Approved after review'}:p);
+    // Registration CASCADE: the wizard submits profile+brand+campaign as ONE bundle; downstream stages sit 'queued'
+    // and auto-submit (start their own review clock) the moment the upstream stage clears — so a single-sitting
+    // registration flows through without the user having to re-open a modal between each carrier approval.
+    if(_autoRt&&_autoRt.setSmsBrand&&_liveTrustProfile&&_liveTrustProfile.status==='approved'&&_liveSmsBrand&&_liveSmsBrand.status==='queued')_autoRt.setSmsBrand(b=>b&&b.status==='queued'?{...b,status:'pending',atNow:_autoNow,note:'Submitted — profile approved'}:b);
+    if(_autoRt&&_autoRt.setSmsCampaigns&&_liveSmsBrand&&_liveSmsBrand.status==='verified'&&(_liveSmsCampaigns||[]).some(c=>c&&c.status==='queued'))_autoRt.setSmsCampaigns(cs=>cs.map(c=>c&&c.status==='queued'?{...c,status:'pending',submittedAtNow:_autoNow,note:'Submitted — brand verified'}:c));
     if(_autoRt&&_autoRt.setCnam&&_liveCnam&&_liveCnam.status==='pending'&&_age(_liveCnam.atNow,0)>=1)_autoRt.setCnam(c=>c&&c.status==='pending'?{...c,status:'active'}:c);
   }catch(e){}
   const n=scanBreaches();
