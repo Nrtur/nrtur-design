@@ -1,5 +1,7 @@
 # Contacts
-_Module 6 · Verified from `index.html` lines 1981–7370 · 2026-06-30_
+_Module 6 · Verified 2026-06-30 · `ContactDetailPage` now at line 7914_
+
+> **2026-07-08 update.** (1) The hero **status pill is now inline-editable** (a `ContactStatusDropdown`, not a read-only mirror) with an **Undo** toast, matching Lead/Company; every change audit-logs a "Status updated" activity. (2) The activity timeline participates in **communications routing** — a logged call/email/SMS auto-associates to the contact's single open deal, or shows a **"Link to deal" chip** when several, and rolls up onto the deal's timeline (see [`docs/comms-routing-and-suggestions.md`](../comms-routing-and-suggestions.md)). (3) **Post-call decisions execute for real** (create tasks, set `deal.nextAction`, route Won/Lost to the deal) instead of toasting; the **Recommended-next-action card** prefers the same id-linked deal that action writes to. (4) Emailing from the contact page **logs to the timeline** (`onSent`), and an **`AdAttributionCard`** shows ad origin for ad-sourced contacts. All new mutation surfaces are permission-gated (R10).
 
 Contacts are the primary people object. They are separate from Leads. A Contact is a qualified person — someone you have an actual relationship with or are actively selling to. Contacts are linked to Companies and Deals, and have a full activity timeline including email, SMS, calls, notes, meetings, and task history.
 

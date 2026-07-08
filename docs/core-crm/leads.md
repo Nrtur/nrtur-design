@@ -1,5 +1,7 @@
 # Leads
-_Module 5 · Verified from `index.html` lines 8571–8970 · 2026-06-30_
+_Module 5 · Verified 2026-06-30 · `LeadDetailPage` now at line 10535_
+
+> **2026-07-08 update.** (1) Lead detail now renders the shared **`AdAttributionCard`** (line 10134) — ad campaign / ad set / lead form / click-ID / UTM — since ad capture lands on Leads. (2) **Convert carries attribution** through the lead→contact→deal chain (`buildConvertRecords` `_adAttr`/`_adHist`): the new contact and deal inherit the ad origin; a reused contact backfills only if it has none (first-touch preserved). (3) A lead's **status pill hero** and the ad-form router use the canonical `LEAD_STATUSES`; ad-form routing now applies the chosen status + owner (see [`ad-leads.md §15.5`](ad-leads.md)). (4) An inbound **reply auto-unenrolls** the person's sequences for that channel — the "Replies auto-unenroll" copy is now real (see [`docs/comms-routing-and-suggestions.md`](../comms-routing-and-suggestions.md)).
 
 Leads are a first-class object in nrtur — separate from Contacts. A Lead is an unqualified person of interest. Inbound capture channels feed this lifecycle: ad platforms, forms & funnels (unless a form is set to create a contact), and bookings all create a Lead in status **New** (with three-way dedupe — a matching Contact or Lead is updated in place, otherwise a new Lead is minted). Once qualified, a lead converts into a Contact (+ optionally a Company + optionally a Deal), all id-linked to each other. After conversion the lead record stays but becomes read-only.
 

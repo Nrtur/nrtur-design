@@ -1,6 +1,8 @@
 # Module 16 — Inbox
 
-_Component: `InboxPage` (line 9782) · Route: `inbox`_
+_Component: `InboxPage` (line 11588) · Route: `inbox`_
+
+> **2026-07-08 update.** The inbox gained a real communications layer — identity-first routing to records, per-message AI suggestions, a "Simulate inbound" harness, unknown-sender lead capture, and reply-driven sequence unenrollment. See **§16.4** below and the canonical design doc [`docs/comms-routing-and-suggestions.md`](../comms-routing-and-suggestions.md). Sections 16.1–16.3 describe the surfaces; 16.4 documents the routing/suggestion behaviour layered on top.
 
 ---
 
@@ -77,12 +79,17 @@ Primary (always visible in rail): `all`, `email`, `sms`, `calls`. Secondary (in 
   time: string,             // relative time
   date: string,
   labelKey?: string,        // label key from MAIL_LABELS
-  linkedDeal?: {            // CRM deal link
+  contactId?: number,       // id-link to the CRM contact (2026-07: seeds carry real ids; "View contact" resolves this)
+  dealId?: number,          // id-link to the associated deal (drives the clickable deal chip)
+  linkedDeal?: {            // CRM deal link (display snapshot)
     name, value, stage, stageColor
   },
   contact?: {               // CRM contact context card
     name, title, avatar, color
   },
+  // Unknown-sender fields (set on simulated/ingested mail with no matching record):
+  senderAddr?: string, senderName?: string, senderCompany?: string,
+  leadId?: number,          // set once "Create lead" mints/links a lead from the sender
   thread: [{                // message history
     from, addr, avatar, color, date,
     body: string[],         // paragraphs
@@ -253,13 +260,40 @@ _Lines 9023–9096 — opens from the Inbox header or Settings > Personal > My c
 
 ---
 
+## 16.4 Communications routing, suggestions & inbound (2026-07-08)
+
+Canonical design: [`docs/comms-routing-and-suggestions.md`](../comms-routing-and-suggestions.md) (industry research + the decided model). This section is the inbox-side summary.
+
+### Routing model (identity-first)
+Communications never route by subject line — they route by **identity** (email address / phone number) to a **person** (contact, else open lead, else create a lead), carrying an **optional single `dealId`** (Salesforce WhoId/WhatId shape). Comm activities use the existing `subjectType`/`subjectId` person pointer + an added optional `dealId`; deal timelines roll them up **strictly by id** (`dealsForPerson`, line 9646 — `primaryContactId`/`additionalContactIds` only, never the company-sibling/name fallbacks). One activity row, two views — attaching to a deal never copies it and preserves the communication's original time.
+
+- **Auto-associate** when the person has exactly **one** open deal; **"Link to deal" chip** (`ActDealLinkChip`) when they have several — nrtur never guesses; **person-only** when zero. Rendered in the activity row header next to the source chip.
+- Terminal detection uses `dealClosedKind`/`dealIsOpen` (outcome + stage-name, not the literal `'won'` key) so custom/renamed "Won" stages are respected.
+
+### AI suggestions (`EmailSuggestBar`, line 10958)
+A "Suggested next steps · simulated AI" bar on each inbox email: a **Reply** chip plus a context-derived **Create task** chip (schedule-the-call / send-the-document / follow-up, chosen by keyword heuristics). One click executes through existing handlers (reply composer, calendar task store with `contactId` link) or ✕ dismisses (per-email `Set`, no timeline row). Gated: task chips require `Tasks:create`, reply requires `effCanCreateAny()`. Post-call decisions on the contact dialer **execute for real** (create tasks, set `deal.nextAction`, route Won/Lost to the deal page) rather than toast — the workspace-Calls path stays honest "noted" copy since it has no record context.
+
+### Simulate inbound (identity waterfall harness)
+A **"Simulate inbound ▾"** menu in the inbox header (gated on `Contacts:edit`) drives the routing live, like "Simulate new lead":
+- **Email — known contact**: lands linked (contact banner + deal chip when one open deal), writes a real inbound activity, stamps `lastActivity`, unenrolls the contact's **email** sequences, fires the `'Email received'` automation trigger.
+- **Email — unknown sender**: lands unmatched → amber "Unknown sender" banner with **Create lead** (`createLeadFromSender`) — dedupes by address (contact → lead) before minting a `source:'Email'` lead; banner flips to "Lead — captured from this email → View lead".
+- **SMS reply**: appends a real inbound bubble (without yanking the user off a thread they're composing in), unenrolls **SMS** sequences, fires `'SMS reply received'`.
+
+### Real inbound automation triggers
+`'Email received'`, `'SMS reply received'`, and `'Call logged'` now actually fire through `fireEntityAutomationEvents` (Call-logged at all four call seams). Previously catalog-only. Observable in autoLogs, run counters, timeline "⚡ ran" rows, and toasts.
+
+### Reply-unenroll & the persistence bridge
+An inbound reply removes the contact's enrollments **for that channel** (email vs SMS — matched on `contactId`, the only key reliable across both enrollment shapes) and logs "Unenrolled from …". **Outbound** email replies and SMS sends now also write to the linked contact's timeline + bump `lastActivity` — the persistence bridge runs both directions (was inbound-only).
+
+---
+
 ## Developer Q&A
 
 **Q: `InboxPage` manages 7 channel types in one component. How is the left panel rendered per channel?**
 A: `InboxPage` uses a large conditional block — `tab === 'email'` renders `EmailListPane`; `tab === 'sms'` renders an SMS conversation list; `tab === 'mms'` renders MMS thumbnails; `tab === 'calls'` renders a calls log. Each branch is a separate sub-component. The unified "All" tab is the hardest — it must interleave emails, SMS messages, and calls sorted by timestamp into a single feed. The prototype doesn't implement a true unified feed for the "All" tab; it shows email by default.
 
 **Q: Emails use a local `useState` array (`MAIL_EMAILS`). What happens when a new email arrives while the user is viewing the inbox?**
-A: Nothing — `useState(MAIL_EMAILS)` initializes once and never updates from an external source. Real-time new emails require either: (a) WebSocket push from the backend that calls `setEmails(es => [newEmail, ...es])` on the client; (b) polling `GET /inbox/emails?since={lastFetchTimestamp}` every 30s. Production must wire `EmailComposeModal`'s `onSent` callback to append the sent email to the `sent` folder state as well.
+A: In normal use, nothing — `useState(MAIL_EMAILS)` initializes once. But the **"Simulate inbound"** harness (§16.4) now demonstrates the full ingest path at runtime: it `setEmails(es => [newRow, ...es])`, runs the identity waterfall, writes the record timeline, and fires automations — exactly what a real WebSocket push / 30s poll (`GET /inbox/emails?since=`) would trigger in production. `onSent`/`onSendReply`/`onPatchEmail` are also now wired (sent copies land in Sent; contact-page compose logs to the timeline). Production still needs the real push/poll transport behind the same `setEmails`/persistence-bridge calls.
 
 **Q: The "Needs reply" filter is `e.unread && !e.automation`. What does `e.automation` mean?**
 A: `e.automation` is a boolean flag set to `true` on seed emails that were handled by an automation (e.g. an auto-reply sequence sent a response). The intent: "don't mark as needing reply if the automation already handled it." In practice, `e.automation` is hardcoded on seed data — it doesn't dynamically update when a sequence sends a reply. Production needs: (a) an `automationRepliedAt` timestamp on the email record; (b) "Needs reply" = `unread && !automationReplied && lastMessageFrom === 'contact'`.

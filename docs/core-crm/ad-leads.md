@@ -1,7 +1,9 @@
 # Module 15 — Ad Leads
 
-_Ad leads page: `SettingsAdLeadsPage` (line 14984) · Connect modal: `AdSourceConnectModal` (line 14913)_
+_Ad leads page: `SettingsAdLeadsPage` (line 17380) · Connect modal: `AdSourceConnectModal` (line 17254) · Spend table: `AdSpendTable` (line 17329) · Live status: `adLeadLiveStatus` (line 10108) · Attribution card: `AdAttributionCard` (line 10134)_
 _Route: `settings-ad-leads` · Also reachable via Engage Hub "Ad leads" tab_
+
+> **2026-07-07 rebuild.** The page was restructured into a numbered funnel with a live stat strip, honest routing, live intake status, closed-loop ROAS reporting, and shared attribution cards. See **§15.5** below and [`docs/audit/changes/ad-leads-redesign.md`](../audit/changes/ad-leads-redesign.md). Sections 15.1–15.4 remain the base reference; 15.5 documents the rebuild deltas — where they conflict, 15.5 wins.
 
 ---
 
@@ -286,6 +288,30 @@ A: A ref callback runs every time the element is mounted OR re-mounted (e.g. if 
 
 **Q: The "Simulate new lead" button is enabled for anyone when a source is connected. Is there an admin gate?**
 A: No. `anyConnected` is the only guard. Any user (even read-only roles) can click "Simulate new lead" and create a fake lead in the CRM. Production must: (a) gate behind `effCanCreateAny()` or an explicit `canSimulate` admin flag; (b) tag simulated leads with `{ isSimulated: true }` so they can be filtered out of real reports; (c) ideally remove the button entirely from production (replace with a read-only "Test via API" developer tool).
+
+---
+
+## 15.5 Rebuild deltas (2026-07-07)
+
+Full record: [`docs/audit/changes/ad-leads-redesign.md`](../audit/changes/ad-leads-redesign.md).
+
+### Page = a numbered funnel + live stat strip
+`SettingsAdLeadsPage` was restructured from a flat stack into: a "How it works" banner → a live 4-tile **stat strip** (captured / new this week / converted % / top source) → **1 Connect → 2 Route each form → 3 Watch leads arrive → 4 Measure & optimize**. The intake feed gained source filter chips with counts, a Show-all cap at 8, chevrons on linked rows, and inert (non-clickable) unlinked rows.
+
+### Intake status is DERIVED, not stored (`adLeadLiveStatus`, line 10108)
+A feed row's status now derives from its **linked CRM record** (id-first): lead lifecycle → new/working/qualified/converted/lost; linked contact → Customer=converted, Lost=lost. `converted` is tested **before** `deleted` (a converted lead may be soft-deleted post-conversion and is still a customer). The stored `al.status` is only a fallback. The feed chips, stat strip, and Lead-sources report all read this — so they track reality instead of the capture-time snapshot.
+
+### Routing is honest (supersedes 15.1's "pipeline / stage / tag")
+`AdFormCard` no longer has a dead **Pipeline** select (ad leads become Leads, not deals). The former "Stage" is now **Lead status** (and is actually applied on ingest — was hardcoded `'New'`), and an **Owner** select was added (Round-robin honours assignment rules). Options aligned to the canonical `LEAD_STATUSES`/team.
+
+### Attribution card is shared (`AdAttributionCard`, line 10134)
+The "Lead attribution" card (campaign / ad set / lead form / click-ID / UTM chips) now renders on **contact, lead AND deal** detail — was inline contact-only. Attribution also travels through the lead→contact→deal **convert** flow (`buildConvertRecords`, `_adAttr`/`_adHist`): the new contact and deal inherit it; a reused contact backfills only if it has none (first-touch preserved). This partly answers the 15.4 Q&A "second submit overwrites attribution" — convert is a migration that backfills, while a live re-ingest still last-touch-overwrites.
+
+### Spend / CPL / ROAS (`AdSpendTable`, line 17329)
+Step 4 opens with a **Campaign performance** table: Spend (30d) · Leads · CPL · Customers · CPA · Won revenue · ROAS + totals, grouped by source or campaign. Spend is a simulated seed (`AD_SPEND_SEED`, labelled as simulated); leads/customers come from live feed rows; **revenue joins REAL won deals** carrying ad attribution (`dealClosedKind(d)==='won' && d.adSourceKey` — terminal by outcome/stage-name, so custom pipelines count). Three converted ad contacts (Dana/Tariq/Sandra) were given real won deals so ROAS is bottom-up.
+
+### Known correctness notes (R10)
+The Simulate button remains ungated (15.4 Q&A still stands — an accepted prototype affordance). Reopening a campaign's only won deal can briefly diverge the Customers vs revenue columns (Low, logged).
 
 **Q: The Speed-to-lead recipe panel says "Responding in the first 5 minutes can lift conversion roughly 8×". Is this figure accurate?**
 A: The "8×" figure is marketing copy — it circulates in sales literature but the actual multiplier varies widely by industry, lead source, and whether the lead was actively searching (Google) vs passive (Meta scroll). The most-cited source is a 2007 study by MIT and InsideSales.com; the methodology is debated. For the product, the point is sound (faster response = higher conversion), but the specific "8×" should be replaced with a more defensible claim or cited to a current source. This is a copywriting decision for the product owner, not an engineering concern.
