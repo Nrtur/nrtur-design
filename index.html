@@ -3814,6 +3814,95 @@ function ResetExpiredPage({goTo}){
     </div>
   );
 }
+// ── AcceptInvitePage ──────────────────────────────────────────────────────────
+// Public (unauthenticated) page a teammate lands on from an invite link. The link's token is passed via
+// nav {email, role, ws, inviter, exp}. State resolves against the LIVE workspace, not the token alone —
+// mirroring how a real server validates an invite: already a member? expired? still pending (valid)? else
+// revoked/used. Accepting consumes the invite (teamInvites → members, shared via CrmDataContext) so the
+// Settings › Team page reflects it immediately.
+function AcceptInvitePage({goTo,nav}){
+  const {teamInvites,setTeamInvites,members,setMembers}=React.useContext(CrmDataContext);
+  const inv=(nav&&typeof nav==='object')?nav:{};
+  const _norm=(e)=>String(e||'').trim().toLowerCase();
+  const email=String(inv.email||'').trim();
+  const role=inv.role||'Sales Rep';
+  const ws=inv.ws||'Bloom Co';
+  const inviter=inv.inviter||CURRENT_USER.name;
+  const isMember=!!email&&(members||[]).some(m=>_norm(m.email)===_norm(email));
+  const isExpired=inv.exp!=null&&inv.exp<Date.now();
+  const isPending=!!email&&(teamInvites||[]).some(x=>_norm(x.email)===_norm(email));
+  // Priority: malformed → already-a-member (friendliest) → expired → valid (a pending invite exists) → revoked/used.
+  const state=!email?'invalid':isMember?'member':isExpired?'expired':isPending?'valid':'revoked';
+  const firstName=email?(email.split('@')[0].split(/[._\-]/)[0]||email).replace(/^./,c=>c.toUpperCase()):'there';
+  const AV_COLORS=['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4'];
+  const accept=()=>{
+    const nm=(email.split('@')[0].split(/[._\-]/).map(s=>s?s[0].toUpperCase()+s.slice(1):'').join(' ').trim())||email;
+    const avatar=((nm.split(' ').map(w=>w[0]).join('')||email.slice(0,2)).slice(0,2)).toUpperCase();
+    const color=AV_COLORS[(email.charCodeAt(0)||0)%AV_COLORS.length];
+    setMembers(ms=>(ms||[]).some(m=>_norm(m.email)===_norm(email))?ms:[...ms,{name:nm,email,role,avatar,color,status:'Active'}]);
+    setTeamInvites(a=>(a||[]).filter(x=>_norm(x.email)!==_norm(email)));
+    window.__nrturToast&&window.__nrturToast('Welcome to '+ws+', '+firstName+'! 🎉','success');
+    goTo('dashboard');
+  };
+  const decline=()=>{window.__nrturToast&&window.__nrturToast('Invitation declined.','info');goTo('signin');};
+  // Prototype-only: preview the four states without manufacturing data by hand. "Valid" seeds a real pending
+  // invite first (so it resolves valid honestly), then opens its link.
+  const _now=Date.now();
+  const _seedValid=()=>{const em='jordan@northwind.co';setTeamInvites(a=>(a||[]).some(x=>_norm(x.email)===_norm(em))?a:[...a,{email:em,role:'Sales Rep',invitedAt:'Just now',exp:_now+7*864e5}]);goTo('accept-invite',{email:em,role:'Sales Rep',ws:'Bloom Co',inviter:CURRENT_USER.name,exp:_now+7*864e5});};
+  const PREVIEWS=[
+    {k:'valid',label:'Valid',on:()=>_seedValid()},
+    {k:'expired',label:'Expired',on:()=>goTo('accept-invite',{email:'sam.diaz@bloom.co',role:'Sales Rep',ws:'Bloom Co',inviter:CURRENT_USER.name,exp:_now-864e5})},
+    {k:'revoked',label:'Revoked',on:()=>goTo('accept-invite',{email:'revoked.demo@bloom.co',role:'Sales Rep',ws:'Bloom Co',inviter:CURRENT_USER.name,exp:_now+7*864e5})},
+    {k:'member',label:'Already a member',on:()=>goTo('accept-invite',{email:'alex@bloom.co',role:'Admin',ws:'Bloom Co',inviter:CURRENT_USER.name,exp:_now+7*864e5})},
+  ];
+  const DemoFooter=(<div className="mt-8 pt-5 border-t border-white/[0.05] text-center"><p className="text-[10px] uppercase tracking-[0.14em] text-white/25 mb-2">Prototype · preview states</p><div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">{PREVIEWS.map((pv,i)=>(<React.Fragment key={pv.k}>{i>0&&<span className="text-white/15">·</span>}<button onClick={pv.on} className={['text-[11px] transition-colors',state===pv.k?'text-brand-300 font-medium':'text-white/40 hover:text-brand-300'].join(' ')}>{pv.label}</button></React.Fragment>))}</div></div>);
+  // Branded "valid" invite card.
+  if(state==='valid')return(
+    <div className="h-full overflow-y-auto scroll-area flex items-center justify-center py-10" style={{background:'var(--s950)'}}>
+      <GlowBg/>
+      <div className="relative z-10 w-full max-w-md px-6">
+        <div className="rounded-2xl border border-white/[0.06] backdrop-blur-md p-8" style={{background:'rgba(9,9,26,0.85)'}}>
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-brand mb-5"><NrturMark size={64} r={16}/></div>
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 text-[11px] font-medium ring-1 ring-brand-500/25 mb-4"><I.Mail size={12}/>You've been invited</span>
+            <h1 className="text-white text-[24px] font-bold mb-2 leading-tight">Join {ws} on nrtur</h1>
+            <p className="text-white/55 text-[13px] mb-6 leading-relaxed"><span className="text-white/80 font-medium">{inviter}</span> invited you to collaborate with the team.</p>
+          </div>
+          <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4 mb-6 space-y-3">
+            <div className="flex items-center justify-between"><span className="text-[11px] uppercase tracking-wide text-white/35">Your email</span><span className="text-[12.5px] text-white/85 font-medium truncate ml-3">{email}</span></div>
+            <div className="flex items-center justify-between"><span className="text-[11px] uppercase tracking-wide text-white/35">Role</span><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-brand-500/12 text-brand-200 ring-1 ring-brand-500/25"><I.ShieldCheck size={11}/>{role}</span></div>
+          </div>
+          <button onClick={accept} className="w-full py-3 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Accept invitation</button>
+          <button onClick={decline} className="w-full mt-3 text-[12px] text-white/45 hover:text-white/70 transition-colors">Not joining? Decline</button>
+        </div>
+        {DemoFooter}
+      </div>
+    </div>
+  );
+  // Status variants (already-member / expired / revoked / invalid) — centered card, icon medallion.
+  const V={
+    member:{icon:I.Check,ring:'ring-emerald-500/30',bg:'bg-emerald-500/10',fg:'text-emerald-300',title:"You're already on this team",body:'This invitation was already accepted — '+(email||'your email')+' is a member of '+ws+'. Just sign in to jump back in.',cta:'Go to workspace',act:()=>goTo('dashboard'),alt:'Sign in',altAct:()=>goTo('signin')},
+    expired:{icon:I.Clock,ring:'ring-amber-500/30',bg:'bg-amber-500/10',fg:'text-amber-300',title:'This invitation has expired',body:'Invite links expire after 7 days for security. Ask '+inviter+' (or a workspace admin) to send you a fresh invitation.',cta:'Back to sign in',act:()=>goTo('signin'),alt:null},
+    revoked:{icon:I.Ban,ring:'ring-red-500/30',bg:'bg-red-500/10',fg:'text-red-300',title:'This invitation is no longer valid',body:'It may have been revoked or already used. Ask your workspace admin at '+ws+' for a new invitation.',cta:'Back to sign in',act:()=>goTo('signin'),alt:null},
+    invalid:{icon:I.AlertTriangle,ring:'ring-red-500/30',bg:'bg-red-500/10',fg:'text-red-300',title:'This invite link looks broken',body:'We couldn’t read this invitation. Check that you opened the full link from your email, or ask for a new one.',cta:'Back to sign in',act:()=>goTo('signin'),alt:null},
+  }[state]||{};
+  const Ic=V.icon||I.AlertTriangle;
+  return(
+    <div className="h-full overflow-y-auto scroll-area flex items-center justify-center py-10" style={{background:'var(--s950)'}}>
+      <GlowBg/>
+      <div className="relative z-10 w-full max-w-md px-6">
+        <div className="rounded-2xl border border-white/[0.06] backdrop-blur-md p-8 text-center" style={{background:'rgba(9,9,26,0.85)'}}>
+          <div className={['w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 ring-2',V.bg,V.ring,V.fg].join(' ')}><Ic size={34}/></div>
+          <h1 className="text-white text-[23px] font-bold mb-2 leading-tight">{V.title}</h1>
+          <p className="text-white/55 text-[13px] mb-7 leading-relaxed">{V.body}</p>
+          <button onClick={V.act} className="w-full py-3 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">{V.cta}</button>
+          {V.alt&&<button onClick={V.altAct} className="w-full mt-3 text-[12px] text-white/45 hover:text-brand-300 transition-colors">{V.alt}</button>}
+        </div>
+        {DemoFooter}
+      </div>
+    </div>
+  );
+}
 // ?? OnboardingPage ????????????????????????????????????????????????????????????
 const ONB_STEPS=[
   {label:'Workspace',eyebrow:'Workspace',title:['Set up','your workspace'],desc:'This takes about 5 minutes. You can always change any of this later.'},
@@ -15985,9 +16074,8 @@ function SettingsTeamPage({goTo}){
   const [inviteModal,setInviteModal]=React.useState(false);
   const [inviteRole,setInviteRole]=React.useState('Sales Rep');
   const {confirmNode,openConfirm}=useConfirm();
-  const [members,setMembers]=React.useState(()=>TEAM_MEMBERS_SEED.map(m=>({...m})));
+  const {teamInvites,setTeamInvites,members,setMembers}=React.useContext(CrmDataContext); // members shared via context so the invite-accept page and this page agree
   const setRole=(email,role)=>setMembers(ms=>ms.map(x=>x.email===email?{...x,role}:x));
-  const {teamInvites,setTeamInvites}=React.useContext(CrmDataContext);
   const inviteRows=(teamInvites||[]).filter(inv=>!members.some(m=>(m.email||'').toLowerCase()===(inv.email||'').toLowerCase())).map(inv=>({name:inv.email.split('@')[0],email:inv.email,role:inv.role,avatar:inv.email.slice(0,2).toUpperCase(),color:'#6366f1',status:'Pending',_invite:true}));
   const allMembers=[...members,...inviteRows];
   const [inviteEmail,setInviteEmail]=React.useState('');
@@ -16000,7 +16088,7 @@ function SettingsTeamPage({goTo}){
   const COL='1.5fr 1.5fr 110px 110px 80px';
   return(
     <SettingsShell active="settings-team" goTo={goTo} subtitle={allMembers.filter(m=>m.status==='Active').length+' active · '+allMembers.filter(m=>m.status==='Pending').length+' pending — Pro plan'}
-      actions={<button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button>}>
+      actions={<div className="flex items-center gap-2"><button onClick={()=>{const em='jordan@northwind.co';setTeamInvites(a=>(a||[]).some(x=>(x.email||'').toLowerCase()===em)?a:[...a,{email:em,role:'Sales Rep',invitedAt:'Just now',exp:Date.now()+7*864e5}]);goTo('accept-invite',{email:em,role:'Sales Rep',ws:'Bloom Co',inviter:CURRENT_USER.name,exp:Date.now()+7*864e5});}} title="Preview the invite-accept page a teammate sees" className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ExternalLink size={13}/>Preview invite page</button><button onClick={()=>setInviteModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Invite member</button></div>}>
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
         <div className="crm-mini-head grid items-center gap-4 px-6 py-3 border-b border-white/[0.05] bg-white/[0.015] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]" style={{gridTemplateColumns:COL}}><span>Member</span><span>Email</span><span>Role</span><span>Status</span><span/></div>
         {allMembers.map((m,i)=>(<div key={m.email} className={['crm-mini-row grid items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors',i<allMembers.length-1?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
@@ -16009,6 +16097,7 @@ function SettingsTeamPage({goTo}){
           <RoleSelect compact value={m.role} onChange={v=>m._invite?setInviteRoleFor(m.email,v):setRole(m.email,v)}/>
           <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 w-fit',m.status==='Active'?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-amber-500/12 text-amber-300 ring-amber-500/25'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',m.status==='Active'?'bg-emerald-400':'bg-amber-400'].join(' ')}/>{m.status}</span>
           <div className="flex items-center gap-1.5 justify-end ml-auto">
+            {m._invite&&<button onClick={()=>goTo('accept-invite',{email:m.email,role:m.role,ws:'Bloom Co',inviter:CURRENT_USER.name,exp:Date.now()+7*864e5})} title="Open invite link (what the teammate sees)" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"><I.ExternalLink size={13}/></button>}
             {m.status==='Pending'&&<button onClick={()=>resendInvite(m)} title="Resend invite" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-brand-300 hover:bg-brand-500/10 transition-colors"><I.Send size={13}/></button>}
             <button onClick={()=>m._invite?revokeInvite(m):removeMember(m)} title={m._invite?'Revoke invite':'Remove member'} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"><I.Trash size={13}/></button>
           </div>
@@ -24139,6 +24228,7 @@ function App(){
   _livePipelines=pipelines; // mirror so module helpers + the deal detail resolve any pipeline's stages
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
+  const [members,setMembers]=React.useState(()=>TEAM_MEMBERS_SEED.map(m=>({...m}))); // workspace members — SHARED so Settings › Team and the invite-accept page agree (accepting an invite adds here)
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
@@ -24248,12 +24338,13 @@ function App(){
     // R2 link-later: setting/clearing dealId on an EXISTING comm activity — one row, two views, never a copy.
     updateActivity:(id,patch)=>setActivities(a=>a.map(x=>x.id===id?{...x,...patch}:x)),
     teamInvites,setTeamInvites,
+    members,setMembers,
     personalConns,setPersonalConns,
     automations,setAutomations,autoLogs,
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,wallet,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]);
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,wallet,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -24287,7 +24378,7 @@ function App(){
   React.useEffect(()=>{window.__nrturOpenSearch=()=>setSearchOpen(true);window.__nrturOpenCmd=()=>setCmdOpen(true);window.__nrturGoTo=goTo;return()=>{delete window.__nrturOpenSearch;delete window.__nrturOpenCmd;delete window.__nrturGoTo;};},[goTo]);
   React.useEffect(()=>{const fn=(e)=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setSearchOpen(false);setCmdOpen(true);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   const p={goTo,nav};
-  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','pay-checkout'];
+  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','accept-invite','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','pay-checkout'];
   const isApp=!MARKETING_PAGES.includes(page);
   return(
     <RoleProvider previewRole={previewRole} setPreview={setPreviewRole}>
@@ -24310,6 +24401,7 @@ function App(){
       {page==='verify-email'      && <EmailVerificationPendingPage {...p}/>}
       {page==='reset-password'    && <ResetPasswordPage {...p}/>}
       {page==='reset-expired'     && <ResetExpiredPage {...p}/>}
+      {page==='accept-invite'     && <AcceptInvitePage {...p}/>}
       {page==='onboarding-1'      && <OnboardingPage step={1} {...p}/>}
       {page==='onboarding-2'      && <OnboardingPage step={2} {...p}/>}
       {page==='onboarding-3'      && <OnboardingPage step={3} {...p}/>}
