@@ -3197,6 +3197,7 @@ const SETTINGS_GROUPS=[
     {label:'Team',page:'settings-team',Icon:I.Users},
     {label:'Permissions',page:'settings-permissions',Icon:I.Lock},
     {label:'Permission matrix',page:'settings-permission-matrix',Icon:I.LayoutDash},
+    {label:'Notification defaults',page:'settings-notification-defaults',Icon:I.Bell},
     {label:'Tasks & reminders',page:'settings-tasks',Icon:I.CheckSquare},
   ]},
   {key:'objects',title:'Objects & fields',Icon:I.Layers,admin:true,items:[
@@ -5372,6 +5373,8 @@ function smsComplianceState(){
 function canSendSms(recipient){ // recipient-aware gate: workspace compliance first, then per-record consent
   const s=smsComplianceState();if(!s.ok)return s;
   if(recipient&&recipient.dnc)return{ok:false,code:'dnc',reason:(recipient.name||'This contact')+' is marked Do Not Contact'};
+  // unified suppression store: a STOP'd/blocked number or a per-contact SMS opt-out blocks EVERY SMS path (automation, MMS composer, inbox), not just the disabled contact-page button
+  if(recipient&&(supPhoneBlocked(recipient.phone,'sms')||supChannelOff(recipient.id,'sms')))return{ok:false,code:'suppressed',reason:(recipient.name||'This number')+' is suppressed for SMS (replied STOP or opted out)'};
   return s;
 }
 // Outbound caller-ID / sending identity for a rep: their assigned number → workspace default → first active number.
@@ -7537,7 +7540,7 @@ function buildActivityFeed(kind,rec,ctx){
       if(co)feed=feed.concat(tagSrc(actCompanyOwn(co),{type:'company',id:co.id,label:co.name,color:'#60a5fa'}));
       // Stitch a converted lead's history onto its contact strictly by the id back-link — never by email (a shared/typo'd email would attach the wrong lead's history).
       const lead=leads.find(L=>L&&L.convertedToContactId!=null&&L.convertedToContactId===rec.id);
-      if(lead)feed=feed.concat(tagSrc(actLeadOwn(lead).slice(0,3),{type:'lead',id:lead.id,label:'from lead · '+lead.name,color:'#34d399'}));
+      if(lead)feed=feed.concat(tagSrc(actLeadOwn(lead),{type:'lead',id:lead.id,label:'from lead · '+lead.name,color:'#34d399'})); // FULL originating lead history rolls up (was .slice(0,3) — a silent truncation; every benchmark CRM carries the whole set, and the timeline's own collapse UI handles volume)
       (ctx.invoices||[]).filter(v=>v&&(v.contact===rec.name||(v.company&&rec.co&&v.company===rec.co))).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
     } else if(kind==='company'&&rec){
       feed=actCompanyOwn(rec);
@@ -8026,13 +8029,25 @@ function ContactDetailPage({goTo,nav}){
   // Channel suppression (mirrors Settings -> Suppression List). DNC suppresses all channels.
   const _supEmail=(c.email||'').toLowerCase();const _supDom=_supEmail.split('@')[1]||'';
   const _supPhone=(c.phone||'').replace(/\s+/g,' ').trim();
+  // Reads the unified live suppression store (was 3 frozen hardcoded lists) so a block/unblock in the Suppression
+  // UI, a domain block, or a per-contact channel toggle now actually disables this contact's send buttons.
   const suppressed={
-    email:dnc||['unsub@acme.com','bounce@example.com','spam@test.io','blocked@co.org','old@company.net','donotcontact@firm.co'].includes(_supEmail)||['competitor.com','acme.com'].includes(_supDom),
-    sms:dnc||['+1 415 555 0142','+1 628 555 0190','+1 212 555 0177'].includes(_supPhone),
-    calls:dnc||['+1 628 555 0190','+1 212 555 0177'].includes(_supPhone),
+    email:dnc||supEmailBlocked(c.email)||supChannelOff(c.id,'marketing'),
+    sms:dnc||supPhoneBlocked(c.phone,'sms')||supChannelOff(c.id,'sms'),
+    calls:dnc||supPhoneBlocked(c.phone,'calls')||supChannelOff(c.id,'calls'),
   };
+  // Per-channel consent for THIS contact, read from + written to the unified suppression store (same store the Suppression
+  // settings page and the send paths use). Lets a rep granularly turn off, say, marketing while keeping calls — on the record.
+  const _chPrefs={marketing:true,transactional:true,sms:true,calls:true,push:true,inapp:true,...(((crm.suppression&&crm.suppression.channels)||{})[c.id]||{})};
+  const setChannelPref=(key,val)=>{crm.setSuppression&&crm.setSuppression(s=>{const ex=(s.channels||{})[c.id]||{};return {...s,channels:{...(s.channels||{}),[c.id]:{...ex,[key]:val}}};});const lbl=(SUPP_CH_DEFS.find(d=>d.key===key)||{}).label||key;window.__nrturToast&&window.__nrturToast(lbl+(val?' turned on':' turned off')+' for '+(c.name||'contact'),val?'success':'warning');crm.addActivity&&crm.addActivity('contact',c.id,mkAct('dnc',{ts:0,by:CURRENT_USER.avatar,title:lbl+(val?' turned ON':' turned OFF'),body:'Channel preference updated from the contact record.',payload:{channels:[lbl],from:val?'Off':'On',to:val?'On':'Off'}}));};
+  const [commOpen,setCommOpen]=React.useState(false); // Communication preferences panel — collapsed by default; the header summary chip shows the state
   const [enriched,setEnriched]=React.useState(false);
-  const extra=(crm.activities||[]).filter(a=>a.subjectType==='contact'&&a.subjectId===(c||{}).id); // R3: persisted, keyed by record
+  // R3 persisted contact activities + the converted lead's REAL logged activities (id back-link, tagged "from lead").
+  // Before, only the lead's SYNTHETIC feed was stitched (top-3) — the rep's actual logged lead notes/calls were dropped on
+  // convert, violating the industry "nothing is lost" invariant. Now they carry onto the contact.
+  const _convLead=(crm.leads||[]).find(L=>L&&L.convertedToContactId!=null&&L.convertedToContactId===(c||{}).id);
+  const _leadExtra=_convLead?(crm.activities||[]).filter(a=>a.subjectType==='lead'&&a.subjectId===_convLead.id).map(a=>({...a,source:a.source||{type:'lead',id:_convLead.id,label:'from lead · '+_convLead.name,color:'#34d399'}})):[];
+  const extra=[...(crm.activities||[]).filter(a=>a.subjectType==='contact'&&a.subjectId===(c||{}).id),..._leadExtra];
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('contact',(c||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:'AM',title:'Note added',body:text}),...x]);
   const {confirmNode,openConfirm}=useConfirm();
@@ -8152,7 +8167,28 @@ function ContactDetailPage({goTo,nav}){
                 {dealsOpen&&myDeals.length>5&&<button onClick={()=>setShowAllDeals(s=>!s)} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 transition-colors px-1 pb-1">{showAllDeals?'Show less':'Show all '+myDeals.length+' deals'}</button>}
               </div>
               <RelatedRecordsPanel crm={crm} targetType="contact" rec={c} goTo={goTo}/>
-              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4 flex items-center justify-between gap-3"><div><p className="text-[12px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Blocks all email, SMS, and calls.</p></div><Toggle on={dnc} onChange={effCanObject('Contacts','edit')?((v)=>{setDnc(v);updateContact(c.id,{dnc:v});}):()=>{}}/></div>
+              {(()=>{const _canEd=effCanObject('Contacts','edit');const _offCount=SUPP_CH_DEFS.filter(cd=>_chPrefs[cd.key]===false).length;return(
+              <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <button onClick={()=>setCommOpen(o=>!o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0"><I.ChevronDown size={12} className="text-white/35 shrink-0" style={{transform:commOpen?'none':'rotate(-90deg)',transition:'transform .15s'}}/><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Communication preferences</p></button>
+                  <span className={['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 shrink-0',dnc?'bg-red-500/12 text-red-300 ring-red-500/25':_offCount>0?'bg-amber-500/12 text-amber-300 ring-amber-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}>{dnc?<><I.Ban size={9}/>Do not contact</>:_offCount>0?(_offCount+' channel'+(_offCount>1?'s':'')+' off'):'All allowed'}</span>
+                </div>
+                {commOpen&&(<div className="mt-3">
+                  {/* Master switch — blocks every channel below */}
+                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/[0.05]"><div><p className="text-[12.5px] font-medium text-white">Do not contact</p><p className="text-[11px] text-white/40 mt-0.5">Master switch — blocks every channel below.</p></div><Toggle on={dnc} onChange={_canEd?((v)=>{setDnc(v);updateContact(c.id,{dnc:v});}):()=>{}}/></div>
+                  {/* Per-channel consent — writes to the shared suppression store, so it enforces + syncs with Settings */}
+                  <div className="pt-2.5 flex flex-col">
+                    {SUPP_CH_DEFS.map((cd,i)=>{const allowed=!dnc&&_chPrefs[cd.key]!==false;const offByChoice=!dnc&&_chPrefs[cd.key]===false;return(
+                      <div key={cd.key} className={['flex items-center justify-between gap-3 py-2',i>0?'border-t border-white/[0.03]':''].join(' ')}>
+                        <span className={['text-[12.5px] flex items-center gap-1.5',allowed?'text-white/80':'text-white/40'].join(' ')}>{cd.label}{offByChoice&&<span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-500/12 text-red-300">off</span>}</span>
+                        <Toggle on={allowed} onChange={(_canEd&&!dnc)?(v=>setChannelPref(cd.key,v)):()=>{}}/>
+                      </div>
+                    );})}
+                  </div>
+                  {dnc&&<p className="text-[11px] text-white/35 mt-2 flex items-center gap-1.5"><I.Ban size={11} className="text-white/30"/>All channels are blocked while “Do not contact” is on.</p>}
+                </div>)}
+              </div>
+              );})()}
               <ContactFreqIndicator contact={c} goTo={goTo}/>
               <AdAttributionCard rec={c}/>
             </div>
@@ -8701,7 +8737,7 @@ const SEQ_TEMPLATES=[
 ];
 const STAGE_EMAIL_TEMPLATES=['Quick check-in','Proposal follow-up','Next steps recap','Pricing questions answered'];
 // Same suppression rules the contact page enforces (Settings → Suppression list, simulated).
-function contactEmailSuppressed(email){const e=(email||'').toLowerCase();const dom=e.split('@')[1]||'';return ['unsub@acme.com','bounce@example.com','spam@test.io','blocked@co.org','old@company.net','donotcontact@firm.co'].includes(e)||['competitor.com','acme.com'].includes(dom);}
+function contactEmailSuppressed(email){return supEmailBlocked(email);} // now reads the live unified store (was a frozen hardcoded copy of the seed)
 // Resolve a stage's deals to UNIQUE, emailable contacts + an explicit skip list with reasons.
 function stageBulkAudience(deals,contacts,opts){
   opts=opts||{};const seen={};const recipients=[];const skipped=[];
@@ -8716,6 +8752,7 @@ function stageBulkAudience(deals,contacts,opts){
     if(!email)block='No email address';
     else if(c.dnc)block='Do Not Contact';
     else if(contactEmailSuppressed(email))block='Suppressed (email)';
+    else if(supChannelOff(c.id,'marketing'))block='Marketing channel off'; // per-contact channel opt-out now enforced in bulk sends too, not just on the contact page
     else if(opts.enrolledIds&&opts.enrolledIds[c.id])block='Already in this sequence';
     if(block){seen[c.id]={};skipped.push({name:c.name,reason:block});return;}
     const rec={contact:c,deals:[d]};seen[c.id]=rec;recipients.push(rec);
@@ -9687,6 +9724,45 @@ let _liveContacts=null; // Wave 3: live contacts array, set by App on each rende
 let _liveSeqEnrollments=null; // stage-bulk enroll: live sequence-membership records, set by App each render
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
 let _liveLeads=null; // live leads array, set by App on each render; used to resolve calendar task/event links to lead ids
+// ── Unified suppression store — the SINGLE source of truth. Previously THREE frozen hardcoded copies of the same
+// seed (contactEmailSuppressed(), the contact-page `suppressed` object, and SettingsSuppressionPage useState), so
+// nothing a user blocked/unblocked in the UI ever reached the send paths. Now one store, mirrored for the non-React
+// send paths (stageBulkAudience / contactEmailSuppressed) exactly like _liveDeals.
+let _liveSuppression=null;
+function SUPPRESSION_SEED(){return {
+  emails:[
+    {id:'e1',email:'unsub@acme.com',reason:'Unsubscribed',scope:'marketing',source:'Newsletter footer',date:'May 30, 2026'},
+    {id:'e2',email:'bounce@example.com',reason:'Bounced',scope:'all',source:'New Lead Nurture · Email 2',date:'May 28, 2026'},
+    {id:'e3',email:'spam@test.io',reason:'Spam complaint',scope:'all',source:'Re-engagement · Email 1',date:'May 19, 2026'},
+    {id:'e4',email:'old@company.net',reason:'Manual',scope:'marketing',source:'Manual — rep opt-out',date:'May 14, 2026'},
+    {id:'e5',email:'donotcontact@firm.co',reason:'GDPR erasure',scope:'all',source:'GDPR erasure request',date:'May 10, 2026'},
+    {id:'e6',email:'blocked@co.org',reason:'Bounced',scope:'all',source:'Proposal Follow-Up · Email 3',date:'Apr 30, 2026'},
+  ],
+  domains:[
+    {id:'d1',domain:'competitor.com',reason:'Manual',date:'May 24, 2026',exceptions:[]},
+    {id:'d2',domain:'acme.com',reason:'Manual',date:'May 12, 2026',exceptions:['champion@acme.com']},
+  ],
+  phones:[
+    {id:'p1',phone:'+1 415 555 0142',channel:'sms',reason:'Replied STOP',source:'Deal Follow-Up · SMS 1',date:'May 22, 2026'},
+    {id:'p2',phone:'+1 628 555 0190',channel:'both',reason:'Do-not-call',source:'Manual — rep request',date:'May 18, 2026'},
+    {id:'p3',phone:'+1 212 555 0177',channel:'calls',reason:'Manual',source:'Compliance review',date:'May 12, 2026'},
+  ],
+  channels:{101:{marketing:false},5:{sms:false,calls:false},8:{marketing:false,push:false}}, // { [contactId]: {marketing,transactional,sms,calls,push,inapp} } — per-contact channel consent; false = OFF/blocked (seeded a few real contacts so the opt-out list demos)
+  compliance:{globalOptOut:true,gdpr:true,unsubLink:true},
+};}
+function _supNormPhone(p){return String(p||'').replace(/\D/g,'').slice(-10);} // last-10-digits match so format variants can't evade the block
+function supEmailBlocked(email,sendScope,S){S=S||_liveSuppression||{};const e=String(email||'').toLowerCase();const dom=e.split('@')[1]||'';const sc=sendScope||'marketing';
+  // Scope-aware: a MARKETING send is blocked by any suppression row; a transactional/1:1 send only by an 'all'-scope row.
+  // (Callers pass no scope today → 'marketing' → current behavior; a future 1:1 path can pass 'transactional'.)
+  const hit=(S.emails||[]).find(x=>String(x.email||'').toLowerCase()===e);
+  if(hit&&(hit.scope==='all'||sc==='marketing'))return true;
+  const d=(S.domains||[]).find(x=>String(x.domain||'').toLowerCase()===dom);
+  if(d&&!(d.exceptions||[]).some(x=>String(x||'').toLowerCase()===e))return true; // domain blocks are always all-scope
+  return false;}
+function supPhoneBlocked(phone,channel,S){S=S||_liveSuppression||{};const p=_supNormPhone(phone);if(!p)return false;
+  return (S.phones||[]).some(x=>_supNormPhone(x.phone)===p&&(x.channel===channel||x.channel==='both'));}
+function supChannelOff(contactId,channel,S){S=S||_liveSuppression||{};const m=(S.channels||{})[contactId];return !!(m&&m[channel]===false);}
+const SUPP_CH_DEFS=[{key:'marketing',label:'Marketing email'},{key:'transactional',label:'Transactional email'},{key:'sms',label:'SMS'},{key:'calls',label:'Calls'},{key:'push',label:'Push'},{key:'inapp',label:'In-app'}]; // shared channel list for the contact record's Communication preferences panel + the Suppression settings page
 // Resolve a calendar task/event's selected link (by current name) to a record id, so record→task joins survive renames / duplicate names.
 function calLinkIds(relType,name){const n=(name||'').trim();let contactId=null,leadId=null,companyId=null;
   if(n&&relType==='contact'){const c=(_liveContacts||[]).find(x=>!x.deleted&&x.name===n);if(c)contactId=c.id;}
@@ -10329,8 +10405,8 @@ function buildConvertRecords(lead,payload){
   const contactReused=!!_existingC;
   const effContactId=_existingC?_existingC.id:contactId;
   const contact=_existingC
-    ?{..._existingC,companyId:_existingC.companyId||effCompanyId,co:_existingC.co||coNameFinal,email:_existingC.email||(c.email||''),phone:_existingC.phone||lead.phone||'',title:_existingC.title||c.title||'',tags:Array.from(new Set([...(_existingC.tags||[]),...tags])),lastActivity:'Just now',lastContacted:'Just now',qual:_existingC.qual||lead.qual||null,fromLeadId:_existingC.fromLeadId||lead.id,...(_existingC.adPlatform?{}:_adAttr)}
-    :{id:contactId,name:cname,first:c.first||'',last:c.last||'',co:coNameFinal,companyId:effCompanyId,email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,fromLeadId:lead.id,..._adAttr,..._adHist};
+    ?{..._existingC,companyId:_existingC.companyId||effCompanyId,co:_existingC.co||coNameFinal,email:_existingC.email||(c.email||''),phone:_existingC.phone||lead.phone||'',title:_existingC.title||c.title||'',tags:Array.from(new Set([...(_existingC.tags||[]),...tags])),lastActivity:'Just now',lastContacted:'Just now',qual:_existingC.qual||lead.qual||null,dnc:_existingC.dnc||!!lead.dnc,fromLeadId:_existingC.fromLeadId||lead.id,...(_existingC.adPlatform?{}:_adAttr)}
+    :{id:contactId,name:cname,first:c.first||'',last:c.last||'',co:coNameFinal,companyId:effCompanyId,email:c.email||'',phone:lead.phone||'',title:c.title||'',avatar:arInitials(cname),color:lead.color||arPick(),status:'Active',cstatus:'Prospect',owner,ownerColor,deal:lead.estValue||'—',lastActivity:'Just now',lastContacted:'Just now',days:0,source:lead.source||'',tags:tags.slice(),emails:Array.isArray(lead.emails)?lead.emails.slice():[],phones:Array.isArray(lead.phones)?lead.phones.slice():[],createdBy:owner,createdAt:'Just now',archived:false,qual:lead.qual||null,dnc:!!lead.dnc,fromLeadId:lead.id,..._adAttr,..._adHist}; // carry the DNC opt-out so a suppressed lead can't become mailable again on convert (email/phone-list suppression already carries by identity)
   let deal=null;
   if(payload.makeDeal){const d=payload.deal||{};const amt=parseInt(String(d.value||'').replace(/[^0-9]/g,''),10)||0;const pipeline=d.pipeline||'Sales Pipeline';const dname=(d.name||'').trim()||((lead.company?lead.company+' — ':'')+(lead.name||''));deal={id:dealId,company:coNameFinal||cname,companyId:effCompanyId,name:dname,value:'$'+amt.toLocaleString('en-US'),amount:amt,stageKey:'prospecting',dStage:'Prospecting',...dealStageStamp('prospecting',owner),pipeline,closeDate:d.close||'',primaryContact:contact.name,primaryContactId:effContactId,nextAction:'',source:lead.source||'',owner,ownerColor,tag:'Converted',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:tags.slice(),dealTags:tags.slice(),amountType:'One-time',forecast:'Pipeline',additionalContacts:[],additionalContactIds:[],createdBy:owner,createdAt:'Just now',lastActivity:'Just now',fromLeadId:lead.id,..._adAttr};normalizeDealPipeline(deal,owner);}
   return {contact,company,deal,companyId:effCompanyId,contactReused};
@@ -17646,54 +17722,52 @@ const SUP_REASON_CHIP={
   'Replied STOP':'bg-red-500/12 text-red-300 ring-red-500/25',
   'Do-not-call':'bg-amber-500/12 text-amber-300 ring-amber-500/25',
 };
-const SUP_NEW_DATE='Jun 11, 2026';
+const supNewDate=()=>{try{return new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch(e){return 'Today';}}; // real date on new suppression rows (was a hardcoded constant — a wrong opt-out date is a compliance liability)
 function SettingsSuppressionPage({goTo}){
   const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t||'success');};
   const [tab,setTab]=React.useState('email');
   const [q,setQ]=React.useState('');
   const [sheet,setSheet]=React.useState(null); // 'email' | 'domain' | 'phone' | null
-  // ── Email suppression (folds the legacy unsubscribe records as one section) ──
-  const [emails,setEmails]=React.useState([
-    {id:'e1',email:'unsub@acme.com',reason:'Unsubscribed',scope:'marketing',source:'Newsletter footer',date:'May 30, 2026'},
-    {id:'e2',email:'bounce@example.com',reason:'Bounced',scope:'all',source:'New Lead Nurture · Email 2',date:'May 28, 2026'},
-    {id:'e3',email:'spam@test.io',reason:'Spam complaint',scope:'all',source:'Re-engagement · Email 1',date:'May 19, 2026'},
-    {id:'e4',email:'old@company.net',reason:'Manual',scope:'marketing',source:'Manual — rep opt-out',date:'May 14, 2026'},
-    {id:'e5',email:'donotcontact@firm.co',reason:'GDPR erasure',scope:'all',source:'GDPR erasure request',date:'May 10, 2026'},
-    {id:'e6',email:'blocked@co.org',reason:'Bounced',scope:'all',source:'Proposal Follow-Up · Email 3',date:'Apr 30, 2026'},
-  ]);
-  // ── Domain suppression with allowed exceptions ──
-  const [domains,setDomains]=React.useState([
-    {id:'d1',domain:'competitor.com',reason:'Manual',date:'May 24, 2026',exceptions:[]},
-    {id:'d2',domain:'acme.com',reason:'Manual',date:'May 12, 2026',exceptions:['champion@acme.com']},
-  ]);
+  // ── Unified store: emails/domains/phones/channels/compliance all live in CrmDataContext now (single source of
+  // truth read by the send paths + the contact record). This page reads and writes that store instead of local state. ──
+  const crm=React.useContext(CrmDataContext);
+  const sup=crm.suppression||{emails:[],domains:[],phones:[],channels:{},compliance:{}};
+  const emails=sup.emails||[], domains=sup.domains||[], phones=sup.phones||[];
+  const compliance=sup.compliance||{globalOptOut:true,gdpr:true,unsubLink:true};
+  const setEmails=(fn)=>crm.setSuppression(s=>({...s,emails:typeof fn==='function'?fn(s.emails||[]):fn}));
+  const setDomains=(fn)=>crm.setSuppression(s=>({...s,domains:typeof fn==='function'?fn(s.domains||[]):fn}));
+  const setPhones=(fn)=>crm.setSuppression(s=>({...s,phones:typeof fn==='function'?fn(s.phones||[]):fn}));
   const [excFor,setExcFor]=React.useState(null); // domain id currently adding an exception to
   const [excInput,setExcInput]=React.useState('');
-  // ── Phone / SMS suppression ──
-  const [phones,setPhones]=React.useState([
-    {id:'p1',phone:'+1 415 555 0142',channel:'sms',reason:'Replied STOP',source:'Deal Follow-Up · SMS 1',date:'May 22, 2026'},
-    {id:'p2',phone:'+1 628 555 0190',channel:'both',reason:'Do-not-call',source:'Manual — rep request',date:'May 18, 2026'},
-    {id:'p3',phone:'+1 212 555 0177',channel:'calls',reason:'Manual',source:'Compliance review',date:'May 12, 2026'},
-  ]);
-  // ── Channels by contact ──
-  const CH_DEFS=[{key:'marketing',label:'Marketing email'},{key:'transactional',label:'Transactional email'},{key:'sms',label:'SMS'},{key:'calls',label:'Calls'},{key:'push',label:'Push'},{key:'inapp',label:'In-app'}];
-  const [people,setPeople]=React.useState([
-    {id:'c1',name:'Sarah Chen',email:'sarah@meridian.com',avatar:'SC',color:'#3b82f6',ch:{marketing:false,transactional:true,sms:true,calls:true}},
-    {id:'c2',name:'James Rivera',email:'james@summit.io',avatar:'JR',color:'#8b5cf6',ch:{marketing:true,transactional:true,sms:false,calls:true}},
-    {id:'c3',name:'Priya Nair',email:'priya@atlas.co',avatar:'PN',color:'#a855f7',ch:{marketing:false,transactional:true,sms:false,calls:false}},
-    {id:'c4',name:'Marcus Rios',email:'marcus@kapoor.com',avatar:'MR',color:'#f59e0b',ch:{marketing:true,transactional:true,sms:true,calls:true}},
-  ]);
+  // ── Channels by contact — the REAL per-contact consent record, rendered from crm.contacts (keyed by id) and stored
+  // in suppression.channels, so a toggle here actually gates that contact's send buttons (supChannelOff reads it). ──
+  const CH_DEFS=[{key:'marketing',label:'Marketing email',short:'Marketing'},{key:'transactional',label:'Transactional email',short:'Transactional'},{key:'sms',label:'SMS',short:'SMS'},{key:'calls',label:'Calls',short:'Calls'},{key:'push',label:'Push',short:'Push'},{key:'inapp',label:'In-app',short:'In-app'}];
+  const CH_ON={marketing:true,transactional:true,sms:true,calls:true,push:true,inapp:true};
+  const people=(crm.contacts||[]).filter(c=>c&&!c.deleted&&!c.archived).map(c=>({id:c.id,name:c.name,email:c.email,avatar:c.avatar,color:c.color,ch:{...CH_ON,...((sup.channels||{})[c.id]||{})}}));
+  const chOffPeople=people.filter(p=>CH_DEFS.some(d=>p.ch[d.key]===false)); // contacts with >=1 channel turned OFF — the actual opt-outs (the list shows ONLY these, not everyone, so it scales)
+  const setComp=(k,v)=>{crm.setSuppression(s=>({...s,compliance:{...(s.compliance||{}),[k]:v}}));toast('Compliance setting updated');};
+  const COMP_PREFS=[
+    {key:'globalOptOut',label:'Global opt-out suppression',sub:'Any contact who unsubscribes is suppressed from all sequences.'},
+    {key:'gdpr',label:'Honor GDPR deletion requests',sub:'Contacts requesting erasure are anonymised within 30 days.'},
+    {key:'unsubLink',label:'Include unsubscribe link',sub:'Auto-append a one-click unsubscribe footer to every outbound email.'},
+  ];
   const ql=q.trim().toLowerCase();
   const fEmails=emails.filter(e=>!ql||(e.email+e.source+e.reason).toLowerCase().includes(ql));
   const fDomains=domains.filter(d=>!ql||(d.domain+d.reason+d.exceptions.join(' ')).toLowerCase().includes(ql));
   const fPhones=phones.filter(p=>!ql||(p.phone+p.source+p.reason).toLowerCase().includes(ql));
   const fPeople=people.filter(p=>!ql||(p.name+p.email).toLowerCase().includes(ql));
+  const channelRows=ql?fPeople.slice(0,40):chOffPeople; // search → find ANY contact to adjust; empty → only the opt-outs
   // actions
   const unblockEmail=(id)=>{setEmails(l=>l.filter(x=>x.id!==id));toast('Removed from suppression');};
   const unblockPhone=(id)=>{setPhones(l=>l.filter(x=>x.id!==id));toast('Removed from suppression');};
   const unblockDomain=(id)=>{setDomains(l=>l.filter(x=>x.id!==id));toast('Domain unblocked');};
   const addExc=(d)=>{const v=excInput.trim().toLowerCase();if(!v)return;if(!v.includes('@')||!v.endsWith('@'+d.domain)){toast('Exception must be an address @'+d.domain,'warning');return;}if(d.exceptions.includes(v)){setExcFor(null);setExcInput('');return;}setDomains(l=>l.map(x=>x.id===d.id?{...x,exceptions:[...x.exceptions,v]}:x));setExcFor(null);setExcInput('');toast('Allowed contact added');};
   const rmExc=(id,em)=>{setDomains(l=>l.map(x=>x.id===id?{...x,exceptions:x.exceptions.filter(e=>e!==em)}:x));toast('Exception removed');};
-  const toggleCh=(id,key)=>{let nm='';setPeople(l=>l.map(p=>{if(p.id!==id)return p;nm=p.name;return{...p,ch:{...p.ch,[key]:!p.ch[key]}};}));toast('Preferences updated for '+nm);};
+  const toggleCh=(id,key)=>{const person=people.find(p=>p.id===id);const nv=!(person?person.ch[key]:true);
+    crm.setSuppression(s=>{const existing=(s.channels||{})[id]||{};return {...s,channels:{...(s.channels||{}),[id]:{...existing,[key]:nv}}};});
+    const nm=person?person.name:'contact';const lbl=(CH_DEFS.find(d=>d.key===key)||{}).label||key;
+    toast(lbl+(nv?' turned on':' turned off')+' for '+nm,nv?'success':'warning');
+    if(crm.addActivity)crm.addActivity('contact',id,mkAct('dnc',{ts:0,by:CURRENT_USER.avatar,title:lbl+(nv?' turned ON':' turned OFF'),body:'Channel preference updated from Suppression settings.',payload:{channels:[lbl],from:nv?'Off':'On',to:nv?'On':'Off'}}));};
   const exportCsv=()=>{const n={email:fEmails.length,domains:fDomains.length,phone:fPhones.length,channels:fPeople.length}[tab];toast('Exported '+n+' rows to CSV');};
   const TABS=[{k:'email',l:'Email'},{k:'domains',l:'Domains'},{k:'phone',l:'Phone / SMS'},{k:'channels',l:'Channels by contact'}];
   const blockLabel={email:'Block an email',domains:'Block a domain',phone:'Block a number'}[tab];
@@ -17704,17 +17778,25 @@ function SettingsSuppressionPage({goTo}){
   return(
     <SettingsShell active="settings-suppression" goTo={goTo} subtitle="Suppressed contacts are blocked from the selected channels. They're skipped in sequences and can't be re-enrolled.">
       <div className="flex items-center gap-2 flex-wrap">
-        {[{Icon:I.Mail,n:emails.length,l:'emails blocked'},{Icon:I.Globe,n:domains.length,l:'domains blocked'},{Icon:I.Phone,n:phones.length,l:'phone numbers blocked'}].map((s,i)=>(
+        {[{Icon:I.Mail,n:emails.length,l:'emails blocked'},{Icon:I.Globe,n:domains.length,l:'domains blocked'},{Icon:I.Phone,n:phones.length,l:'phone numbers blocked'},{Icon:I.SliderH,n:chOffPeople.length,l:'channel opt-outs'}].map((s,i)=>(
           <div key={i} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.07]"><s.Icon size={13} className="text-white/40"/><span className="text-[13px] font-semibold text-white tabular-nums">{s.n}</span><span className="text-[12px] text-white/45">{s.l}</span></div>
         ))}
       </div>
-      {/* sub-tab switcher + tools */}
+      {/* Global compliance rules — surfaced at the top (were buried below the block-list table) */}
+      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.05] p-4">
+        <div className="flex items-center gap-2.5 mb-3"><span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.ShieldCheck size={15}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Global compliance rules</p><p className="text-[11.5px] text-white/45">Apply across your whole workspace — the safety net above every list below.</p></div></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {COMP_PREFS.map(pref=>(<div key={pref.key} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-start justify-between gap-2.5"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">{pref.label}</p><p className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{pref.sub}</p></div><Toggle on={compliance[pref.key]} onChange={v=>setComp(pref.key,v)}/></div>))}
+        </div>
+      </div>
+      {/* Blocked contacts — one section with a type filter (flatten: a clear heading so the Email/Domains/Phone/Channels switcher reads as a within-page filter, not a third tab level under the Engage rail + Deliverability bar) */}
+      <div className="pt-1"><p className="text-[14px] font-semibold text-white">Blocked contacts</p><p className="text-[12px] text-white/45 mt-0.5">Emails, domains and numbers you've suppressed — plus per-contact channel choices.</p></div>
       <div className="flex items-center justify-between gap-3 flex-wrap border-b border-white/[0.06] pb-3">
         <div className="flex items-center gap-1 flex-wrap">
           {TABS.map(t=>(<button key={t.k} onClick={()=>{setTab(t.k);setQ('');}} className={['px-3 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',tab===t.k?'bg-brand-500/15 text-brand-200 ring-1 ring-brand-500/25':'text-white/55 hover:text-white hover:bg-white/[0.04]'].join(' ')}>{t.l}</button>))}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-32 sm:w-40"/></div>
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder={tab==='channels'?'Find a contact to adjust…':'Search…'} className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40 sm:w-48"/></div>
           <button onClick={exportCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Download size={12}/><span className="crm-hide-sm">Export CSV</span></button>
           {blockLabel&&<button onClick={()=>setSheet(tab==='domains'?'domain':tab==='phone'?'phone':'email')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/><span className="crm-hide-sm">{blockLabel}</span></button>}
         </div>
@@ -17777,31 +17859,35 @@ function SettingsSuppressionPage({goTo}){
         </div>
       )}
 
-      {/* ── TAB 4 · Channels by contact ── */}
+      {/* ── TAB 4 · Channels by contact — a real opt-out LIST (compact rows), not a card per contact. Empty search shows
+           only contacts with a channel off (scales past thousands); searching finds ANY contact to adjust. Click a pill to toggle. ── */}
       {tab==='channels'&&(
-        <div className="flex flex-col gap-3">
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2.5 flex items-start gap-2.5"><I.ShieldCheck size={14} className="text-white/45 shrink-0 mt-px"/><p className="text-[12px] text-white/60 leading-relaxed">Set exactly which channels each contact may receive. Turn one off to keep, say, transactional email and calls while stopping all marketing.</p></div>
-          {fPeople.length===0&&<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-10 text-center text-[13px] text-white/35">No contacts match.</div>}
-          {fPeople.map(p=>(
-            <div key={p.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
-              <div className="flex items-center gap-3 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{p.name}</p><p className="text-[11.5px] font-mono text-white/45 truncate">{p.email}</p></div></div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3.5">
-                {CH_DEFS.map(cd=>(<div key={cd.key} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.025] border border-white/[0.05] px-3 py-2.5"><p className={['text-[11.5px] font-medium truncate',p.ch[cd.key]?'text-white/85':'text-white/40'].join(' ')}>{cd.label}</p><Toggle on={p.ch[cd.key]} onChange={()=>toggleCh(p.id,cd.key)}/></div>))}
+        <div className="flex flex-col gap-2.5">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-2.5 flex items-start gap-2.5"><I.ShieldCheck size={14} className="text-white/45 shrink-0 mt-px"/><p className="text-[12px] text-white/60 leading-relaxed">Only contacts who've <span className="text-white/85 font-medium">turned a channel off</span> are listed here. <span className="text-white/85 font-medium">Search any contact above</span> to adjust theirs — turn one off to keep, say, transactional email and calls while stopping all marketing. Click a pill to toggle.</p></div>
+          {channelRows.length===0&&(ql
+            ?<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-10 text-center text-[13px] text-white/40">No contacts match “{q}”.</div>
+            :<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-12 text-center"><div className="w-11 h-11 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 flex items-center justify-center mx-auto mb-2.5 text-emerald-300"><I.Check size={18}/></div><p className="text-[13px] font-medium text-white/70">No channel opt-outs</p><p className="text-[12px] text-white/40 mt-1">Every contact can receive all channels. Search a contact above to turn one off.</p></div>
+          )}
+          {channelRows.map(p=>(
+            <div key={p.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3.5 flex flex-col md:flex-row md:items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0 md:w-60 shrink-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:p.color}}>{p.avatar}</div><div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{p.name}</p><p className="text-[11.5px] font-mono text-white/45 truncate">{p.email}</p></div></div>
+              <div className="flex items-center gap-1.5 flex-wrap md:ml-auto md:justify-end">
+                {CH_DEFS.map(cd=>{const on=p.ch[cd.key]!==false;return(
+                  <button key={cd.key} onClick={()=>toggleCh(p.id,cd.key)} title={(on?'Turn off':'Turn on')+' '+cd.label} className={['inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium ring-1 transition-all',on?'bg-white/[0.04] text-white/55 ring-white/[0.08] hover:bg-white/[0.07] hover:text-white/80':'bg-red-500/12 text-red-300 ring-red-500/25 hover:bg-red-500/20'].join(' ')}>{!on&&<I.Ban size={10}/>}{cd.short||cd.label}</button>
+                );})}
               </div>
             </div>
           ))}
+          {!ql&&channelRows.length>0&&<p className="text-[11.5px] text-white/35 text-center pt-1">{channelRows.length} contact{channelRows.length!==1?'s':''} with a channel turned off. Search above to adjust anyone else.</p>}
         </div>
       )}
 
       {/* enforcement note */}
       <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/20 px-4 py-2.5 flex items-start gap-2.5"><I.Ban size={14} className="text-amber-300 shrink-0 mt-px"/><p className="text-[12px] text-white/65 leading-relaxed">Suppressed contacts are <span className="text-white/85 font-medium">auto-skipped in every sequence & automation</span> and can't be re-enrolled. On a contact's record the blocked channel's send button is disabled.</p></div>
 
-      {/* compliance preferences (kept from the legacy Unsubscribes page) */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-medium mb-1">Compliance preferences</p><p className="text-white/45 text-[12px] mb-5">Control how opt-outs are handled across your workspace.</p><div className="flex flex-col gap-4">{[{label:'Global opt-out suppression',sub:'Any contact who unsubscribes is suppressed from all sequences.',on:true},{label:'Honor GDPR deletion requests',sub:'Contacts requesting erasure are anonymised within 30 days.',on:true},{label:'Include unsubscribe link',sub:'Automatically append a one-click unsubscribe footer to all outbound emails.',on:true}].map(pref=>(<div key={pref.label} className="flex items-start justify-between gap-4"><div><p className="text-[13px] font-medium text-white">{pref.label}</p><p className="text-[12px] text-white/45 mt-0.5">{pref.sub}</p></div><Toggle on={pref.on} onChange={()=>{}}/></div>))}</div></div>
-
-      {sheet==='email'&&<EmailBlockSheet onClose={()=>setSheet(null)} onBlock={(e)=>{setEmails(l=>[{id:'e'+Date.now(),source:'Manual',date:SUP_NEW_DATE,...e},...l]);setSheet(null);toast('Email suppressed');}}/>}
-      {sheet==='domain'&&<DomainBlockSheet onClose={()=>setSheet(null)} onBlock={(d)=>{setDomains(l=>[{id:'d'+Date.now(),date:SUP_NEW_DATE,exceptions:[],...d},...l]);setSheet(null);toast('Domain blocked');}}/>}
-      {sheet==='phone'&&<PhoneBlockSheet onClose={()=>setSheet(null)} onBlock={(p)=>{setPhones(l=>[{id:'p'+Date.now(),source:'Manual',date:SUP_NEW_DATE,...p},...l]);setSheet(null);toast('Number suppressed');}}/>}
+      {sheet==='email'&&<EmailBlockSheet onClose={()=>setSheet(null)} onBlock={(e)=>{if(emails.some(x=>String(x.email).toLowerCase()===String(e.email).toLowerCase())){toast('That email is already suppressed','warning');setSheet(null);return;}setEmails(l=>[{id:'e'+Date.now(),source:'Manual',date:supNewDate(),...e},...l]);setSheet(null);toast('Email suppressed');}}/>}
+      {sheet==='domain'&&<DomainBlockSheet onClose={()=>setSheet(null)} onBlock={(d)=>{if(domains.some(x=>String(x.domain).toLowerCase()===String(d.domain).toLowerCase())){toast('That domain is already blocked','warning');setSheet(null);return;}setDomains(l=>[{id:'d'+Date.now(),date:supNewDate(),exceptions:[],...d},...l]);setSheet(null);toast('Domain blocked');}}/>}
+      {sheet==='phone'&&<PhoneBlockSheet onClose={()=>setSheet(null)} onBlock={(p)=>{if(phones.some(x=>_supNormPhone(x.phone)===_supNormPhone(p.phone))){toast('That number is already suppressed','warning');setSheet(null);return;}setPhones(l=>[{id:'p'+Date.now(),source:'Manual',date:supNewDate(),...p},...l]);setSheet(null);toast('Number suppressed');}}/>}
     </SettingsShell>
   );
 }
@@ -18870,10 +18956,10 @@ function autoRunNodes(nodes,record,ctx,out,top){
     if(k==='addTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:Array.from(new Set([...(r[ctx.tagField]||[]),tg]))}));out.effects.push("🏷 Tagged '"+tg+"'");continue;}
     if(k==='removeTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:(r[ctx.tagField]||[]).filter(x=>x!==tg)}));out.effects.push("🏷 Removed tag '"+tg+"'");continue;}
     if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else if(n.setField==='Lead score'){const cur=record.score||0;const sv=String(n.setValue||'');const nv=/reset/i.test(sv)?0:Math.max(0,Math.min(100,cur+(parseInt(sv.replace(/[^0-9-]/g,''),10)||0)));_patch(()=>({score:nv}));record.score=nv;/* keep the running score so a 2nd score action in the same flow accumulates + the crossing fires once */if(ctx.ent==='lead'&&cur<SCORE_HOT&&nv>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{...record,score:nv},['Lead score reached']);}catch(e){}},0);out.effects.push('✎ Lead score '+(/reset/i.test(sv)?'reset → 0':(sv+' → '+nv)));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
-    if(k==='welcome'||k==='proposal'||k==='reengage'){out.effects.push('✉ Email sent · '+(n.template||'template'));continue;}
+    if(k==='welcome'||k==='proposal'||k==='reengage'){const _tc=(_cid!=null)?(_liveContacts||[]).find(c=>c&&c.id===_cid):null;if((record&&record.dnc)||(_tc&&(_tc.dnc||contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')))){out.effects.push('✉ Email skipped — suppressed'+(_tc?(' ('+(_tc.name||'contact')+')'):''));continue;}out.effects.push('✉ Email sent · '+(n.template||'template'));continue;} /* honors the unified suppression store — the Suppression page promises "auto-skipped in every sequence & automation" */
     if(k==='sms'){const _g=canSendSms(record);if(!_g.ok){out.effects.push('💬 SMS skipped — '+_g.reason);continue;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('sms',1,'Automation SMS'+(n.template?(' · '+n.template):''));out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;} /* A2P gate: unregistered/DNC sends are skipped with the reason, like a real carrier block; approved sends meter usage + debit the wallet */
     if(k==='slack'||k==='celebrate'){out.effects.push('🔔 '+(n.channel||'#sales')+' notified');continue;}
-    if(k==='enrollEmail'||k==='enrollSms'){if(k==='enrollSms'&&_cid!=null){const _tc=(_liveContacts||[]).find(c=>c&&c.id===_cid);if(_tc&&_tc.dnc){out.effects.push('➜ Enrollment skipped — '+(_tc.name||'contact')+' is Do Not Contact');continue;}} /* makes the builder's "suppressed contacts are skipped" claim real */ if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
+    if(k==='enrollEmail'||k==='enrollSms'){if(_cid!=null){const _tc=(_liveContacts||[]).find(c=>c&&c.id===_cid);if(_tc){const _blk=_tc.dnc||(k==='enrollEmail'?(contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')):(supPhoneBlocked(_tc.phone,'sms')||supChannelOff(_tc.id,'sms')));if(_blk){out.effects.push('➜ Enrollment skipped — '+(_tc.name||'contact')+(_tc.dnc?' is Do Not Contact':' is suppressed on this channel'));continue;}}} /* makes the builder's "suppressed contacts are skipped" claim real — channel-aware for both email & SMS enrollment */ if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
     if(k==='sendPush'){out.effects.push('📲 Push sent');continue;}
     if(k==='sendInApp'){out.effects.push('📲 In-app sent');continue;}
     if(k==='webhook'){out.effects.push('🔗 '+(n.method||'POST')+' webhook');continue;}
@@ -24054,7 +24140,7 @@ const ENGAGE_REDIRECT={
   'settings-reengagement':{tab:'delivery',sub:'reengagement'},
   'settings-suppression':{tab:'delivery',sub:'suppression'},
   'settings-unsubscribes':{tab:'delivery',sub:'suppression'},
-  'settings-notification-defaults':{tab:'delivery',sub:'notif'},
+  // 'settings-notification-defaults' intentionally NOT redirected here — it lives in Settings › Workspace (its own concern).
 };
 const ENGAGE_TABS=[
   {k:'sequences',  label:'Sequences',      Icon:I.Layers},
@@ -24064,7 +24150,7 @@ const ENGAGE_TABS=[
   {k:'forms',      label:'Forms',          Icon:I.Note},
   {k:'templates',  label:'Templates',      Icon:I.Mail},
   {k:'adleads',    label:'Ad leads',       Icon:I.Megaphone},
-  {k:'delivery',   label:'Delivery rules', Icon:I.SliderH},
+  {k:'delivery',   label:'Deliverability', Icon:I.SliderH},
 ];
 function EngageSubBar({items,value,onChange}){
   return(<div className="shrink-0 px-7 py-2.5 border-b border-white/[0.05] overflow-x-auto cal-tab-group" style={{background:'var(--s925)'}}>
@@ -24081,8 +24167,10 @@ function EngageTemplates({sub,setSub,goTo}){
   </React.Fragment>);
 }
 function EngageDelivery({sub,setSub,goTo}){
-  const items=[{k:'frequency',label:'Frequency cap',Icon:I.SliderH},{k:'reengagement',label:'Re-engagement',Icon:I.Reply},{k:'suppression',label:'Suppression list',Icon:I.Ban},{k:'notif',label:'Notification defaults',Icon:I.Bell}];
-  const body=sub==='reengagement'?<SettingsReengagementPage goTo={goTo}/>:sub==='suppression'?<SettingsSuppressionPage goTo={goTo}/>:sub==='notif'?<SettingsNotificationDefaultsPage goTo={goTo}/>:<SettingsFrequencyPage goTo={goTo}/>;
+  // Deliverability = the three levers that protect inbox placement + honor opt-outs. Notification DEFAULTS
+  // (how the TEAM is alerted) moved to Settings › Workspace — it's a different concern and made this group incoherent.
+  const items=[{k:'frequency',label:'Frequency cap',Icon:I.SliderH},{k:'reengagement',label:'Re-engagement',Icon:I.Reply},{k:'suppression',label:'Suppression list',Icon:I.Ban}];
+  const body=sub==='reengagement'?<SettingsReengagementPage goTo={goTo}/>:sub==='suppression'?<SettingsSuppressionPage goTo={goTo}/>:<SettingsFrequencyPage goTo={goTo}/>;
   return(<React.Fragment>
     <EngageSubBar items={items} value={sub} onChange={setSub}/>
     <div className="flex-1 min-h-0">{body}</div>
@@ -24229,6 +24317,8 @@ function App(){
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
   const [teamInvites,setTeamInvites]=React.useState([]); // pending teammates invited during onboarding — surfaced on the Settings Team page
   const [members,setMembers]=React.useState(()=>TEAM_MEMBERS_SEED.map(m=>({...m}))); // workspace members — SHARED so Settings › Team and the invite-accept page agree (accepting an invite adds here)
+  const [suppression,setSuppression]=React.useState(SUPPRESSION_SEED); // unified suppression store (emails/domains/phones/channels/compliance) — single source of truth read by the UI, the contact record, and the send paths
+  _liveSuppression=suppression; // mirror for the non-React send paths (contactEmailSuppressed / stageBulkAudience)
   const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
@@ -24339,12 +24429,13 @@ function App(){
     updateActivity:(id,patch)=>setActivities(a=>a.map(x=>x.id===id?{...x,...patch}:x)),
     teamInvites,setTeamInvites,
     members,setMembers,
+    suppression,setSuppression,
     personalConns,setPersonalConns,
     automations,setAutomations,autoLogs,
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,wallet,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,wallet,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
