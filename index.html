@@ -7517,7 +7517,7 @@ function actLeadOwn(l){
     mkAct('call',{ts:200,by:own,title:'Discovery call · '+them,body:'Intro call — qualified the team size, timeline and budget.',payload:seedCallPayload(A,them,{recLen:'5:18',outcome:'Connected',reason:'Discovery',repPct:61})}),
     mkAct('call',{ts:1800,by:own,title:'Outbound call · Left voicemail',body:'Earlier attempt; left a voicemail with next steps.',payload:{dir:'out',rec:false,outcome:'Left voicemail',reason:'Discovery'}}),
     mkAct('sms',{ts:600,by:own,title:'Text thread with '+them,body:'3 messages',payload:{thread:seedMsgThread(them,false)}}),
-    mkAct('form',{ts:120,by:'nrtur',title:'Submitted "Request a demo" form',body:'Team size: '+sz+' · Source: '+(l.source||'Web form')+'.'}),
+    mkAct('form',{ts:120,by:'nrtur',title:'Submitted "'+(l.adFormName||'Request a demo')+'" form',body:((l.formAnswers&&l.formAnswers.length)?l.formAnswers.map(a=>a.q+' '+a.a).join(' · '):('Team size: '+sz))+' · Source: '+(l.source||'Web form')+'.'}),
     mkAct('score',{ts:120,by:'nrtur',title:'Lead score reached '+(l.score!=null?l.score:82),body:'Visited pricing twice, opened 2 emails, submitted demo form.',payload:{field:'Score',from:'—',to:String(l.score!=null?l.score:82)}}),
     mkAct('created',{ts:240,by:'nrtur',label:'LEAD CREATED',title:'Lead captured',body:'Source: '+(l.source||'Web form')+'.'}),
   ];
@@ -7550,6 +7550,11 @@ function buildActivityFeed(kind,rec,ctx){
       feed=actDealOwn(rec);
       const person=(rec.primaryContactId!=null?contacts.find(c=>c.id===rec.primaryContactId&&!c.deleted):null)||contacts.find(c=>c.name===rec.primaryContact&&!c.deleted)||(rec.companyId!=null?contacts.find(c=>c.companyId===rec.companyId&&!c.deleted):null)||contacts.find(c=>c.co===rec.company&&!c.deleted);
       if(person)feed=feed.concat(tagSrc(actContactOwn(person).slice(0,4),{type:'contact',id:person.id,label:person.name,color:person.color||'#60a5fa'}));
+      // The originating lead's history rolls up onto the DEAL too (mirrors the contact branch at kind==='contact'),
+      // so a converted lead's pre-conversion calls/emails/notes are visible from ALL THREE views — lead, contact AND
+      // deal. Resolved by the lead's convertedToDealId back-link (fallback: the deal's fromLeadId), never by name.
+      const _dLead=leads.find(L=>L&&L.convertedToDealId!=null&&L.convertedToDealId===rec.id)||(rec.fromLeadId!=null?leads.find(L=>L&&L.id===rec.fromLeadId):null);
+      if(_dLead)feed=feed.concat(tagSrc(actLeadOwn(_dLead),{type:'lead',id:_dLead.id,label:'from lead · '+_dLead.name,color:'#34d399'}));
       const co=(rec.companyId!=null?companies.find(x=>x.id===rec.companyId):null)||companies.find(x=>x.name===rec.company);
       if(co)feed=feed.concat(tagSrc(actCompanyOwn(co).slice(0,2),{type:'company',id:co.id,label:co.name,color:'#60a5fa'}));
       (ctx.invoices||[]).filter(v=>v&&v.dealId===rec.id).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
@@ -9436,7 +9441,13 @@ function DealDetailPage({goTo,nav}){
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   // R3 roll-up: the deal timeline = its own rows + person COMMS explicitly linked via dealId (strictly
   // id-based — one activity row, rendered in two views; never duplicated, never guessed onto a deal).
-  const extra=(crm.activities||[]).filter(a=>(a.subjectType==='deal'&&a.subjectId===(d||{}).id)||(a.dealId===(d||{}).id&&(a.subjectType==='contact'||a.subjectType==='lead')&&COMM_ACT_TYPES.includes(a.type)));
+  // The originating lead's rep-logged (persisted) activities also carry onto the deal — mirrors the contact page's
+  // _leadExtra — tagged 'from lead', so the pre-conversion history is complete on the deal, not just the synthetic feed.
+  // Resolved by the lead's convertedToDealId back-link (fallback: the deal's fromLeadId); the guard avoids double-counting
+  // any lead comm already picked up by the dealId roll-up below.
+  const _dLead=(crm.leads||[]).find(L=>L&&L.convertedToDealId!=null&&L.convertedToDealId===(d||{}).id)||(d.fromLeadId!=null?(crm.leads||[]).find(L=>L&&L.id===d.fromLeadId):null);
+  const _dLeadExtra=_dLead?(crm.activities||[]).filter(a=>a.subjectType==='lead'&&a.subjectId===_dLead.id&&!(a.dealId===(d||{}).id&&COMM_ACT_TYPES.includes(a.type))).map(a=>({...a,source:a.source||{type:'lead',id:_dLead.id,label:'from lead · '+_dLead.name,color:'#34d399'}})):[];
+  const extra=[...(crm.activities||[]).filter(a=>(a.subjectType==='deal'&&a.subjectId===(d||{}).id)||(a.dealId===(d||{}).id&&(a.subjectType==='contact'||a.subjectType==='lead')&&COMM_ACT_TYPES.includes(a.type))),..._dLeadExtra];
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('deal',(d||{}).id,_a[0]);};
   const addDealNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:d.owner||'AM',title:'Note added',body:text}),...x]);
   const [schedOpen,setSchedOpen]=React.useState(false);
@@ -10214,7 +10225,43 @@ function adSourceByKey(k){return AD_SOURCE_DEFS.find(s=>s.key===k)||AD_SOURCE_DE
 // Friendly labels for the raw ad-form field tokens (left side of the mapping editor).
 const AD_FIELD_LABELS={full_name:'Full name',first_name:'First name',last_name:'Last name',email:'Email',phone_number:'Phone',company_name:'Company',city:'City',postal_code:'Postal code',job_title:'Job title',message:'Message'};
 // CRM fields an ad-form field can map INTO (right side of the mapping editor). Mirrors contact fields.
-const AD_CRM_FIELDS=[{key:'name',label:'Full name'},{key:'first',label:'First name'},{key:'last',label:'Last name'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'co',label:'Company'},{key:'title',label:'Job title'},{key:'loc',label:'City / location'},{key:'__ignore',label:"— Don't import"}];
+// __note = store the answer on the lead's notes (safe home for custom questions); __ignore = drop it.
+const AD_CRM_FIELDS=[{key:'name',label:'Full name'},{key:'first',label:'First name'},{key:'last',label:'Last name'},{key:'email',label:'Email'},{key:'phone',label:'Phone'},{key:'co',label:'Company'},{key:'title',label:'Job title'},{key:'loc',label:'City / location'},{key:'__note',label:'Store as a note'},{key:'__ignore',label:"— Don't import"}];
+// Lead forms "published" on each connected asset (Page/Campaign) — what a real Meta/Google connection
+// returns. The discovery picker lists THESE instead of minting a blank form, and each form's REAL
+// questions drive the mapping. field: {key, label?, req?, custom?, sample?}
+//  · standard keys (full_name/email/phone_number/…) auto-map to a CRM field
+//  · custom questions are advertiser-authored — they default to "Store as a note" (sample = demo answer)
+const AD_PUBLISHED_FORMS=[
+  {id:'pf_m1',sourceKey:'meta-ads',asset:'Bloom Creative',name:'Spring Promo — Demo Request',fields:[
+    {key:'full_name',req:true},{key:'email',req:true},{key:'phone_number',req:true},{key:'company_name'},{key:'job_title'},
+    {key:'budget',label:'Monthly marketing budget?',custom:true,sample:'$2,500–$5,000'},
+    {key:'timeline',label:'When do you want to start?',custom:true,sample:'This quarter'}]},
+  {id:'pf_m2',sourceKey:'meta-ads',asset:'Bloom Real Estate',name:'Buyer Intake — Listings',fields:[
+    {key:'full_name',req:true},{key:'email',req:true},{key:'phone_number',req:true},{key:'city'},
+    {key:'price_range',label:'Target price range?',custom:true,sample:'$400k–$550k'},
+    {key:'bedrooms',label:'Bedrooms needed?',custom:true,sample:'3+'},
+    {key:'preapproved',label:'Are you pre-approved?',custom:true,sample:'Yes'}]},
+  {id:'pf_m3',sourceKey:'meta-ads',asset:'Bloom Home Services',name:'Free Quote — Home Services',fields:[
+    {key:'full_name',req:true},{key:'phone_number',req:true},{key:'email'},{key:'postal_code'},
+    {key:'service',label:'Which service do you need?',custom:true,sample:'Roof repair'},
+    {key:'urgency',label:'How soon do you need it?',custom:true,sample:'Within 2 weeks'}]},
+  {id:'pf_g1',sourceKey:'google-ads',asset:'Search — Brand',name:'Free Consultation',fields:[
+    {key:'full_name',req:true},{key:'email',req:true},{key:'phone_number',req:true},{key:'company_name'},{key:'postal_code'}]},
+  {id:'pf_g2',sourceKey:'google-ads',asset:'Search — Competitors',name:'Switch & Save Assessment',fields:[
+    {key:'full_name',req:true},{key:'email',req:true},{key:'phone_number',req:true},{key:'company_name'},
+    {key:'current_tool',label:'What CRM do you use today?',custom:true,sample:'Spreadsheets'},
+    {key:'team_size',label:'How big is your team?',custom:true,sample:'6–10'}]},
+  {id:'pf_g3',sourceKey:'google-ads',asset:'YouTube — Demo',name:'Book a Demo',fields:[
+    {key:'full_name',req:true},{key:'email',req:true},{key:'phone_number',req:true},{key:'job_title'},
+    {key:'use_case',label:'Primary use case?',custom:true,sample:'Automations'}]},
+];
+function adPublishedForms(sourceKey){return AD_PUBLISHED_FORMS.filter(p=>p.sourceKey===sourceKey);}
+// Best-guess CRM destination for a published-form field. Custom questions → store as a note by default.
+const AD_AUTOMAP={full_name:'name',first_name:'first',last_name:'last',email:'email',phone_number:'phone',company_name:'co',job_title:'title',city:'loc',postal_code:'loc'};
+function adFieldToCrm(f){return f.custom?'__note':(AD_AUTOMAP[f.key]||'__ignore');}
+// Turn a published form into editable mapping rows carrying label/custom/req/sample for the UI + intake.
+function adFormToMapping(pf){return(pf.fields||[]).map(f=>({ad:f.key,crm:adFieldToCrm(f),label:f.label||AD_FIELD_LABELS[f.key]||f.key,custom:!!f.custom,req:!!f.req,sample:f.sample||''}));}
 // Lead forms (one mapping each) — Part B. Multiple forms per source supported.
 const AD_LEAD_FORMS_SEED=[
   {id:'lf_meta_1',sourceKey:'meta-ads',name:'Spring Promo — Demo Request',campaign:'Spring Promo 2026',asset:'Bloom Creative',pipeline:'Sales Pipeline',stage:'New',tag:'meta-lead',owner:'Round-robin',
@@ -12100,10 +12147,13 @@ function ebNew(type){const b={id:ebid(),type};
   if(type==='html')return{...b,html:'<p style="margin:0;font-size:15px;line-height:1.6;color:#475569;">Paste your own <strong>HTML</strong> here — it renders right in the email.</p>'};
   return b;}
 // ── Mandatory unsubscribe footer (CAN-SPAM / GDPR) ──────────────────────────
-// Marketing emails MUST carry an unsubscribe link. This block is auto-injected and
-// flagged `locked`, so the builder won't let it be deleted, moved, or duplicated.
-// The link is wired to the existing suppression list at send time.
-function ebUnsub(){return{id:ebid(),type:'unsubscribe',locked:true,text:'You received this email because you opted in or are a customer of {{company}}.',org:'nrtur, Inc. · 100 Market St, San Francisco, CA 94105',size:12,align:'center',color:'#94a3b8'};}
+// Marketing email MUST carry an unsubscribe link + a real physical postal address. This block is
+// auto-injected and flagged `locked`, so the builder won't let it be deleted, moved, or duplicated.
+// At send time the link becomes a per-recipient one-click unsubscribe wired to the suppression store.
+// Sender name + postal address are GLOBAL — sourced from the verified Business/Trust profile via
+// _senderIdentity(), never a per-template string, so they can't drift, go blank, or disagree.
+function _senderIdentity(){const tp=(typeof _liveTrustProfile!=='undefined'&&_liveTrustProfile)||{};return {name:tp.legalName||'Your company',address:tp.address||'Add your business address in Settings › Business profile',complete:!!(tp.legalName&&tp.address)};}
+function ebUnsub(){return{id:ebid(),type:'unsubscribe',locked:true,text:'You’re receiving this because you opted in or have an account with us.',size:12,align:'center',color:'#94a3b8'};}
 // Guarantee exactly one locked unsubscribe footer, pinned to the bottom. Any legacy
 // plain-text "unsubscribe" line is folded into the single mandatory footer.
 function ebEnsureUnsub(blocks){const body=(blocks||[]).filter(b=>b.type!=='unsubscribe'&&!(b.type==='text'&&/unsubscribe/i.test(b.text||'')));return[...body,ebUnsub()];}
@@ -12161,7 +12211,7 @@ function EmailBlockView({b,meta}){
   if(b.type==='spacer')return(<div style={{height:b.height,background:band}}/>);
   if(b.type==='social')return(<div style={{...pad,textAlign:b.align}}>{b.items.map((s,i)=>(<span key={i} style={{display:'inline-block',width:30,height:30,lineHeight:'30px',textAlign:'center',borderRadius:'50%',background:'#e2e8f0',color:'#475569',fontSize:12,fontWeight:600,margin:'0 4px',fontFamily:meta.font}}>{s[0]}</span>))}</div>);
   if(b.type==='columns')return(<div style={{...pad,fontFamily:meta.font}}><div style={{display:'flex',gap:22,flexWrap:'wrap'}}>{(b.cols||[]).map((c,i)=>(<div key={i} style={{flex:'1 1 180px',textAlign:b.align}}><div style={{fontSize:15,fontWeight:600,color:'#0f172a',marginBottom:5}}>{fillVars(c.title)}</div><div style={{fontSize:13.5,color:'#475569',lineHeight:1.55}}>{fillVars(c.text)}</div></div>))}</div></div>);
-  if(b.type==='unsubscribe'){const fc=b.color||'#94a3b8';return(<div style={{...pad,fontFamily:meta.font,textAlign:b.align||'center'}}><div style={{fontSize:b.size||12,color:fc,lineHeight:1.6}}>{fillVars(b.text)}<br/><a href="#" onClick={e=>e.preventDefault()} style={{color:fc,textDecoration:'underline'}}>Unsubscribe</a> · <a href="#" onClick={e=>e.preventDefault()} style={{color:fc,textDecoration:'underline'}}>Manage preferences</a>{b.org?(<><br/>{fillVars(b.org)}</>):null}</div></div>);}
+  if(b.type==='unsubscribe'){const fc=b.color||'#94a3b8';const _si=_senderIdentity();const _pd=(e)=>e.preventDefault();return(<div style={{...pad,fontFamily:meta.font,textAlign:b.align||'center'}}><div style={{fontSize:b.size||12,color:fc,lineHeight:1.6}}>{fillVars(b.text)}<br/><a href="#" onClick={_pd} title="Unique per recipient at send time — one click unsubscribes them" style={{color:fc,textDecoration:'underline'}}>Unsubscribe</a> · <a href="#" onClick={_pd} style={{color:fc,textDecoration:'underline'}}>Manage preferences</a><br/>{_si.name} · {_si.address}</div></div>);}
   if(b.type==='html')return(<EmailHtmlBlock b={b} meta={meta} band={band}/>);
   return null;
 }
@@ -12214,14 +12264,14 @@ function EmailBlockProps({b,update}){
     <EBField label="Alignment"><EBAlign value={b.align} onChange={v=>u({align:v})}/></EBField>
     {band}
   </>);
-  if(b.type==='unsubscribe')return(<>
-    <div className="mb-3.5 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25"><I.Lock size={13} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-amber-200/90 leading-relaxed">Required by law — the unsubscribe link is always included and can't be removed (CAN-SPAM / GDPR). The link is tied to your suppression list, so clicking it suppresses the contact.</p></div>
+  if(b.type==='unsubscribe'){const _si=_senderIdentity();return(<>
+    <div className="mb-3.5 flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25"><I.Lock size={13} className="text-amber-300 shrink-0 mt-0.5"/><p className="text-[11px] text-amber-200/90 leading-relaxed">Required by law — every marketing email carries an unsubscribe link and your postal address (CAN-SPAM / GDPR). At send time the link is unique per recipient and one-click unsubscribes them into your suppression list.</p></div>
     <EBField label="Footer text"><textarea value={b.text} onChange={e=>u({text:e.target.value})} rows={3} className={EB_INPUT+' resize-none leading-relaxed'}/></EBField>
-    <EBField label="Sender name & mailing address"><input value={b.org} onChange={e=>u({org:e.target.value})} className={EB_INPUT}/></EBField>
+    <EBField label="Sender name & mailing address"><div className={EB_INPUT+' flex items-start gap-2'} style={{cursor:'default',opacity:0.9}}><I.ShieldCheck size={13} className="text-brand-300 shrink-0 mt-0.5"/><span className="leading-relaxed">{_si.name} · {_si.address}</span></div><p className="text-[10.5px] text-white/40 mt-1.5 leading-relaxed">Global — pulled from your Business profile so it’s identical on every email.{!_si.complete&&<span className="text-amber-300/90"> Add your address to stay compliant.</span>}</p></EBField>
     <EBField label="Alignment"><EBAlign value={b.align} onChange={v=>u({align:v})}/></EBField>
     <EBField label="Color"><EBColor value={b.color} onChange={v=>u({color:v})}/></EBField>
     {band}
-  </>);
+  </>);}
   if(b.type==='html')return(<>
     <EBField label="HTML"><textarea value={b.html} onChange={e=>u({html:e.target.value})} rows={9} spellCheck={false} className={EB_INPUT+' font-mono text-[11.5px] leading-relaxed resize-none'}/></EBField>
     <p className="text-[11px] text-white/35 -mt-2 mb-3.5">Paste any HTML. Merge tags are replaced live in the preview.</p>
@@ -12341,7 +12391,7 @@ const EMAIL_STARTERS=[
     _eb({type:'columns',align:'left',cols:[{title:'1 · Import',text:'Bring your contacts in one click.'},{title:'2 · Connect',text:'Link your inbox to send & track.'},{title:'3 · Automate',text:'Set up your first sequence.'}]}),
     _eb({type:'spacer',height:8}),
     _eb({type:'divider',color:'#e5e7eb',thickness:1}),
-    _eb({type:'text',text:'Sent with nrtur · Unsubscribe any time',size:12,align:'center',color:'#94a3b8'}),
+    ebUnsub(),
     _eb({type:'spacer',height:10}),
   ]}},
   {key:'launch',name:'Product launch',desc:'Bold hero + features',category:'intro',design:{meta:{bg:'#0b1020',contentBg:'#ffffff',width:600,font:EMAIL_FONTS[0][0],text:'#475569',accent:'#4f46e5'},blocks:[
@@ -12357,7 +12407,7 @@ const EMAIL_STARTERS=[
     _eb({type:'spacer',height:6}),
     _eb({type:'button',label:'Start free',url:'https://',bg:'#4f46e5',color:'#ffffff',radius:10,align:'left'}),
     _eb({type:'divider',color:'#e5e7eb',thickness:1}),
-    _eb({type:'text',text:'nrtur · 100 Market St · Unsubscribe',size:12,align:'center',color:'#94a3b8'}),
+    ebUnsub(),
   ]}},
   {key:'promo',name:'Promo / Sale',desc:'High-contrast offer',category:'re-engage',design:{meta:{bg:'#fff7ed',contentBg:'#ffffff',width:600,font:EMAIL_FONTS[0][0],text:'#475569',accent:'#ea580c'},blocks:[
     _eb({type:'spacer',height:24,band:'#111827'}),
@@ -12367,7 +12417,7 @@ const EMAIL_STARTERS=[
     _eb({type:'button',label:'Claim your discount',url:'https://',bg:'#f59e0b',color:'#111827',radius:10,align:'center',band:'#111827'}),
     _eb({type:'spacer',height:24,band:'#111827'}),
     _eb({type:'text',text:'Offer ends Friday at midnight. Applies to annual Pro plans. No code needed.',size:13,align:'center',color:'#94a3b8'}),
-    _eb({type:'text',text:'Sent with nrtur · Unsubscribe',size:12,align:'center',color:'#cbd5e1'}),
+    ebUnsub(),
   ]}},
   {key:'newsletter',name:'Newsletter',desc:'Editorial update',category:'follow-up',design:{meta:{bg:'#f5f5f4',contentBg:'#ffffff',width:600,font:EMAIL_FONTS[1][0],text:'#44403c',accent:'#0f766e'},blocks:[
     _eb({type:'spacer',height:14}),
@@ -12379,7 +12429,7 @@ const EMAIL_STARTERS=[
     _eb({type:'text',text:'Sequences now support send-time scheduling, so your emails land when people actually read them.',size:14.5,align:'left',color:'#44403c'}),
     _eb({type:'button',label:'Read the full update',url:'https://',bg:'#0f766e',color:'#ffffff',radius:8,align:'left'}),
     _eb({type:'divider',color:'#e7e5e4',thickness:1}),
-    _eb({type:'text',text:'You receive this because you use nrtur · Unsubscribe',size:12,align:'center',color:'#a8a29e'}),
+    ebUnsub(),
   ]}},
   {key:'event',name:'Event invite',desc:'RSVP with details',category:'intro',design:{meta:{bg:'#0f172a',contentBg:'#ffffff',width:600,font:EMAIL_FONTS[0][0],text:'#475569',accent:'#7c3aed'},blocks:[
     _eb({type:'spacer',height:22,band:'#7c3aed'}),
@@ -12716,7 +12766,16 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
   const [scheduledFor,setScheduledFor]=React.useState('');
   const [sending,setSending]=React.useState(false);
   useEscKey(close);
-  const handleSend=()=>{setSending(true);setTimeout(()=>{setSending(false);onSent&&onSent({to,subject,body,scheduled:scheduledFor});close();},900);};
+  // Compliance: never email a hard-suppressed address (bounce/complaint/do-not-contact-all/domain block) —
+  // checked across EVERY recipient (To + Cc + Bcc); warn (but allow) a 1:1 send to someone who only opted
+  // out of MARKETING — a human reply is legitimate.
+  const _recips=[to,cc,bcc].join(',').split(',').map(s=>s.trim()).filter(Boolean);
+  const _sup=(typeof supEmailBlocked==='function');
+  const _hardAddr=_sup?_recips.find(r=>supEmailBlocked(r,'transactional')):null;
+  const _hardBlocked=!!_hardAddr;
+  const _softAddr=(_sup&&!_hardBlocked)?_recips.find(r=>supEmailBlocked(r,'marketing')):null;
+  const _softOptOut=!!_softAddr;
+  const handleSend=()=>{if(_hardBlocked){window.__nrturToast&&window.__nrturToast(_hardAddr+' is on your suppression list — can’t email this address.','error');return;}setSending(true);setTimeout(()=>{setSending(false);onSent&&onSent({to,subject,body,scheduled:scheduledFor});close();},900);};
   const applyTpl=(t)=>{setSubject(t.subject);setBody(t.body);setTplOpen(false);};
   const SCHED=['In 1 hour','Tomorrow 9:00 AM','Tomorrow 1:00 PM','Monday 8:00 AM'];
   return(
@@ -12726,6 +12785,7 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
         <div className="flex flex-col divide-y divide-white/[0.05]">
           <div className="flex items-center px-5 py-2.5"><span className="text-[12px] text-white/40 w-14 shrink-0">To</span><input value={to} onChange={e=>setTo(e.target.value)} placeholder="recipient@company.com" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/25"/><button onClick={()=>setShowCc(v=>!v)} className="text-[11px] text-white/40 hover:text-brand-300 transition-colors shrink-0 ml-2">Cc/Bcc</button></div>
           {showCc&&(<><div className="flex items-center px-5 py-2.5"><span className="text-[12px] text-white/40 w-14 shrink-0">Cc</span><input value={cc} onChange={e=>setCc(e.target.value)} placeholder="cc@company.com" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/25"/></div><div className="flex items-center px-5 py-2.5"><span className="text-[12px] text-white/40 w-14 shrink-0">Bcc</span><input value={bcc} onChange={e=>setBcc(e.target.value)} placeholder="bcc@company.com" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/25"/></div></>)}
+          {(_hardBlocked||_softOptOut)&&(<div className={['flex items-start gap-2 px-5 py-2 text-[11.5px]',_hardBlocked?'text-red-200 bg-red-500/[0.08]':'text-amber-200 bg-amber-500/[0.06]'].join(' ')}><I.AlertTriangle size={12} className="shrink-0 mt-0.5"/><span>{_hardBlocked?(_hardAddr+' is on your suppression list — sending is blocked.'):(_softAddr+' opted out of marketing email. Only send if this is a 1:1 or transactional message.')}</span></div>)}
           <div className="flex items-center px-5 py-2.5"><span className="text-[12px] text-white/40 w-14 shrink-0">Subject</span><input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Subject line..." className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/25"/></div>
           <textarea value={body} onChange={e=>setBody(e.target.value)} rows={9} placeholder="Write your message..." className="w-full bg-transparent outline-none resize-none px-5 py-4 text-[13px] text-white placeholder:text-white/25 leading-relaxed"/>
           {attachments.length>0&&(<div className="px-5 py-2.5 flex flex-wrap gap-2">{attachments.map((a,i)=>(<span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] text-white/70 bg-white/[0.05] border border-white/[0.08]"><I.Paperclip size={11}/>{a}<button onClick={()=>setAttachments(arr=>arr.filter((_,j)=>j!==i))} className="text-white/35 hover:text-white"><I.X size={10}/></button></span>))}</div>)}
@@ -12740,7 +12800,7 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
           <div className="flex items-center gap-2">
             <button onClick={close} className="px-3 py-1.5 rounded-lg text-[12px] text-white/55 hover:text-white hover:bg-white/[0.06] transition-colors">Discard</button>
             <div className="relative"><button onClick={()=>setScheduleOpen(v=>!v)} title="Schedule send" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Clock size={13}/></button>{scheduleOpen&&(<div className="absolute bottom-10 right-0 w-52 z-20 rounded-xl border border-white/[0.08] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}><div className="px-3 py-2 border-b border-white/[0.06] text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Schedule send</div>{SCHED.map(s=>(<button key={s} onClick={()=>{setScheduledFor(s);setScheduleOpen(false);}} className="w-full text-left px-3 py-2 text-[12px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">{s}</button>))}</div>)}</div>
-            <button onClick={handleSend} disabled={!to.trim()||!subject.trim()||sending} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(to.trim()&&subject.trim()&&!sending)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>{sending?'Sending...':scheduledFor?'Schedule':'Send'}</button>
+            <button onClick={handleSend} disabled={!to.trim()||!subject.trim()||sending||_hardBlocked} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(to.trim()&&subject.trim()&&!sending&&!_hardBlocked)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>{sending?'Sending...':scheduledFor?'Schedule':'Send'}</button>
           </div>
         </div>
       </div>
@@ -13952,22 +14012,26 @@ function WorkspaceReadOnlyBanner({label}){return(<div className="rounded-2xl bor
 // `tabsFirst` puts the slider on the left and the action button to its right.
 // ── Personal: My calendar & availability ────────────────────────────────────
 // Per-user calendar connections (NOT workspace-wide). Each teammate connects
-// their OWN Google/Outlook/Apple calendar — state is local to this page and is
-// never shared with the workspace IntegrationsContext. Availability below reuses
-// the single SchedulingContext source of truth (no second availability store).
+// their OWN Google/Outlook/Apple calendar. Connection state lives in the SHARED
+// personalConns store (CrmDataContext) keyed by INTG_DEFS key, so this page, the
+// Integrations catalog, and onboarding all agree and persist across navigation.
+// Availability below reuses the single SchedulingContext source of truth.
 const PERSONAL_CAL_PROVIDERS=[
-  {key:'google',name:'Google Calendar',color:'#4285F4',desc:'Sync your bookings and meetings with Google Calendar.'},
-  {key:'outlook',name:'Outlook / Microsoft',color:'#0078D4',desc:'Sync with Outlook.com or Microsoft 365.'},
-  {key:'apple',name:'Apple / iCloud',color:'#0b0b0f',desc:'Sync with your iCloud calendar.'},
+  {key:'google',intgKey:'google-calendar',name:'Google Calendar',color:'#4285F4',desc:'Sync your bookings and meetings with Google Calendar.'},
+  {key:'outlook',intgKey:'outlook-calendar',name:'Outlook / Microsoft',color:'#0078D4',desc:'Sync with Outlook.com or Microsoft 365.'},
+  {key:'apple',intgKey:'apple-calendar',name:'Apple / iCloud',color:'#0b0b0f',desc:'Sync with your iCloud calendar.'},
 ];
 function PersonalCalendarCard({provider}){
-  const [status,setStatus]=React.useState('idle'); // idle | connecting | connected
+  // Shared store — the SAME personalConns the Integrations catalog + onboarding write (keyed by INTG_DEFS
+  // key), so connecting here or there all agree and persist across navigation.
+  const crm=React.useContext(CrmDataContext);
+  const connected=!!(crm.personalConns||{})[provider.intgKey];
+  const [connecting,setConnecting]=React.useState(false);
   const [twoWay,setTwoWay]=React.useState(true);
   const t=React.useRef(null);
   React.useEffect(()=>()=>clearTimeout(t.current),[]);
-  const connect=()=>{setStatus('connecting');t.current=setTimeout(()=>{setStatus('connected');custToast(provider.name+' connected ✓');},1100);};
-  const disconnect=()=>{clearTimeout(t.current);setStatus('idle');setTwoWay(true);custToast(provider.name+' disconnected');};
-  const connected=status==='connected';
+  const connect=()=>{setConnecting(true);t.current=setTimeout(()=>{setConnecting(false);crm.setPersonalConns(m=>({...m,[provider.intgKey]:true}));custToast(provider.name+' connected ✓');},1100);};
+  const disconnect=()=>{clearTimeout(t.current);crm.setPersonalConns(m=>{const n={...m};delete n[provider.intgKey];return n;});setTwoWay(true);custToast(provider.name+' disconnected');};
   return(<div className={['rounded-2xl border p-5 flex flex-col transition-all',connected?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
     <div className="flex items-start justify-between mb-3">
       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:provider.color+'22',color:provider.color==='#0b0b0f'?'#e5e7eb':provider.color,border:'1px solid '+(provider.color==='#0b0b0f'?'rgba(255,255,255,0.18)':provider.color+'40')}}><I.Calendar size={17}/></div>
@@ -13987,8 +14051,8 @@ function PersonalCalendarCard({provider}){
         <button onClick={disconnect} className="text-[12px] font-medium text-red-300 hover:text-red-200 px-2 py-1">Disconnect</button>
       </div>
     </div>):(<div className="mt-4">
-      <button onClick={connect} disabled={status==='connecting'} className={['inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all',status==='connecting'?'text-white/60 bg-white/[0.06] cursor-wait':'text-white shadow-brand hover:-translate-y-0.5'].join(' ')} style={status==='connecting'?undefined:{background:provider.color==='#0b0b0f'?'#1f2937':provider.color}}>
-        {status==='connecting'?(<><span className="w-3.5 h-3.5 rounded-full border-2 border-white/25 border-t-white/80 animate-spin"/>Connecting…</>):(<><I.Lock size={13}/>Connect</>)}
+      <button onClick={connect} disabled={connecting} className={['inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all',connecting?'text-white/60 bg-white/[0.06] cursor-wait':'text-white shadow-brand hover:-translate-y-0.5'].join(' ')} style={connecting?undefined:{background:provider.color==='#0b0b0f'?'#1f2937':provider.color}}>
+        {connecting?(<><span className="w-3.5 h-3.5 rounded-full border-2 border-white/25 border-t-white/80 animate-spin"/>Connecting…</>):(<><I.Lock size={13}/>Connect</>)}
       </button>
     </div>)}
   </div>);
@@ -17019,7 +17083,7 @@ function PortNumberModal({close,onPort}){
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[94vw] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Port a number in</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="px-5 py-5 flex flex-col gap-3.5">
         <input value={f.number} onChange={e=>set('number',e.target.value)} placeholder="Number to port · +1 415 555 0123" className={INP}/>
@@ -17050,7 +17114,7 @@ function BuyNumberModal({close,onBuy,compOk,brand,bundles,onBundle}){
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[94vw] max-h-[88vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Phone size={14}/></span>Buy a phone number</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div className="grid grid-cols-3 gap-3">
@@ -17092,7 +17156,7 @@ function TrustProfileModal({close,onSubmit,initial}){
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[580px] max-w-[94vw] max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[580px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Business profile</p><p className="text-[11.5px] text-white/45 mt-0.5">Your verified legal identity — the root of every carrier registration on this workspace.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
@@ -17129,7 +17193,7 @@ function A2pBrandModal({close,onSubmit,initial}){
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[94vw] max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[560px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Register your A2P brand</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
@@ -17160,7 +17224,7 @@ function A2pCampaignModal({close,onSubmit}){
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[94vw] max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[560px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Register an A2P campaign</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div><label className={LBL}>Use case</label><div className="relative"><select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
@@ -17219,7 +17283,7 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
   const InheritChip=({l,v})=>(<div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"><span className="text-[11px] text-white/40 shrink-0">{l}</span><span className={['text-[12px] truncate ml-2',v?'text-white/80':'text-amber-300'].join(' ')}>{v||'— add in profile'}</span></div>);
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/50" onClick={close}/>
-    <div role="dialog" aria-modal="true" className="fixed z-[186] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[760px] max-w-[95vw] max-h-[92vh] flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--s850)',boxShadow:'0 24px 80px rgba(0,0,0,0.6)'}}>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[760px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Register for SMS · A2P 10DLC</p><p className="text-[11.5px] text-white/45 mt-0.5">One guided registration — fill it once; carriers review each stage in turn.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="shrink-0 px-5 py-3 border-b border-white/[0.05] overflow-x-auto scroll-area"><div className="flex items-center gap-1 w-max">{STEPS.map((s,i)=>{const done=i<step&&valid[i];const cur=i===step;const locked=i>step&&!valid.slice(0,i).every(Boolean);return(<React.Fragment key={i}>{i>0&&<span className="w-4 h-px bg-white/10 shrink-0"/>}<button onClick={()=>go(i)} disabled={locked} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all',cur?'bg-brand-500 text-white shadow-brand':done?'text-emerald-300 bg-emerald-500/10':locked?'text-white/25 cursor-not-allowed':'text-white/50 hover:text-white bg-white/[0.03]'].join(' ')}><span className={['w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold',cur?'bg-white/25':done?'bg-emerald-500/25':'bg-white/[0.08]'].join(' ')}>{done?<I.Check size={9} stroke={3}/>:i+1}</span>{s.n}</button></React.Fragment>);})}</div></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
@@ -17322,7 +17386,9 @@ function SettingsPhoneNumbersPage({goTo}){
     if(soleProp&&nums.length>=1){toast('Sole-proprietor brands are limited to 1 number','warning');return;}
     crm.setPhoneNumbers(a=>[...a,{id:'pn_'+Date.now(),number:o.number,label:o.type==='tollfree'?'Toll-free':'New number',country:o.country,type:o.type,caps:{voice:true,sms:true,mms:o.type!=='tollfree'},assignedTo:null,isDefault:!a.some(x=>!x.released),monthly:o.monthly,purchasedAt:'Just now',status:'active',...(o.type==='tollfree'?{tfStatus:'unverified'}:{})}]);
     if(crm.walletDebit)crm.walletDebit(o.monthly,'Number purchase · '+o.number); // Phase 4: first month debits the wallet; renews monthly
-    setBuyOpen(false);toast(o.number+' purchased · $'+o.monthly.toFixed(2)+'/mo from your wallet');};
+    // A2P is workspace-level: a US/CA-local number inherits the already-approved campaign (no re-registration) — say so at the moment of surprise.
+    const _a2pReady=(typeof comp!=='undefined')&&comp&&comp.ok&&o.type==='local'&&(o.country==='US'||o.country==='CA');
+    setBuyOpen(false);toast(o.number+' purchased · $'+o.monthly.toFixed(2)+'/mo from your wallet'+(_a2pReady?' · inherits your approved A2P campaign — ready to send.':''));};
   const onPort=(o)=>{crm.setPhoneNumbers(a=>[...a,{id:'pn_'+Date.now(),number:o.number,label:'Porting from '+o.carrier,country:'US',type:'local',caps:{voice:true,sms:true,mms:true},assignedTo:null,isDefault:false,monthly:1.15,purchasedAt:'Port in progress',status:'porting',portAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);setPortOpen(false);toast('Port started for '+o.number+' — lands in ~2 simulated days');};
   const release=(n)=>openConfirm({title:'Release '+n.number+'?',body:'The number returns to the carrier pool immediately and can be claimed by anyone else. Monthly billing stops. This cannot be undone.',confirmLabel:'Release number',danger:true,onConfirm:()=>{crm.setPhoneNumbers(a=>a.map(x=>x.id===n.id?{...x,released:true,isDefault:false}:x));toast('Released '+n.number);}});
   const advanceReview=()=>{try{const r=_autoAdvance(864e5);toast('Simulated +1 day of carrier review');}catch(e){}};
@@ -17599,27 +17665,43 @@ function AdSourceConnectModal({intg,close,onConnected}){
     </div>
   </div>);
 }
-// One row of the lead-form field mapping: ad form field (fixed) → CRM field (dropdown).
+// One row of the lead-form field mapping: the form's REAL question (left) → CRM destination (dropdown).
+// Custom questions carry a "Custom" badge; required questions are flagged REQ; a required question left
+// on "Don't import" turns the row red so you can't silently drop a name/email/phone.
 function AdMappingRow({row,onChange}){
+  const label=row.label||AD_FIELD_LABELS[row.ad]||row.ad;
+  const dropped=row.req&&row.crm==='__ignore';
   return(<div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-    <div className="px-2.5 py-2 rounded-lg bg-white/[0.03] border border-white/[0.07] text-[12px] text-white/75 truncate font-mono">{AD_FIELD_LABELS[row.ad]||row.ad}</div>
+    <div className={['px-2.5 py-2 rounded-lg border text-[12px] flex items-center gap-1.5 min-w-0',dropped?'bg-red-500/[0.07] border-red-500/25':'bg-white/[0.03] border-white/[0.07]'].join(' ')}>
+      <span className={['truncate',dropped?'text-red-200':'text-white/75'].join(' ')}>{label}</span>
+      {row.req&&<span className="text-[8.5px] font-semibold text-amber-300/90 shrink-0 tracking-wide" title="Required question">REQ</span>}
+      {row.custom&&<span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/25 shrink-0">Custom</span>}
+    </div>
     <I.ArrowRight size={13} className="text-white/30 shrink-0"/>
-    <div className="relative"><select value={row.crm} onChange={e=>onChange(e.target.value)} className="w-full appearance-none px-2.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40" style={{colorScheme:'dark',background:'var(--s850)'}}>{AD_CRM_FIELDS.map(f=>(<option key={f.key} value={f.key} style={{background:'var(--s900)'}}>{f.label}</option>))}</select><I.ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
+    <div className="relative"><select value={row.crm} onChange={e=>onChange(e.target.value)} className={['w-full appearance-none px-2.5 py-2 rounded-lg border text-[12px] outline-none focus:border-brand-500/40',dropped?'border-red-500/30 text-red-200':'border-white/[0.10] text-white/85'].join(' ')} style={{colorScheme:'dark',background:dropped?'rgba(239,68,68,0.06)':'var(--s850)'}}>{AD_CRM_FIELDS.filter(f=>f.key!=='__note'||row.custom).map(f=>(<option key={f.key} value={f.key} style={{background:'var(--s900)'}}>{f.label}</option>))}</select><I.ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>
   </div>);
 }
-// One lead form's full mapping config — field map + pipeline / stage / tag routing (Part B).
-function AdFormCard({form,onChange,onRemove}){
+// One lead form's full mapping config — field map + status / owner / tag routing (Part B).
+// form.asset binds the form to the Page/Campaign it lives on; form.map rows carry the real questions.
+function AdFormCard({form,onChange,onRemove,onTest,goToProperties}){
   const src=adSourceByKey(form.sourceKey);
   const setMap=(i,crm)=>onChange({...form,map:form.map.map((m,j)=>j===i?{...m,crm}:m)});
   const SEL="w-full appearance-none px-2.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] text-white/85 outline-none focus:border-brand-500/40";
+  const mapped=new Set((form.map||[]).map(m=>m.crm));
+  const noEmail=!mapped.has('email'),noPhone=!mapped.has('phone');
+  const unreachable=noEmail&&noPhone;
+  const noteCount=(form.map||[]).filter(m=>m.crm==='__note').length;
   return(<div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
     <div className="flex items-start gap-3 mb-3">
       <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0" style={{background:src.color+'26',color:src.color,border:'1px solid '+src.color+'40'}}>{src.short[0]}</span>
-      <div className="min-w-0 flex-1"><input value={form.name} onChange={e=>onChange({...form,name:e.target.value})} className="w-full bg-transparent text-[13.5px] font-semibold text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5"/><div className="flex items-center gap-2 mt-1 flex-wrap"><span className="text-[11px] text-white/40">{src.name}</span><span className="text-white/20">·</span><input value={form.campaign} onChange={e=>onChange({...form,campaign:e.target.value})} placeholder="Campaign" className="bg-transparent text-[11px] text-white/55 outline-none border-b border-transparent focus:border-brand-500/40 min-w-0 flex-1 placeholder:text-white/25"/></div></div>
+      <div className="min-w-0 flex-1"><input value={form.name} onChange={e=>onChange({...form,name:e.target.value})} className="w-full bg-transparent text-[13.5px] font-semibold text-white outline-none border-b border-transparent focus:border-brand-500/40 pb-0.5"/><div className="flex items-center gap-2 mt-1.5 flex-wrap">{form.asset&&<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] bg-white/[0.05] border border-white/[0.08] text-white/60" title={src.name+' '+src.assetNoun}><I.Globe size={9} className="shrink-0"/>{form.asset}</span>}<span className="text-white/20">·</span><input value={form.campaign} onChange={e=>onChange({...form,campaign:e.target.value})} placeholder="Campaign name" className="bg-transparent text-[11px] text-white/55 outline-none border-b border-transparent focus:border-brand-500/40 min-w-0 flex-1 placeholder:text-white/25"/></div></div>
+      {onTest&&<button onClick={()=>onTest(form)} title="Send a test lead through this form" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-brand-200 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all shrink-0"><I.Zap size={10}/>Test</button>}
       <button onClick={onRemove} title="Remove form" className="text-white/30 hover:text-red-300 p-1 shrink-0"><I.Trash size={13}/></button>
     </div>
-    <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Field mapping</p>
-    <div className="flex flex-col gap-2 mb-4">{form.map.map((m,i)=>(<AdMappingRow key={i} row={m} onChange={(crm)=>setMap(i,crm)}/>))}</div>
+    {(unreachable||noEmail||noPhone)&&<div className={['rounded-lg px-3 py-2 mb-3 flex items-start gap-2 text-[11.5px]',unreachable?'bg-red-500/[0.08] border border-red-500/25 text-red-200':'bg-amber-500/[0.06] border border-amber-500/20 text-amber-200'].join(' ')}><I.AlertTriangle size={12} className="shrink-0 mt-0.5"/><span>{unreachable?'No email or phone is mapped — you won’t be able to contact these leads. Map at least one below.':(noEmail?'Email isn’t mapped — these leads won’t be emailable.':'Phone isn’t mapped — no calls or speed-to-lead SMS for these leads.')}</span></div>}
+    <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Field mapping <span className="text-white/25 normal-case tracking-normal">· the form’s real questions</span></p>
+    <div className="flex flex-col gap-2 mb-3">{form.map.map((m,i)=>(<AdMappingRow key={i} row={m} onChange={(crm)=>setMap(i,crm)}/>))}</div>
+    {noteCount>0&&<p className="text-[10.5px] text-white/40 mb-3 flex items-center gap-1.5 flex-wrap"><I.MessageSquare size={10} className="shrink-0 text-violet-300/70"/><span>{noteCount} custom answer{noteCount===1?'':'s'} saved to the lead’s notes.</span>{goToProperties&&<button onClick={goToProperties} className="text-brand-300 hover:text-brand-200 font-medium">Create a field instead →</button>}</p>}
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3 border-t border-white/[0.06]">
       <div><label className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] block mb-1">Lead status</label><div className="relative"><select value={form.stage} onChange={e=>onChange({...form,stage:e.target.value})} className={SEL} style={{colorScheme:'dark',background:'var(--s850)'}}>{LEAD_STATUSES.map(s=>(<option key={s} style={{background:'var(--s900)'}}>{s}</option>))}</select><I.ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div></div>
       <div><label className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] block mb-1">Owner</label><div className="relative"><select value={form.owner||'Round-robin'} onChange={e=>onChange({...form,owner:e.target.value})} className={SEL} style={{colorScheme:'dark',background:'var(--s850)'}}>{['Round-robin',...TEAM_MEMBERS.map(m=>m.name)].map(o=>(<option key={o} style={{background:'var(--s900)'}}>{o}</option>))}</select><I.ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div></div>
@@ -17684,15 +17766,63 @@ function AdSpendTable({liveRows,groupBy}){
       </div>
     </div>);
 }
+// Form discovery — pick from the lead forms actually PUBLISHED on your connected assets, instead of
+// minting a blank one. Each row previews the form's real question set; already-added forms are disabled.
+function AdFormDiscoveryModal({sourceKey,existing,onAdd,onBlank,close}){
+  const src=adSourceByKey(sourceKey);
+  const pubs=adPublishedForms(sourceKey);
+  const addedIds=new Set((existing||[]).map(f=>f.publishedId).filter(Boolean));
+  const addedNames=new Set((existing||[]).map(f=>(f.name||'').trim().toLowerCase()));
+  const isAdded=(p)=>addedIds.has(p.id)||addedNames.has((p.name||'').trim().toLowerCase());
+  const [sel,setSel]=React.useState([]);
+  useEscKey(close);
+  const toggle=(p)=>{if(isAdded(p))return;setSel(s=>s.includes(p.id)?s.filter(x=>x!==p.id):[...s,p.id]);};
+  const byAsset={};pubs.forEach(p=>{(byAsset[p.asset]=byAsset[p.asset]||[]).push(p);});
+  const assetOrder=src.assets.map(a=>a.name).filter(a=>byAsset[a]);
+  const submit=()=>{const pick=pubs.filter(p=>sel.includes(p.id));if(pick.length)onAdd(pick);close();};
+  return(<div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+    <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease] overflow-hidden" style={{width:480,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3 min-w-0"><span className="w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-bold shrink-0" style={{background:src.color+'26',color:src.color,border:'1px solid '+src.color+'40'}}>{src.short[0]}</span><div className="min-w-0"><p className="text-white text-[15px] font-semibold truncate">Add a lead form</p><p className="text-white/45 text-[12px]">Published on your {src.name} {src.assetNoun.toLowerCase()}s</p></div></div>
+        <button onClick={close} className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-4">
+        {assetOrder.length===0?(<p className="text-[12px] text-white/40 text-center py-8">No published forms found on this connection.</p>):assetOrder.map(asset=>(
+          <div key={asset} className="mb-4 last:mb-0">
+            <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2 flex items-center gap-1.5"><I.Globe size={10}/>{asset}</p>
+            <div className="flex flex-col gap-2">{byAsset[asset].map(p=>{const on=sel.includes(p.id);const added=isAdded(p);const std=p.fields.filter(f=>!f.custom),cust=p.fields.filter(f=>f.custom);return(
+              <button key={p.id} disabled={added} onClick={()=>toggle(p)} className={['w-full text-left rounded-xl border p-3 transition-all',added?'border-white/[0.05] bg-white/[0.015] opacity-60 cursor-default':on?'border-brand-500/40 bg-brand-500/[0.08]':'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.16]'].join(' ')}>
+                <div className="flex items-center gap-2.5">
+                  <span className={['w-4 h-4 rounded border flex items-center justify-center shrink-0',added?'bg-white/10 border-white/20':on?'bg-brand-500 border-brand-500':'border-white/30'].join(' ')}>{(on||added)&&<I.Check size={10} stroke={3} style={{color:'#fff'}}/>}</span>
+                  <span className="text-[13px] font-medium text-white truncate flex-1">{p.name}</span>
+                  {added?<span className="text-[10px] font-medium text-emerald-300/80 shrink-0">Added</span>:<span className="text-[10.5px] text-white/40 shrink-0">{p.fields.length} fields</span>}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2 pl-[26px]">{std.slice(0,5).map(f=>(<span key={f.key} className="px-1.5 py-0.5 rounded text-[10px] bg-white/[0.05] text-white/55">{AD_FIELD_LABELS[f.key]||f.key}</span>))}{cust.map(f=>(<span key={f.key} className="px-1.5 py-0.5 rounded text-[10px] bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/20" title="Custom question">{f.label}</span>))}</div>
+              </button>);})}</div>
+          </div>))}
+      </div>
+      <div className="flex items-center gap-2 px-5 py-3.5 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+        <button onClick={()=>{onBlank&&onBlank();close();}} className="text-[12px] font-medium text-white/55 hover:text-white/80 transition-colors">Not listed? Add a blank form</button>
+        <button onClick={submit} disabled={!sel.length} className={['ml-auto px-4 py-2 rounded-xl text-[12.5px] font-semibold transition-all',sel.length?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}>{sel.length?('Add '+sel.length+' form'+(sel.length===1?'':'s')):'Add forms'}</button>
+      </div>
+    </div>
+  </div>);
+}
 function SettingsAdLeadsPage({goTo}){
   const ads=React.useContext(AdsContext);
-  const [adModal,setAdModal]=React.useState(null);
+  const [discoverSrc,setDiscoverSrc]=React.useState(null);
   const [groupBy,setGroupBy]=React.useState('source');
   const [feedSrc,setFeedSrc]=React.useState('all');   // intake-feed filter: all | meta-ads | google-ads
   const [feedAll,setFeedAll]=React.useState(false);   // show 8 vs all
   const upd=(form)=>ads.setForms(fs=>fs.map(f=>f.id===form.id?form:f));
   const removeForm=(id)=>ads.setForms(fs=>fs.filter(f=>f.id!==id));
-  const addForm=(sourceKey)=>{const src=adSourceByKey(sourceKey);const id='lf_'+Date.now()+Math.floor(Math.random()*1000);ads.setForms(fs=>[...fs,{id,sourceKey,name:'New lead form',campaign:'',asset:(src.assets[0]||{}).name||'',stage:'New',tag:adSlug(src.short)+'-lead',owner:'Round-robin',map:src.fields.map(f=>({ad:f,crm:(f==='full_name'?'name':f==='email'?'email':f==='phone_number'?'phone':f==='company_name'?'co':f==='job_title'?'title':(f==='city'||f==='postal_code')?'loc':'__ignore')}))}]);if(window.__nrturToast)window.__nrturToast('Lead form added','success');};
+  const _toast=(m,k)=>{if(window.__nrturToast)window.__nrturToast(m,k||'success');};
+  // Add one blank form — fallback for a form not in the discovered list.
+  const addBlank=(sourceKey)=>{const src=adSourceByKey(sourceKey);const id='lf_'+Date.now()+Math.floor(Math.random()*1000);ads.setForms(fs=>[...fs,{id,sourceKey,name:'New lead form',campaign:'',asset:(src.assets[0]||{}).name||'',stage:'New',tag:adSlug(src.short)+'-lead',owner:'Round-robin',map:src.fields.map(f=>({ad:f,crm:AD_AUTOMAP[f]||'__ignore',label:AD_FIELD_LABELS[f]||f}))}]);_toast('Blank lead form added — map its fields below');};
+  // Add one or more forms picked from discovery — mapping derived from each form's real questions.
+  const addForms=(pfList)=>{ads.setForms(fs=>[...fs,...pfList.map((pf,ix)=>{const src=adSourceByKey(pf.sourceKey);return{id:'lf_'+Date.now()+'_'+ix+Math.floor(Math.random()*1000),publishedId:pf.id,sourceKey:pf.sourceKey,name:pf.name,campaign:pf.campaign||'',asset:pf.asset,stage:'New',tag:adSlug(src.short)+'-lead',owner:'Round-robin',map:adFormToMapping(pf)};})]);_toast(pfList.length+' lead form'+(pfList.length===1?'':'s')+' added — review the mapping below');};
+  // Send a test lead through a specific form — verifies routing end to end before you trust it.
+  const testForm=(form)=>{if(!ads.isConnected(form.sourceKey))return;ads.ingestAdLead({sourceKey:form.sourceKey,formId:form.id});};
   const connected=ads.sources.filter(s=>ads.isConnected(s.key));
   const anyConnected=connected.length>0;
   const simulate=()=>{if(!anyConnected)return;ads.ingestAdLead({sourceKey:connected[Math.floor(Math.random()*connected.length)].key});};
@@ -17729,7 +17859,7 @@ function SettingsAdLeadsPage({goTo}){
         </div>))}
     </div>
     <div>
-      <StepHdr n={1} title="Connect your ad accounts" sub="One workspace-wide connection per network — an admin does this once."/>
+      <StepHdr n={1} title="Ad account connections" sub="Connected once on the Integrations page — their status shows here." right={<button onClick={()=>goTo('settings-integrations')} className="text-[11.5px] font-medium text-brand-300 hover:text-brand-200 inline-flex items-center gap-1 shrink-0">Manage on Integrations<I.ArrowRight size={11} stroke={2.4}/></button>}/>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{ads.sources.map(src=>{const on=ads.isConnected(src.key);const st=ads.adState[src.key]||{};const nForms=ads.forms.filter(f=>f.sourceKey===src.key).length;return(
         <div key={src.key} className={['rounded-2xl border p-5',on?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.07] bg-white/[0.03]'].join(' ')}>
           <div className="flex items-center gap-3 mb-3"><span className="w-10 h-10 rounded-xl flex items-center justify-center text-[14px] font-bold shrink-0" style={{background:src.color+'26',color:src.color,border:'1px solid '+src.color+'40'}}>{src.short[0]}</span><div className="min-w-0 flex-1"><p className="text-[14px] font-semibold text-white">{src.name}</p><p className="text-[11px] text-white/45">{src.network}</p></div>{on&&<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0"><I.Check size={11} stroke={2.5}/>Connected</span>}</div>
@@ -17740,8 +17870,8 @@ function SettingsAdLeadsPage({goTo}){
             </div>
             <button onClick={()=>ads.disconnectSource(src.key)} className="text-[12px] font-medium text-red-300 hover:text-red-200">Disconnect</button>
           </>):(
-            <><p className="text-[12px] text-white/50 leading-relaxed mb-3">Connect to pull {src.short} lead-form submissions into the CRM with campaign attribution.</p>
-            <button onClick={()=>setAdModal({key:src.key,name:src.name,scopes:src.key==='meta-ads'?['Read Lead Ads forms & submissions','Read connected ad accounts & Pages']:['Read Lead Form submissions','Read campaign & ad group names']})} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plug size={12}/>Connect {src.short}</button></>
+            <><p className="text-[12px] text-white/50 leading-relaxed mb-3">Not connected. Connect {src.short} on the Integrations page to pull its lead forms in with campaign attribution.</p>
+            <button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plug size={12}/>Connect on Integrations</button></>
           )}
         </div>);})}</div>
     </div>
@@ -17749,8 +17879,8 @@ function SettingsAdLeadsPage({goTo}){
       <StepHdr n={2} title="Route each lead form" sub="Map the ad form's fields to CRM fields, then choose the lead status, owner & tag new submissions get."/>
       {anyConnected?(
         <div className="flex flex-col gap-4">{ads.sources.filter(s=>ads.isConnected(s.key)).map(src=>(<div key={src.key} className="flex flex-col gap-3">
-          {ads.forms.filter(f=>f.sourceKey===src.key).map(f=>(<AdFormCard key={f.id} form={f} onChange={upd} onRemove={()=>removeForm(f.id)}/>))}
-          <button onClick={()=>addForm(src.key)} className="self-start inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-white/65 bg-white/[0.04] border border-dashed border-white/[0.14] hover:border-brand-500/40 hover:text-brand-200 transition-all"><I.Plus size={12}/>Add {src.short} lead form</button>
+          {ads.forms.filter(f=>f.sourceKey===src.key).map(f=>(<AdFormCard key={f.id} form={f} onChange={upd} onRemove={()=>removeForm(f.id)} onTest={testForm} goToProperties={()=>goTo('settings-properties')}/>))}
+          <button onClick={()=>setDiscoverSrc(src.key)} className="self-start inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-white/65 bg-white/[0.04] border border-dashed border-white/[0.14] hover:border-brand-500/40 hover:text-brand-200 transition-all"><I.Plus size={12}/>Add {src.short} lead form</button>
         </div>))}</div>
       ):(<div className="rounded-2xl border border-dashed border-white/[0.10] bg-white/[0.02] px-4 py-8 text-center text-[12px] text-white/40">Connect a source in step 1 to map its lead forms.</div>)}
     </div>
@@ -17798,7 +17928,7 @@ function SettingsAdLeadsPage({goTo}){
         </div>
       </div>
     </div>
-    {adModal&&<AdSourceConnectModal intg={adModal} close={()=>setAdModal(null)} onConnected={(payload)=>{ads.connectSource(adModal.key,payload);if(window.__nrturToast)window.__nrturToast(adModal.name+' connected ✓','success');}}/>}
+    {discoverSrc&&<AdFormDiscoveryModal sourceKey={discoverSrc} existing={ads.forms.filter(f=>f.sourceKey===discoverSrc)} onAdd={addForms} onBlank={()=>addBlank(discoverSrc)} close={()=>setDiscoverSrc(null)}/>}
   </SettingsShell>);
 }
 // ?? Profile Page ??????????????????????????????????????????????????????????????
@@ -17890,10 +18020,13 @@ function SettingsSuppressionPage({goTo}){
   const chOffPeople=people.filter(p=>CH_DEFS.some(d=>p.ch[d.key]===false)); // contacts with >=1 channel turned OFF — the actual opt-outs (the list shows ONLY these, not everyone, so it scales)
   const setComp=(k,v)=>{crm.setSuppression(s=>({...s,compliance:{...(s.compliance||{}),[k]:v}}));toast('Compliance setting updated');};
   const COMP_PREFS=[
+    {key:'unsubLink',label:'Unsubscribe link + postal address',sub:'Every marketing email carries a one-click unsubscribe and your business address. Required by law — always on.',locked:true},
     {key:'globalOptOut',label:'Global opt-out suppression',sub:'Any contact who unsubscribes is suppressed from all sequences.'},
     {key:'gdpr',label:'Honor GDPR deletion requests',sub:'Contacts requesting erasure are anonymised within 30 days.'},
-    {key:'unsubLink',label:'Include unsubscribe link',sub:'Auto-append a one-click unsubscribe footer to every outbound email.'},
   ];
+  // Demo of the real loop: clicking the footer's Unsubscribe writes to the suppression store (which every
+  // marketing send already honors via supEmailBlocked), then jumps to the Email list so it's visible.
+  const testUnsub=()=>{const em='preview.unsubscribe@example.com';if((emails||[]).some(e=>String(e.email||'').toLowerCase()===em)){toast('Already unsubscribed — see the Email list');setTab('email');return;}setEmails(l=>[{id:'sup_'+Date.now(),email:em,reason:'Unsubscribed',source:'Email footer (preview)',scope:'marketing',date:'Just now'},...l]);toast('Unsubscribed — added to your suppression list ✓');setTab('email');};
   const ql=q.trim().toLowerCase();
   const fEmails=emails.filter(e=>!ql||(e.email+e.source+e.reason).toLowerCase().includes(ql));
   const fDomains=domains.filter(d=>!ql||(d.domain+d.reason+d.exceptions.join(' ')).toLowerCase().includes(ql));
@@ -17929,7 +18062,18 @@ function SettingsSuppressionPage({goTo}){
       <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.05] p-4">
         <div className="flex items-center gap-2.5 mb-3"><span className="w-8 h-8 rounded-lg bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.ShieldCheck size={15}/></span><div className="min-w-0"><p className="text-[13px] font-semibold text-white">Global compliance rules</p><p className="text-[11.5px] text-white/45">Apply across your whole workspace — the safety net above every list below.</p></div></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {COMP_PREFS.map(pref=>(<div key={pref.key} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-start justify-between gap-2.5"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">{pref.label}</p><p className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{pref.sub}</p></div><Toggle on={compliance[pref.key]} onChange={v=>setComp(pref.key,v)}/></div>))}
+          {COMP_PREFS.map(pref=>(<div key={pref.key} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-start justify-between gap-2.5"><div className="min-w-0"><p className="text-[12.5px] font-medium text-white">{pref.label}</p><p className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{pref.sub}</p></div>{pref.locked?(<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25 shrink-0"><I.Lock size={9}/>Required</span>):<Toggle on={compliance[pref.key]} onChange={v=>setComp(pref.key,v)}/>}</div>))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 mt-2.5">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
+            <div className="flex items-center justify-between gap-2 mb-2"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Sender identity</p><button onClick={()=>goTo('settings-phone-numbers')} className="text-[11px] text-brand-300 hover:text-brand-200 font-medium">Edit in Business profile →</button></div>
+            {(()=>{const si=_senderIdentity();return(<><p className="text-[13px] font-semibold text-white">{si.name}</p><p className="text-[12px] text-white/55 mt-0.5 leading-relaxed">{si.address}</p>{!si.complete&&<p className="text-[11px] text-amber-300/90 mt-1.5 flex items-center gap-1"><I.AlertTriangle size={10} className="shrink-0"/>Add your legal name + postal address to send compliant marketing email.</p>}<p className="text-[10.5px] text-white/35 mt-2 leading-relaxed">Auto-added to every email footer — one source of truth, so it never drifts between templates.</p></>);})()}
+          </div>
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5">
+            <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2">Footer preview</p>
+            {(()=>{const si=_senderIdentity();return(<div className="rounded-lg px-4 py-3 text-center" style={{background:'#ffffff'}}><p style={{fontSize:11,lineHeight:1.6,color:'#94a3b8',margin:0}}>You’re receiving this because you opted in or have an account with us.<br/><button onClick={testUnsub} style={{color:'#6366f1',textDecoration:'underline',background:'none',border:'none',cursor:'pointer',font:'inherit',padding:0}}>Unsubscribe</button> · <span style={{textDecoration:'underline'}}>Manage preferences</span><br/>{si.name} · {si.address}</p></div>);})()}
+            <p className="text-[10.5px] text-white/35 mt-2 leading-relaxed">Click <span className="text-white/55">Unsubscribe</span> to see a real opt-out land in your suppression list below.</p>
+          </div>
         </div>
       </div>
       {/* Blocked contacts — one section with a type filter (flatten: a clear heading so the Email/Domains/Phone/Channels switcher reads as a within-page filter, not a third tab level under the Engage rail + Deliverability bar) */}
@@ -24505,6 +24649,8 @@ function App(){
       const sourceKey=opts.sourceKey||connected[0]||'meta-ads';
       const src=adSourceByKey(sourceKey);
       const form=adForms.find(f=>f.id===opts.formId)||adForms.find(f=>f.sourceKey===sourceKey)||{id:'lf_x',name:src.short+' lead form',campaign:(src.assets[0]||{}).name||'Campaign',stage:'New',pipeline:'Sales Pipeline',tag:adSlug(src.short)+'-lead',owner:'Round-robin'};
+      // Custom questions mapped to "Store as a note" ride onto the lead as form answers (surfaced on its timeline).
+      const formAnswers=((form.map)||[]).filter(m=>m&&m.crm==='__note'&&m.custom).map(m=>({q:m.label||AD_FIELD_LABELS[m.ad]||m.ad,a:m.sample||'—'}));
       const used={};contacts.forEach(c=>{if(c.email)used[c.email.toLowerCase()]=1;});leads.forEach(l=>{if(l.email)used[l.email.toLowerCase()]=1;});
       const pool=AD_SIM_POOL.filter(p=>!used[p.email.toLowerCase()]);
       const person=opts.person||pool[Math.floor(Math.random()*pool.length)]||AD_SIM_POOL[Math.floor(Math.random()*AD_SIM_POOL.length)];
@@ -24522,9 +24668,11 @@ function App(){
       const _pe=(person.email||'').toLowerCase(),_pp=_np(person.phone);const _mC=c=>(_pe&&c.email&&c.email.toLowerCase()===_pe)||(_pp&&c.phone&&_np(c.phone)===_pp);const _mL=l=>(_pe&&l.email&&l.email.toLowerCase()===_pe)||(_pp&&l.phone&&_np(l.phone)===_pp);const existing=contacts.find(_mC);
       const existingLead=!existing?leads.find(l=>!l.converted&&!l.deleted&&_mL(l)):null;
       let contactId=null,leadId=null,deduped=false;
-      if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0}:c));}
-      else if(existingLead){deduped=true;leadId=existingLead.id;setLeads(a=>a.map(l=>l.id===existingLead.id?{...l,...attr,tags:Array.from(new Set([...(l.tags||[]),...tags])),lastActivity:'Just now',days:0}:l));}
-      else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:(form.stage&&LEAD_STATUSES.includes(form.stage))?form.stage:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:_adScore,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...attr},...a]);}
+      // Carry the form's custom answers onto a DEDUPED record too (merge, last-touch by question) — the card promises they're saved.
+      const _mFA=(prev)=>{if(!formAnswers.length)return prev;const keep=(prev||[]).filter(o=>!formAnswers.some(n=>n.q===o.q));return [...keep,...formAnswers];};
+      if(existing){deduped=true;contactId=existing.id;setContacts(a=>a.map(c=>c.id===existing.id?{...c,...attr,tags:Array.from(new Set([...(c.tags||[]),...tags])),last:'Just now',lastActivity:'Just now',days:0,...(formAnswers.length?{formAnswers:_mFA(c.formAnswers)}:{})}:c));}
+      else if(existingLead){deduped=true;leadId=existingLead.id;setLeads(a=>a.map(l=>l.id===existingLead.id?{...l,...attr,tags:Array.from(new Set([...(l.tags||[]),...tags])),lastActivity:'Just now',days:0,...(formAnswers.length?{formAnswers:_mFA(l.formAnswers)}:{})}:l));}
+      else{leadId=Date.now()+Math.floor(Math.random()*1000);const parts=person.name.split(' ');setLeads(a=>[{id:leadId,name:person.name,first:parts[0]||person.name,last:parts.slice(1).join(' '),company:person.company||'',email:person.email,phone:person.phone||'',avatar:adInitials(person.name),color:adPick(person.name),status:(form.stage&&LEAD_STATUSES.includes(form.stage))?form.stage:'New',owner,ownerColor,loc:person.loc||'',days:0,archived:false,converted:false,title:'',score:_adScore,estValue:'—',estValueNum:0,tags,createdBy:'nrtur',created:'Just now',createdAt:'Just now',lastActivity:'Just now',...(formAnswers.length?{formAnswers}:{}),...attr},...a]);}
       setAdLeads(a=>[{id:'al_'+(contactId||leadId),ts:0,sourceKey,formId:form.id,campaign,adset:attr.adAdset,name:person.name,email:person.email,phone:person.phone||'',company:person.company||'',loc:person.loc||'',status:speedy?'working':'new',contactId,leadId,utm:{source:attr.utmSource,medium:attr.utmMedium,campaign:attr.utmCampaign},clickId:src.clickId,clickVal},...a]);
       if(window.__nrturToast)window.__nrturToast('New '+src.short+' lead'+(campaign?(' · '+campaign):'')+': '+person.name+(deduped?' (updated existing)':'')+(speedy?' · Speed-to-lead fired ⚡':''),'success');
       return {contactId,leadId,deduped,sourceKey};
