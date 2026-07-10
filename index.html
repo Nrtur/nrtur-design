@@ -11724,34 +11724,6 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
 }
 // ?? MMS (media-first messaging) ???????????????????????????????????????????????
 // Demo media use CSS gradients as stand-in thumbnails (no binary assets in the prototype).
-const MMS_CONVOS=[
-  {id:1,contact:'Sarah Chen',avatar:'SC',color:'#3b82f6',phone:'+1 415-555-0142',time:'Just now',unread:true,preview:'And the signed floor plan',
-    lastMedia:{type:'image',grad:'linear-gradient(135deg,#6366f1,#8b5cf6)'},
-    messages:[
-      {me:false,time:'12:31 PM',text:'Here are the venue shots from this morning 📸',media:[{type:'image',grad:'linear-gradient(135deg,#6366f1,#8b5cf6)',name:'venue-hall.jpg',size:'2.4 MB'},{type:'image',grad:'linear-gradient(135deg,#0ea5e9,#6366f1)',name:'venue-stage.jpg',size:'1.9 MB'}]},
-      {me:true,time:'12:38 PM',text:'These look incredible — the lighting is perfect 🙌'},
-      {me:false,time:'12:41 PM',text:'Quick walkthrough video too',media:[{type:'video',grad:'linear-gradient(135deg,#ec4899,#8b5cf6)',name:'walkthrough.mp4',size:'14.2 MB',dur:'0:32'}]},
-      {me:false,time:'1:02 PM',text:'And the signed floor plan',media:[{type:'file',name:'floor-plan-final.pdf',size:'820 KB'}]},
-    ]},
-  {id:2,contact:'James Rivera',avatar:'JR',color:'#8b5cf6',phone:'+1 628-555-0119',time:'2h ago',unread:true,preview:'spec-sheet.pdf',
-    lastMedia:{type:'image',grad:'linear-gradient(135deg,#10b981,#0ea5e9)'},
-    messages:[
-      {me:false,time:'10:12 AM',text:'Product samples just arrived 🎉',media:[{type:'image',grad:'linear-gradient(135deg,#10b981,#0ea5e9)',name:'sample-a.jpg',size:'1.6 MB'},{type:'image',grad:'linear-gradient(135deg,#22d3ee,#3b82f6)',name:'sample-b.jpg',size:'1.4 MB'},{type:'image',grad:'linear-gradient(135deg,#34d399,#10b981)',name:'sample-c.jpg',size:'1.7 MB'}]},
-      {me:true,time:'10:20 AM',text:'Love the packaging. Can you send the spec sheet?'},
-      {me:false,time:'10:24 AM',media:[{type:'file',name:'spec-sheet.pdf',size:'1.1 MB'}]},
-    ]},
-  {id:3,contact:'Priya Nair',avatar:'PN',color:'#a855f7',phone:'+1 415-555-0188',time:'1d ago',unread:false,preview:'That made my day — thank you!',
-    lastMedia:{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)'},
-    messages:[
-      {me:false,time:'Yesterday 3:15 PM',text:'Our team recorded a quick thank-you 💜',media:[{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)',name:'thank-you.mp4',size:'9.8 MB',dur:'0:18'}]},
-      {me:true,time:'Yesterday 4:02 PM',text:'That made my day — thank you!'},
-    ]},
-  {id:4,contact:'Marcus Rios',avatar:'MR',color:'#f59e0b',phone:'+1 628-555-0170',time:'3d ago',unread:false,preview:'Storefront mockup for the campaign',
-    lastMedia:{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)'},
-    messages:[
-      {me:false,time:'3 days ago',text:'Storefront mockup for the campaign',media:[{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)',name:'storefront.png',size:'3.1 MB'}]},
-    ]},
-];
 const MMS_SAMPLE={
   image:[{type:'image',grad:'linear-gradient(135deg,#6366f1,#a855f7)',name:'photo-'+'01.jpg',size:'2.1 MB'},{type:'image',grad:'linear-gradient(135deg,#0ea5e9,#6366f1)',name:'photo-02.jpg',size:'1.8 MB'},{type:'image',grad:'linear-gradient(135deg,#34d399,#0ea5e9)',name:'photo-03.jpg',size:'2.6 MB'},{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)',name:'photo-04.jpg',size:'1.5 MB'}],
   video:[{type:'video',grad:'linear-gradient(135deg,#ec4899,#8b5cf6)',name:'clip-01.mp4',size:'12.4 MB',dur:'0:24'},{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)',name:'clip-02.mp4',size:'8.7 MB',dur:'0:16'}],
@@ -11859,7 +11831,7 @@ function InboxPage({goTo,nav}){
     showToast(scheduled?('Scheduled · '+scheduled):'Message sent');
   };
   const [smsSel,setSmsSel]=React.useState(SMS_CONVOS[0]);
-  // SMS threads live in state (mirrors mmsConvos) so sends can append; ref avoids re-running the nav effect on every send.
+  // Message threads live in state so sends can append; ref avoids re-running the nav effect on every send.
   const [smsConvos,setSmsConvos]=React.useState(SMS_CONVOS);
   const smsConvosRef=React.useRef(smsConvos);smsConvosRef.current=smsConvos;
   // ── Phase 2: simulate INBOUND traffic through the identity waterfall (docs/comms-routing R1) ──
@@ -11923,7 +11895,6 @@ function InboxPage({goTo,nav}){
     else if(nav.channel==='sms'){ setTab('sms'); if(nav.contactId){ const ct=_allContacts.find(c=>c.id===nav.contactId); const existing=ct&&smsConvosRef.current.find(s=>s.contactId===ct.id||s.contact===ct.name); if(existing){setSmsSel(existing);} else if(ct){setSmsSel({id:'new-'+ct.id,contactId:ct.id,contact:ct.name,avatar:ct.avatar,color:ct.color,preview:'',time:'New',unread:false,messages:[]});} } }
   },[nav]);
   const [draft,setDraft]=React.useState('');
-  const [mms,setMms]=React.useState(false);
   // Sending identity for the SMS composer: real workspace numbers (assigned/default first).
   const _smsNumsAll=(_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms);
   const _smsFromOpts=_smsNumsAll.map(n=>n.number);
@@ -11931,30 +11902,13 @@ function InboxPage({goTo,nav}){
   const draftRef=React.useRef(null);
   const seg=SmsSegments(draft.length);
   const insertVar=(tok)=>{const ta=draftRef.current;if(!ta){setDraft(d=>d+tok);return;}const s=ta.selectionStart,e=ta.selectionEnd;setDraft(d=>d.slice(0,s)+tok+d.slice(e));setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=s+tok.length;},0);};
-  // ?? MMS (media-first channel) state ???????????????????????????????????????????
-  const [mmsConvos,setMmsConvos]=React.useState(MMS_CONVOS);
-  const [mmsSelId,setMmsSelId]=React.useState(MMS_CONVOS[0].id);
-  const mmsSel=mmsConvos.find(c=>c.id===mmsSelId)||null;
-  const [mmsDraft,setMmsDraft]=React.useState('');
+  // Unified SMS/MMS composer state — media is just an attachment on a message (auto-upgrades to MMS).
   const [mmsAtt,setMmsAtt]=React.useState([]);
   const [lightbox,setLightbox]=React.useState(null);
   const [mmsGallery,setMmsGallery]=React.useState(false);
-  const mmsRef=React.useRef(null);
-  const mmsMedia=mmsSel?mmsSel.messages.reduce((a,m)=>a.concat(m.media||[]),[]):[];
-  const insertMmsVar=(tok)=>{const ta=mmsRef.current;if(!ta){setMmsDraft(d=>d+tok);return;}const s=ta.selectionStart,e=ta.selectionEnd;setMmsDraft(d=>d.slice(0,s)+tok+d.slice(e));setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=s+tok.length;},0);};
   const attachMms=(kind)=>{const pool=MMS_SAMPLE[kind]||MMS_SAMPLE.image;const m=pool[Math.floor(Math.random()*pool.length)];setMmsAtt(a=>[...a,{...m,uid:Date.now()+Math.random()}]);};
   const removeMmsAtt=(uid)=>setMmsAtt(a=>a.filter(x=>x.uid!==uid));
-  const sendMms=()=>{
-    if(!mmsDraft.trim()&&mmsAtt.length===0)return;
-    {const _rc=(_liveContacts||[]).find(c=>mmsSel&&c.name===mmsSel.contact&&!c.deleted);const _g=canSendSms(_rc);if(!_g.ok){showToast(_g.reason);return;}} // A2P/DNC gate — same rules as SMS
-    const media=mmsAtt.map(({uid,...m})=>m);
-    const msg={me:true,time:'Now',text:mmsDraft.trim()||undefined,media:media.length?media:undefined};
-    const prev=media.length?(media.length+' '+(media[0].type==='file'?'file':'photo')+(media.length===1?'':'s')):mmsDraft.trim();
-    setMmsConvos(cs=>cs.map(c=>c.id===mmsSelId?{...c,messages:[...c.messages,msg],preview:mmsDraft.trim()||prev,time:'Now',lastMedia:media[0]||c.lastMedia,unread:false}:c));
-    setMmsDraft('');setMmsAtt([]);
-    if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('mms',1,'MMS to '+(mmsSel?mmsSel.contact:'contact')); // Phase 4: meter + debit wallet
-    showToast(media.length?'MMS sent':'Message sent');
-  };
+  const smsMedia=smsSel?smsSel.messages.reduce((a,m)=>a.concat(m.media||[]),[]):[]; // all media across the open thread
   const [logModal,setLogModal]=React.useState(false);
   const ma=React.useContext(MailAccountsContext);
   const mailShort=(()=>{const a=ma.accounts;if(a.length===0)return'No mailbox';const provs=new Set(a.map(x=>x.provider).filter(Boolean));return a.length===1?((PROVIDERS[a[0].provider]||{}).short||'Email'):(provs.size===1?((PROVIDERS[a[0].provider]||{}).short||'Email'):'Mail');})();
@@ -11962,7 +11916,7 @@ function InboxPage({goTo,nav}){
   const connectMailbox=(prov)=>{if(prov==='outlook')ma.connect({addr:'alex@bloom.co',initials:'AM',color:'#0078d4',provider:'microsoft365'});else ma.connect({addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'});};
   const disconnectAll=()=>{ma.accounts.forEach(a=>ma.disconnect(a.addr));};
   const inboxConnect=(<ConnectEmptyState Icon={I.Inbox} accent="#6366f1" eyebrow="Inbox" title="Sync your inbox" desc="Connect Gmail or Outlook to send, receive, and track email right inside nrtur — every message auto-logs to the right contact and deal, and your replies sync back instantly." providers={[{name:'Connect Gmail',c:'#ea4335',Icon:I.Mail,onClick:()=>connectMailbox('gmail')},{name:'Connect Outlook',c:'#0078d4',Icon:I.Mail,onClick:()=>connectMailbox('outlook')}]} benefits={[{Icon:I.History,l:'Live two-way sync'},{Icon:I.UserPlus,l:'Auto-log to contacts'},{Icon:I.Layers,l:'Templates & sequences'}]} footnote="Manage connected mailboxes in Settings → Connections."/>);
-  const TABS=[{k:'all',l:'All',Icon:I.Inbox},{k:'email',l:'Email',Icon:I.Mail},{k:'sms',l:'SMS',Icon:I.Hash},{k:'mms',l:'MMS',Icon:I.Image},{k:'push',l:'Push',Icon:I.Bell},{k:'inapp',l:'In-app',Icon:I.MessageSquare},{k:'calls',l:'Calls',Icon:I.Phone}];
+  const TABS=[{k:'all',l:'All',Icon:I.Inbox},{k:'email',l:'Email',Icon:I.Mail},{k:'sms',l:'Messages',Icon:I.Hash},{k:'push',l:'Push',Icon:I.Bell},{k:'inapp',l:'In-app',Icon:I.MessageSquare},{k:'calls',l:'Calls',Icon:I.Phone}];
   const ALL_ITEMS=[
     {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'Sarah Chen',snip:'Re: Proposal for Q3 engagement',time:'11:42 AM',unread:true,tab:'email'},
     {ch:'sms',Icon:I.Hash,cc:'#34d399',name:'Sarah Chen',snip:'Can we confirm Thursday 2pm PT?',time:'1:02 PM',unread:true,tab:'sms'},
@@ -11994,8 +11948,7 @@ function InboxPage({goTo,nav}){
           </div>}
           {(tab==='email'||tab==='all')&&mailSynced&&effCanCreateAny()&&<button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>}
             {tab==='sms'&&<button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plug size={13}/>Configure SMS</button>}
-            {tab==='mms'&&<span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/25 text-[11px] font-medium"><I.Image size={11}/>Media messaging · MMS</span>}
-            {tab==='mms'&&<button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Plug size={13}/>Configure MMS</button>}
+            {/* MMS folded into the unified Messages tab */}
             {tab==='calls'&&<button onClick={()=>callsApi.current&&callsApi.current.openDialer()} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Phone size={14}/>Make a call</button>}
           </div>
         </header>
@@ -12015,86 +11968,19 @@ function InboxPage({goTo,nav}){
             </button>);})}
           </div>
           {smsSel?(<div className="flex-1 flex flex-col min-w-0">
-            <div className="shrink-0 px-6 py-4 border-b border-white/[0.05] flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white" style={{background:smsSel.color}}>{smsSel.avatar}</div><div><p className="text-[14px] font-semibold text-white">{smsSel.contact}</p><p className="text-[11px] text-white/45">SMS conversation</p></div></div><button onClick={()=>{const _ct=(smsSel.contactId!=null?_allContacts.find(x=>x.id===smsSel.contactId&&!x.deleted):null)||_allContacts.find(x=>x.name===smsSel.contact&&!x.deleted);if(_ct)goTo('contact-detail',_ct.id);else showToast('No matching contact for this thread');}} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View contact<I.ArrowRight size={11} stroke={2.4}/></button></div>
-            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-3">{smsSel.messages.map((msg,i)=>(<div key={i} className={['flex',msg.me?'justify-end':'justify-start'].join(' ')}><div className={['max-w-[70%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed',msg.me?'bg-brand-500 text-white rounded-br-sm':'bg-white/[0.07] border border-white/[0.08] text-white/85 rounded-bl-sm'].join(' ')}><p>{msg.body}</p><p className={['text-[10px] mt-1',msg.me?'text-white/60':'text-white/35'].join(' ')}>{msg.time}</p></div></div>))}</div>
+            <div className="shrink-0 px-6 py-4 border-b border-white/[0.05] flex items-center justify-between" style={{background:'var(--s925)'}}><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white" style={{background:smsSel.color}}>{smsSel.avatar}</div><div><p className="text-[14px] font-semibold text-white">{smsSel.contact}</p><p className="text-[11px] text-white/45 flex items-center gap-1.5">{smsSel.phone&&<><I.Phone size={10}/>{smsSel.phone} · </>}SMS &amp; MMS</p></div></div><div className="flex items-center gap-2">{smsMedia.length>0&&<button onClick={()=>setMmsGallery(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-violet-300 hover:text-violet-200 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/18 transition-all"><I.Layers size={12}/>Media<span className="opacity-60">({smsMedia.length})</span></button>}<button onClick={()=>{const _ct=(smsSel.contactId!=null?_allContacts.find(x=>x.id===smsSel.contactId&&!x.deleted):null)||_allContacts.find(x=>x.name===smsSel.contact&&!x.deleted);if(_ct)goTo('contact-detail',_ct.id);else showToast('No matching contact for this thread');}} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View contact<I.ArrowRight size={11} stroke={2.4}/></button></div></div>
+            {smsMedia.length>0&&(<div className="shrink-0 px-6 py-2.5 border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto cal-tab-group" style={{background:'var(--s950)'}}><span className="text-[10px] font-medium text-white/30 uppercase tracking-[0.14em] mr-1 shrink-0">Shared media</span>{smsMedia.slice(0,14).map((m,i)=><MmsThumb key={i} m={m} onOpen={()=>setLightbox(m)} className="w-11 h-11"/>)}</div>)}
+            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-3">{smsSel.messages.map((msg,i)=>(<div key={i} className={['flex',msg.me?'justify-end':'justify-start'].join(' ')}><div className={['max-w-[72%] rounded-2xl overflow-hidden text-[13px] leading-relaxed',msg.me?'bg-brand-500 text-white rounded-br-sm':'bg-white/[0.07] border border-white/[0.08] text-white/85 rounded-bl-sm'].join(' ')}>{msg.media&&msg.media.length>0&&(<div className={['p-1.5 grid gap-1.5',msg.media.length===1?'grid-cols-1':'grid-cols-2'].join(' ')}>{msg.media.map((m,j)=>m.type==='file'?<button key={j} onClick={()=>showToast('Downloading '+m.name)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-black/15 hover:bg-black/25 transition-colors text-left min-w-[190px]"><span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0"><I.Note size={14}/></span><span className="min-w-0 flex-1"><span className="block text-[12px] font-medium truncate">{m.name}</span><span className="block text-[10.5px] opacity-70">{m.size}</span></span><I.Download size={13} className="opacity-70 shrink-0"/></button>:<MmsThumb key={j} m={m} onOpen={()=>setLightbox(m)} className={msg.media.length===1?'w-full max-w-[260px] aspect-[4/3]':'w-full aspect-square'}/>)}</div>)}{msg.body&&<p className="px-4 pt-2.5 pb-0.5">{msg.body}</p>}<p className={['text-[10px] px-4 pb-2',msg.body?'pt-1':'pt-2',msg.me?'text-white/60':'text-white/35'].join(' ')}>{msg.time}</p></div></div>))}</div>
             <div className="shrink-0 border-t border-white/[0.05] p-4" style={{background:'var(--s925)'}}>
               {(()=>{const _g=smsComplianceState();return !_g.ok?(<div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/[0.08] border border-amber-500/25 text-[11.5px] text-amber-200"><I.Ban size={12} className="shrink-0"/><span className="min-w-0 truncate">{_g.reason}</span><button onClick={()=>goTo('settings-phone-numbers')} className="ml-auto shrink-0 font-medium text-amber-100 hover:text-white underline underline-offset-2 transition-colors">Open Phone numbers</button></div>):null;})()}
               <div className="flex items-center gap-1.5 mb-2 flex-wrap"><span className="text-[10px] font-medium text-white/30 uppercase tracking-[0.14em] mr-1">Insert</span>{SMS_VARS.slice(0,4).map(v=>(<button key={v.token} onClick={()=>insertVar(v.token)} title={v.desc} className="px-2 py-0.5 rounded-md text-[10.5px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/18 transition-all">{v.token}</button>))}</div>
               <div className="rounded-xl border border-white/[0.08] focus-within:border-brand-500/40 transition-all" style={{background:'var(--field6)'}}>
-                {mms&&(<div className="px-4 pt-3"><div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] text-white/70 bg-white/[0.05] border border-white/[0.08]"><I.Image size={12} className="text-brand-300"/>product-shot.jpg <span className="text-white/35">· MMS</span><button onClick={()=>setMms(false)} className="text-white/35 hover:text-white"><I.X size={10}/></button></div></div>)}
-                <textarea ref={draftRef} value={draft} onChange={e=>setDraft(e.target.value)} rows={3} placeholder="Type an SMS message..." className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30"/>
-                <div className="flex items-center justify-between px-4 pb-3"><div className="flex items-center gap-2">{_smsFromOpts.length>0&&<div className="relative"><select value={smsFrom} onChange={e=>setSmsFrom(e.target.value)} title="Send from this number" className="pl-2 pr-6 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/60 outline-none appearance-none cursor-pointer" style={{colorScheme:'dark',background:'var(--s850)'}}>{_smsFromOpts.map(n=>(<option key={n}>{n}</option>))}</select><I.ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>}<button onClick={()=>setMms(true)} title="Attach image (MMS)" className={['w-7 h-7 rounded-lg flex items-center justify-center transition-colors',mms?'text-brand-300 bg-brand-500/10':'text-white/35 hover:text-white hover:bg-white/[0.06]'].join(' ')}><I.Image size={13}/></button><span className={['text-[11px] tabular-nums',seg.segs>1?'text-amber-300':'text-white/30'].join(' ')}>{draft.length} chars · {seg.segs} {mms?'MMS':'SMS'}</span></div><button disabled={!draft.trim()&&!mms} onClick={()=>{const _rc=(smsSel.contactId!=null?(_liveContacts||[]).find(c=>c.id===smsSel.contactId&&!c.deleted):null)||(_liveContacts||[]).find(c=>c.name===smsSel.contact&&!c.deleted);const _g=canSendSms(_rc);if(!_g.ok){showToast(_g.reason);return;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms(mms?'mms':'sms',mms?1:seg.segs,(mms?'MMS to ':'SMS to ')+smsSel.contact);const _msg={from:'Alex Morgan',me:true,body:(draft.trim()||'')+(mms?(draft.trim()?' ':'')+'📷 product-shot.jpg':''),time:'Just now'};setSmsConvos(cs=>cs.some(c=>c.id===smsSel.id)?cs.map(c=>c.id===smsSel.id?{...c,messages:[...c.messages,_msg],preview:_msg.body,time:'Just now'}:c):[{...smsSel,messages:[...smsSel.messages,_msg],preview:_msg.body,time:'Just now'},...cs]);setSmsSel(s=>({...s,messages:[...s.messages,_msg],preview:_msg.body,time:'Just now'}));if(_rc){const _dl=dealsForPerson(_rc.id);_addAct&&_addAct('contact',_rc.id,{...mkAct('sms',{ts:0,by:CURRENT_USER.avatar,title:(mms?'MMS sent':'SMS sent'),body:_msg.body,payload:{dir:'out'}}),...(_dl.length===1?{dealId:_dl[0].id}:{})});_updCt&&_updCt(_rc.id,{last:'Just now',lastActivity:'Just now',days:0});}setDraft('');setMms(false);showToast('Message sent');}} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(draft.trim()||mms)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send {mms?'MMS':'SMS'}</button></div>
+                {mmsAtt.length>0&&(<div className="px-3 pt-3 flex items-center gap-2 flex-wrap">{mmsAtt.map(m=>(<div key={m.uid} className="relative">{m.type==='file'?<div className="inline-flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/75 bg-white/[0.05] border border-white/[0.08]"><I.Note size={12} className="text-violet-300"/>{m.name}<span className="text-white/35">{m.size}</span></div>:<div className="w-14 h-14 rounded-lg overflow-hidden border border-white/[0.1] relative" style={{background:m.grad}}>{m.type==='video'&&<span className="absolute inset-0 flex items-center justify-center text-white"><I.Play size={12}/></span>}</div>}<button onClick={()=>removeMmsAtt(m.uid)} title="Remove" className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 border border-white/20 text-white flex items-center justify-center hover:bg-black"><I.X size={8}/></button></div>))}</div>)}
+                <textarea ref={draftRef} value={draft} onChange={e=>setDraft(e.target.value)} rows={3} placeholder="Type a message…" className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30"/>
+                <div className="flex items-center justify-between px-3 pb-3 gap-2"><div className="flex items-center gap-1 min-w-0">{_smsFromOpts.length>0&&<div className="relative"><select value={smsFrom} onChange={e=>setSmsFrom(e.target.value)} title="Send from this number" className="pl-2 pr-6 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/60 outline-none appearance-none cursor-pointer" style={{colorScheme:'dark',background:'var(--s850)'}}>{_smsFromOpts.map(n=>(<option key={n}>{n}</option>))}</select><I.ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>}<button onClick={()=>attachMms('image')} title="Attach image" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Image size={15}/></button><button onClick={()=>attachMms('video')} title="Attach video" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Play size={14}/></button><button onClick={()=>attachMms('file')} title="Attach file" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Paperclip size={15}/></button><span className={['text-[11px] tabular-nums ml-1 truncate',(seg.segs>1&&!mmsAtt.length)?'text-amber-300':'text-white/30'].join(' ')}>{mmsAtt.length>0?(mmsAtt.length+' media · MMS'):(draft.length+' chars · '+seg.segs+' SMS')}</span></div><button disabled={!draft.trim()&&mmsAtt.length===0} onClick={()=>{const _rc=(smsSel.contactId!=null?(_liveContacts||[]).find(c=>c.id===smsSel.contactId&&!c.deleted):null)||(_liveContacts||[]).find(c=>c.name===smsSel.contact&&!c.deleted);const _g=canSendSms(_rc);if(!_g.ok){showToast(_g.reason);return;}const _media=mmsAtt.map(({uid,..._m})=>_m);const _isMms=_media.length>0;if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms(_isMms?'mms':'sms',_isMms?1:seg.segs,(_isMms?'MMS to ':'SMS to ')+smsSel.contact);const _msg={from:'Alex Morgan',me:true,body:draft.trim(),time:'Just now',...(_isMms?{media:_media}:{})};const _prev=_isMms?(draft.trim()||(_media.length+' '+(_media[0].type==='file'?'file':'photo')+(_media.length===1?'':'s'))):draft.trim();setSmsConvos(cs=>cs.some(c=>c.id===smsSel.id)?cs.map(c=>c.id===smsSel.id?{...c,messages:[...c.messages,_msg],preview:_prev,time:'Just now'}:c):[{...smsSel,messages:[...smsSel.messages,_msg],preview:_prev,time:'Just now'},...cs]);setSmsSel(s=>({...s,messages:[...s.messages,_msg],preview:_prev,time:'Just now'}));if(_rc){const _dl=dealsForPerson(_rc.id);_addAct&&_addAct('contact',_rc.id,{...mkAct(_isMms?'mms':'sms',{ts:0,by:CURRENT_USER.avatar,title:(_isMms?'MMS sent':'SMS sent'),body:_prev,payload:{dir:'out',...(_isMms?{media:_media}:{})}}),...(_dl.length===1?{dealId:_dl[0].id}:{})});_updCt&&_updCt(_rc.id,{last:'Just now',lastActivity:'Just now',days:0});}setDraft('');setMmsAtt([]);showToast(_isMms?'MMS sent':'Message sent');}} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(draft.trim()||mmsAtt.length)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send {mmsAtt.length>0?'MMS':'SMS'}</button></div>
               </div>
             </div>
           </div>):(<div className="flex-1 flex items-center justify-center"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Hash size={22}/></div><p className="text-[14px] font-medium text-white/50">Select a conversation</p></div></div>)}
-        </div>)}
-        {tab==='mms'&&(<div className="flex-1 flex min-h-0 crm-split">
-          <div className="w-[320px] shrink-0 border-r border-white/[0.05] overflow-y-auto scroll-area crm-pane-list">
-            {mmsConvos.map(c=>{const on=mmsSel?.id===c.id;const lm=c.lastMedia;const count=c.messages.reduce((a,m)=>a+((m.media&&m.media.length)||0),0);return(<button key={c.id} onClick={()=>{setMmsSelId(c.id);setMmsConvos(cs=>cs.map(x=>x.id===c.id?{...x,unread:false}:x));}} className={['w-full text-left px-4 py-3.5 border-b border-white/[0.03] transition-colors relative',on?'bg-violet-500/10':'hover:bg-white/[0.03]'].join(' ')}>
-              {on&&<span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-[3px] rounded-r-full bg-violet-400"/>}
-              {c.unread&&<span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-violet-400"/>}
-              <div className="flex items-start gap-3 pl-2">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between mb-1"><p className={['text-[13px] leading-tight',c.unread?'font-semibold text-white':'font-medium text-white/80'].join(' ')}>{c.contact}</p><span className="text-[10px] text-white/35 shrink-0 ml-2">{c.time}</span></div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    {lm&&<div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/[0.08]" style={{background:lm.grad}}>{lm.type==='video'&&<span className="absolute inset-0 flex items-center justify-center text-white"><I.Play size={11}/></span>}{lm.type==='file'&&<span className="absolute inset-0 flex items-center justify-center text-white/80"><I.Note size={12}/></span>}</div>}
-                    <p className={['text-[12px] truncate min-w-0',c.unread?'text-white/70':'text-white/45'].join(' ')}>{count>1&&<span className="text-violet-300 font-medium">📎 {count} photos · </span>}{c.preview}</p>
-                  </div>
-                </div>
-              </div>
-            </button>);})}
-          </div>
-          {mmsSel?(<div className="flex-1 flex flex-col min-w-0">
-            <div className="shrink-0 px-6 py-3.5 border-b border-white/[0.05] flex items-center justify-between" style={{background:'var(--s925)'}}>
-              <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold text-white" style={{background:mmsSel.color}}>{mmsSel.avatar}</div><div><p className="text-[14px] font-semibold text-white">{mmsSel.contact}</p><p className="text-[11px] text-white/45 flex items-center gap-1.5"><I.Phone size={10}/>{mmsSel.phone} · MMS</p></div></div>
-              <button onClick={()=>setMmsGallery(true)} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-violet-300 hover:text-violet-200 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/18 transition-all"><I.Layers size={12}/>View all media<span className="opacity-60">({mmsMedia.length})</span></button>
-            </div>
-            {mmsMedia.length>0&&(<div className="shrink-0 px-6 py-2.5 border-b border-white/[0.04] flex items-center gap-2 overflow-x-auto cal-tab-group" style={{background:'var(--s950)'}}>
-              <span className="text-[10px] font-medium text-white/30 uppercase tracking-[0.14em] mr-1 shrink-0">Shared media</span>
-              {mmsMedia.slice(0,14).map((m,i)=><MmsThumb key={i} m={m} onOpen={()=>setLightbox(m)} className="w-11 h-11"/>)}
-            </div>)}
-            <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-3">
-              {mmsSel.messages.map((msg,i)=>(<div key={i} className={['flex',msg.me?'justify-end':'justify-start'].join(' ')}>
-                <div className={['max-w-[72%] rounded-2xl overflow-hidden text-[13px] leading-relaxed',msg.me?'bg-brand-500 text-white rounded-br-sm':'bg-white/[0.07] border border-white/[0.08] text-white/85 rounded-bl-sm'].join(' ')}>
-                  {msg.media&&msg.media.length>0&&(<div className={['p-1.5 grid gap-1.5',msg.media.length===1?'grid-cols-1':'grid-cols-2'].join(' ')}>
-                    {msg.media.map((m,j)=>m.type==='file'
-                      ?<button key={j} onClick={()=>showToast('Downloading '+m.name)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-black/15 hover:bg-black/25 transition-colors text-left min-w-[190px]"><span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0"><I.Note size={14}/></span><span className="min-w-0 flex-1"><span className="block text-[12px] font-medium truncate">{m.name}</span><span className="block text-[10.5px] opacity-70">{m.size}</span></span><I.Download size={13} className="opacity-70 shrink-0"/></button>
-                      :<MmsThumb key={j} m={m} onOpen={()=>setLightbox(m)} className={msg.media.length===1?'w-full max-w-[260px] aspect-[4/3]':'w-full aspect-square'}/>)}
-                  </div>)}
-                  {msg.text&&<p className={['px-4 pt-2.5 pb-0.5',msg.media?'':'pt-2.5'].join(' ')}>{msg.text}</p>}
-                  <p className={['text-[10px] px-4 pb-2',msg.text?'pt-1':'pt-2',msg.me?'text-white/60':'text-white/35'].join(' ')}>{msg.time}</p>
-                </div>
-              </div>))}
-            </div>
-            <div className="shrink-0 border-t border-white/[0.05] p-4" style={{background:'var(--s925)'}}>
-              <div className="flex items-center gap-1.5 mb-2 flex-wrap"><span className="text-[10px] font-medium text-white/30 uppercase tracking-[0.14em] mr-1">Insert</span>{SMS_VARS.slice(0,4).map(v=>(<button key={v.token} onClick={()=>insertMmsVar(v.token)} title={v.desc} className="px-2 py-0.5 rounded-md text-[10.5px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/18 transition-all">{v.token}</button>))}</div>
-              {(()=>{const _g=smsComplianceState();return !_g.ok?(<div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/[0.08] border border-amber-500/25 text-[11.5px] text-amber-200"><I.Ban size={12} className="shrink-0"/><span className="min-w-0 truncate">{_g.reason}</span><button onClick={()=>goTo('settings-phone-numbers')} className="ml-auto shrink-0 font-medium text-amber-100 hover:text-white underline underline-offset-2 transition-colors">Open Phone numbers</button></div>):null;})()}
-              <div className="rounded-xl border border-white/[0.08] focus-within:border-brand-500/40 transition-all" style={{background:'var(--field6)'}}>
-                {mmsAtt.length>0&&(<div className="px-3 pt-3 flex items-center gap-2 flex-wrap">
-                  {mmsAtt.map(m=>(<div key={m.uid} className="relative">
-                    {m.type==='file'
-                      ?<div className="inline-flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/75 bg-white/[0.05] border border-white/[0.08]"><I.Note size={12} className="text-violet-300"/>{m.name}<span className="text-white/35">{m.size}</span></div>
-                      :<div className="w-14 h-14 rounded-lg overflow-hidden border border-white/[0.1] relative" style={{background:m.grad}}>{m.type==='video'&&<span className="absolute inset-0 flex items-center justify-center text-white"><I.Play size={12}/></span>}</div>}
-                    <button onClick={()=>removeMmsAtt(m.uid)} title="Remove" className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 border border-white/20 text-white flex items-center justify-center hover:bg-black"><I.X size={8}/></button>
-                  </div>))}
-                </div>)}
-                <textarea ref={mmsRef} value={mmsDraft} onChange={e=>setMmsDraft(e.target.value)} rows={3} placeholder="Add a caption…" className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30"/>
-                <div className="flex items-center justify-between px-3 pb-3 gap-2">
-                  <div className="flex items-center gap-1 min-w-0">
-                    <button onClick={()=>attachMms('image')} title="Attach image" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Image size={15}/></button>
-                    <button onClick={()=>attachMms('video')} title="Attach video" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Play size={14}/></button>
-                    <button onClick={()=>attachMms('file')} title="Attach file" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Paperclip size={15}/></button>
-                    <span className="text-[11px] tabular-nums text-white/30 ml-1 truncate">{mmsDraft.length} chars · {mmsAtt.length} media · MMS</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={()=>{const _g=smsComplianceState();showToast(_g.ok?'Test MMS sent to you':_g.reason);}} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/60 hover:text-white bg-white/[0.05] border border-white/[0.08] transition-all">Send test</button>
-                    <button disabled={!mmsDraft.trim()&&mmsAtt.length===0} onClick={sendMms} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(mmsDraft.trim()||mmsAtt.length)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send MMS</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>):(<div className="flex-1 flex items-center justify-center"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Image size={22}/></div><p className="text-[14px] font-medium text-white/50">Select a conversation</p></div></div>)}
         </div>)}
         {tab==='calls'&&<CallsWorkspace goTo={goTo} onToast={(m,t)=>{showToast(m);if(window.__nrturToast)window.__nrturToast(m,t||'success');}} preload={callPreload} apiRef={callsApi}/>}
         {tab==='all'&&(mailSynced?(<div className="flex-1 overflow-y-auto scroll-area">
@@ -12105,14 +11991,14 @@ function InboxPage({goTo,nav}){
           </button>))}
         </div>):inboxConnect)}
         <div className="app-footer shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{background:'var(--s950)'}}>
-          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] text-white/40">{(()=>{const _dn=((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).find(n=>n.isDefault)||( _livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms)[0]);const _lbl=_dn?_dn.number:'no number';return tab==='sms'?('Sending as '+(smsFrom||_lbl)):tab==='mms'?('MMS as '+_lbl+' · media up to 5 MB'):tab==='calls'?'7 missed · 2 voicemails':mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
-          <div className="flex items-center gap-3"><span className="text-[11px] text-white/30">Unified inbox · Email · SMS · MMS · Calls</span></div>
+          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] text-white/40">{(()=>{const _dn=((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).find(n=>n.isDefault)||( _livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms)[0]);const _lbl=_dn?_dn.number:'no number';return tab==='sms'?('Sending as '+(smsFrom||_lbl)+' · SMS & MMS'):tab==='calls'?'7 missed · 2 voicemails':mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
+          <div className="flex items-center gap-3"><span className="text-[11px] text-white/30">Unified inbox · Email · Messages · Calls</span></div>
         </div>
       </div>
       {toast&&<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[120] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>}
       {composeOpen&&<EmailComposeModal close={()=>setComposeOpen(false)} defaultTo={email?email.from.toLowerCase().replace(/\s+/g,'.')+'@example.com':''} onSent={onSentNew}/>}
       {lightbox&&<MmsLightbox m={lightbox} close={()=>setLightbox(null)}/>}
-      {mmsGallery&&mmsSel&&<MmsGalleryModal contact={mmsSel.contact} media={mmsMedia} onOpen={(m)=>setLightbox(m)} close={()=>setMmsGallery(false)}/>}
+      {mmsGallery&&smsSel&&<MmsGalleryModal contact={smsSel.contact} media={smsMedia} onOpen={(m)=>setLightbox(m)} close={()=>setMmsGallery(false)}/>}
       {logModal&&<LogCallModal close={()=>setLogModal(false)}/>}
       <PreviewStateToggle label="Inbox" options={[{k:'synced',l:'Synced'},{k:'notsynced',l:'Not synced'}]} value={mailSynced?'synced':'notsynced'} onChange={(k)=>k==='synced'?connectMailbox('gmail'):disconnectAll()}/>
     </div>
@@ -12819,11 +12705,13 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
   );
 }
 // ?? SMS Inbox ?????????????????????????????????????????????????????????????????
+// Unified messages store — one conversation per person carrying BOTH texts and media (media = an
+// attachment on a message; a message with media is an MMS). Replaces the old split SMS/MMS stores.
 const SMS_CONVOS=[
-  {id:1,contactId:1,contact:'Sarah Chen',avatar:'SC',color:'#3b82f6',preview:'Can we confirm Thursday 2pm PT?',time:'Just now',unread:true,messages:[{from:'Sarah Chen',me:false,body:'Hey Alex - quick question, can we confirm Thursday 2pm PT for the onboarding call?',time:'12:41 PM'},{from:'Alex Morgan',me:true,body:"Hey Sarah! Absolutely, Thursday 2pm PT works great. I'll send over a Zoom link.",time:'12:43 PM'},{from:'Sarah Chen',me:false,body:'Perfect, thank you!',time:'12:44 PM'},{from:'Sarah Chen',me:false,body:'Can we confirm Thursday 2pm PT?',time:'1:02 PM'}]},
-  {id:2,contactId:2,contact:'James Rivera',avatar:'JR',color:'#8b5cf6',preview:'Signed contract attached',time:'2h ago',unread:true,messages:[{from:'James Rivera',me:false,body:'Hey, just wanted to let you know we signed the contract.',time:'10:30 AM'},{from:'Alex Morgan',me:true,body:'Amazing! Got it - welcome aboard James!',time:'10:35 AM'}]},
-  {id:3,contactId:8,contact:'Priya Nair',avatar:'PN',color:'#a855f7',preview:'When does onboarding start?',time:'1d ago',unread:false,messages:[{from:'Priya Nair',me:false,body:'Hi! Our team is very excited. When exactly does the onboarding process start?',time:'Yesterday 3:15 PM'},{from:'Alex Morgan',me:true,body:"Hi Priya! We'll kick off next Monday.",time:'Yesterday 4:00 PM'}]},
-  {id:4,contactId:5,contact:'Marcus Rios',avatar:'MR',color:'#f59e0b',preview:'Got your voicemail, calling back',time:'3d ago',unread:false,messages:[{from:'Marcus Rios',me:false,body:'Got your voicemail, will call you back in 30 mins.',time:'3 days ago 2:10 PM'}]},
+  {id:1,contactId:1,contact:'Sarah Chen',avatar:'SC',color:'#3b82f6',phone:'+1 415-555-0142',preview:'And the signed floor plan',time:'Just now',unread:true,messages:[{from:'Sarah Chen',me:false,body:'Hey Alex - quick question, can we confirm Thursday 2pm PT for the onboarding call?',time:'12:41 PM'},{from:'Alex Morgan',me:true,body:"Absolutely, Thursday 2pm PT works great. I'll send over a Zoom link.",time:'12:43 PM'},{from:'Sarah Chen',me:false,body:'Here are the venue shots from this morning 📸',time:'12:52 PM',media:[{type:'image',grad:'linear-gradient(135deg,#6366f1,#8b5cf6)',name:'venue-hall.jpg',size:'2.4 MB'},{type:'image',grad:'linear-gradient(135deg,#0ea5e9,#6366f1)',name:'venue-stage.jpg',size:'1.9 MB'}]},{from:'Alex Morgan',me:true,body:'These look incredible — the lighting is perfect 🙌',time:'12:58 PM'},{from:'Sarah Chen',me:false,body:'And the signed floor plan',time:'1:02 PM',media:[{type:'file',name:'floor-plan-final.pdf',size:'820 KB'}]}]},
+  {id:2,contactId:2,contact:'James Rivera',avatar:'JR',color:'#8b5cf6',phone:'+1 628-555-0119',preview:'spec-sheet.pdf',time:'2h ago',unread:true,messages:[{from:'James Rivera',me:false,body:'Hey, just wanted to let you know we signed the contract.',time:'10:05 AM'},{from:'Alex Morgan',me:true,body:'Amazing! Welcome aboard James 🎉',time:'10:08 AM'},{from:'James Rivera',me:false,body:'Product samples just arrived 🎉',time:'10:12 AM',media:[{type:'image',grad:'linear-gradient(135deg,#10b981,#0ea5e9)',name:'sample-a.jpg',size:'1.6 MB'},{type:'image',grad:'linear-gradient(135deg,#22d3ee,#3b82f6)',name:'sample-b.jpg',size:'1.4 MB'}]},{from:'Alex Morgan',me:true,body:'Love the packaging. Can you send the spec sheet?',time:'10:20 AM'},{from:'James Rivera',me:false,body:'',time:'10:24 AM',media:[{type:'file',name:'spec-sheet.pdf',size:'1.1 MB'}]}]},
+  {id:3,contactId:8,contact:'Priya Nair',avatar:'PN',color:'#a855f7',phone:'+1 415-555-0188',preview:'That made my day — thank you!',time:'1d ago',unread:false,messages:[{from:'Priya Nair',me:false,body:'Hi! Our team is very excited. When exactly does the onboarding process start?',time:'Yesterday 3:05 PM'},{from:'Priya Nair',me:false,body:'Our team recorded a quick thank-you 💜',time:'Yesterday 3:15 PM',media:[{type:'video',grad:'linear-gradient(135deg,#f59e0b,#ef4444)',name:'thank-you.mp4',size:'9.8 MB',dur:'0:18'}]},{from:'Alex Morgan',me:true,body:"That made my day — thank you! We'll kick off next Monday.",time:'Yesterday 4:02 PM'}]},
+  {id:4,contactId:5,contact:'Marcus Rios',avatar:'MR',color:'#f59e0b',phone:'+1 628-555-0170',preview:'Storefront mockup for the campaign',time:'3d ago',unread:false,messages:[{from:'Marcus Rios',me:false,body:'Got your voicemail, will call you back in 30 mins.',time:'3 days ago'},{from:'Marcus Rios',me:false,body:'Storefront mockup for the campaign',time:'3 days ago',media:[{type:'image',grad:'linear-gradient(135deg,#f472b6,#8b5cf6)',name:'storefront.png',size:'3.1 MB'}]}]},
 ];
 // ?? Automations ???????????????????????????????????????????????????????????????
 const STEP_PRESETS_A={
