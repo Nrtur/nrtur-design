@@ -28,7 +28,8 @@ The original per-screen notes (one file per screen: `add-contact`, `deal-detail`
 The single sources of truth and cross-cutting references:
 - [`crm-system.md`](reference/crm-system.md) — **canonical data-model explainer + correctness audit + corrected target model** (read first for any data-model question)
 - [`requirements.md`](reference/requirements.md) — product requirements
-- [`comms-routing-and-suggestions.md`](reference/comms-routing-and-suggestions.md) — communication routing model
+- [`comms-routing-and-suggestions.md`](reference/comms-routing-and-suggestions.md) — email/inbound communication routing model
+- [`sms-mms-routing-and-threads.md`](reference/sms-mms-routing-and-threads.md) — SMS/MMS routing & threading model + honest code audit (5-platform study)
 - [`system-inventory.md`](reference/system-inventory.md) — full screen/module/entity inventory
 - [`appearance-settings.md`](reference/appearance-settings.md) · [`payments-feature.md`](reference/payments-feature.md) — feature references
 
@@ -48,7 +49,8 @@ Specs for the backend that the prototype is the working spec for: [`backend-spec
 [`AUTOMATIONS_AUDIT.md`](automations/AUTOMATIONS_AUDIT.md) · [`RULES_BASED_AUTOMATION.md`](automations/RULES_BASED_AUTOMATION.md)
 
 ## `phone/`
-[`PHONE_NUMBERS_A2P.md`](phone/PHONE_NUMBERS_A2P.md) — managed telephony + A2P 10DLC registration.
+- [`PHONE_NUMBERS_A2P.md`](phone/PHONE_NUMBERS_A2P.md) — managed telephony + A2P 10DLC registration (the build).
+- [`twilio-integration-model-decision.md`](phone/twilio-integration-model-decision.md) — decision memo: managed/subaccount vs BYOA vs Twilio Connect, benchmarked against 13 CRMs (why we chose managed).
 
 ---
 
