@@ -1,6 +1,6 @@
 # Pipeline / Deals Module — Roadmap Status
 
-_Last updated 2026-07-03. Every "Done" row is render-verified headless with zero console errors and pushed to `fix/crm-model-corrections`. Readiness score tracks the [PIPELINE_AUDIT.md](PIPELINE_AUDIT.md) rubric._
+_Last updated 2026-07-03 (branch/merge status refreshed 2026-07-10). Every "Done" row is render-verified headless with zero console errors and is now merged to `main`. Readiness score tracks the [PIPELINE_AUDIT.md](PIPELINE_AUDIT.md) rubric._
 
 **Readiness: 58 → ~99 / 100.** All P0/P1/P2, every High, and every Med item are shipped; only Low / adjacent items remain.
 
@@ -81,4 +81,4 @@ _Last updated 2026-07-03. Every "Done" row is render-verified headless with zero
 ## Notes
 - "Est": S = small, M = medium, L = large.
 - The **High** items are the natural next steps; cross-pipeline automation is the highest-leverage because the two systems it needs (automations, multi-pipeline) already exist.
-- Everything under **Done** is verified and pushed; the branch is `fix/crm-model-corrections`, not yet merged to `main`.
+- Everything under **Done** is verified and shipped to `main` (the old `fix/crm-model-corrections` branch has since merged).
