@@ -28,6 +28,21 @@ _(The adversarial review caught that the first cut checked only `To`, so a hard-
 ## Verified (headless CDP)
 Boots clean, zero runtime errors. Settings shows the Required pill, the sender-identity card (`Northlight Digital LLC · 2261 Market St`), and the footer preview; the old hardcoded `100 Market St` is gone. Clicking the preview's Unsubscribe writes `preview.unsubscribe@example.com` into the suppression Email list. The scope logic that drives Compose is confirmed: `supEmailBlocked(…,'marketing')`=blocked, `(…,'transactional')`=allowed. The email builder footer renders the global address. Two-lens adversarial review + verify pass.
 
+## Update 2026-07-10 — reply composer gated; sequences verified already-covered
+
+The two deferred paths were closed / confirmed:
+
+**Reply & forward composer now runs the same suppression gate.** `EmailReplyComposer` (the inbox reply/forward box) previously sent with **no check at all** — you could reply or forward to a hard-suppressed address. It now computes the gate on the recipient and:
+- **hard-suppressed** (bounce/complaint/do-not-contact-all/blocked domain) → red banner "on your suppression list — sending is blocked" + the Send/Forward button is **disabled** + a toast if invoked;
+- **marketing-only opt-out** → amber warning, but the 1:1 reply is **allowed** (a human reply to a newsletter opt-out is legitimate).
+
+**One shared gate — the two composers can't drift.** Both the quick composer (`EmailComposeModal`) and the reply/forward composer now call a single new helper, **`emailSendGate(recipients)`** (accepts a string, a comma-joined string, or an array; splits to individual addresses; returns `{hardAddr, softAddr, hardBlocked, softOptOut}`). This is the "one place" fix — the Cc/Bcc divergence bug happened precisely because the check was duplicated; now there's exactly one.
+
+**Sequence / bulk send-time was already compliant** (verified, not assumed). `stageBulkAudience` already **skips** every suppressed recipient — no email, DNC, `contactEmailSuppressed` (marketing), per-contact `supChannelOff('marketing')`, and already-enrolled — before any bulk email or sequence enrollment. Builder-designed campaign/sequence emails already carry the **locked, Required** `ebUnsub()` footer (global sender identity). So no code change was needed there; the remaining "footer + suppression at send time" ask was already met by the earlier suppression-foundation + mandatory-footer work.
+
+### Verified (headless CDP, readiness-gated)
+Boots clean, zero exceptions. `emailSendGate` matrix against the live store: `bounce@example.com` (scope `all`) → hard; `unsub@acme.com` (via the `acme.com` blocked-domain rule, all-scope) → hard; `spam@test.io` as the **2nd** of two recipients → hard (every recipient scanned); `old@company.net` (marketing row) → soft; comma-joined input splits correctly; clean/empty → neither. End-to-end: opening the **forward** composer and typing `bounce@example.com` shows the red "sending is blocked" banner **and** disables the Forward button. (Note: the module-mirror `_liveSuppression` syncs a few seconds after boot — the test polls until it's populated before asserting.)
+
 ## What the owner still decides / remaining paths
-- **Deferred (acknowledged):** the **reply composer** (inbox) and **sequence/automation send steps** don't yet route through a single send-time footer/suppression chokepoint — the audit's "one `withComplianceFooter()` injector" is the larger follow-up. Sequence *enrollment* already checks suppression; per-message re-check + footer injection is the next slice. The template footer (which sequences use) is now global and compliant.
-- Marketing-vs-transactional exemption list (which mail is exempt from the unsubscribe requirement) — the `sendScope` plumbing exists; policy is the owner's call.
+- **Marketing-vs-transactional exemption list** (which mail is exempt from the unsubscribe requirement) — the `sendScope` plumbing exists; policy is the owner's call.
+- A dedicated `withComplianceFooter()` injector is now unnecessary for the shipped surfaces (1:1 replies are transactional → no footer by design, matching the quick composer; marketing/sequence emails get the footer at design time in the builder). Revisit only if a future path sends *marketing* body text outside the builder.

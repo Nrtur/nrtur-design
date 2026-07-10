@@ -11093,6 +11093,17 @@ function mkEmailTarget(mode,msg,subject){
   return {mode,msg,to:mode==='forward'?'':(msg.addr||''),subject:(mode==='forward'?'Fwd: ':'Re: ')+base,
     quoted:'On '+(msg.date||'')+', '+(msg.from||'')+' <'+(msg.addr||'')+'> wrote:\n'+((msg.body||[]).join('\n'))};
 }
+// Single email-send suppression gate — shared by the quick composer AND the reply/forward composer so
+// the two can never drift (the Cc/Bcc divergence taught us to share ONE check). Accepts a string, a
+// comma-joined string, or an array; splits into individual addresses. hard = bounce/complaint/
+// do-not-contact-all/domain block → blocks the send; soft = marketing opt-out only → warn, allow a 1:1.
+function emailSendGate(recipInput){
+  const recips=[].concat(recipInput||[]).join(',').split(',').map(s=>s.trim()).filter(Boolean);
+  const sup=(typeof supEmailBlocked==='function');
+  const hardAddr=sup?recips.find(r=>supEmailBlocked(r,'transactional')):null;
+  const softAddr=(sup&&!hardAddr)?recips.find(r=>supEmailBlocked(r,'marketing')):null;
+  return {recips,hardAddr,softAddr,hardBlocked:!!hardAddr,softOptOut:!!softAddr};
+}
 function EmailMessage({m,expanded,onReply,onForward}){
   const [open,setOpen]=React.useState(!!expanded);
   const act=(fn)=>(e)=>{e.stopPropagation();fn&&fn(m);};
@@ -11119,8 +11130,11 @@ function EmailReplyComposer({target,onClose,onToast,onSend}){
   React.useEffect(()=>{const t=setTimeout(()=>taRef.current&&taRef.current.focus(),40);return()=>clearTimeout(t);},[]);
   React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose&&onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
   const ModeIcon=mode==='forward'?I.Forward:I.Reply;
-  const canSend=val.trim()&&(mode!=='forward'||to.trim());
-  const send=()=>{if(!canSend)return;onSend?onSend({mode,to:to.trim(),body:val,target}):(onToast&&onToast(mode==='forward'?('Message forwarded'+(to.trim()?' to '+to.trim():'')):'Reply sent to '+(fromName||to)));onClose&&onClose();};
+  // Compliance: same shared gate as the quick composer. Never send to a hard-suppressed address
+  // (bounce/complaint/do-not-contact); warn but allow a 1:1 reply to someone who only opted out of marketing.
+  const _gate=emailSendGate(to);
+  const canSend=val.trim()&&(mode!=='forward'||to.trim())&&!_gate.hardBlocked;
+  const send=()=>{if(_gate.hardBlocked){onToast&&onToast(_gate.hardAddr+' is on your suppression list — can’t email this address.');return;}if(!canSend)return;onSend?onSend({mode,to:to.trim(),body:val,target}):(onToast&&onToast(mode==='forward'?('Message forwarded'+(to.trim()?' to '+to.trim():'')):'Reply sent to '+(fromName||to)));onClose&&onClose();};
   const placeholder=mode==='forward'?'Add a message…':'Write your reply…';
   // Phase 3 suggested reply — context-aware draft from the message being replied to (simulated
   // heuristics; a real LLM swaps in behind the same button). Same keyword lenses as EmailSuggestBar.
@@ -11148,6 +11162,7 @@ function EmailReplyComposer({target,onClose,onToast,onSend}){
         <button onClick={onClose} title="Close (Esc)" className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors shrink-0"><I.X size={14}/></button>
       </div>
       <p className="text-[11px] text-white/40 mb-2 truncate"><span className="text-white/55">Subject:</span> {target.subject}</p>
+      {(_gate.hardBlocked||_gate.softOptOut)&&(<div className={['flex items-start gap-2 mb-2 px-3 py-2 rounded-lg text-[11.5px]',_gate.hardBlocked?'text-red-200 bg-red-500/[0.08] border border-red-500/20':'text-amber-200 bg-amber-500/[0.06] border border-amber-500/20'].join(' ')}><I.AlertTriangle size={12} className="shrink-0 mt-0.5"/><span>{_gate.hardBlocked?(_gate.hardAddr+' is on your suppression list — sending is blocked.'):(_gate.softAddr+' opted out of marketing email. Only send if this is a 1:1 or transactional message.')}</span></div>)}
       <div className="rounded-xl border border-white/[0.10] bg-white/[0.03] focus-within:border-brand-500/45 transition-all overflow-hidden">
         <textarea ref={taRef} value={val} onChange={e=>setVal(e.target.value)} placeholder={placeholder} className="w-full bg-transparent outline-none resize-none px-4 py-3 text-[13.5px] text-white placeholder:text-white/30 leading-relaxed" style={{minHeight:92,maxHeight:200}}/>
         {target.quoted&&(<div className="px-4 pb-2.5">
@@ -12769,12 +12784,8 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
   // Compliance: never email a hard-suppressed address (bounce/complaint/do-not-contact-all/domain block) —
   // checked across EVERY recipient (To + Cc + Bcc); warn (but allow) a 1:1 send to someone who only opted
   // out of MARKETING — a human reply is legitimate.
-  const _recips=[to,cc,bcc].join(',').split(',').map(s=>s.trim()).filter(Boolean);
-  const _sup=(typeof supEmailBlocked==='function');
-  const _hardAddr=_sup?_recips.find(r=>supEmailBlocked(r,'transactional')):null;
-  const _hardBlocked=!!_hardAddr;
-  const _softAddr=(_sup&&!_hardBlocked)?_recips.find(r=>supEmailBlocked(r,'marketing')):null;
-  const _softOptOut=!!_softAddr;
+  // Shared email-send gate (same helper the reply/forward composer uses — one check, can't drift).
+  const {hardAddr:_hardAddr,softAddr:_softAddr,hardBlocked:_hardBlocked,softOptOut:_softOptOut}=emailSendGate([to,cc,bcc]);
   const handleSend=()=>{if(_hardBlocked){window.__nrturToast&&window.__nrturToast(_hardAddr+' is on your suppression list — can’t email this address.','error');return;}setSending(true);setTimeout(()=>{setSending(false);onSent&&onSent({to,subject,body,scheduled:scheduledFor});close();},900);};
   const applyTpl=(t)=>{setSubject(t.subject);setBody(t.body);setTplOpen(false);};
   const SCHED=['In 1 hour','Tomorrow 9:00 AM','Tomorrow 1:00 PM','Monday 8:00 AM'];
