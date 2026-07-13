@@ -21292,6 +21292,9 @@ function schedSlotsFor(avail,date,duration){
   ranges.forEach(([s,e])=>{const start=schedParseTime(s),end=schedParseTime(e);for(let t=start;t+duration<=end;t+=30)out.push(schedFmtTime(t));});
   return out;
 }
+// Parse a "minimum notice" label (e.g. "4 hours", "1 day", "None") to milliseconds — used to drop slots that are
+// too soon (and, since it's measured from now, any already-passed times today).
+function schedNoticeMs(str){const s=String(str||'').toLowerCase();if(!s||/none|no /.test(s))return 0;const n=parseFloat(s)||0;if(/week/.test(s))return n*7*864e5;if(/day/.test(s))return n*864e5;if(/hour/.test(s))return n*36e5;if(/min/.test(s))return n*6e4;return 0;}
 function schedLocIcon(loc){if(/phone/i.test(loc))return I.Phone;if(/person/i.test(loc))return I.MapPin;return I.Globe;}
 // A booked meeting can be linked to a lead (inbound capture) or a contact (known person). Route accordingly.
 function mtgLink(m){if(m.recordKind==='lead'||(m.leadId!=null&&m.contactId==null))return{page:'lead-detail',id:m.leadId!=null?m.leadId:m.recordId,kind:'lead'};return{page:'contact-detail',id:m.contactId!=null?m.contactId:m.recordId,kind:'contact'};}
@@ -21683,9 +21686,14 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   // Types layer on top of the base availability without a second store:
   //  collective -> intersection of all hosts · round-robin (booker-choice) -> chosen host's free slots
   const slots=(()=>{if(!date)return [];
-    if(calType==='collective')return baseSlots.filter(s=>schedCollectiveFree(etHosts,date,s));
-    if(calType==='roundrobin'&&et.letBookerChoose&&chosenHost)return baseSlots.filter(s=>schedHostFreeAt(chosenHost,date,s));
-    return baseSlots;})();
+    let base=baseSlots;
+    if(calType==='collective')base=baseSlots.filter(s=>schedCollectiveFree(etHosts,date,s));
+    else if(calType==='roundrobin'&&et.letBookerChoose&&chosenHost)base=baseSlots.filter(s=>schedHostFreeAt(chosenHost,date,s));
+    // Enforce minimum notice: drop any slot sooner than now + the event's notice window (this also removes times that
+    // have already passed on "today" — the grid used to offer a slot 30 minutes from now). Booking rules honored, not decorative.
+    const _noticeMs=schedNoticeMs((et&&et.minNotice)||(avail&&avail.minNotice));const _cutoff=Date.now()+_noticeMs;
+    const _slotMs=(s)=>{const dt=new Date(date.getFullYear(),date.getMonth(),date.getDate(),0,0,0,0);dt.setMinutes(schedParseTime(s));return dt.getTime();};
+    return base.filter(s=>_slotMs(s)>=_cutoff);})();
   const rrAssignFor=(s)=>(et.letBookerChoose&&chosenHost)?chosenHost:schedRrAssign(etHosts,date,s,et.distribution,baseSlots.indexOf(s));
   const goMonth=(dir)=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()+dir,1));
   const copy=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://nrtur.app/book/alex/'+(et?et.slug:''));}catch(e){}addToast('Link copied ✓');};
