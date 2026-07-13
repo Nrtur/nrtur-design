@@ -3582,11 +3582,11 @@ function SignUpPage({goTo}){
             <h1 className="text-white text-[28px] font-bold mb-2">Create account</h1>
             <p className="text-white/55 text-[13px] mb-7">Join 1,200+ teams already selling with nrtur.</p>
             <div className="flex flex-col gap-3 mb-5">
-              <button className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
+              <button onClick={()=>{if(loading)return;setLoading(true);setTimeout(()=>{setLoading(false);window.__nrturToast&&window.__nrturToast('Account created with Google ✓','success');goTo('onboarding-1');},1100);}} className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 16 16"><path fill="#4285F4" d="M15.54 8.18c0-.57-.05-1.1-.14-1.62H8v3.07h4.24a3.62 3.62 0 0 1-1.57 2.38v1.98h2.54c1.48-1.37 2.33-3.38 2.33-5.8z"/><path fill="#34A853" d="M8 16c2.14 0 3.94-.71 5.25-1.93l-2.54-1.98C9.99 12.7 9.06 13 8 13a4.99 4.99 0 0 1-4.7-3.45H.68v2.05A7.99 7.99 0 0 0 8 16z"/><path fill="#FBBC05" d="M3.3 9.55A4.99 4.99 0 0 1 3.04 8c0-.54.09-1.07.26-1.55V4.4H.68A8 8 0 0 0 0 8c0 1.29.31 2.51.68 3.6l2.62-2.05z"/><path fill="#EA4335" d="M8 3.18c1.17 0 2.22.4 3.04 1.2l2.28-2.27A7.93 7.93 0 0 0 8 0 7.99 7.99 0 0 0 .68 4.4l2.62 2.05A4.99 4.99 0 0 1 8 3.18z"/></svg>
                 Continue with Google
               </button>
-              <button className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
+              <button onClick={()=>{if(loading)return;setLoading(true);setTimeout(()=>{setLoading(false);window.__nrturToast&&window.__nrturToast('Account created with Microsoft ✓','success');goTo('onboarding-1');},1100);}} className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 16 16"><rect width="7.5" height="7.5" fill="#00A4EF"/><rect x="8.5" width="7.5" height="7.5" fill="#FFB900"/><rect y="8.5" width="7.5" height="7.5" fill="#00B4F0"/><rect x="8.5" y="8.5" width="7.5" height="7.5" fill="#7FBA00"/></svg>
                 Continue with Microsoft
               </button>
@@ -3654,8 +3654,8 @@ function SignInPage({goTo}){
           <p className="text-white/55 text-[13px] mb-7">Sign in to your workspace.</p>
           {banner&&<AuthErrBanner>Incorrect email or password.</AuthErrBanner>}
           <div className="flex flex-col gap-3 mb-5">
-            <button className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">Continue with Google</button>
-            <button className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">Continue with Microsoft</button>
+            <button onClick={()=>{if(loading)return;setLoading(true);setTimeout(()=>{setLoading(false);window.__nrturToast&&window.__nrturToast('Signed in with Google 👋','success');goTo('dashboard');},1100);}} className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">Continue with Google</button>
+            <button onClick={()=>{if(loading)return;setLoading(true);setTimeout(()=>{setLoading(false);window.__nrturToast&&window.__nrturToast('Signed in with Microsoft 👋','success');goTo('dashboard');},1100);}} className="w-full px-4 py-2.5 rounded-xl border border-white/[0.10] text-[13px] font-medium text-white/75 hover:text-white hover:bg-white/[0.04] transition-all flex items-center justify-center gap-2">Continue with Microsoft</button>
           </div>
           <div className="relative mb-5"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.08]"/></div><div className="relative flex justify-center"><span className="px-2 text-[11px] text-white/35" style={{background:'rgba(9,9,26,0.85)'}}>or</span></div></div>
           <div className="flex flex-col gap-3 mb-2">
@@ -4009,14 +4009,14 @@ function OnboardingPage({step,goTo}){
                     {step===4&&(<div className="flex flex-col gap-4">
                       <div>
                         <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2.5">Add contacts manually</p>
-                        <RecordSheet variant="panel" type="contact" onToast={()=>{}} onCreateRows={(rows)=>{const recs=rows.map(r=>arBuildFromSheet('contact',r));if(recs.length)crm.setContacts(a=>[...recs,...a]);}} onCreate={()=>goTo(next)}/>
+                        <RecordSheet variant="panel" type="contact" onToast={(m)=>window.__nrturToast&&window.__nrturToast(m,'success')} onCreateRows={(rows)=>{const recs=rows.map(r=>arBuildFromSheet('contact',r));if(recs.length)crm.setContacts(a=>[...recs,...a]);}} onCreate={()=>goTo(next)}/>
                       </div>
                       <div className="flex items-center gap-3"><div className="flex-1 h-px bg-white/[0.06]"/><span className="text-[11px] text-white/35">or bring them in</span><div className="flex-1 h-px bg-white/[0.06]"/></div>
                       <div className="grid grid-cols-2 gap-3">
                         <button onClick={()=>setCsvOpen(true)} className="flex items-center gap-2.5 p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-white/[0.16] hover:bg-white/[0.05] transition-all text-left"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'#22d3ee22',color:'#22d3ee',border:'1px solid #22d3ee40'}}><I.Upload size={15}/></span><div><p className="text-[13px] font-medium text-white">Import from CSV</p><p className="text-[11px] text-white/45">Upload a spreadsheet</p></div></button>
                         <button onClick={()=>goTo(next)} className="flex items-center gap-2.5 p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:border-white/[0.16] hover:bg-white/[0.05] transition-all text-left"><span className="w-8 h-8 rounded-lg bg-white/[0.05] text-white/50 flex items-center justify-center shrink-0"><I.UserPlus size={15}/></span><div><p className="text-[13px] font-medium text-white">Add manually later</p><p className="text-[11px] text-white/45">Skip for now</p></div></button>
                       </div>
-                      {csvOpen&&<CsvImportModal close={()=>setCsvOpen(false)} onToast={()=>{}}/>}
+                      {csvOpen&&<BulkImportWizard object='contact' close={()=>setCsvOpen(false)} onToast={(m)=>window.__nrturToast&&window.__nrturToast(m,'success')}/>}
                     </div>)}
                                         {step===5&&(<div className="flex flex-col gap-4"><div className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all min-w-0"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendInvite();}} onPaste={e=>{const t=(e.clipboardData||window.clipboardData).getData('text');if(t&&/[\s,;]/.test(t.trim())){e.preventDefault();addInvites(t,inviteRole);setInviteEmail('');}}} placeholder="teammate@company.com — paste several at once" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><div className="w-[150px] shrink-0"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><button onClick={sendInvite} disabled={!inviteEmail.trim()} className={['inline-flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all shrink-0',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Plus size={14} stroke={2.4}/>Send invite</button></div>{sentInvites.length>0&&<div className="flex flex-col gap-2">{sentInvites.map((inv,i)=>(<div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.07]"><span className="w-7 h-7 rounded-full bg-brand-500/20 text-brand-200 flex items-center justify-center text-[11px] font-semibold shrink-0">{inv.email[0].toUpperCase()}</span><span className="text-[13px] text-white truncate flex-1 min-w-0">{inv.email}</span><RoleSelect compact value={inv.role} onChange={(r)=>setSentInvites(a=>a.map((x,j)=>j===i?{...x,role:r}:x))}/><button onClick={()=>setSentInvites(a=>a.filter((_,j)=>j!==i))} className="text-white/30 hover:text-red-300 transition-colors shrink-0"><I.X size={13}/></button></div>))}</div>}<div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><span className="flex items-center gap-2 min-w-0"><I.Mail size={13} className="text-white/40 shrink-0"/><span className="text-[12px] text-white/50 truncate">They'll get an email to join your workspace.</span></span>{sentInvites.length>0&&<span className="text-[12px] font-medium text-brand-300 shrink-0">{sentInvites.length} invite{sentInvites.length!==1?'s':''} queued</span>}</div></div>)}
                     {step===6&&(<div className="flex flex-col gap-5"><div className="flex justify-center"><span className="w-16 h-16 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/25 flex items-center justify-center"><I.Check size={30} stroke={2.4} className="text-emerald-300"/></span></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[{Icon:I.LayoutDash,label:'Go to Dashboard',sub:'See your workspace',go:'dashboard'},{Icon:I.Upload,label:'Import contacts',sub:'Bring in your list',go:'contacts'},{Icon:I.UserPlus,label:'Invite your team',sub:'Add teammates',go:'settings-team'}].map(c=>(<button key={c.label} onClick={()=>goTo(c.go)} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-white/[0.05] transition-all p-4 text-center flex flex-col items-center gap-2"><span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center"><c.Icon size={17}/></span><span className="text-[13px] font-medium text-white">{c.label}</span><span className="text-[11px] text-white/45">{c.sub}</span></button>))}</div></div>)}
@@ -7048,7 +7048,7 @@ function ContactsPage({goTo,nav}){
           rightSlot={<>
             {(effCanObject('Contacts','create')||effCanExport())&&<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
               {effCanObject('Contacts','create')&&<button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>}
-              {effCanExport()&&<button onClick={()=>showToast('Exported '+list.length+' contacts to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
+              {effCanExport()&&<button onClick={()=>showToast('Exported '+exportListCSV('contact',list)+' contacts to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
             </div>}
             {effCanObject('Contacts','create')&&<NewContactSplitButton goTo={goTo} onImport={()=>setImportModal(true)}/>}
           </>} noSearch/>
@@ -8023,7 +8023,11 @@ function ContactDetailPage({goTo,nav}){
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const [showAllDeals,setShowAllDeals]=React.useState(false); // volume: deals panel shows 5, expandable
   const [dealsOpen,setDealsOpen]=React.useState(false); // panel collapsed by default — header count tells the story
-  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);setNbaDismissed(false);},[c&&c.id]);
+  // Re-sync per-contact local state whenever the user switches records IN PLACE (RecordSwitcher prev/next, the
+  // record rail, arrow keys) — the page is not remounted, so anything seeded from props once (dnc) would otherwise
+  // stick to the previously viewed contact. dnc drives the DNC banner + Email/Call/SMS gating, so a stale value is
+  // a real compliance exposure in both directions. Resync it here alongside the other per-record UI flags.
+  React.useEffect(()=>{setShowAllDeals(false);setDealsOpen(false);setNbaDismissed(false);setDnc(c&&c.dnc);},[c&&c.id]);
   const {addItem:calAddItem}=React.useContext(CalendarContext);
   const [schedOpen,setSchedOpen]=React.useState(false);
   const [tab,setTab]=React.useState('all');
@@ -9992,7 +9996,7 @@ function CompaniesPage({goTo,nav}){
           rightSlot={<>
             {(effCanObject('Companies','create')||effCanExport())&&<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
               {effCanObject('Companies','create')&&<button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>}
-              {effCanExport()&&<button onClick={()=>showToast('Exported '+list.length+' companies to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
+              {effCanExport()&&<button onClick={()=>showToast('Exported '+exportListCSV('company',list)+' companies to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
             </div>}
             {effCanObject('Companies','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('company'):goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Company</button>}
           </>} noSearch/>
@@ -10678,7 +10682,7 @@ function LeadsPage({goTo,nav}){
           rightSlot={<>
             {(effCanObject('Leads','create')||effCanExport())&&<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
               {effCanObject('Leads','create')&&<button onClick={()=>setImportModal(true)} title="Import CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Upload size={13}/>Import</button>}
-              {effCanExport()&&<button onClick={()=>showToast('Exported '+list.length+' leads to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
+              {effCanExport()&&<button onClick={()=>showToast('Exported '+exportListCSV('lead',list)+' leads to CSV')} title="Export CSV" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"><I.Download size={13}/>Export</button>}
             </div>}
             {effCanObject('Leads','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('lead'):goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Lead</button>}
           </>} noSearch/>
@@ -10752,6 +10756,11 @@ function LeadDetailPage({goTo,nav}){
   const l=leads.find(x=>x.id===nav)||leads[0];
   const actCtx={contacts:crm.contacts,companies:crm.companies,deals:allDeals(),leads:crm.leads,invoices:crm.payInvoices};
   const [status,setStatusState]=React.useState(l.status);
+  const [nbaDismissed,setNbaDismissed]=React.useState(false); // "Recommended next action" is dismissible per lead
+  // Resync per-lead local state on an IN-PLACE record switch (RecordSwitcher prev/next / arrow keys) — the page is
+  // not remounted, so status (drives the hero pill) and the dismissed flag would otherwise stick to the previously
+  // viewed lead. Same class of bug the contact DNC resync fixes.
+  React.useEffect(()=>{setNbaDismissed(false);setStatusState(l&&l.status);},[l&&l.id]);
   const extra=(crm.activities||[]).filter(a=>a.subjectType==='lead'&&a.subjectId===(l||{}).id); // R3: persisted, keyed by record
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('lead',(l||{}).id,_a[0]);};
   const addNote=(text)=>setExtra(x=>[mkAct('note',{ts:0,by:l.owner||'AM',title:'Note added',body:text}),...x]);
@@ -10823,17 +10832,17 @@ function LeadDetailPage({goTo,nav}){
               {l.qual&&<QualificationCard qual={l.qual} goTo={goTo}/>}
             </div>
                         <div className="flex flex-col gap-5">
-              <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5">
+              {!nbaDismissed&&<div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5">
                 <div className="flex items-start gap-3.5">
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25 flex items-center justify-center shrink-0"><I.Sparkles size={16}/></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-medium text-emerald-300 uppercase tracking-[0.14em]">Recommended next action</p>
                     <p className="text-[14px] font-medium text-white mt-1">{l.converted?'Lead converted':(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||'')?'Lead disqualified':(((l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||l.qual)?'Ready to convert':'Qualify before converting'))}</p>
                     <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{l.converted?(l.name+' is now a Contact'+(l.convCompany?', Company':'')+(l.convDeal?' and Deal':'')+'. Jump to the new records below.'):(()=>{const _facts=[l.score!=null?(l.score+'/100 score'):null,l.status?String(l.status).toLowerCase():null,l.source?('via '+l.source):null].filter(Boolean).slice(0,2).join(' · ');const _f=_facts?(' ('+_facts+')'):'';if(/disqualif|unqualif|\blost\b|\bdead\b/i.test(l.status||''))return l.name+' was disqualified'+_f+(l.disqualifyReason?(' — '+l.disqualifyReason):'')+'. No action needed unless they re-engage.'+(l.disqualifyNote?(' Note: '+l.disqualifyNote):'');const _ready=(l.score!=null&&l.score>=70)||/\bqualified\b/i.test(l.status||'')||!!l.qual;return _ready?(l.name+' looks ready'+_f+'. Convert to a contact'+(l.estValue?(' and open the '+l.estValue+' opportunity'):'')+' before it cools.'):(l.name+' isn’t qualified yet'+_f+'. Reach out to qualify before converting.');})()}</p>
-                    {l.converted?(<div className="flex items-center gap-2 mt-3 flex-wrap">{l.convContact&&<button onClick={()=>goTo('contact-detail',l.convertedToContactId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.UserPlus size={12}/>{l.convContact}</button>}{l.convCompany&&<button onClick={()=>goTo('company-detail',l.convertedToCompanyId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.Building size={12}/>{l.convCompany}</button>}{l.convDeal&&<button onClick={()=>goTo('deal-detail',l.convertedToDealId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.GitBranch size={12}/>{l.convDeal}</button>}</div>):(<div className="flex items-center gap-2 mt-3"><button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/90 hover:bg-emerald-400 text-[#04140d] shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={12}/>Convert now</button><button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Email lead</button><button className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>)}
+                    {l.converted?(<div className="flex items-center gap-2 mt-3 flex-wrap">{l.convContact&&<button onClick={()=>goTo('contact-detail',l.convertedToContactId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.UserPlus size={12}/>{l.convContact}</button>}{l.convCompany&&<button onClick={()=>goTo('company-detail',l.convertedToCompanyId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.Building size={12}/>{l.convCompany}</button>}{l.convDeal&&<button onClick={()=>goTo('deal-detail',l.convertedToDealId)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/[0.05] border border-white/[0.10] text-brand-300 hover:bg-white/[0.08] transition-all"><I.GitBranch size={12}/>{l.convDeal}</button>}</div>):(<div className="flex items-center gap-2 mt-3"><button onClick={()=>setConvertOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/90 hover:bg-emerald-400 text-[#04140d] shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-all"><I.ArrowRight size={12}/>Convert now</button><button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Email lead</button><button onClick={()=>setNbaDismissed(true)} className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>)}
                   </div>
                 </div>
-              </div>
+              </div>}
               <RecordTasks recId={l.id} match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onEmail={canEditLead?()=>setComposeOpen(true):undefined} onLogCall={canEditLead?()=>setCallModal(true):undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
@@ -11121,16 +11130,20 @@ function EmailMessage({m,expanded,onReply,onForward}){
     </article>
   );
 }
-function EmailReplyComposer({target,onClose,onToast,onSend}){
+function EmailReplyComposer({target,onClose,onToast,onSend,onSaveDraft}){
   const mode=target.mode;
   const fromName=target.msg?target.msg.from:'';
   const firstName=(fromName||'').split(' ')[0]||'there';
   const [val,setVal]=React.useState('');
   const [to,setTo]=React.useState(target.to||'');
   const [showQuote,setShowQuote]=React.useState(false);
+  const [askDiscard,setAskDiscard]=React.useState(false);
   const taRef=React.useRef(null);
+  const valRef=React.useRef('');valRef.current=val;
+  // Close guard: if there's typed text, ask before discarding so a written reply isn't silently lost.
+  const attemptClose=()=>{if(valRef.current.trim())setAskDiscard(true);else onClose&&onClose();};
   React.useEffect(()=>{const t=setTimeout(()=>taRef.current&&taRef.current.focus(),40);return()=>clearTimeout(t);},[]);
-  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape')onClose&&onClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape'){if(valRef.current.trim())setAskDiscard(true);else onClose&&onClose();}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[onClose]);
   const ModeIcon=mode==='forward'?I.Forward:I.Reply;
   // Compliance: same shared gate as the quick composer. Never send to a hard-suppressed address
   // (bounce/complaint/do-not-contact); warn but allow a 1:1 reply to someone who only opted out of marketing.
@@ -11161,8 +11174,9 @@ function EmailReplyComposer({target,onClose,onToast,onSend}){
             ? <input value={to} onChange={e=>setTo(e.target.value)} placeholder="recipient@email.com" className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.10] rounded-md px-2 py-1 text-[12px] text-white placeholder:text-white/30 outline-none focus:border-brand-500/45"/>
             : <span className="text-white font-medium truncate" title={to}>{fromName} <span className="text-white/45 font-normal">&lt;{to}&gt;</span></span>}
         </div>
-        <button onClick={onClose} title="Close (Esc)" className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors shrink-0"><I.X size={14}/></button>
+        <button onClick={attemptClose} title="Close (Esc)" className="w-7 h-7 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors shrink-0"><I.X size={14}/></button>
       </div>
+      {askDiscard&&(<div className="flex items-center justify-between gap-3 mb-2 px-3 py-2 rounded-lg bg-amber-500/[0.08] border border-amber-500/25 text-[11.5px]"><span className="text-amber-200">Discard this message? Your text will be lost.</span><div className="flex items-center gap-2 shrink-0"><button onClick={()=>setAskDiscard(false)} className="px-2.5 py-1 rounded-md text-[11px] font-medium text-white/70 hover:text-white bg-white/[0.06]">Keep editing</button><button onClick={()=>{setAskDiscard(false);onClose&&onClose();}} className="px-2.5 py-1 rounded-md text-[11px] font-medium text-white bg-red-500 hover:bg-red-400">Discard</button></div></div>)}
       <p className="text-[11px] text-white/40 mb-2 truncate"><span className="text-white/55">Subject:</span> {target.subject}</p>
       {(_gate.hardBlocked||_gate.softOptOut)&&(<div className={['flex items-start gap-2 mb-2 px-3 py-2 rounded-lg text-[11.5px]',_gate.hardBlocked?'text-red-200 bg-red-500/[0.08] border border-red-500/20':'text-amber-200 bg-amber-500/[0.06] border border-amber-500/20'].join(' ')}><I.AlertTriangle size={12} className="shrink-0 mt-0.5"/><span>{_gate.hardBlocked?(_gate.hardAddr+' is on your suppression list — sending is blocked.'):(_gate.softAddr+' opted out of marketing email. Only send if this is a 1:1 or transactional message.')}</span></div>)}
       <div className="rounded-xl border border-white/[0.10] bg-white/[0.03] focus-within:border-brand-500/45 transition-all overflow-hidden">
@@ -11173,7 +11187,7 @@ function EmailReplyComposer({target,onClose,onToast,onSend}){
         </div>)}
         <div className="flex items-center justify-between px-2.5 py-2 border-t border-white/[0.06]">
           <div className="flex items-center gap-0.5"><button title="Attach" onClick={()=>onToast&&onToast('Attach a file')} className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.Paperclip size={14}/></button><button title="Image" onClick={()=>onToast&&onToast('Insert image')} className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.Image size={14}/></button><button title="Emoji" onClick={()=>onToast&&onToast('Pick an emoji')} className="w-8 h-8 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] flex items-center justify-center transition-colors"><I.Smile size={14}/></button><div className="w-px h-5 bg-white/[0.08] mx-1"/><button title="AI draft" onClick={aiDraft} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 transition-colors"><I.Sparkles size={11} stroke={2.2}/> AI draft</button></div>
-          <div className="flex items-center gap-2"><button onClick={()=>onToast&&onToast('Draft saved')} className="text-[12px] text-white/50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors">Save draft</button><button disabled={!canSend} onClick={send} className={['inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all',canSend?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>{mode==='forward'?'Forward':'Send'}</button></div>
+          <div className="flex items-center gap-2"><button onClick={()=>{if(!val.trim()){onToast&&onToast('Nothing to save yet');return;}onSaveDraft?onSaveDraft({mode,to:to.trim(),body:val,target}):(onToast&&onToast('Draft saved'));onClose&&onClose();}} className="text-[12px] text-white/50 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors">Save draft</button><button disabled={!canSend} onClick={send} className={['inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all',canSend?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>{mode==='forward'?'Forward':'Send'}</button></div>
         </div>
       </div>
     </div>
@@ -11219,7 +11233,7 @@ function EmailSuggestBar({email,onReply,onToast,dismissedRef}){
       <button onClick={markGone} title="Dismiss suggestions" className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={11}/></button>
     </div>);
 }
-function EmailDetailPane({email,goTo,onArchive,onDelete,onStar,onTag,onToast,onSendReply,onPatchEmail}){
+function EmailDetailPane({email,goTo,onArchive,onDelete,onStar,onTag,onToast,onSendReply,onSaveDraft,onPatchEmail}){
   // Phase 2 unknown-sender branch: dedupe against contacts/leads by address first (never mint a
   // duplicate), else create a LEAD from the sender (same terminal as every other capture path).
   const _cd=React.useContext(CrmDataContext);
@@ -11306,7 +11320,7 @@ function EmailDetailPane({email,goTo,onArchive,onDelete,onStar,onTag,onToast,onS
         <div className="mt-2 flex items-center gap-3 text-[11px] text-white/45 flex-wrap"><span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-400"/>Inbox</span><span className="text-white/25">·</span><span>{hasThread?email.thread.length:1} message{hasThread&&email.thread.length>1?'s':''}</span><span className="text-white/25">·</span><span>Last activity {email.time}</span></div>
         <div className="mt-6 flex flex-col gap-4">{hasThread?email.thread.map((m,i)=><EmailMessage key={i} m={m} expanded={i===0} onReply={(mm)=>openComposer('reply',mm)} onForward={(mm)=>openComposer('forward',mm)}/>):<EmailMessage m={fallback} expanded onReply={(mm)=>openComposer('reply',mm)} onForward={(mm)=>openComposer('forward',mm)}/>}</div>
       </div></div>
-      {replyTarget&&<EmailReplyComposer target={replyTarget} onClose={()=>setReplyTarget(null)} onToast={onToast} onSend={onSendReply}/>}
+      {replyTarget&&<EmailReplyComposer target={replyTarget} onClose={()=>setReplyTarget(null)} onToast={onToast} onSend={onSendReply} onSaveDraft={onSaveDraft}/>}
     </section>
   );
 }
@@ -11825,6 +11839,15 @@ function InboxPage({goTo,nav}){
     });
     showToast(mode==='forward'?'Message forwarded':'Reply sent');
   };
+  // Save a reply/forward as a draft — lands in the Drafts folder (folder counts are computed live), so the
+  // "Draft saved" toast is honest and the written text isn't lost. Was previously a toast-only no-op.
+  const onSaveDraft=({mode,to,body,target})=>{
+    const base=((target&&target.subject)||'').replace(/^(\s*(re|fwd):\s*)+/i,'');
+    const draftMsg={from:'Alex Morgan',addr:'alex@bloom.co',avatar:'AM',color:'#8b5cf6',date:'Today · Draft',body:(body||'').split('\n')};
+    const cur=emails.find(e=>e.id===selectedId)||{};
+    const d={id:Date.now(),folder:'drafts',unread:false,starred:false,from:'Alex Morgan',fromShort:to?('To: '+to):'Draft',avatar:'AM',color:'#8b5cf6',subject:(mode==='forward'?'Fwd: ':'Re: ')+base,preview:(body||'').replace(/\n+/g,' ').slice(0,120)||'(no content)',time:'Now',date:'Today',isDraft:true,labelKey:cur.labelKey,contact:cur.contact,linkedDeal:cur.linkedDeal,contactId:cur.contactId,dealId:cur.dealId,thread:[draftMsg]};
+    setEmails(es=>[d,...es]);showToast('Draft saved to Drafts');
+  };
   // Compose new: create a Sent (or Scheduled) email (Part C).
   const onSentNew=({to,subject,body,scheduled})=>{
     const newMsg={from:'Alex Morgan',addr:'alex@bloom.co',avatar:'AM',color:'#8b5cf6',date:'Today · '+(scheduled||'Now'),body:(body||'').split('\n')};
@@ -11959,7 +11982,7 @@ function InboxPage({goTo,nav}){
         {tab==='email'&&(mailSynced?(<div className="flex-1 flex min-h-0 crm-split">
           <EmailFolderRail active={folder} setActive={setFolder} goTo={goTo} onToast={showToast} emails={emails}/>
           <EmailListPane emails={emails} selectedId={selectedId} setSelectedId={setSelectedId} onToast={showToast} folder={folder}/>
-          <EmailDetailPane email={email} goTo={goTo} onArchive={()=>moveSelected('archived','Email archived')} onDelete={()=>moveSelected('trash','Email deleted')} onStar={onStar} onTag={onTag} onToast={showToast} onSendReply={onSendReply} onPatchEmail={(id,patch)=>setEmails(es=>es.map(e=>e.id===id?{...e,...patch}:e))}/>
+          <EmailDetailPane email={email} goTo={goTo} onArchive={()=>moveSelected('archived','Email archived')} onDelete={()=>moveSelected('trash','Email deleted')} onStar={onStar} onTag={onTag} onToast={showToast} onSendReply={onSendReply} onSaveDraft={onSaveDraft} onPatchEmail={(id,patch)=>setEmails(es=>es.map(e=>e.id===id?{...e,...patch}:e))}/>
         </div>):inboxConnect)}
         {tab==='sms'&&(<div className="flex-1 flex min-h-0 crm-split">
           <div className="w-[300px] shrink-0 border-r border-white/[0.05] overflow-y-auto scroll-area crm-pane-list">
@@ -13672,7 +13695,14 @@ function smsFirstLink(text){const m=String(text||'').match(SMS_LINK_RE);return m
 function smsHasLink(text){return !!smsFirstLink(text);}
 function smsLinkCode(seed){let h=0;const s=String(seed||'')+'·';for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;}return h.toString(36).slice(0,6).padEnd(5,'k');}
 function smsWrappedLink(seed){return 'nrtur.link/'+smsLinkCode(seed);}
-function SMSTemplateEditModal({template,close}){
+// Upsert an SMS template into the shared store (in-place mutation, mirrors EmailTemplatesPage's applyEdit).
+// SMS_TEMPLATES is mutated so a saved template survives navigation; callers force a re-render after.
+function smsTplUpsert(rec){
+  const i=SMS_TEMPLATES.findIndex(t=>t.id===rec.id);
+  if(rec.id!=null&&i>=0){SMS_TEMPLATES[i]={...SMS_TEMPLATES[i],...rec};return SMS_TEMPLATES[i];}
+  const id=Math.max(0,...SMS_TEMPLATES.map(t=>t.id||0))+1;const nt={id,uses:0,favorite:false,...rec};SMS_TEMPLATES.unshift(nt);return nt;
+}
+function SMSTemplateEditModal({template,close,onSave}){
   const isNew=!template?.id;
   const [name,setName]=React.useState(template?.name||'');
   const [category,setCategory]=React.useState(template?.category||'follow-up');
@@ -13696,12 +13726,13 @@ function SMSTemplateEditModal({template,close}){
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={close} disabled={!name.trim()||!body.trim()} className={['ml-auto px-5 py-2.5 rounded-xl text-[13px] font-semibold border-none transition-all',(name.trim()&&body.trim())?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>{isNew?'Create template':'Save changes'}</button></div>
+        <div className="flex items-center gap-3 px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(!(name.trim()&&body.trim()))return;if(onSave)onSave({...(template&&template.id?{id:template.id}:{}),name:name.trim(),category,body:body.trim()});else close();}} disabled={!name.trim()||!body.trim()} className={['ml-auto px-5 py-2.5 rounded-xl text-[13px] font-semibold border-none transition-all',(name.trim()&&body.trim())?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}>{isNew?'Create template':'Save changes'}</button></div>
       </div>
     </div>
   );
 }
 function SMSTemplatesPage({goTo}){
+  const [,forceRender]=React.useReducer(x=>x+1,0);
   const readOnly=!settingsIsAdmin(); // SMS templates are a workspace asset — admin-managed
   const [search,setSearch]=React.useState('');
   const [cat,setCat]=React.useState('all');
@@ -13744,7 +13775,7 @@ function SMSTemplatesPage({goTo}){
         </div>
         <AppFooter note={`${SMS_TEMPLATES.length} templates`}/>
       </div>
-      {editing&&<SMSTemplateEditModal template={editing} close={()=>setEditing(null)}/>}
+      {editing&&<SMSTemplateEditModal template={editing} close={()=>setEditing(null)} onSave={(rec)=>{smsTplUpsert(rec);forceRender();setEditing(null);window.__nrturToast&&window.__nrturToast('Template saved.','success');}}/>}
     </div>
   );
 }
@@ -14697,6 +14728,23 @@ function ieObjMeta(object){return {
 function ieCurrentUserName(){const m=(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).find(u=>u.avatar===CURRENT_USER_CODE);return m?m.name:'You';}
 function ieRecName(r){return r.name||((r.first||'')+' '+(r.last||'')).trim()||r.email||r.domain||r.company||'Record';}
 function ieExportVal(r,label){const tags=(r.tags||r.dealTags||[]).join(';');const map={'First name':r.first,'Last name':r.last,'Name':r.name,'Primary email':r.email,'Email':r.email,'Phone':r.phone,'Company':r.co||r.company,'Company name':r.company||r.co,'Job title':r.title,'Owner':r.owner,'Status':r.status||r.cstatus,'Source':r.source,'Tags':tags,'Domain':r.domain,'Website':r.website||r.domain,'Industry':r.industry,'Company type':r.type,'Employees size':r.size,'Annual revenue':r.annualRevenue,'Location / HQ':r.loc,'Amount':r.value,'Stage':r.dStage,'Pipeline':r.pipeline,'Expected close date':r.closeDate,'Primary contact':r.primaryContact,'Next action':r.nextAction,'Estimated value':r.estValue};return map[label]!=null?map[label]:'';}
+// Default export columns per object — mirrors the labels ieExportVal understands, so a list-page "Export"
+// builds the same CSV the Import/Export settings page produces. Keeps every Export button honest: the file
+// actually downloads instead of firing a toast that lies.
+const IE_EXPORT_FIELDS={
+  contact:['Name','Email','Phone','Company','Job title','Status','Owner','Tags'],
+  lead:['Name','Email','Phone','Company','Status','Source','Owner','Tags'],
+  company:['Name','Domain','Industry','Company type','Location / HQ','Owner','Tags'],
+  deal:['Name','Company','Amount','Stage','Pipeline','Owner','Tags'],
+};
+function exportListCSV(object,rows){
+  const fields=IE_EXPORT_FIELDS[object]||['Name'];
+  const lines=[fields.map(csvEscape).join(',')];
+  (rows||[]).forEach(r=>lines.push(fields.map(f=>csvEscape(ieExportVal(r,f))).join(',')));
+  const noun=(ieObjMeta(object)||{}).noun||object;
+  downloadCSV(noun+'-export.csv',lines.join('\n'));
+  return (rows||[]).length;
+}
 const IMPORT_HISTORY_SEED=[
   {id:'imp-seed-1',ts:'2026-06-12T09:24:00',object:'lead',filename:'webinar-signups.csv',count:128,tag:'import-2026-06-12',by:'Alex Morgan',status:'completed',dup:'skip',owner:'Auto',sample:['Dana Whitfield','Mark Liu','Priya Raman','Tom Becker','Lena Ortiz','Carl Webb']},
   {id:'imp-seed-2',ts:'2026-06-08T15:40:00',object:'contact',filename:'tradeshow-booth.csv',count:54,tag:'import-2026-06-08',by:'Sarah Chen',status:'completed',dup:'update',owner:'Sarah Chen',sample:['Greg Adams','Nina Park','Owen Cole','Maya Singh']},
@@ -15414,7 +15462,7 @@ function SettingsBillingPage({goTo}){
   }
   return(
     <SettingsShell active="settings-billing" goTo={goTo} subtitle="Manage your plan, payment method, and invoices.">
-      {billingState==='payment-failed'&&(<div className="rounded-2xl border border-red-500/30 bg-red-500/[0.10] px-5 py-3.5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-red-500/20 text-red-300 flex items-center justify-center shrink-0"><I.Ban size={15}/></div><div className="flex-1 min-w-0"><p className="text-[13px] font-medium text-red-200">Payment failed — your card was declined on June 1, 2026.</p><p className="text-[12px] text-red-300/80 mt-0.5">Update your payment method by June 8 to avoid account suspension.</p></div><button className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-red-500 hover:bg-red-400 transition-all">Fix now</button></div>)}
+      {billingState==='payment-failed'&&(<div className="rounded-2xl border border-red-500/30 bg-red-500/[0.10] px-5 py-3.5 flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-red-500/20 text-red-300 flex items-center justify-center shrink-0"><I.Ban size={15}/></div><div className="flex-1 min-w-0"><p className="text-[13px] font-medium text-red-200">Payment failed — your card was declined on June 1, 2026.</p><p className="text-[12px] text-red-300/80 mt-0.5">Update your payment method by June 8 to avoid account suspension.</p></div><button onClick={()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Payment updated — your subscription is active again.','success');}} className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-red-500 hover:bg-red-400 transition-all">Fix now</button></div>)}
 
       {billingState==='active'&&(<>
         {/* 1 · Current plan */}
@@ -15430,7 +15478,7 @@ function SettingsBillingPage({goTo}){
               </div>
               <div className="flex flex-col items-end gap-3">
                 <div className="flex flex-col items-end gap-1.5"><BillingCycleToggle cycle={cycle} setCycle={setCycle}/><span className="text-[11px] text-emerald-300/90">{cycle==='annual'?'You’re saving 17% with annual billing':'Save 17% — switch to annual'}</span></div>
-                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">Change plan<I.ArrowRight size={13} stroke={2.4}/></button>
+                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>window.__nrturToast&&window.__nrturToast('Pro is the only paid plan in this prototype — use the monthly/annual toggle to change billing.','success')}>Change plan<I.ArrowRight size={13} stroke={2.4}/></button>
               </div>
             </div>
             <div className="mt-5 pt-5 border-t border-white/[0.05] grid grid-cols-2 md:grid-cols-4 gap-3">{['Up to 5 seats','25,000 contacts','Unlimited pipelines','Advanced automations'].map(f=>(<div key={f} className="flex items-center gap-2 text-[12px] text-white/65"><span className="w-4 h-4 rounded-full bg-brand-500/15 text-brand-300 flex items-center justify-center shrink-0"><I.Check size={9} stroke={3}/></span>{f}</div>))}</div>
@@ -15448,7 +15496,7 @@ function SettingsBillingPage({goTo}){
         </div>
         {/* 3 · Payment method */}
         <div className={BILLING_CARD}>
-          <div className="flex items-center justify-between mb-5"><p className={BILLING_EYE}>Payment method</p><button className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Update payment method</button></div>
+          <div className="flex items-center justify-between mb-5"><p className={BILLING_EYE}>Payment method</p><button onClick={()=>window.__nrturToast&&window.__nrturToast('Card updates open Stripe’s secure form (not simulated in this prototype).','success')} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Update payment method</button></div>
           <BillingCardVisual/>
           <div className="mt-4 flex items-start gap-2"><I.ShieldCheck size={13} stroke={2.2} className="text-emerald-400 mt-0.5 shrink-0"/><p className="text-[11px] text-white/45 leading-relaxed">Secured by Stripe. Card details are never stored on our servers.</p></div>
         </div>
@@ -15522,7 +15570,7 @@ function SettingsBillingPage({goTo}){
         <div className={BILLING_CARD}>
           <p className={BILLING_EYE+' mb-1'}>Add a payment method</p><p className="text-white/45 text-[12px] mb-5">You won't be charged until your trial ends.</p>
           <StripePayNotice/>
-          <div className="mt-5 flex items-center justify-between gap-4 flex-wrap"><div><p className="text-[12px] text-white/45">No charge until <span className="text-white/80 font-medium">June 11, 2026</span></p></div><button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">Start Pro — ${seatPrice}/mo<I.ArrowRight size={13} stroke={2.4}/></button></div>
+          <div className="mt-5 flex items-center justify-between gap-4 flex-wrap"><div><p className="text-[12px] text-white/45">No charge until <span className="text-white/80 font-medium">June 11, 2026</span></p></div><button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Welcome to Pro 🎉','success');}}>Start Pro — ${seatPrice}/mo<I.ArrowRight size={13} stroke={2.4}/></button></div>
         </div>
       </>)}
 
@@ -15539,7 +15587,7 @@ function SettingsBillingPage({goTo}){
           <p className={BILLING_EYE+' mb-3'}>Payment details</p>
           <div className="flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 mb-5"><div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><I.CreditCard size={15}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-amber-100">No payment method on file</p><p className="text-[11.5px] text-amber-300/70">Add a card to lift the read-only lock and keep your data.</p></div></div>
           <StripePayNotice/>
-          <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">Restore access — ${seatPrice}/mo<I.ArrowRight size={14} stroke={2.4}/></button>
+          <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Access restored — welcome back.','success');}}>Restore access — ${seatPrice}/mo<I.ArrowRight size={14} stroke={2.4}/></button>
         </div>
       </>)}
 
@@ -15559,7 +15607,7 @@ function SettingsBillingPage({goTo}){
           </div>
         </div>
         <div className={BILLING_CARD}>
-          <div className="flex items-center justify-between mb-5"><p className={BILLING_EYE}>Payment Method on file</p><button className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Change card</button></div>
+          <div className="flex items-center justify-between mb-5"><p className={BILLING_EYE}>Payment Method on file</p><button onClick={()=>window.__nrturToast&&window.__nrturToast('Card updates open Stripe’s secure form (not simulated in this prototype).','success')} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors">Change card</button></div>
           <div className="max-w-sm"><BillingCardVisual/></div>
         </div>
         <BillingInvoiceHistory/>
@@ -15579,7 +15627,7 @@ function SettingsBillingPage({goTo}){
           <div className={BILLING_CARD}>
             <p className={BILLING_EYE+' mb-5'}>New payment method</p><StripePayNotice/>
             <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>setBillingState('active')}>Update card and pay $177.00<I.ArrowRight size={14} stroke={2.4}/></button>
-            <p className="text-[12px] text-white/45 text-center mt-3">Having trouble? <button className="text-brand-300 hover:text-brand-200">Contact support</button></p>
+            <p className="text-[12px] text-white/45 text-center mt-3">Having trouble? <button onClick={()=>window.__nrturToast&&window.__nrturToast('Reach our team at support@nrtur.io','success')} className="text-brand-300 hover:text-brand-200">Contact support</button></p>
           </div>
         </div>
       </>)}
@@ -17914,10 +17962,36 @@ function SettingsAdLeadsPage({goTo}){
 }
 // ?? Profile Page ??????????????????????????????????????????????????????????????
 function ProfilePage({goTo}){
+  const [prof,setProf]=React.useState({first:'Alex',last:'Morgan',email:'alex@bloom.co',phone:'+1 415-555-0123',title:'Sales Manager',tz:'Pacific Time (PT)',lang:'English'});
+  const setPf=(k,v)=>setProf(p=>({...p,[k]:v}));
   const [saved,setSaved]=React.useState(false);
-  const [tfa,setTfa]=React.useState(false);
+  const [pw,setPw]=React.useState({cur:'',nw:'',cf:''});
+  const [pwErr,setPwErr]=React.useState({});
+  const setPwF=(k,v)=>{setPw(s=>({...s,[k]:v}));if(pwErr[k])setPwErr(e=>({...e,[k]:null}));};
+  const [tfa,setTfa]=React.useState(false);          // fully enabled (verified)
+  const [tfaSetup,setTfaSetup]=React.useState(false); // mid-setup: QR shown, awaiting the 6-digit code
+  const [tfaCode,setTfaCode]=React.useState('');
+  const [tfaErr,setTfaErr]=React.useState('');
   const {confirmNode,openConfirm}=useConfirm();
-  const handleSave=()=>{setSaved(true);setTimeout(()=>setSaved(false),3000);};
+  const toast=(m,t)=>{window.__nrturToast&&window.__nrturToast(m,t||'success');};
+  const fullName=(prof.first+' '+prof.last).trim()||'Your account';
+  const initials=((prof.first[0]||'')+(prof.last[0]||'')).toUpperCase()||'AM';
+  const saveProfile=()=>{setSaved(true);setTimeout(()=>setSaved(false),3000);toast('Profile saved');};
+  const updatePassword=()=>{
+    const e={};
+    if(!pw.cur)e.cur='Enter your current password.';
+    if(!pw.nw)e.nw='Enter a new password.';else if(pw.nw.length<8)e.nw='Use at least 8 characters.';
+    if(!pw.cf)e.cf='Re-enter your new password.';else if(pw.nw&&pw.nw!==pw.cf)e.cf="Passwords don't match.";
+    setPwErr(e);if(Object.keys(e).length)return;
+    setPw({cur:'',nw:'',cf:''});toast('Password updated');
+  };
+  const toggleTfa=()=>{
+    if(tfa||tfaSetup){openConfirm({title:'Turn off two-factor authentication?',body:'Your account will be less secure without a second step at sign-in.',confirmLabel:'Turn off',danger:true,onConfirm:()=>{setTfa(false);setTfaSetup(false);setTfaCode('');setTfaErr('');toast('Two-factor authentication turned off','warning');}});return;}
+    setTfaSetup(true);setTfaErr('');
+  };
+  const verifyTfa=()=>{if(tfaCode.length!==6){setTfaErr('Enter the 6-digit code from your app.');return;}setTfa(true);setTfaSetup(false);setTfaCode('');setTfaErr('');toast('Two-factor authentication enabled ✓');};
+  const profFields=[['first','First name'],['last','Last name'],['email','Work email'],['phone','Phone'],['title','Job title'],['tz','Timezone']];
+  const pwFields=[['cur','Current password'],['nw','New password'],['cf','Confirm new password']];
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="profile" goTo={goTo}/>
@@ -17927,23 +18001,23 @@ function ProfilePage({goTo}){
         {saved&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>Changes saved</div>)}
         <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-2xl mx-auto flex flex-col gap-5">
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
-            <div className="flex items-center gap-5 mb-6"><div className="relative"><div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-[24px] font-semibold ring-2 ring-white/[0.06]" style={{background:'#3b82f6'}}>AM</div><button className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand-500 text-white flex items-center justify-center ring-2 ring-[#0c0c1a]"><I.Edit size={11}/></button></div><div><p className="text-white text-[20px] font-semibold">Alex Morgan</p><p className="text-white/55 text-[13px] mt-1">Manager - Bloom Creative</p></div></div>
-            <div className="grid grid-cols-2 gap-4 mb-4">{[['First name','Alex'],['Last name','Morgan'],['Work email','alex@bloom.co'],['Phone','+1 415-555-0123'],['Job title','Sales Manager'],['Timezone','Pacific Time (PT)']].map(([l,v])=>(<div key={l}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" defaultValue={v} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div>
-            <div className="grid grid-cols-2 gap-4 mb-6"><div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Language</label><select defaultValue="English" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark',background:'var(--s850)'}}><option>English</option><option>Español</option><option>Français</option></select></div></div>
-            <div className="flex justify-end"><button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div>
+            <div className="flex items-center gap-5 mb-6"><div className="relative"><div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-[24px] font-semibold ring-2 ring-white/[0.06]" style={{background:'#3b82f6'}}>{initials}</div><button onClick={()=>toast('Avatar upload isn’t available in this prototype.','warning')} className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand-500 text-white flex items-center justify-center ring-2 ring-[#0c0c1a]"><I.Edit size={11}/></button></div><div><p className="text-white text-[20px] font-semibold">{fullName}</p><p className="text-white/55 text-[13px] mt-1">{prof.title} - Bloom Creative</p></div></div>
+            <div className="grid grid-cols-2 gap-4 mb-4">{profFields.map(([k,l])=>(<div key={k}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="text" value={prof[k]} onChange={e=>setPf(k,e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div>
+            <div className="grid grid-cols-2 gap-4 mb-6"><div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Language</label><select value={prof.lang} onChange={e=>setPf('lang',e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark',background:'var(--s850)'}}><option>English</option><option>Español</option><option>Français</option></select></div></div>
+            <div className="flex justify-end"><button onClick={saveProfile} className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save changes</button></div>
           </div>
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
             <p className="text-white font-medium mb-4">Change password</p>
-            <div className="flex flex-col gap-3 mb-5">{['Current password','New password','Confirm new password'].map(l=>(<div key={l}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="password" placeholder="..." className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40"/></div>))}</div>
-            <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] transition-all">Update password</button>
+            <div className="flex flex-col gap-3 mb-5">{pwFields.map(([k,l])=>(<div key={k}><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">{l}</label><input type="password" value={pw[k]} onChange={e=>setPwF(k,e.target.value)} placeholder="..." className={'w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border text-[13px] text-white outline-none transition-colors '+(pwErr[k]?'border-red-500/50 focus:border-red-500/60':'border-white/[0.10] focus:border-brand-500/40')}/>{pwErr[k]&&<p className="text-[11.5px] text-red-300 mt-1 flex items-center gap-1"><I.AlertTriangle size={11}/>{pwErr[k]}</p>}</div>))}</div>
+            <button onClick={updatePassword} className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] transition-all">Update password</button>
           </div>
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
-            <div className="flex items-start justify-between gap-4"><div className="flex items-start gap-3"><div className="w-9 h-9 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.ShieldCheck size={15}/></div><div><p className="text-white font-medium">Two-factor authentication</p><p className="text-white/45 text-[12px] mt-0.5 max-w-sm">Add an extra layer of security with an authenticator app (TOTP) or SMS code.</p>{tfa&&<span className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-emerald-300 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>2FA enabled · Authenticator app</span>}</div></div><Toggle on={tfa} onChange={setTfa}/></div>
-            {tfa&&(<div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center gap-4"><div className="w-20 h-20 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center shrink-0"><I.Hash size={28} className="text-white/30"/></div><div><p className="text-[12px] text-white/65">Scan this QR code with Google Authenticator or 1Password, then enter the 6-digit code.</p><div className="flex items-center gap-2 mt-2"><input placeholder="000000" maxLength={6} className="w-28 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-mono tracking-[0.3em] text-white text-center placeholder:text-white/25 outline-none focus:border-brand-500/40"/><button className="px-3 py-2 rounded-lg text-[12px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Verify</button></div></div></div>)}
+            <div className="flex items-start justify-between gap-4"><div className="flex items-start gap-3"><div className="w-9 h-9 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.ShieldCheck size={15}/></div><div><p className="text-white font-medium">Two-factor authentication</p><p className="text-white/45 text-[12px] mt-0.5 max-w-sm">Add an extra layer of security with an authenticator app (TOTP) or SMS code.</p>{tfa&&<span className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-emerald-300 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>2FA enabled · Authenticator app</span>}{tfaSetup&&!tfa&&<span className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-amber-300 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-amber-400"/>Setup in progress · scan the code and verify</span>}</div></div><Toggle on={tfa||tfaSetup} onChange={toggleTfa}/></div>
+            {tfaSetup&&!tfa&&(<div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center gap-4"><div className="w-20 h-20 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center shrink-0"><I.Hash size={28} className="text-white/30"/></div><div><p className="text-[12px] text-white/65">Scan this QR code with Google Authenticator or 1Password, then enter the 6-digit code.</p><div className="flex items-center gap-2 mt-2"><input value={tfaCode} onChange={e=>{setTfaCode(e.target.value.replace(/\D/g,'').slice(0,6));if(tfaErr)setTfaErr('');}} placeholder="000000" maxLength={6} className="w-28 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] font-mono tracking-[0.3em] text-white text-center placeholder:text-white/25 outline-none focus:border-brand-500/40"/><button onClick={verifyTfa} className="px-3 py-2 rounded-lg text-[12px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Verify</button></div>{tfaErr&&<p className="text-[11.5px] text-red-300 mt-1.5 flex items-center gap-1"><I.AlertTriangle size={11}/>{tfaErr}</p>}</div></div>)}
           </div>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-medium mb-1">Download account data (GDPR)</p><p className="text-white/45 text-[12px] mb-5">Receive a full export of your personal account data within 72 hours, as required under GDPR Article 20.</p><button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Download size={13}/>Request data export</button></div>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6 flex items-center justify-between"><div><p className="text-white font-medium">Sign out</p><p className="text-white/45 text-[12px] mt-1">Sign out of all devices.</p></div><button onClick={()=>goTo('landing')} className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-300 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-all">Sign out</button></div>
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-6"><p className="text-red-300 font-medium mb-1">Delete account</p><p className="text-white/45 text-[12px] mb-4">Permanently delete your personal account. Your workspace data will not be deleted.</p><button onClick={()=>openConfirm({title:'Delete your account?',body:'Your personal account will be permanently removed. Workspace data remains intact.',confirmLabel:'Delete account',danger:true})} className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-300 bg-red-500/10 hover:bg-red-500/15 border border-red-500/25 transition-all">Delete my account</button></div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6"><p className="text-white font-medium mb-1">Download account data (GDPR)</p><p className="text-white/45 text-[12px] mb-5">Receive a full export of your personal account data within 72 hours, as required under GDPR Article 20.</p><button onClick={()=>toast('Data export requested — we’ll email a download link within 72 hours.')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Download size={13}/>Request data export</button></div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6 flex items-center justify-between"><div><p className="text-white font-medium">Sign out</p><p className="text-white/45 text-[12px] mt-1">Sign out of all devices.</p></div><button onClick={()=>openConfirm({title:'Sign out of all devices?',body:'You’ll need to sign in again on each device.',confirmLabel:'Sign out',onConfirm:()=>goTo('landing')})} className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-300 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-all">Sign out</button></div>
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-6"><p className="text-red-300 font-medium mb-1">Delete account</p><p className="text-white/45 text-[12px] mb-4">Permanently delete your personal account. Your workspace data will not be deleted.</p><button onClick={()=>openConfirm({title:'Delete your account?',body:'Your personal account will be permanently removed. Workspace data remains intact.',confirmLabel:'Delete account',danger:true,onConfirm:()=>{toast('Account deleted. Signing you out…','warning');setTimeout(()=>goTo('landing'),1200);}})} className="px-4 py-2 rounded-xl text-[13px] font-medium text-red-300 bg-red-500/10 hover:bg-red-500/15 border border-red-500/25 transition-all">Delete my account</button></div>
         </div></div>{confirmNode}
         <AppFooter/>
       </div>
@@ -18629,6 +18703,7 @@ function SequenceBuilderPage({goTo,channel}){
   const isSms=channel==='sms';
   const isPush=channel==='push',isInApp=channel==='inapp',isEmailCh=channel==='email',isMsgX=isPush||isInApp;
   const {conns}=React.useContext(IntegrationsContext);
+  const crm=React.useContext(CrmDataContext);
   // A2P-aware: "connected" now means the workspace can actually send (number owned + campaign approved) — smsComplianceState().
   const [isConnected,setIsConnected]=React.useState(()=>{try{return smsComplianceState().ok;}catch(e){return true;}});
   // Sending number for SMS sequences (picker is only rendered when isSms) — real workspace numbers, demo list as fallback.
@@ -18664,7 +18739,13 @@ function SequenceBuilderPage({goTo,channel}){
   const {confirmNode,openConfirm}=useConfirm();
   const mark=()=>setDirty(true);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
-  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);};
+  const save=(msg,asDraft)=>{
+    // Persist the built sequence into the shared customSeqs store (in-memory) so it shows up in the Sequences
+    // list, the stage bulk-enroll picker, and survives navigation — was previously a toast-only no-op.
+    const rec={id:'cs_'+Date.now(),name:(name||'').trim()||'Untitled sequence',channel,steps:steps.length,stepData:steps,active:asDraft?false:activated,enrolled:0,sent:0,opened:0,replied:0,clicked:0,atStep:[],lastRun:null,trig,stopRules,createdBy:CURRENT_USER.avatar,fromBuilder:true};
+    crm.setCustomSeqs(a=>[rec,...a]);
+    setDirty(false);showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);
+  };
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-sequences')});else goTo('settings-sequences');};
   const setStep=(id,patch)=>{setSteps(s=>s.map(x=>x.id===id?{...x,...patch}:x));mark();};
   const addStep=()=>{setSteps(s=>[...s,{id:Date.now(),...seqBlankFields(channel),delay:{n:2,unit:'days'}}]);mark();};
@@ -18777,7 +18858,7 @@ function SequenceBuilderPage({goTo,channel}){
             <button onClick={()=>{if(dirty){openConfirm({title:'View performance?',body:'Open the Sequences list to see delivery, engagement, and per-step analytics. Your unsaved changes here will be lost.',confirmLabel:'Discard & view',danger:true,onConfirm:()=>goTo('settings-sequences')});}else goTo('settings-sequences');}} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.BarChart size={12}/>Performance</button>
             {!readOnly&&<button onClick={()=>setTestOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Play size={12}/>Test</button>}
             <button onClick={cancel} className="px-3 py-1.5 rounded-lg text-[13px] text-white/65 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{readOnly?'Back':'Cancel'}</button>
-            {!readOnly&&<button onClick={()=>save('Saved as draft')} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>}
+            {!readOnly&&<button onClick={()=>save('Saved as draft',true)} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Save as draft</button>}
             {!readOnly&&<button onClick={()=>save('Sequence saved')} className="px-4 py-1.5 rounded-lg text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Save</button>}
           </div>
         </header>
@@ -19838,6 +19919,10 @@ const FORM_TEMPLATES=[
    onSubmit:{automations:[],after:'thankyou',thankHeading:'Thank you!',thankyou:'Thank you for the feedback!',redirect:''}},
 ];
 let _formSeed=null;const setFormSeed=(s)=>{_formSeed=s;};
+// Upsert a form into FORMS_DATA (the single canonical forms list). In-place mutation so the Forms list (which
+// re-seeds useState(FORMS_DATA) when it remounts after the builder), plus every dropdown, funnel and automation
+// form-trigger, all pick up the new/edited form. Was previously impossible: save() only fired a toast.
+function formUpsert(rec){const i=FORMS_DATA.findIndex(f=>String(f.id)===String(rec.id));if(i>=0)FORMS_DATA[i]={...FORMS_DATA[i],...rec};else FORMS_DATA.unshift(rec);return rec;}
 const FORM_SUBMISSIONS=[
   {form:'Request a Demo',contact:'Olivia Park',avatar:'OP',color:'#3b82f6',time:'12m ago',summary:'Acme Inc · 51-200',src:'google / cpc · brand-search',fired:'Contact updated · tag demo-requested · deal created · enrolled in New Lead Welcome'},
   {form:'Request a Demo',contact:'Daniel Cho',avatar:'DC',color:'#8b5cf6',time:'1h ago',summary:'Cho Studio · 11-50',src:'linkedin / social',fired:'Contact created · tag demo-requested · Started New Lead Welcome'},
@@ -20229,7 +20314,15 @@ function FormBuilderPage({goTo,initial}){
   const dragRef=React.useRef(null);
   const mark=()=>setDirty(true);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
-  const save=(msg)=>{showToast(msg);setTimeout(()=>goTo('settings-forms'),650);};
+  const save=(msg)=>{
+    // Persist the built form into FORMS_DATA (in-memory, the canonical list every consumer reads) so it appears
+    // in the Forms list, field dropdowns, funnels and automation form-triggers. Store `blocks` too so re-editing
+    // hydrates faithfully (toBlocks prefers form.blocks). Was previously a toast-only no-op.
+    const fields=blocks.filter(b=>b.kind==='field').map((b,i)=>({id:b.id||i+1,label:b.label,type:b.type,map:b.map,required:!!b.required,options:b.options,capture:b.capture,placeholder:b.placeholder,width:b.width}));
+    const rec={id:(seed&&seed.id)||('f_'+Date.now()),name:(name||'').trim()||'Untitled form',status:activated?'active':'draft',fields,blocks,onSubmit:onSub,title,formDesc:desc,accent,titleColor,titleBg,bgColor,descColor,textColor,fieldSize,radius,headerImg,headerLayout,btn,submissions:(seed&&seed.submissions)||0,conversion:(seed&&seed.conversion)||0,created:(seed&&seed.created)||'just now',spark:(seed&&seed.spark)||[]};
+    formUpsert(rec);setFormSeed(null);setDirty(false);
+    showToast(msg);setTimeout(()=>goTo('settings-forms'),650);
+  };
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this form will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-forms')});else goTo('settings-forms');};
   const setBlock=(id,patch)=>{setBlocks(bs=>bs.map(b=>b.id===id?{...b,...patch}:b));mark();};
   const removeBlock=(id)=>{setBlocks(bs=>bs.filter(b=>b.id!==id));mark();};
@@ -20535,8 +20628,10 @@ function NewSequenceModal({channel,close,goTo}){
   );
 }
 function SettingsSequencesPage({goTo}){
+  const crm=React.useContext(CrmDataContext);
   const [newSeq,setNewSeq]=React.useState(null);
   const [editTpl,setEditTpl]=React.useState(null);
+  const [,forceTpl]=React.useReducer(x=>x+1,0);
   const [chan,setChan]=React.useState('sms');
   const [subView,setSubView]=React.useState('list');
   const [seqMap,setSeqMap]=React.useState(()=>Object.fromEntries([...SEQ_DATA.map(s=>['sms'+s.id,s.active]),...EMAIL_SEQ_DATA.map(s=>['email'+s.id,s.active]),...PUSH_SEQ_DATA.map(s=>['push'+s.id,s.active]),...INAPP_SEQ_DATA.map(s=>['inapp'+s.id,s.active])]));
@@ -20546,7 +20641,7 @@ function SettingsSequencesPage({goTo}){
   const fldEmail=useFolders('seq-email',{folders:[{id:'es_onb',name:'Onboarding',color:'#34d399',scope:'team'},{id:'es_reeng',name:'Re-engagement',color:'#fbbf24',scope:'personal'},{id:'es_sales',name:'Sales follow-up',color:'#818cf8',scope:'personal'}],members:{1:'es_onb',2:'es_sales'}});
   const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
   const builderFor=()=>chan+'-sequence-builder';
-  const seqRow=(seq,channel,fld)=>{const key=channel+seq.id;const on=seqMap[key];const active=(seq.atStep||[]).reduce((a,b)=>a+b,0);const maxStep=Math.max(...(seq.atStep||[0]),1);return(
+  const seqRow=(seq,channel,fld)=>{const key=channel+seq.id;const on=(key in seqMap)?seqMap[key]:!!seq.active;const active=(seq.atStep||[]).reduce((a,b)=>a+b,0);const maxStep=Math.max(...(seq.atStep||[0]),1);return(
     <div key={key} draggable onDragStart={()=>folderBeginItemDrag('seq-'+channel,seq.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
       <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span>{channel!=='sms'&&<span>Opened <span className="text-amber-300 font-semibold tabular-nums ml-1">{seq.opened}</span></span>}{(channel==='push'||channel==='inapp')&&<span>Clicked <span className="text-sky-300 font-semibold tabular-nums ml-1">{seq.clicked}</span></span>}<span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/>{fld&&<MoveToFolderButton api={fld} itemId={seq.id} sm/>}<button onClick={()=>goTo(channel+'-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
       <div className="mt-3 pt-3 border-t border-white/[0.05] flex items-end justify-between gap-4">
@@ -20574,14 +20669,14 @@ function SettingsSequencesPage({goTo}){
             <fieldset disabled={readOnly} className="contents border-0 m-0 p-0 min-w-0">
 
             <div className="rounded-xl bg-brand-500/[0.06] border border-brand-500/15 px-4 py-2.5 flex items-center gap-2 -mt-1"><I.Zap size={13} className="text-brand-300 shrink-0"/><p className="text-[12px] text-white/60">Tip: trigger a sequence automatically from a workflow using the <span className="text-brand-200 font-medium">Enroll in sequence</span> action. <button onClick={()=>goTo('settings-automations')} className="text-brand-300 hover:text-brand-200 font-medium">Open Automations →</button></p></div>
-            {chan==='sms'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-sms" api={fldSms} items={SEQ_DATA} getId={s=>s.id} renderItem={s=>seqRow(s,'sms',fldSms)} itemsClass="flex flex-col gap-3" hint="Group SMS sequences — drag a card onto a folder, or use its folder menu."/></div>):(
+            {chan==='sms'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-sms" api={fldSms} items={[...SEQ_DATA,...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='sms')]} getId={s=>s.id} renderItem={s=>seqRow(s,'sms',fldSms)} itemsClass="flex flex-col gap-3" hint="Group SMS sequences — drag a card onto a folder, or use its folder menu."/></div>):(
               <><div className="flex items-center justify-between -mt-1"><p className="text-[12px] text-white/45">Reusable SMS snippets. Edit them here, or use one to start a sequence.</p><button onClick={()=>setEditTpl({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/30 hover:bg-brand-500/20 transition-all"><I.Plus size={12} stroke={2.4}/>New template</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SMS_TEMPLATES.map(t=>{const cat=SMS_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category,color:'#818cf8'};return(<div key={t.id} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center justify-between mb-2"><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit" style={{background:cat.color+'18',color:cat.color,boxShadow:`0 0 0 1px ${cat.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>{cat.label}</span>{t.favorite&&<I.Star size={12} className="text-amber-300" fill="currentColor"/>}</div><p className="text-[13px] font-semibold text-white">{t.name}</p><p className="text-[12px] text-white/55 leading-relaxed mt-1 flex-1" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.05]"><span className="text-[11px] text-white/35">Used {t.uses}×</span><div className="flex items-center gap-3"><button onClick={()=>setEditTpl(t)} className="inline-flex items-center gap-1 text-[12px] font-medium text-white/55 hover:text-white"><I.Edit size={11}/>Edit</button><button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200">Use<I.ArrowRight size={11} stroke={2.4}/></button></div></div></div>);})}</div></>
             ))}
-            {chan==='email'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-email" api={fldEmail} items={EMAIL_SEQ_DATA} getId={s=>s.id} renderItem={s=>seqRow(s,'email',fldEmail)} itemsClass="flex flex-col gap-3" hint="Group email sequences — drag a card onto a folder, or use its folder menu."/></div>):(
+            {chan==='email'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-email" api={fldEmail} items={[...EMAIL_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='email')]} getId={s=>s.id} renderItem={s=>seqRow(s,'email',fldEmail)} itemsClass="flex flex-col gap-3" hint="Group email sequences — drag a card onto a folder, or use its folder menu."/></div>):(
               <EmailTemplatesPanel goTo={goTo}/>
             ))}
-            {chan==='push'&&<PushInAppSeqList channel="push" data={PUSH_SEQ_DATA} seqRow={seqRow} goTo={goTo}/>}
-            {chan==='inapp'&&<PushInAppSeqList channel="inapp" data={INAPP_SEQ_DATA} seqRow={seqRow} goTo={goTo}/>}
+            {chan==='push'&&<PushInAppSeqList channel="push" data={[...PUSH_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>s.channel==='push')]} seqRow={seqRow} goTo={goTo}/>}
+            {chan==='inapp'&&<PushInAppSeqList channel="inapp" data={[...INAPP_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>s.channel==='inapp')]} seqRow={seqRow} goTo={goTo}/>}
             </fieldset>
           </div></div>
         </div>
@@ -20590,7 +20685,7 @@ function SettingsSequencesPage({goTo}){
       {trackFlow&&<EnrolledContactsModal flow={trackFlow} close={()=>setTrackFlow(null)}/>}
       {engFlow&&<EngagementModal flow={engFlow} close={()=>setEngFlow(null)}/>}
       {newSeq&&<NewSequenceModal channel={newSeq} close={()=>setNewSeq(null)} goTo={goTo}/>}
-      {editTpl&&<SMSTemplateEditModal template={editTpl.id?editTpl:null} close={()=>setEditTpl(null)}/>}
+      {editTpl&&<SMSTemplateEditModal template={editTpl.id?editTpl:null} close={()=>setEditTpl(null)} onSave={(rec)=>{smsTplUpsert(rec);forceTpl();setEditTpl(null);window.__nrturToast&&window.__nrturToast('Template saved.','success');}}/>}
     </div>
   );
 }
@@ -24042,6 +24137,10 @@ function CustomObjectListPage({goTo,nav}){
   if(!coCanView(def))return(<div className="h-full flex" style={{background:'var(--s925)'}}><AppSidebar active="" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title={def.plural}/><div className="flex-1 flex items-center justify-center p-6"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-amber-500/12 text-amber-300 flex items-center justify-center mx-auto mb-4"><I.Lock size={24}/></div><p className="text-[16px] font-semibold text-white">{def.plural} is restricted</p><p className="text-[13px] text-white/45 mt-1.5">Only workspace Owners &amp; Admins can view this object.</p></div></div></div></div>);
   const records=def.records||[];
   const setRows=(fn)=>crm.setCustomRecords(def.id,fn);
+  // Link values at rest are MIXED: the record drawer stores the linked company's id (a number), while seeds
+  // hold the name string. Rendering / lower-casing the raw value crashed the page (numbers have no .toLowerCase).
+  // Always resolve through coResolveLink so both forms show the readable name and search never throws.
+  const coCompany=(r)=>{const v=r&&r.r_company;return v==null||v===''?'':coResolveLink(crm,'company',v).name;};
   const omFields=coOmFields(def,crm);
   const _selFields=(def.fields||[]).filter(f=>f.type==='Single select');
   const [coView,setCoView]=React.useState('table');
@@ -24049,7 +24148,7 @@ function CustomObjectListPage({goTo,nav}){
   const [dragRec,setDragRec]=React.useState(null);
   const [dropCol,setDropCol]=React.useState(null);
   const canCreate=effCanCustom(def,'create'),canEdit=effCanCustom(def,'edit'),canDelete=effCanCustom(def,'delete')&&effCanBulkDelete();
-  const cols=[{key:'name',w:'1.6fr',label:def.primaryLabel||'Name',cell:(r)=>(<button onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="flex items-center gap-3 min-w-0 text-left w-full"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:15})}</span><span className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{r.r_company||r.createdAt||''}</p></span></button>)}];
+  const cols=[{key:'name',w:'1.6fr',label:def.primaryLabel||'Name',cell:(r)=>(<button onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className="flex items-center gap-3 min-w-0 text-left w-full"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:def.color+'22',color:def.color,border:'1px solid '+def.color+'33'}}>{React.createElement(coIco(def.icon),{size:15})}</span><span className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{r.name}</p><p className="text-[11px] text-white/40 truncate">{coCompany(r)||r.createdAt||''}</p></span></button>)}];
   (def.fields||[]).filter(f=>f.col).forEach(f=>cols.push({key:f.key,w:'130px',label:f.label,cell:(r)=>coCellRender(f,r[f.key])}));
   cols.push({key:'owner',w:'130px',label:'Owner',cell:(r)=>{const m=coMember(r.owner);return(<span className="inline-flex items-center gap-2 min-w-0"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12px] text-white/65 truncate hidden lg:inline">{m.name}</span></span>);}});
   cols.push({key:'tags',w:'1.1fr',label:'Tags',cell:(r)=>{const t=r.tags||[];return(<div className="flex flex-wrap gap-1 min-w-0">{t.length?t.slice(0,3).map(x=>(<TagChip key={x} name={x} sm/>)):<span className="text-white/25 text-[12px]">—</span>}</div>);}});
@@ -24057,7 +24156,7 @@ function CustomObjectListPage({goTo,nav}){
   let base=records.filter(r=>!r.deleted&&(showArch?r.archived:!r.archived));
   base=omApplyFilter(base,workFilter,omFields);
   const q=search.toLowerCase();
-  if(q)base=base.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.r_company||'').toLowerCase().includes(q));
+  if(q)base=base.filter(r=>(r.name||'').toLowerCase().includes(q)||coCompany(r).toLowerCase().includes(q));
   const list=effScopeRows('Contacts',omSortRows(base,workSort,'custom',omFields),r=>r.owner);
   const coBoardEl=(coView==='board'&&coGroupBy)?(()=>{
     const gf=(def.fields||[]).find(f=>f.key===coGroupBy)||_selFields[0];const opts=coFieldOpts(gf);
@@ -24076,7 +24175,7 @@ function CustomObjectListPage({goTo,nav}){
       onMove={(id,fromKey,toKey)=>{const r=list.find(x=>x.id===id);if(r)move(r,toKey);}}
       renderCard={(r,col,dp,dragging)=>(<button {...dp} onClick={()=>goTo('custom-record',{objectId:def.id,recordId:r.id})} className={['w-full text-left rounded-xl p-3 border transition-colors',canDrag?'cursor-grab':'cursor-pointer',dragging?'opacity-50 bg-white/[0.05] border-white/[0.12]':'bg-white/[0.035] border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.12]'].join(' ')}>
         <p className="text-[13px] font-medium text-white truncate">{r.name||'—'}</p>
-        {r.r_company&&<p className="text-[11px] text-white/45 truncate mt-0.5">{r.r_company}</p>}
+        {coCompany(r)&&<p className="text-[11px] text-white/45 truncate mt-0.5">{coCompany(r)}</p>}
         <div className="flex items-center gap-1.5 mt-2 flex-wrap">{(def.fields||[]).filter(f=>f.key!==gf.key&&f.col&&r[f.key]!=null&&r[f.key]!=='').slice(0,2).map(f=>(<span key={f.key}>{coCellRender(f,r[f.key])}</span>))}{r.owner&&<span className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:r.ownerColor||'#64748b'}}>{r.owner}</span>}</div>
       </button>)}
       renderEmpty={()=>(<div className="text-[11px] text-white/25 text-center py-6">Drop here</div>)}
@@ -24170,7 +24269,7 @@ function CustomRecordDetailPage({goTo,nav}){
             </div>
             <div className="flex flex-col gap-5 min-w-0">
               <CoLinksPanel def={def} rec={rec} crm={crm} goTo={goTo}/>
-              <RecordTasks recId={rec.id} match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:rec.r_company||''}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
+              <RecordTasks recId={rec.id} match={(t)=>t.linkType==='custom'&&t.customId===rec.id} prefill={{linkType:'custom',customId:rec.id,customObj:def.id,company:(rec.r_company==null||rec.r_company===''?'':coResolveLink(crm,'company',rec.r_company).name)}} canEdit={canEdit&&effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             </div>
           </div>
         </div>
