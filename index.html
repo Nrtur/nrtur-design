@@ -1282,6 +1282,19 @@ function useConfirm(){
   const confirmNode=cfg?(<ConfirmModal {...cfg} onCancel={close} onConfirm={()=>{cfg.onConfirm?.();close();}}/>):null;
   return {confirmNode,openConfirm};
 }
+// Reusable close guard for creator/edit drawers: shows a self-contained inline "Discard changes?" overlay
+// (no useConfirm, so no Escape double-fire) when there is unsaved input. Mirrors RecordEditDrawer's proven
+// pattern. Usage: const {attemptClose,guardNode}=useCloseGuard(dirty,onClose) — route Esc/backdrop/Cancel/X
+// through attemptClose, and render {guardNode} inside the drawer's positioned (fixed) root.
+function useCloseGuard(dirty,onClose,escBlocked){
+  const [guard,setGuard]=React.useState(false);
+  const dref=React.useRef(dirty);dref.current=dirty;
+  const bref=React.useRef(escBlocked);bref.current=escBlocked; // when true (e.g. a sub-drawer is open), this surface ignores Escape
+  const attemptClose=React.useCallback(()=>{if(dref.current&&!guard)setGuard(true);else onClose&&onClose();},[guard,onClose]);
+  React.useEffect(()=>{const fn=(e)=>{if(e.key==='Escape'&&!bref.current)attemptClose();};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[attemptClose]);
+  const guardNode=guard?(<div className="absolute inset-0 z-[30] flex items-center justify-center p-5" style={{background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)'}}><div className="w-full max-w-sm rounded-2xl border border-white/[0.10] p-5" style={{background:'var(--pop)'}}><p className="text-[14px] font-semibold text-white">Discard changes?</p><p className="text-[12.5px] text-white/55 mt-1.5 leading-relaxed">You have unsaved changes. Closing now will lose them.</p><div className="flex gap-3 mt-4"><button onClick={()=>setGuard(false)} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07]">Keep editing</button><button onClick={()=>{setGuard(false);onClose&&onClose();}} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white cursor-pointer" style={{background:'#dc2626'}}>Discard</button></div></div></div>):null;
+  return {attemptClose,guardNode,guardActive:guard};
+}
 // ?? Tag + Status registry helpers ?????????????????????????????????????????????
 // Shared colour palette for tags + statuses (chips, dots, pickers).
 const NRTUR_TAG_PALETTE=['#6366f1','#8b5cf6','#a855f7','#ec4899','#f43f5e','#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#10b981','#14b8a6','#06b6d4','#0ea5e9','#3b82f6','#64748b'];
@@ -12679,7 +12692,7 @@ function EmailTemplatesPage({goTo}){
     </div>
   );
 }
-function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''}){
+function EmailComposeModal({close:_close,defaultTo='',onSent,seedSubject='',seedBody=''}){
   const [to,setTo]=React.useState(defaultTo);
   const [cc,setCc]=React.useState('');
   const [bcc,setBcc]=React.useState('');
@@ -12691,18 +12704,20 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
   const [scheduleOpen,setScheduleOpen]=React.useState(false);
   const [scheduledFor,setScheduledFor]=React.useState('');
   const [sending,setSending]=React.useState(false);
-  useEscKey(close);
+  // Guard closing a composed message with typed content (was: Esc / X / Discard lost it with no warning).
+  const _dirty=(to!==defaultTo)||(subject!==seedSubject)||(body!==seedBody)||!!cc.trim()||!!bcc.trim()||attachments.length>0;
+  const {attemptClose,guardNode}=useCloseGuard(_dirty,_close);const close=attemptClose;
   // Compliance: never email a hard-suppressed address (bounce/complaint/do-not-contact-all/domain block) —
   // checked across EVERY recipient (To + Cc + Bcc); warn (but allow) a 1:1 send to someone who only opted
   // out of MARKETING — a human reply is legitimate.
   // Shared email-send gate (same helper the reply/forward composer uses — one check, can't drift).
   const {hardAddr:_hardAddr,softAddr:_softAddr,hardBlocked:_hardBlocked,softOptOut:_softOptOut}=emailSendGate([to,cc,bcc]);
-  const handleSend=()=>{if(_hardBlocked){window.__nrturToast&&window.__nrturToast(_hardAddr+' is on your suppression list — can’t email this address.','error');return;}setSending(true);setTimeout(()=>{setSending(false);onSent&&onSent({to,subject,body,scheduled:scheduledFor});close();},900);};
+  const handleSend=()=>{if(_hardBlocked){window.__nrturToast&&window.__nrturToast(_hardAddr+' is on your suppression list — can’t email this address.','error');return;}setSending(true);setTimeout(()=>{setSending(false);onSent&&onSent({to,subject,body,scheduled:scheduledFor});_close();},900);};
   const applyTpl=(t)=>{setSubject(t.subject);setBody(t.body);setTplOpen(false);};
   const SCHED=['In 1 hour','Tomorrow 9:00 AM','Tomorrow 1:00 PM','Monday 8:00 AM'];
   return(
     <div className="fixed inset-0 z-[150] flex items-end justify-end p-6 pointer-events-none">
-      <div className="pointer-events-auto w-[540px] rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.05),0 -8px 60px rgba(0,0,0,0.6)'}}>
+      <div className="pointer-events-auto relative w-[540px] rounded-2xl border border-white/[0.10] overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.05),0 -8px 60px rgba(0,0,0,0.6)'}}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.07]" style={{background:'rgba(255,255,255,0.02)'}}><p className="text-[13px] font-medium text-white">New message</p><button onClick={close} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.07] transition-colors"><I.X size={13}/></button></div>
         <div className="flex flex-col divide-y divide-white/[0.05]">
           <div className="flex items-center px-5 py-2.5"><span className="text-[12px] text-white/40 w-14 shrink-0">To</span><input value={to} onChange={e=>setTo(e.target.value)} placeholder="recipient@company.com" className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/25"/><button onClick={()=>setShowCc(v=>!v)} className="text-[11px] text-white/40 hover:text-brand-300 transition-colors shrink-0 ml-2">Cc/Bcc</button></div>
@@ -12725,6 +12740,7 @@ function EmailComposeModal({close,defaultTo='',onSent,seedSubject='',seedBody=''
             <button onClick={handleSend} disabled={!to.trim()||!subject.trim()||sending||_hardBlocked} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(to.trim()&&subject.trim()&&!sending&&!_hardBlocked)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>{sending?'Sending...':scheduledFor?'Schedule':'Send'}</button>
           </div>
         </div>
+        {guardNode}
       </div>
     </div>
   );
@@ -13553,11 +13569,13 @@ function AutomationBuilderPage({goTo,nav}){
     showToast(msg);setTimeout(()=>goTo('settings-automations'),650);
   };
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this automation will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-automations')});else goTo('settings-automations');};
+  // Guard sidebar navigation too — clicking a nav item mid-edit used to discard the whole flow with no warning.
+  const navGuard=(d,p)=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this automation will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo(d,p)});else goTo(d,p);};
   const tm=TRIGGER_META(trigger);
   const counts=countFlow(nodes);
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="settings-automations" goTo={goTo}/>
+      <AppSidebar active="settings-automations" goTo={navGuard}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Automations</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-medium outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
@@ -17042,9 +17060,11 @@ const TFV_USE_CASES=['Customer care','Account notifications','Marketing','Delive
 const A2P_USE_CASES=['Low-volume mixed','Mixed (sales & support)','Marketing','Customer care','Account notifications','Delivery notifications','2FA / one-time passcodes'];
 const A2P_OPTIN_METHODS=['Website form','Verbal / phone call','Paper form','Keyword / text-to-join'];
 function PhoneChip({s}){const M={active:['Active','#34d399'],verified:['Verified','#34d399'],approved:['Approved','#34d399'],ok:['Ready to send','#34d399'],pending:['In review','#fbbf24'],queued:['Queued','#818cf8'],needs:['Needs registration','#fbbf24'],porting:['Porting in','#60a5fa'],unverified:['Unverified','#f87171'],rejected:['Needs fixes','#f87171'],none:['Not registered','#94a3b8']};const st=M[s]||[String(s),'#94a3b8'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap" style={{background:st[1]+'14',color:st[1],boxShadow:'inset 0 0 0 1px '+st[1]+'33'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st[1]}}/>{st[0]}</span>);}
-function PortNumberModal({close,onPort}){
+function PortNumberModal({close:_close,onPort}){
   const [f,setF]=React.useState({number:'',carrier:'',name:'',address:'',account:'',pin:''});
-  useEscKey(close);const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   const valid=f.number.replace(/\D/g,'').length>=10&&f.carrier.trim()&&f.name.trim()&&f.address.trim();
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   return(<React.Fragment>
@@ -17063,15 +17083,18 @@ function PortNumberModal({close,onPort}){
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Next: we email you a Letter of Authorization to e-sign (ports cancel if it's unsigned within 30 days), and your provider may ask for a recent bill. Ports usually complete in 5–15 business days (simulated here as ~2 days). Your number keeps working with your old provider until the move lands — no downtime, no missed texts.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onPort({number:fmtPhone(f.number),carrier:f.carrier.trim()});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Start port</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
 // Toll-Free Verification — mirrors Twilio's TFV submission (tollfree-verification resource): use-case
 // category + volume, summary, production sample, opt-in type + PUBLIC proof URL. Opt-in problems
 // (errors 30498–30512) cause nearly every rejection, so the form leads the user there.
-function TollFreeVerifyModal({num,profile,close,onSubmit}){
+function TollFreeVerifyModal({num,profile,close:_close,onSubmit}){
   const [f,setF]=React.useState({notifEmail:(profile&&profile.rep&&profile.rep.email)||'',useCase:TFV_USE_CASES[0],volume:TFV_VOLUMES[0],summary:'',sample:'',optInType:TFV_OPTIN_TYPES[0],optInUrl:''});
-  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   const Min=({v,n})=>(<span className={['ml-auto text-[10px] tabular-nums font-normal',(v||'').trim().length>=n?'text-emerald-300':'text-white/30'].join(' ')}>{(v||'').trim().length}/{n} min</span>);
   const okUrl=(u)=>/^https?:\/\/\S+\.\S+/i.test((u||'').trim());
   const valid=/\S+@\S+\.\S+/.test(f.notifEmail)&&f.summary.trim().length>=20&&f.sample.trim().length>=20&&okUrl(f.optInUrl);
@@ -17097,6 +17120,7 @@ function TollFreeVerifyModal({num,profile,close,onSubmit}){
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Reviews typically take ~3 business days (simulated here as ~1 day). Texting from {num.number} stays blocked until verification passes.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({useCase:f.useCase,volume:f.volume,summary:f.summary.trim(),sample:f.sample.trim(),optInType:f.optInType,optInUrl:f.optInUrl.trim(),notifEmail:f.notifEmail.trim()});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
@@ -17153,9 +17177,11 @@ function BuyNumberModal({close,onBuy,compOk,brand,bundles,onBundle}){
     </div>
   </React.Fragment>);
 }
-function TrustProfileModal({close,onSubmit,initial}){
+function TrustProfileModal({close:_close,onSubmit,initial}){
   const [f,setF]=React.useState({entityType:(initial&&initial.entityType)||'LLC',legalName:(initial&&initial.legalName)||'',regType:(initial&&initial.regType)||REG_ID_TYPES[0],ein:(initial&&initial.ein)||'',industry:(initial&&initial.industry)||PHONE_INDUSTRIES[0],regions:(initial&&initial.regions)||['USA_AND_CANADA'],address:(initial&&initial.address)||'',website:(initial&&initial.website)||'',repName:(initial&&initial.rep&&initial.rep.name)||'',repPosition:(initial&&initial.rep&&initial.rep.position)||REP_POSITIONS[0],repTitle:(initial&&initial.rep&&initial.rep.title)||'',repEmail:(initial&&initial.rep&&initial.rep.email)||'',repPhone:(initial&&initial.rep&&initial.rep.phone)||''});
-  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   const valid=f.legalName.trim()&&f.address.trim()&&f.repName.trim()&&/\S+@\S+\.\S+/.test(f.repEmail);
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
@@ -17190,13 +17216,16 @@ function TrustProfileModal({close,onSubmit,initial}){
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Carriers verify this identity first — your A2P brand, campaigns and number trust all hang off it. Usually approved within a day.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({entityType:f.entityType,legalName:f.legalName.trim(),regType:f.regType,ein:f.ein.trim(),industry:f.industry,regions:f.regions,address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),position:f.repPosition,title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)},status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
-function A2pBrandModal({close,onSubmit,initial}){
+function A2pBrandModal({close:_close,onSubmit,initial}){
   const [bt,setBt]=React.useState((initial&&initial.type)||'standard');
   const [f,setF]=React.useState({legalName:(initial&&initial.legalName)||'',ein:(initial&&initial.ein)||'',address:(initial&&initial.address)||'',vertical:(initial&&initial.vertical)||PHONE_VERTICALS[0],website:(initial&&initial.website)||'',mobile:'',companyType:(initial&&initial.companyType)||'private',ticker:(initial&&initial.ticker)||'',exchange:(initial&&initial.exchange)||STOCK_EXCHANGES[0],contactEmail:(initial&&initial.contactEmail)||''});
-  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   const sole=bt==='soleProp';
   const valid=f.legalName.trim()&&f.address.trim()&&(sole?f.mobile.replace(/\D/g,'').length>=10:(f.ein.trim()&&/\S+@\S+\.\S+/.test(f.contactEmail)&&(f.companyType!=='public'||f.ticker.trim())));
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
@@ -17231,12 +17260,15 @@ function A2pBrandModal({close,onSubmit,initial}){
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Brands are usually verified within minutes to 24 hours. Your campaign registration unlocks after the brand verifies.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({type:bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),companyType:sole?'private':f.companyType,ticker:f.companyType==='public'?f.ticker.trim():'',exchange:f.companyType==='public'?f.exchange:'',contactEmail:sole?'':f.contactEmail.trim(),mobile:sole?fmtPhone(f.mobile):'',status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
-function A2pCampaignModal({close,onSubmit,brand}){
+function A2pCampaignModal({close:_close,onSubmit,brand}){
   const [f,setF]=React.useState({useCase:A2P_USE_CASES[1],desc:'',s1:'',s2:'',ctLinks:true,ctPhone:false,ctAge:false,ctLend:false,optInDesc:'',optOut:true});
-  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   // Twilio-parity validation: description 40+, each sample 20+ (two required), consent 40+ — the Console minimums.
   const Min=({v,n})=>(<span className={['ml-auto text-[10px] tabular-nums font-normal',(v||'').trim().length>=n?'text-emerald-300':'text-white/30'].join(' ')}>{(v||'').trim().length}/{n} min</span>);
   const valid=f.desc.trim().length>=40&&f.s1.trim().length>=20&&f.s2.trim().length>=20&&f.optInDesc.trim().length>=40;
@@ -17258,13 +17290,14 @@ function A2pCampaignModal({close,onSubmit,brand}){
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">$15 one-time carrier fee — added to your next invoice. Manual carrier vetting can take up to ~2 weeks; texting stays paused until the campaign is approved.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({id:'cmp_'+Date.now(),useCase:f.useCase,description:f.desc.trim(),samples:[f.s1.trim(),f.s2.trim()],contents:{links:f.ctLinks,phone:f.ctPhone,ageGated:f.ctAge,lending:f.ctLend},optInDesc:f.optInDesc.trim(),optOut:f.optOut,status:'pending',submittedDaysAgo:0,fee:15});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit · $15</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
 // ── Unified A2P registration wizard — ONE guided flow (eligibility → profile → brand → campaign → consent → review),
 // submitted as a single bundle; downstream stages sit 'queued' and auto-cascade as each carrier approval lands
 // (see _autoAdvance). This is the primary registration path; the Trust-center cards become a status dashboard.
-function TrustRegistrationWizard({close,onSubmit,initial}){
+function TrustRegistrationWizard({close:_close,onSubmit,initial}){
   const P=(initial&&initial.profile)||{},B=(initial&&initial.brand)||{},C=(initial&&initial.campaign)||{};
   const [step,setStep]=React.useState(0);
   const [f,setF]=React.useState({
@@ -17280,7 +17313,9 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
     helpMsg:C.helpMsg||`{{business}}: reply here or call us. Msg & data rates may apply. Reply STOP to cancel.`,
     optOut:C.optOut!==false,privacyUrl:C.privacyUrl||'',termsUrl:C.termsUrl||'',
   });
-  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(f);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);const close=attemptClose;
   const sole=f.bt==='soleProp';
   const okUrl=(u)=>/^https?:\/\/[^\s.]+\.[^\s]+$/i.test((u||'').trim());
   const okEmail=(e)=>/\S+@\S+\.\S+/.test((e||'').trim());
@@ -17307,6 +17342,7 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
     <div className="fixed inset-0 z-[185] bg-black/50" onClick={close}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[760px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
       <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Set up text messaging</p><p className="text-[11.5px] text-white/45 mt-0.5">One guided registration — fill it once; carriers review each stage in turn. <span className="text-white/30">· A2P 10DLC</span></p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      {guardNode}
       <div className="shrink-0 px-5 py-3 border-b border-white/[0.05] overflow-x-auto scroll-area"><div className="flex items-center gap-1 w-max">{STEPS.map((s,i)=>{const done=i<step&&valid[i];const cur=i===step;const locked=i>step&&!valid.slice(0,i).every(Boolean);return(<React.Fragment key={i}>{i>0&&<span className="w-4 h-px bg-white/10 shrink-0"/>}<button onClick={()=>go(i)} disabled={locked} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all',cur?'bg-brand-500 text-white shadow-brand':done?'text-emerald-300 bg-emerald-500/10':locked?'text-white/25 cursor-not-allowed':'text-white/50 hover:text-white bg-white/[0.03]'].join(' ')}><span className={['w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold',cur?'bg-white/25':done?'bg-emerald-500/25':'bg-white/[0.08]'].join(' ')}>{done?<I.Check size={9} stroke={3}/>:i+1}</span>{s.n}</button></React.Fragment>);})}</div></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         {step===0&&(<React.Fragment>
@@ -18847,9 +18883,11 @@ function SequenceBuilderPage({goTo,channel}){
   const isComplianceKw=(k)=>COMPLIANCE_KEYWORDS.includes(String(k).toUpperCase());
   const saveStopRule=()=>{if(!stopEdit)return;if(!(stopEdit.actions||[]).length){showToast('Pick at least one action.');return;}setStopRules(list=>stopEdit.id==null?[...list,{...stopEdit,id:Date.now()}]:list.map(r=>r.id===stopEdit.id?{...stopEdit}:r));mark();setStopEdit(null);showToast('Exit condition saved.');};
   const removeStopRule=(id)=>{setStopRules(list=>list.filter(r=>r.id!==id));mark();showToast('Exit condition removed.');};
+  // Guard sidebar navigation — clicking a nav item mid-edit used to discard the whole sequence with no warning.
+  const navGuard=(d,p)=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo(d,p)});else goTo(d,p);};
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="settings-automations" goTo={goTo}/>
+      <AppSidebar active="settings-automations" goTo={navGuard}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Sequences</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><span className="text-white/45 shrink-0">{isSms?'SMS Sequences':'Email Sequences'}</span><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-medium outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
@@ -20339,9 +20377,11 @@ function FormBuilderPage({goTo,initial}){
   const applyPalette=(p)=>{setAccent(p.accent);setBgColor(p.bg);setTitleColor(p.titleColor);setDescColor(p.descColor);setTextColor(p.textColor);mark();};
   const seg=(cur,onPickSeg,opts)=>(<div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08] w-fit">{opts.map(o=>(<button key={o[0]} type="button" onClick={()=>{onPickSeg(o[0]);mark();}} className={'px-2.5 py-1 rounded text-[11px] font-medium transition-all '+(cur===o[0]?'bg-brand-500 text-white':'text-white/50 hover:text-white')}>{o[1]}</button>))}</div>);
   React.useEffect(()=>{const fn=e=>{if(e.key==='Escape'){setThemeOpen(false);setSubmitOpen(false);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
+  // Guard sidebar navigation — clicking a nav item mid-edit used to discard the whole form with no warning.
+  const navGuard=(d,p)=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this form will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo(d,p)});else goTo(d,p);};
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
-      <AppSidebar active="settings-forms" goTo={goTo}/>
+      <AppSidebar active="settings-forms" goTo={navGuard}/>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="shrink-0 border-b border-white/[0.05] px-7 py-3.5 flex items-center justify-between gap-4" style={{background:'var(--s925)'}}>
           <div className="flex items-center gap-2 text-[13px] min-w-0"><button onClick={cancel} className="text-white/45 hover:text-white transition-colors shrink-0 inline-flex items-center gap-1"><I.ChevronLeft size={13}/>Forms</button><I.ChevronRight size={12} className="text-white/25 shrink-0"/><input value={name} onChange={e=>{setName(e.target.value);mark();}} className="bg-transparent text-white font-medium outline-none border-b border-transparent focus:border-brand-500/40 px-0.5 min-w-0"/></div>
@@ -22551,13 +22591,15 @@ const PAY_INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white
 const PAY_LBL='block text-[11px] font-medium text-white/45 mb-1.5';
 const PAY_SEL='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none';
 // ── Product add / edit modal ────────────────────────────────────────────────
-function PayProductModal({initial,onClose,onSave}){
+function PayProductModal({initial,onClose:_close,onSave}){
   const [name,setName]=React.useState(initial?initial.name:'');
   const [price,setPrice]=React.useState(initial?String(initial.price):'');
   const [billing,setBilling]=React.useState(initial?initial.billing:'one-time');
   const [interval,setInterval]=React.useState(initial?(initial.interval||'month'):'month');
   const [desc,setDesc]=React.useState(initial?initial.desc:'');
-  useEscKey(onClose);
+  const _dirty=!initial&&(!!name.trim()||!!String(price).trim()||!!(desc||'').trim());
+  const {attemptClose,guardNode}=useCloseGuard(_dirty,_close);
+  const onClose=attemptClose;
   const save=()=>{if(!name.trim())return;onSave({id:initial?initial.id:'prod_'+Date.now(),name:name.trim(),price:parseFloat(price)||0,billing,interval:billing==='recurring'?interval:undefined,desc:desc.trim(),active:initial?initial.active!==false:true});};
   return(<div className="fixed inset-0 z-[200] flex items-end sm:items-stretch sm:justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
     <div role="dialog" aria-modal="true" className="w-full sm:w-[440px] sm:max-w-full max-h-[92vh] sm:max-h-none sm:h-full flex flex-col border-t sm:border-t-0 sm:border-l border-white/[0.10] rounded-t-2xl sm:rounded-none animate-[sheetUp_.24s_ease] sm:animate-[arIn_.22s_ease]" style={{background:'var(--pop)'}} onClick={e=>e.stopPropagation()}>
@@ -22575,15 +22617,18 @@ function PayProductModal({initial,onClose,onSave}){
       </div>
       </div>
       <div className="flex gap-3 px-5 py-4 border-t border-white/[0.07] shrink-0"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!name.trim()} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',name.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{initial?'Save product':'Add product'}</button></div>
+      {guardNode}
     </div>
   </div>);
 }
 // ── Standalone payment-link modal ───────────────────────────────────────────
-function PayLinkModal({onClose,onSave}){
+function PayLinkModal({onClose:_close,onSave}){
   const [title,setTitle]=React.useState('');
   const [amount,setAmount]=React.useState('');
   const [desc,setDesc]=React.useState('');
-  useEscKey(onClose);
+  const _dirty=!!title.trim()||!!String(amount).trim()||!!desc.trim();
+  const {attemptClose,guardNode}=useCloseGuard(_dirty,_close);
+  const onClose=attemptClose;
   const ok=title.trim()&&parseFloat(amount)>0;
   const save=()=>{if(!ok)return;onSave({id:'lnk_'+Date.now(),title:title.trim(),amount:parseFloat(amount)||0,desc:desc.trim(),url:payLinkUrl('l_'+payRandToken()),status:'active',clicks:0,paidCount:0,created:payDateLabel(payDayShift(0))});};
   return(<div className="fixed inset-0 z-[200] flex items-end sm:items-stretch sm:justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -22598,16 +22643,19 @@ function PayLinkModal({onClose,onSave}){
       </div>
       </div>
       <div className="flex gap-3 px-5 py-4 border-t border-white/[0.07] shrink-0"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!ok} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',ok?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Create link</button></div>
+      {guardNode}
     </div>
   </div>);
 }
 // ── Subscription modal (simulated) ──────────────────────────────────────────
-function PaySubModal({products,onClose,onSave}){
+function PaySubModal({products,onClose:_close,onSave}){
   const recurring=products.filter(p=>p.billing==='recurring'&&p.active!==false);
   const [customer,setCustomer]=React.useState('');
   const [planId,setPlanId]=React.useState(recurring[0]?recurring[0].id:'');
   const [seats,setSeats]=React.useState('1');
-  useEscKey(onClose);
+  const _dirty=!!customer.trim();
+  const {attemptClose,guardNode}=useCloseGuard(_dirty,_close);
+  const onClose=attemptClose;
   const plan=recurring.find(p=>p.id===planId);
   const seatsN=Math.max(1,parseInt(seats,10)||1);
   const amount=plan?plan.price*seatsN:0;
@@ -22625,6 +22673,7 @@ function PaySubModal({products,onClose,onSave}){
       </div>)}
       </div>
       <div className="flex gap-3 px-5 py-4 border-t border-white/[0.07] shrink-0"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!ok} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',ok?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Start subscription</button></div>
+      {guardNode}
     </div>
   </div>);
 }
@@ -22643,7 +22692,8 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const [ccy,setCcy]=React.useState((editInv&&editInv.currency)||'USD');
   const [discount,setDiscount]=React.useState(editInv&&editInv.discount?String(editInv.discount):'');
   const [taxRate,setTaxRate]=React.useState(editInv&&editInv.taxRate?String(editInv.taxRate):'');
-  useEscKey(onClose);
+  const _dirty=!editInv&&(!!contact.trim()||items.length>0||!!notes.trim()||!!String(discount).trim()||!!String(taxRate).trim()||!!dealLabel.trim());
+  const {attemptClose,guardNode}=useCloseGuard(_dirty,onClose);
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
   React.useEffect(()=>{if(editInv){setItems((editInv.items||[]).map(it=>({desc:it.desc,qty:String(it.qty),price:String(it.price)})));setNotes(editInv.notes||'');}},[]);
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
@@ -22661,9 +22711,9 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',currency:ccy,notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),dueTs:payDayShift(dueDays).getTime(),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes,currency:ccy}:_b;};
   const canSave=contact.trim()&&items.length>0&&total>0;
   return(<React.Fragment>
-    <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
+    <div className="fixed inset-0 z-[185] bg-black/40" onClick={attemptClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[520px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{editInv?'Edit invoice':(kind==='quote'?'New quote':'New invoice')}</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.Note size={15} className="text-brand-300"/>{editInv?'Edit invoice':(kind==='quote'?'New quote':'New invoice')}</p><button onClick={attemptClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div><label className={PAY_LBL}>Bill to (contact)</label><ARLookup value={contact} onChange={setContact} options={contacts.filter(c=>!c.deleted).map(c=>c.name)} placeholder="Search a contact…" Icon={I.Users}/>{co&&<p className="text-[11px] text-white/40 mt-1.5 flex items-center gap-1.5"><I.Building size={11}/>{co}</p>}{contact.trim()&&!contacts.find(c=>c.name===contact.trim())&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={10}/>Not a saved contact — this invoice won't link to a contact record.</p>}</div>
         <div><label className={PAY_LBL}>Link to a deal <span className="text-white/30 font-normal">(optional)</span></label><ARLookup value={dealLabel} onChange={setDealLabel} options={dealOpts} placeholder="Search an open deal…" Icon={I.Target}/></div>
@@ -22697,12 +22747,13 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
         <PayStripeNotice/>
       </div>
       <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-white/[0.06]">
-        <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/55 hover:text-white transition-all">Cancel</button>
+        <button onClick={attemptClose} className="px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/55 hover:text-white transition-all">Cancel</button>
         <div className="ml-auto flex items-center gap-2.5">
           {!editInv&&<button onClick={()=>{if(!canSave)return;onCreate(build('draft'),'draft');}} disabled={!canSave} className={['px-4 py-2.5 rounded-xl text-[13px] font-medium border transition-all',canSave?'text-white/75 bg-white/[0.04] border-white/[0.10] hover:bg-white/[0.07]':'text-white/30 bg-white/[0.04] border-white/[0.06] cursor-not-allowed'].join(' ')}>Save draft</button>}
           <button onClick={()=>{if(!canSave)return;editInv?onCreate(build(editInv.status||'draft'),editInv.status||'draft'):onCreate(build('sent'),'sent');}} disabled={!canSave} className={['inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all',canSave?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}><I.Send size={13}/>{editInv?'Save changes':(kind==='quote'?'Send quote':'Send invoice')}</button>
         </div>
       </div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
@@ -23921,7 +23972,7 @@ function CoRelForm({crm,selfId,onClose,onAdd}){
   </div>);
 }
 // ── Object editor drawer: identity + fields (reuses NewPropertyDrawer) + relationships ──
-function CustomObjectEditor({initial,crm,onClose,onSave}){
+function CustomObjectEditor({initial,crm,onClose:_close,onSave}){
   const [singular,setSingular]=React.useState(initial?initial.singular:'');
   const [plural,setPlural]=React.useState(initial?initial.plural:'');
   const [icon,setIcon]=React.useState(initial?initial.icon:'Folder');
@@ -23932,7 +23983,11 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
   const [visibility,setVisibility]=React.useState(initial?(initial.visibility||'everyone'):'everyone');
   const [fieldDrawer,setFieldDrawer]=React.useState(null);
   const [relForm,setRelForm]=React.useState(false);
-  useEscKey(onClose);
+  // Guard closing the builder with unsaved work; and block THIS surface's Escape while a field/relationship
+  // sub-drawer is open, so one Esc closes only the sub-drawer (was: one Esc closed both and lost the object).
+  const _initRef=React.useRef(null);const _snap=JSON.stringify({singular,plural,icon,color,primaryLabel,fields,rels,visibility});if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close,!!fieldDrawer||!!relForm);
+  const onClose=attemptClose;
   const upsertField=(fd)=>{const nf={...fd,key:fd.key||fd.id};setFields(fs=>fs.some(x=>x.id===nf.id)?fs.map(x=>x.id===nf.id?nf:x):(fs.length>=CO_MAX_FIELDS?fs:[...fs,nf]));setFieldDrawer(null);};
   const rmField=(id)=>setFields(fs=>fs.filter(x=>x.id!==id));
   const addRel=(rel)=>{const id='r_'+Date.now();setRels(rs=>rs.length>=CO_MAX_RELS?rs:[...rs,{...rel,id,key:id}]);setRelForm(false);};
@@ -23985,6 +24040,7 @@ function CustomObjectEditor({initial,crm,onClose,onSave}){
         </Section>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{initial?'Save object':'Create object'}</button></div>
+      {guardNode}
     </div>
     {fieldDrawer&&<NewPropertyDrawer initial={fieldDrawer==='new'?null:fieldDrawer} groups={['Fields']} allFields={fields} onClose={()=>setFieldDrawer(null)} onSave={(fd)=>upsertField(fd)} zClass="z-[190]"/>}
     {relForm&&<CoRelForm crm={crm} selfId={initial?initial.id:null} onClose={()=>setRelForm(false)} onAdd={addRel}/>}
@@ -24018,11 +24074,14 @@ function CoTagInput({value,onChange}){
   </div>);
 }
 // ── Create / edit a custom record (reuses DrawerField + ARLookup) ──
-function CustomRecordDrawer({mode,def,record,crm,onClose,onSave}){
+function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
   const blank=()=>{const o={};(def.fields||[]).forEach(f=>{o[f.key]=f.type==='Multi select'?[]:'';});(def.relationships||[]).forEach(r=>{o[r.key]=r.many?[]:'';});return o;};
   const [draft,setDraft]=React.useState(()=>mode==='edit'?{...record}:{name:'',owner:'AM',tags:[],...blank()});
   const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
-  useEscKey(onClose);
+  // Dirty = draft differs from the initial snapshot (works for create: starts blank; and edit: starts pre-filled).
+  const _initRef=React.useRef(null);const _snap=JSON.stringify(draft);if(_initRef.current===null)_initRef.current=_snap;
+  const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);
+  const onClose=attemptClose;
   const valid=(draft.name||'').trim();
   const save=()=>{if(!valid)return;onSave({...draft,name:draft.name.trim(),ownerColor:coOwnerColor(draft.owner)});};
   return(<React.Fragment>
@@ -24037,6 +24096,7 @@ function CustomRecordDrawer({mode,def,record,crm,onClose,onSave}){
         <div><label className={CO_LBL}>Tags</label><CoTagInput value={draft.tags||[]} onChange={v=>set('tags',v)}/></div>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{mode==='edit'?'Save changes':'Create '+def.singular}</button></div>
+      {guardNode}
     </div>
   </React.Fragment>);
 }
