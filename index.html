@@ -19421,7 +19421,7 @@ function autoTriggerEntity(trigger){return _TRIG_ENTITY[trigger]||null;}
 function fireEntityAutomationEvents(ent,record,events){
   if(!_autoRt||!record)return [];
   const ctx=autoCtx(ent);
-  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0&&(autoTriggerEntity(a.trigger)==null||autoTriggerEntity(a.trigger)===ent)); // R9-5: entity scoping — no cross-entity misfire
+  const fired=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0&&(autoTriggerEntity(a.trigger)==null||autoTriggerEntity(a.trigger)===ent)&&(!a.entry||autoEvalCond(a.entry,record,ent))); // R9-5: entity scoping — no cross-entity misfire; + enforce the "Only continue if" entry filter (was saved but ignored)
   fired.forEach(a=>autoExecuteFired(a,record,ctx));
   if(fired.length&&window.__nrturToast)window.__nrturToast('⚡ '+(fired.length===1?('Automation "'+fired[0].name+'" ran'):(fired.length+' automations ran')),'success');
   return fired;
@@ -19522,7 +19522,7 @@ function _autoAdvance(ms){
 }
 function fireDealAutomationEvents(deal,events){
   if(!_autoRt||!deal)return [];
-  const matched=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0);
+  const matched=(_autoRt.automations||[]).filter(a=>a.status==='active'&&events.indexOf(a.trigger)>=0&&(!a.entry||autoEvalCond(a.entry,deal,'deal'))); // + enforce the "Only continue if" entry filter (was saved but ignored)
   const fired=[],skipped=[];
   matched.forEach(a=>{(dealCondPass(a.cond,deal)?fired:skipped).push(a);}); // condition gates whether it runs for THIS deal
   const ctx=autoCtx('deal');
@@ -22125,7 +22125,9 @@ function CalendarPage({goTo,nav}){
   // Merge booked meetings (SchedulingContext) into the calendar's event source so they actually show on the grid +
   // agenda — they used to live only on the Meetings tab. Cancelled bookings are omitted; bookings are display-only here.
   const _bookingEvents=(meetings||[]).filter(m=>m&&m.date&&m.status!=='cancelled').map(schedMeetingToEvent);
-  const visible=[...events,..._bookingEvents].filter(e=>!e.deleted&&typeFilter[e.type]);
+  // Team rail actually filters now: hide events owned by an un-ticked teammate. Tasks + bookings carry an owner
+  // (assignee / rep); calendar events without one default to AM (you), so un-ticking AM hides your own events.
+  const visible=[...events,..._bookingEvents].filter(e=>!e.deleted&&typeFilter[e.type]&&team[e.assignee||'AM']!==false);
   const go=(dir)=>{setCurrent(c=>view==='month'?new Date(c.getFullYear(),c.getMonth()+dir,1):calAddDays(c,dir*(view==='week'?7:1)));};
   const periodLabel=(()=>{if(view==='month')return CAL_MONTHS[current.getMonth()]+' '+current.getFullYear();if(view==='week'){const s=calStartOfWeek(current),e=calAddDays(s,6);return s.getDate()+' '+CAL_MONTHS[s.getMonth()].slice(0,3)+' – '+e.getDate()+' '+CAL_MONTHS[e.getMonth()].slice(0,3)+', '+e.getFullYear();}return CAL_DAYS[current.getDay()]+' '+current.getDate()+' '+CAL_MONTHS[current.getMonth()]+' '+current.getFullYear();})();
   const weekDays=()=>{const s=calStartOfWeek(current);return [0,1,2,3,4,5,6].map(i=>calAddDays(s,i));};
