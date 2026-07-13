@@ -1639,6 +1639,7 @@ function GlowBg({c1='rgba(99,102,241,0.10)',c2='rgba(124,58,237,0.07)'}){
 // ?? Global Search Overlay ?????????????????????????????????????????????????????
 function GlobalSearchOverlay({close,goTo}){
   const [query,setQuery]=React.useState('');
+  const [sel,setSel]=React.useState(0);
   const inputRef=React.useRef(null);
   React.useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),60);},[]);
   useEscKey(close);
@@ -1696,6 +1697,11 @@ function GlobalSearchOverlay({close,goTo}){
   const customRecs=(_customObjects||[]).filter(ob=>coCanView(ob)).flatMap(ob=>effScopeRows('Contacts',(ob.records||[]).filter(r=>!r.deleted&&!r.archived&&match(r.name,r.r_company)),r=>r.owner).slice(0,3).map(r=>({key:'cob'+ob.id+r.id,id:{objectId:ob.id,recordId:r.id},name:r.name,sub:ob.singular,color:ob.color,avatar:(r.name||'?').slice(0,1).toUpperCase(),square:true,page:'custom-record'}))).slice(0,5);
   const sections=[{t:'Contacts',items:people},{t:'Leads',items:leads},{t:'Companies',items:companies},{t:'Deals',items:deals},{t:'Custom records',items:customRecs},{t:'Pages',items:pages},{t:'Settings',items:settingsPages}].filter(s=>s.items.length);
   const total=sections.reduce((a,s)=>a+s.items.length,0);
+  // Keyboard nav: the highlighted row responds to Enter (and arrows move it) — was mouse-only before.
+  const flat=sections.flatMap(s=>s.items);
+  const secOffsets=[];{let _o=0;sections.forEach(s=>{secOffsets.push(_o);_o+=s.items.length;});}
+  const openItem=(i)=>{const it=flat[i];if(it){goTo(it.page,it.id);close();}};
+  const onKey=(e)=>{if(e.key==='ArrowDown'){e.preventDefault();setSel(s=>Math.min(s+1,Math.max(0,total-1)));}else if(e.key==='ArrowUp'){e.preventDefault();setSel(s=>Math.max(s-1,0));}else if(e.key==='Enter'){e.preventDefault();openItem(sel);}};
   const row={display:'flex',alignItems:'center',gap:12,padding:'9px 10px',borderRadius:8,cursor:'pointer',border:'none',textAlign:'left',fontFamily:'inherit',background:'transparent',transition:'background .1s',width:'100%'};
   return(
     <div className="fixed inset-0 z-[150] flex flex-col items-center" style={{background:'rgba(7,7,15,0.92)',backdropFilter:'blur(10px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
@@ -1703,7 +1709,7 @@ function GlobalSearchOverlay({close,goTo}){
       <div style={{width:'100%',maxWidth:620,marginTop:96,padding:'0 20px',display:'flex',flexDirection:'column',gap:16}}>
         <div style={{position:'relative'}}>
           <div style={{position:'absolute',left:16,top:'50%',transform:'translateY(-50%)',color:'var(--o40)',pointerEvents:'none'}}><I.Search size={16}/></div>
-          <input ref={inputRef} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search contacts, deals, automations..."
+          <input ref={inputRef} value={query} onChange={e=>{setQuery(e.target.value);setSel(0);}} onKeyDown={onKey} placeholder="Search contacts, deals, automations..."
             style={{width:'100%',background:'var(--ob07)',border:'1px solid rgba(99,102,241,0.40)',borderRadius:12,padding:'15px 52px 15px 46px',fontSize:15,color:'var(--o1)',fontFamily:'inherit',outline:'none',boxShadow:'0 0 0 3px rgba(99,102,241,0.12)',boxSizing:'border-box'}}/>
           <button onClick={e=>{e.stopPropagation();close();window.__nrturOpenCmd?.();}} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',fontFamily:'monospace',fontSize:11,color:'var(--o35)',background:'var(--ob06)',border:'1px solid var(--obd08)',borderRadius:5,padding:'2px 7px',cursor:'pointer'}}>Cmd+K</button>
         </div>
@@ -1713,8 +1719,8 @@ function GlobalSearchOverlay({close,goTo}){
           ):sections.map((s,si)=>(
             <div key={s.t}>
               <div style={{padding:'7px 12px 3px',fontSize:11,fontWeight:500,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--o32)',borderTop:si>0?'1px solid var(--obd04)':'none',borderBottom:'1px solid var(--obd04)'}}>{s.t}</div>
-              <div style={{padding:'5px 8px'}}>{s.items.map((it,i)=>{const first=si===0&&i===0;return(
-                <button key={it.key} onClick={()=>{goTo(it.page,it.id);close();}} style={{...row,background:first?'rgba(99,102,241,0.10)':'transparent'}} onMouseOver={e=>{e.currentTarget.style.background='var(--ob04)';}} onMouseOut={e=>{e.currentTarget.style.background=first?'rgba(99,102,241,0.10)':'transparent';}}>
+              <div style={{padding:'5px 8px'}}>{s.items.map((it,i)=>{const gi=secOffsets[si]+i;const isSel=gi===sel;return(
+                <button key={it.key} onClick={()=>{goTo(it.page,it.id);close();}} onMouseEnter={()=>setSel(gi)} style={{...row,background:isSel?'rgba(99,102,241,0.10)':'transparent'}} onMouseOver={e=>{e.currentTarget.style.background='var(--ob04)';}} onMouseOut={e=>{e.currentTarget.style.background=isSel?'rgba(99,102,241,0.10)':'transparent';}}>
                   {it.settings?(<div style={{width:32,height:32,borderRadius:8,background:'var(--ob04)',border:'1px solid var(--obd06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.Settings size={13} style={{color:'var(--o40)'}}/></div>
                   ):it.pageIcon?(<div style={{width:32,height:32,borderRadius:8,background:'var(--ob04)',border:'1px solid var(--obd06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.LayoutDash size={12} style={{color:'var(--o40)'}}/></div>
                   ):it.deal?(<div style={{width:32,height:32,borderRadius:8,background:'rgba(99,102,241,0.10)',border:'1px solid rgba(99,102,241,0.20)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><I.GitBranch size={13} style={{color:'#818cf8'}}/></div>
@@ -1745,10 +1751,10 @@ const CMD_ITEMS=[
   {group:'Navigate',label:'Pipeline',page:'pipeline',kbd:'Ctrl+3'},
   {group:'Navigate',label:'Reports',page:'reports',kbd:'Ctrl+4'},
   {group:'Navigate',label:'Settings',page:'settings-general',kbd:'Ctrl+,'},
-  {group:'Create',label:'New Lead',page:'add-lead',kbd:'N L',accent:true},
-  {group:'Create',label:'New Contact',page:'add-contact',kbd:'N C',accent:true},
-  {group:'Create',label:'New Company',page:'add-company',accent:true},
-  {group:'Create',label:'New Deal',page:'add-deal',kbd:'N D',accent:true},
+  {group:'Create',label:'New Lead',page:'add-lead',qa:'lead',kbd:'N L',accent:true},
+  {group:'Create',label:'New Contact',page:'add-contact',qa:'contact',kbd:'N C',accent:true},
+  {group:'Create',label:'New Company',page:'add-company',qa:'company',accent:true},
+  {group:'Create',label:'New Deal',page:'add-deal',qa:'deal',kbd:'N D',accent:true},
   {group:'Create',label:'New Automation',page:'automation-builder',kbd:'N A',accent:true},
   {group:'Recent',label:'Forge & Co',page:'contact-detail',sub:'Contact'},
   {group:'Recent',label:'Q3 Outbound campaign',page:'automation-builder',sub:'Automation'},
@@ -1761,8 +1767,11 @@ function CommandPalette({close,goTo}){
   React.useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),60);},[]);
   const filtered=React.useMemo(()=>{const PG={'add-lead':'Leads','add-contact':'Contacts','add-company':'Companies','add-deal':'Deals'};let items=CMD_ITEMS.filter(x=>!PG[x.page]||effCanObject(PG[x.page],'create'));return query?items.filter(x=>x.label.toLowerCase().includes(query.toLowerCase())):items;},[query]);
   React.useEffect(()=>{setSel(0);},[query]);
+  // Create items open the real quick-add DRAWER (window.__nrturQuickAdd) instead of the legacy add-* pages that
+  // discarded input and landed on a deleted first record. Non-object items (New Automation) still navigate.
+  const activate=(item)=>{if(!item)return;if(item.qa&&window.__nrturQuickAdd){close();window.__nrturQuickAdd(item.qa);}else{goTo(item.page);close();}};
   React.useEffect(()=>{
-    const fn=(e)=>{if(e.key==='Escape'){close();return;}if(e.key==='ArrowDown'){e.preventDefault();setSel(s=>Math.min(s+1,filtered.length-1));}if(e.key==='ArrowUp'){e.preventDefault();setSel(s=>Math.max(s-1,0));}if(e.key==='Enter'){const item=filtered[sel];if(item){goTo(item.page);close();}}};
+    const fn=(e)=>{if(e.key==='Escape'){close();return;}if(e.key==='ArrowDown'){e.preventDefault();setSel(s=>Math.min(s+1,filtered.length-1));}if(e.key==='ArrowUp'){e.preventDefault();setSel(s=>Math.max(s-1,0));}if(e.key==='Enter'){const item=filtered[sel];if(item){activate(item);}}};
     document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);
   },[close,sel,filtered,goTo]);
   const GROUPS=['Navigate','Create','Recent'];
@@ -1784,7 +1793,7 @@ function CommandPalette({close,goTo}){
                 {items.map(item=>{
                   const globalIdx=filtered.indexOf(item);const isSel=globalIdx===sel;
                   return(
-                    <button key={item.label} onClick={()=>{goTo(item.page);close();}} onMouseEnter={()=>setSel(globalIdx)}
+                    <button key={item.label} onClick={()=>activate(item)} onMouseEnter={()=>setSel(globalIdx)}
                       style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'9px 12px',borderRadius:8,cursor:'pointer',border:'none',textAlign:'left',fontFamily:'inherit',background:isSel?'rgba(99,102,241,0.12)':'transparent',transition:'background .1s'}}>
                       <div style={{width:28,height:28,borderRadius:7,background:item.accent?'rgba(99,102,241,0.10)':'rgba(255,255,255,0.04)',border:item.accent?'1px solid rgba(99,102,241,0.20)':'1px solid var(--obd07)',display:'flex',alignItems:'center',justifyContent:'center',color:item.accent?'#818cf8':'var(--o40)',flexShrink:0}}>
                         {item.group==='Create'&&<I.Plus size={11} stroke={2.5}/>}{item.group==='Navigate'&&<I.ArrowRight size={11} stroke={2}/>}{item.group==='Recent'&&<I.Clock size={11} stroke={2}/>}
@@ -13537,19 +13546,24 @@ function AutomationTestModal({nodes,steps,close}){
 }
 function AutomationBuilderPage({goTo,nav}){
   const readOnly=!settingsIsAdmin();
-  // A ready-made recipe can be preloaded via goTo('automation-builder',{recipe:'…'}) — e.g. the Speed-to-lead recipe.
+  const crm=React.useContext(CrmDataContext);
+  // A recipe can be preloaded via goTo('automation-builder',{recipe:'…'}); an EXISTING automation is opened for
+  // editing via goTo('automation-builder',{id}) — it hydrates from the store and Save updates it in place (no dupe).
   const _recipe=(nav&&nav.recipe)||null;
+  const _editId=(nav&&typeof nav==='object'&&nav.id!=null)?nav.id:null;
+  const _edit=_editId!=null?(crm.automations||[]).find(a=>a.id===_editId):null;
   const [nodes,setNodes]=React.useState(()=>{
+    if(_edit&&Array.isArray(_edit.nodes)&&_edit.nodes.length)return _edit.nodes;
     if(_recipe==='speed-to-lead')return[makeNode(STEP_PRESETS_A.sms),makeNode(STEP_PRESETS_A.task),makeNode(STEP_PRESETS_A.enrollEmail)];
     const c=makeNode(LOGIC_PRESETS_A.condition);c.field='Deal value';c.op='greater than';c.value='10';c.yes=[makeNode(STEP_PRESETS_A.proposal),makeNode(STEP_PRESETS_A.slack)];c.no=[makeNode(STEP_PRESETS_A.task)];return[makeNode(STEP_PRESETS_A.assign),makeNode(STEP_PRESETS_A.welcome),c];});
-  const [name,setName]=React.useState(_recipe==='speed-to-lead'?'Speed-to-lead':'New Automation');
-  const [trigger,setTrigger]=React.useState(_recipe==='speed-to-lead'?'New ad lead received':'Contact created');
+  const [name,setName]=React.useState(_edit?_edit.name:(_recipe==='speed-to-lead'?'Speed-to-lead':'New Automation'));
+  const [trigger,setTrigger]=React.useState(_edit?_edit.trigger:(_recipe==='speed-to-lead'?'New ad lead received':'Contact created'));
   const [pickTrigger,setPickTrigger]=React.useState(false);
   const [triggerOpen,setTriggerOpen]=React.useState(false);
-  const [entryOn,setEntryOn]=React.useState(false);
-  const [entry,setEntry]=React.useState({field:'Status',op:'is',value:'Lead'});
+  const [entryOn,setEntryOn]=React.useState(_edit?!!_edit.entry:false);
+  const [entry,setEntry]=React.useState(_edit&&_edit.entry?_edit.entry:{field:'Status',op:'is',value:'Lead'});
   const [webhookFields,setWebhookFields]=React.useState(['full_name','email','company','phone','message']);
-  const [activated,setActivated]=React.useState(false);
+  const [activated,setActivated]=React.useState(_edit?_edit.status==='active':false);
   const [dirty,setDirty]=React.useState(false);
   const [testOpen,setTestOpen]=React.useState(false);
   const [logOpen,setLogOpen]=React.useState(false);
@@ -13558,8 +13572,7 @@ function AutomationBuilderPage({goTo,nav}){
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
   const mark=()=>setDirty(true);
   const setFlow=(v)=>{setNodes(v);mark();};
-  const crm=React.useContext(CrmDataContext);
-  const [savedId,setSavedId]=React.useState(null);
+  const [savedId,setSavedId]=React.useState(_editId);
   const save=(msg)=>{ // P0-1: Save persists a runnable automation into the shared store (the runtime engine matches on its trigger)
     const draft=/draft/i.test(msg);
     const flat=[];const walk=(arr)=>(arr||[]).forEach(n=>{if(n&&n.label&&n.Icon)flat.push({label:n.label,Icon:n.Icon,bg:n.bg,fg:n.fg,meta:n.meta});if(n&&n.yes)walk(n.yes);if(n&&n.no)walk(n.no);if(n&&n.branches)n.branches.forEach(b=>walk((b&&b.nodes)||b));});walk(nodes);
@@ -18734,12 +18747,16 @@ function ABResultsModal({data,close}){
       </div>
     </div>,document.body);
 }
-function SequenceBuilderPage({goTo,channel}){
+function SequenceBuilderPage({goTo,channel,nav}){
   const readOnly=!settingsIsAdmin();
   const isSms=channel==='sms';
   const isPush=channel==='push',isInApp=channel==='inapp',isEmailCh=channel==='email',isMsgX=isPush||isInApp;
   const {conns}=React.useContext(IntegrationsContext);
   const crm=React.useContext(CrmDataContext);
+  // Editing an existing sequence: opened via goTo(channel+'-sequence-builder',{id}); hydrate from customSeqs and
+  // Save updates in place. Seeds (no stepData / not in customSeqs) → _edit null → Save creates an editable copy.
+  const _editId=(nav&&typeof nav==='object'&&nav.id!=null)?nav.id:null;
+  const _edit=_editId!=null?(crm.customSeqs||[]).find(s=>s.id===_editId):null;
   // A2P-aware: "connected" now means the workspace can actually send (number owned + campaign approved) — smsComplianceState().
   const [isConnected,setIsConnected]=React.useState(()=>{try{return smsComplianceState().ok;}catch(e){return true;}});
   // Sending number for SMS sequences (picker is only rendered when isSms) — real workspace numbers, demo list as fallback.
@@ -18749,14 +18766,16 @@ function SequenceBuilderPage({goTo,channel}){
   const [activeNodeId,setActiveNodeId]=React.useState(null);
   const [draft,setDraft]=React.useState(null);
   const [tplEdit,setTplEdit]=React.useState(null); // template being edited from the node drawer (subject lives on the template)
-  const [name,setName]=React.useState(isPush?'New Push Sequence':isInApp?'New In-app Sequence':isSms?'New SMS Sequence':'New Email Sequence');
+  const [name,setName]=React.useState(_edit?_edit.name:(isPush?'New Push Sequence':isInApp?'New In-app Sequence':isSms?'New SMS Sequence':'New Email Sequence'));
   const TRIGGER_ID='trigger';
   // Trigger (enrollment) config now lives in the same side drawer as step nodes — no inline fields.
-  const [trig,setTrig]=React.useState({type:'tag-applied',tag:'lead',form:FORMS_DATA[0].name,fromStage:'Qualified',toStage:'Proposal Sent',dateField:'Renewal date',offset:'3 days before',reenroll:false,limitOn:false,limit:'1',conds:[]});
-  const [steps,setSteps]=React.useState(isMsgX?seqSeedSteps(channel):isSms
+  const [trig,setTrig]=React.useState(_edit&&_edit.trig?_edit.trig:{type:'tag-applied',tag:'lead',form:FORMS_DATA[0].name,fromStage:'Qualified',toStage:'Proposal Sent',dateField:'Renewal date',offset:'3 days before',reenroll:false,limitOn:false,limit:'1',conds:[]});
+  const [steps,setSteps]=React.useState(()=>{
+    if(_edit&&Array.isArray(_edit.stepData)&&_edit.stepData.length)return _edit.stepData;
+    return isMsgX?seqSeedSteps(channel):isSms
     ?[{id:1,body:'Hi {{first_name}}, thanks for connecting! Quick question — are you still looking at {{company}} options this quarter?',delay:null},{id:2,body:'Just floating this back up {{first_name}} — happy to share a 2-min overview whenever you have a sec. Grab a time here: nrtur.app/book/alex',delay:{n:2,unit:'days'}}]
-    :[{id:1,subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nThanks for signing up! Here is how to get started in 3 quick steps.\n\nBest,\nAlex',delay:null},{id:2,subject:'A few tips to get the most out of nrtur',body:'Hi {{first_name}},\n\nNoticed you are exploring — here are the features teams love most.\n\nAlex',delay:{n:3,unit:'days'}}]);
-  const [activated,setActivated]=React.useState(false);
+    :[{id:1,subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nThanks for signing up! Here is how to get started in 3 quick steps.\n\nBest,\nAlex',delay:null},{id:2,subject:'A few tips to get the most out of nrtur',body:'Hi {{first_name}},\n\nNoticed you are exploring — here are the features teams love most.\n\nAlex',delay:{n:3,unit:'days'}}];});
+  const [activated,setActivated]=React.useState(_edit?!!_edit.active:false);
   const [dirty,setDirty]=React.useState(false);
   const [testOpen,setTestOpen]=React.useState(false);
   // Exit conditions — list of cards + the inline builder draft (null when closed).
@@ -18775,11 +18794,13 @@ function SequenceBuilderPage({goTo,channel}){
   const {confirmNode,openConfirm}=useConfirm();
   const mark=()=>setDirty(true);
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),1800);};
+  const [savedId,setSavedId]=React.useState(_edit?_edit.id:null);
   const save=(msg,asDraft)=>{
     // Persist the built sequence into the shared customSeqs store (in-memory) so it shows up in the Sequences
-    // list, the stage bulk-enroll picker, and survives navigation — was previously a toast-only no-op.
-    const rec={id:'cs_'+Date.now(),name:(name||'').trim()||'Untitled sequence',channel,steps:steps.length,stepData:steps,active:asDraft?false:activated,enrolled:0,sent:0,opened:0,replied:0,clicked:0,atStep:[],lastRun:null,trig,stopRules,createdBy:CURRENT_USER.avatar,fromBuilder:true};
-    crm.setCustomSeqs(a=>[rec,...a]);
+    // list, the stage bulk-enroll picker, and survives navigation. Editing updates in place (savedId) — no dupe.
+    const rec={name:(name||'').trim()||'Untitled sequence',channel,steps:steps.length,stepData:steps,active:asDraft?false:activated,trig,stopRules};
+    if(savedId!=null){crm.setCustomSeqs(a=>a.map(s=>s.id===savedId?{...s,...rec}:s));}
+    else{const _id='cs_'+Date.now();setSavedId(_id);crm.setCustomSeqs(a=>[{id:_id,enrolled:0,sent:0,opened:0,replied:0,clicked:0,atStep:[],lastRun:null,createdBy:CURRENT_USER.avatar,fromBuilder:true,...rec},...a]);}
     setDirty(false);showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);
   };
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-sequences')});else goTo('settings-sequences');};
@@ -19739,7 +19760,7 @@ function SettingsAutomationsPage({goTo}){
   const nActive=autos.filter(a=>a.status==='active').length,nPaused=autos.filter(a=>a.status==='paused').length;
   const seqRow=(seq,channel)=>{const key=channel+seq.id;const on=seqMap[key];return(
     <div key={key} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
-      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-semibold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo(channel+'-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Enrolled <span className="text-white font-semibold tabular-nums ml-1">{seq.enrolled}</span></span><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span><span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/><button onClick={()=>goTo(channel+'-sequence-builder',{id:seq.id})} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
     </div>);};
   const LCOL='1.7fr 1.5fr 120px 110px 110px';
   const filteredLogs=[...(autoLogs||[]),...AUTO_LOGS].filter(l=>(logAuto==='All'||l.auto===logAuto)&&(logStatus==='All'||l.status===logStatus)); // live runtime rows first, seeded history after
@@ -19777,7 +19798,7 @@ function SettingsAutomationsPage({goTo}){
                 <div key={a.id} draggable onDragStart={()=>folderBeginItemDrag('automations',a.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',muted?'bg-white/[0.02] opacity-90':'bg-white/[0.035]',isErr?'':muted?'border-white/[0.05]':'border-white/[0.08] hover:border-white/[0.14]'].join(' ')} style={isErr?{borderColor:'rgba(239,68,68,0.3)',boxShadow:'0 0 0 1px rgba(239,68,68,0.12),0 0 30px rgba(239,68,68,0.08)'}:{}}>
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-start gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1',a.status==='active'?'bg-brand-500/12 text-brand-300 ring-brand-500/25':isErr?'bg-red-500/10 text-red-300 ring-red-500/20':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}><I.Zap size={17} stroke={2.2}/></div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{a.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',st.badge].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{st.label}</span></div><div className="flex items-center gap-2 mt-1 flex-wrap">{(()=>{const m=TRIGGER_META(a.trigger);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{background:m.color+'24',color:m.color}}><m.Icon size={10} stroke={2.4}/>{m.cat}</span>);})()}<p className="text-[12px] text-white/55"><span className="text-white/35">When:</span> <span className="font-medium text-white/80">{a.trigger}</span></p></div></div></div>
-                    <div className="flex items-center gap-2 shrink-0">{!isDraft&&<Toggle on={a.status==='active'} onChange={()=>toggleAuto(a.id)}/>}{!isDraft&&<button onClick={()=>setEnrModal(autoFlow(a))} className={EDIT}><I.Users size={12}/>Enrolled</button>}{!isDraft&&<button onClick={()=>setLogModal(a)} className={EDIT}><I.History size={12}/>Logs</button>}<MoveToFolderButton api={fldAuto} itemId={a.id} sm/><button onClick={()=>goTo('automation-builder')} className={EDIT}><I.Edit size={12}/>Edit</button>
+                    <div className="flex items-center gap-2 shrink-0">{!isDraft&&<Toggle on={a.status==='active'} onChange={()=>toggleAuto(a.id)}/>}{!isDraft&&<button onClick={()=>setEnrModal(autoFlow(a))} className={EDIT}><I.Users size={12}/>Enrolled</button>}{!isDraft&&<button onClick={()=>setLogModal(a)} className={EDIT}><I.History size={12}/>Logs</button>}<MoveToFolderButton api={fldAuto} itemId={a.id} sm/><button onClick={()=>goTo('automation-builder',{id:a.id})} className={EDIT}><I.Edit size={12}/>Edit</button>
                       <div data-automenu className="relative"><button onClick={()=>setMenu(menu===a.id?null:a.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>
                         {menu===a.id&&(<div className="absolute right-0 top-9 z-30 w-40 overflow-hidden" style={{background:'var(--s850)',border:'1px solid rgba(255,255,255,0.10)',borderRadius:12,boxShadow:'0 16px 48px rgba(0,0,0,0.6)'}}>
                           <button onClick={()=>duplicateAuto(a)} style={{padding:'8px 14px',fontSize:13}} className="w-full flex items-center gap-2.5 text-white/80 hover:bg-brand-500/10 hover:text-white transition-colors"><I.Copy size={13}/>Duplicate</button>
@@ -20683,7 +20704,7 @@ function SettingsSequencesPage({goTo}){
   const builderFor=()=>chan+'-sequence-builder';
   const seqRow=(seq,channel,fld)=>{const key=channel+seq.id;const on=(key in seqMap)?seqMap[key]:!!seq.active;const active=(seq.atStep||[]).reduce((a,b)=>a+b,0);const maxStep=Math.max(...(seq.atStep||[0]),1);return(
     <div key={key} draggable onDragStart={()=>folderBeginItemDrag('seq-'+channel,seq.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
-      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span>{channel!=='sms'&&<span>Opened <span className="text-amber-300 font-semibold tabular-nums ml-1">{seq.opened}</span></span>}{(channel==='push'||channel==='inapp')&&<span>Clicked <span className="text-sky-300 font-semibold tabular-nums ml-1">{seq.clicked}</span></span>}<span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/>{fld&&<MoveToFolderButton api={fld} itemId={seq.id} sm/>}<button onClick={()=>goTo(channel+'-sequence-builder')} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span>{channel!=='sms'&&<span>Opened <span className="text-amber-300 font-semibold tabular-nums ml-1">{seq.opened}</span></span>}{(channel==='push'||channel==='inapp')&&<span>Clicked <span className="text-sky-300 font-semibold tabular-nums ml-1">{seq.clicked}</span></span>}<span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/>{fld&&<MoveToFolderButton api={fld} itemId={seq.id} sm/>}<button onClick={()=>goTo(channel+'-sequence-builder',{id:seq.id})} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
       <div className="mt-3 pt-3 border-t border-white/[0.05] flex items-end justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] text-white/45 mb-1.5"><span className="text-white font-semibold tabular-nums">{active}</span> active in flight · across {seq.steps} steps</p>
@@ -20877,9 +20898,9 @@ function CalEventDetailModal({event,onClose,onEdit,onDelete,onComplete,goTo}){
         <h2 className="text-white text-[18px] font-semibold mb-4">{event.title}</h2>
         <div className="flex flex-col gap-3">
           <Row Icon={I.Clock}>{dateLabel}</Row>
-          {event.contact&&<Row Icon={I.Users}><button onClick={()=>{onClose();goTo(calLinkPage(event.linkType));}} className="text-brand-300 hover:text-brand-200">{event.contact}{event.linkType==='lead'?<span className="text-white/35 text-[11px] ml-1">(lead)</span>:''}</button></Row>}
-          {event.company&&<Row Icon={I.Building}><button onClick={()=>{onClose();goTo('company-detail');}} className="text-brand-300 hover:text-brand-200">{event.company}</button></Row>}
-          {event.deal&&<Row Icon={I.GitBranch}><button onClick={()=>{onClose();goTo('deal-detail');}} className="text-brand-300 hover:text-brand-200">{event.deal}</button></Row>}
+          {event.contact&&<Row Icon={I.Users}><button onClick={()=>{onClose();goTo(calLinkPage(event.linkType),event.linkType==='lead'?event.leadId:event.contactId);}} className="text-brand-300 hover:text-brand-200">{event.contact}{event.linkType==='lead'?<span className="text-white/35 text-[11px] ml-1">(lead)</span>:''}</button></Row>}
+          {event.company&&<Row Icon={I.Building}><button onClick={()=>{onClose();goTo('company-detail',event.companyId);}} className="text-brand-300 hover:text-brand-200">{event.company}</button></Row>}
+          {event.deal&&<Row Icon={I.GitBranch}><button onClick={()=>{onClose();goTo('deal-detail',(allDeals().find(d=>(d.name||'')===event.deal||(d.company||'')===event.deal)||{}).id);}} className="text-brand-300 hover:text-brand-200">{event.deal}</button></Row>}
           <Row Icon={I.Bell}>{rem}</Row>
           {event.notes&&<div className="flex items-start gap-3 text-[13px] text-white/70"><I.Note size={15} className="text-white/40 shrink-0 mt-0.5"/><p className="leading-relaxed">{event.notes}</p></div>}
         </div>
@@ -23433,7 +23454,7 @@ function FunnelWiringSummary({funnel,form,goTo}){
   return(<div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-4">
     <div className="flex items-center justify-between mb-3">
       <p className="text-[12.5px] font-semibold text-white flex items-center gap-2"><I.Zap size={13} className="text-brand-300"/>What happens on submit</p>
-      <button onClick={()=>goTo&&goTo('form-builder',form.id)} className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Edit size={11}/>Edit form “{form.name}”</button>
+      <button onClick={()=>{setFormSeed(qualFormById(form.id)||form);goTo&&goTo('form-builder');}} className="text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Edit size={11}/>Edit form “{form.name}”</button>
     </div>
     <div className="flex flex-col gap-0">{chain.map((s,i)=>(<div key={i} className="flex items-start gap-3 relative">
       <div className="flex flex-col items-center shrink-0">
@@ -24293,7 +24314,7 @@ function CustomRecordDetailPage({goTo,nav}){
   let def=null,rec=null;
   if(nav&&typeof nav==='object'){def=objs.find(o=>o.id===nav.objectId)||null;rec=def&&(def.records||[]).find(r=>r.id===nav.recordId);}
   else if(nav!=null){for(const o of objs){const r=(o.records||[]).find(x=>x.id===nav);if(r){def=o;rec=r;break;}}}
-  if(!def){def=objs[0];rec=def&&(def.records||[])[0];}
+  if(!def&&nav==null){def=objs[0];rec=def&&(def.records||[])[0];} // only default to the first object when NO record was requested; a provided-but-unmatched id falls through to the "not found" guard below
   const {confirmNode,openConfirm}=useConfirm();
   const extra=(crm.activities||[]).filter(a=>a.subjectType==='custom'&&a.subjectId===(rec||{}).id); // R3: persisted, keyed by record
   const setExtra=(u)=>{const _a=(typeof u==='function'?u([]):u)||[];if(_a[0])crm.addActivity('custom',(rec||{}).id,_a[0]);};
