@@ -21945,6 +21945,13 @@ function schedSeedMeetings(){
   ];
 }
 
+// Map a booked meeting (SchedulingContext) to a calendar-event shape so it can render on the Calendar grid + agenda
+// alongside CalendarContext items. Marked _booking (display-only on the calendar; edits happen on the Meetings tab).
+function schedMeetingToEvent(m){
+  const start=m.date instanceof Date?m.date:new Date(m.date);
+  const end=new Date(start.getTime()+((m.duration||30)*60000));
+  return {id:'sched-'+m.id,type:'meeting',title:(m.name||'Meeting')+(m.contactName?(' · '+m.contactName):''),allDay:false,date:start,end,contact:m.contactName||null,contactId:m.contactId!=null?m.contactId:null,deal:m.dealName||null,notes:m.notes||'',assignee:m.rep||'AM',location:m.location||'',status:m.status,_booking:true};
+}
 function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
   const [seg,setSeg]=React.useState('upcoming');
   const [open,setOpen]=React.useState(null);
@@ -22115,7 +22122,10 @@ function CalendarPage({goTo,nav}){
   const [etDrawer,setEtDrawer]=React.useState(null);
   const [bookingPreview,setBookingPreview]=React.useState(null);
   const saveEventType=(et)=>{sched.setEventTypes(list=>list.some(x=>x.id===et.id)?list.map(x=>x.id===et.id?et:x):[...list,et]);setEtDrawer(null);addToast('Event type saved');};
-  const visible=events.filter(e=>!e.deleted&&typeFilter[e.type]);
+  // Merge booked meetings (SchedulingContext) into the calendar's event source so they actually show on the grid +
+  // agenda — they used to live only on the Meetings tab. Cancelled bookings are omitted; bookings are display-only here.
+  const _bookingEvents=(meetings||[]).filter(m=>m&&m.date&&m.status!=='cancelled').map(schedMeetingToEvent);
+  const visible=[...events,..._bookingEvents].filter(e=>!e.deleted&&typeFilter[e.type]);
   const go=(dir)=>{setCurrent(c=>view==='month'?new Date(c.getFullYear(),c.getMonth()+dir,1):calAddDays(c,dir*(view==='week'?7:1)));};
   const periodLabel=(()=>{if(view==='month')return CAL_MONTHS[current.getMonth()]+' '+current.getFullYear();if(view==='week'){const s=calStartOfWeek(current),e=calAddDays(s,6);return s.getDate()+' '+CAL_MONTHS[s.getMonth()].slice(0,3)+' – '+e.getDate()+' '+CAL_MONTHS[e.getMonth()].slice(0,3)+', '+e.getFullYear();}return CAL_DAYS[current.getDay()]+' '+current.getDate()+' '+CAL_MONTHS[current.getMonth()]+' '+current.getFullYear();})();
   const weekDays=()=>{const s=calStartOfWeek(current);return [0,1,2,3,4,5,6].map(i=>calAddDays(s,i));};
