@@ -41,6 +41,7 @@ The research that informed product decisions:
 - [`crm-comparison-table.md`](research/crm-comparison-table.md) — cross-CRM comparison
 - Pipeline: [`pipeline-competitor-research.md`](research/pipeline-competitor-research.md) · [`pipeline-ux-research.md`](research/pipeline-ux-research.md) · [`pipeline-custom-objects-research.md`](research/pipeline-custom-objects-research.md) · [`pipeline-audit.md`](research/pipeline-audit.md) · [`pipeline-roadmap-status.md`](research/pipeline-roadmap-status.md)
 - Customization: [`custom-objects-research.md`](research/custom-objects-research.md) · [`customization-research.md`](research/customization-research.md)
+- SEO: [`seo-alternatives-comparison-targets.md`](research/seo-alternatives-comparison-targets.md) — finalized "alternative"/"vs" page targets + priority keywords + positioning fact-check (blocklist)
 
 ## `backend/` — to-be-built API specs
 Specs for the backend that the prototype is the working spec for: [`backend-spec.md`](backend/backend-spec.md), auth/permissions, automations engine, deals/pipeline API, sending/deliverability.

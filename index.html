@@ -5334,21 +5334,21 @@ const CONTACT_SOURCES=['Website','Referral','LinkedIn','Cold outreach','Event','
 // review (the real-world default state since US carriers began blocking unregistered A2P traffic) — advancing the
 // simulated clock approves it, which is exactly how the review delay behaves in production.
 const PHONE_NUMBERS_SEED=[{id:'pn_1',number:'+1 (415) 555-0100',label:'Main line',country:'US',type:'local',caps:{voice:true,sms:true,mms:true},assignedTo:null,isDefault:true,monthly:1.15,purchasedAt:'Mar 2026',status:'active'}];
-const SMS_BRAND_SEED={type:'standard',legalName:'Northlight Digital LLC',ein:'82-4471903',address:'2261 Market St, San Francisco, CA',vertical:'Professional Services',website:'https://northlightdigital.com',status:'verified',note:'Verified Mar 2026'};
-const SMS_CAMPAIGNS_SEED=[{id:'cmp_1',useCase:'Mixed (sales & support)',samples:['Hi {{first_name}}, thanks for reaching out — are you free for a quick call this week?','Your proposal is ready: {{deal_link}}. Reply STOP to opt out.'],optInMethod:'Website form',optInDesc:'Contacts opt in via the website contact / booking form checkbox.',optOut:true,status:'pending',submittedDaysAgo:2,fee:15}];
-// Phase 4 — workspace wallet (managed model: purchases, fees and usage debit here), usage counters, intl regulatory bundles.
-const WALLET_SEED={balance:30.40,auto:{on:true,threshold:10,amount:25},txns:[
-  {id:'wt_6',label:'A2P campaign verification fee',amt:-15,at:'2d ago'},
-  {id:'wt_5',label:'Monthly renewal · +1 (415) 555-0100',amt:-1.15,at:'Jun 2026'},
-  {id:'wt_4',label:'Monthly renewal · +1 (415) 555-0100',amt:-1.15,at:'May 2026'},
-  {id:'wt_3',label:'Monthly renewal · +1 (415) 555-0100',amt:-1.15,at:'Apr 2026'},
-  {id:'wt_2',label:'Number purchase · +1 (415) 555-0100',amt:-1.15,at:'Mar 2026'},
-  {id:'wt_1',label:'Wallet top-up',amt:50,at:'Mar 2026'},
+const SMS_BRAND_SEED={type:'standard',legalName:'Northlight Digital LLC',ein:'82-4471903',address:'2261 Market St, San Francisco, CA',vertical:'Professional Services',website:'https://northlightdigital.com',companyType:'private',contactEmail:'alex@northlightdigital.com',status:'verified',note:'Verified Mar 2026'};
+const SMS_CAMPAIGNS_SEED=[{id:'cmp_1',useCase:'Mixed (sales & support)',description:'Northlight Digital LLC sends sales follow-ups and customer-support replies to CRM contacts who opted in on our website forms.',samples:['Hi {{first_name}}, thanks for reaching out — are you free for a quick call this week?','Your proposal is ready: {{deal_link}}. Reply STOP to opt out.'],contents:{links:true,phone:false,ageGated:false,lending:false},optInMethod:'Website form',optInDesc:'End users opt in by checking the SMS-consent box on our website contact and booking forms; the page links our privacy policy and states message/data rates may apply.',optOut:true,status:'pending',submittedDaysAgo:2,fee:15}];
+// Usage billing (no wallet): charges accrue to the workspace's monthly Stripe invoice in arrears
+// (HubSpot/Aircall model). The monthly spend LIMIT is the fraud cap that replaced the prepaid balance.
+const USAGE_SEED={limit:100,monthTotal:16.15,charges:[
+  {id:'ch_5',label:'A2P campaign verification fee',amt:15,at:'2d ago'},
+  {id:'ch_4',label:'Monthly renewal · +1 (415) 555-0100',amt:1.15,at:'This month'},
+  {id:'ch_3',label:'Monthly renewal · +1 (415) 555-0100',amt:1.15,at:'Jun 2026'},
+  {id:'ch_2',label:'Monthly renewal · +1 (415) 555-0100',amt:1.15,at:'May 2026'},
+  {id:'ch_1',label:'Number purchase · +1 (415) 555-0100',amt:1.15,at:'Mar 2026'},
 ]};
 // Trust Hub–style BUSINESS PROFILE (Twilio "Customer Profile"): the workspace's verified legal identity. It is the
 // FIRST registration — the A2P brand hangs off it, exactly like Twilio/GHL structure it for a subaccount.
-const TRUST_PROFILE_SEED={entityType:'LLC',legalName:'Northlight Digital LLC',ein:'82-4471903',address:'2261 Market St, San Francisco, CA',website:'https://northlightdigital.com',rep:{name:'Alex Morgan',title:'Owner',email:'alex@northlightdigital.com',phone:'+1 (415) 555-0177'},status:'approved',note:'Approved Mar 2026'};
-let _livePhoneNumbers=null,_liveSmsBrand=null,_liveSmsCampaigns=null,_liveRegBundles=null,_liveTrustProfile=null,_liveCnam=null; // App mirrors (same pattern as _liveDeals/_livePerms)
+const TRUST_PROFILE_SEED={entityType:'LLC',legalName:'Northlight Digital LLC',regType:'EIN (US)',ein:'82-4471903',industry:'Technology',regions:['USA_AND_CANADA'],address:'2261 Market St, San Francisco, CA',website:'https://northlightdigital.com',rep:{name:'Alex Morgan',position:'CEO',title:'Owner',email:'alex@northlightdigital.com',phone:'+1 (415) 555-0177'},status:'approved',note:'Approved Mar 2026'};
+let _livePhoneNumbers=null,_liveSmsBrand=null,_liveSmsCampaigns=null,_liveRegBundles=null,_liveTrustProfile=null,_liveCnam=null,_liveUsageBill=null; // App mirrors (same pattern as _liveDeals/_livePerms)
 // The ONE messaging-compliance state every SMS surface reads: needs an active SMS number, then (US local) a verified
 // brand + an approved campaign, or (toll-free) a passed toll-free verification. Fail-open only when App hasn't mounted.
 function smsComplianceState(){
@@ -5372,6 +5372,8 @@ function smsComplianceState(){
 }
 function canSendSms(recipient){ // recipient-aware gate: workspace compliance first, then per-record consent
   const s=smsComplianceState();if(!s.ok)return s;
+  // Spend-limit safety cap (replaces the old prepaid wallet): once this month's usage hits the limit, outbound texting pauses.
+  if(_liveUsageBill&&_liveUsageBill.limit>0&&_liveUsageBill.monthTotal>=_liveUsageBill.limit)return{ok:false,code:'spend',reason:'Monthly spend limit reached ($'+_liveUsageBill.limit+') — raise it in Settings › Phone numbers'};
   if(recipient&&recipient.dnc)return{ok:false,code:'dnc',reason:(recipient.name||'This contact')+' is marked Do Not Contact'};
   // unified suppression store: a STOP'd/blocked number or a per-contact SMS opt-out blocks EVERY SMS path (automation, MMS composer, inbox), not just the disabled contact-page button
   if(recipient&&(supPhoneBlocked(recipient.phone,'sms')||supChannelOff(recipient.id,'sms')))return{ok:false,code:'suppressed',reason:(recipient.name||'This number')+' is suppressed for SMS (replied STOP or opted out)'};
@@ -15268,8 +15270,8 @@ function BillingUsageSection({threshold=80}){
         <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full transition-all" style={{width:pct+'%',background:`linear-gradient(to right,${color},${color}cc)`}}/></div>
       </div>);})}</div>
     <div className="mt-5 pt-4 border-t border-white/[0.05] flex items-center justify-between gap-4">
-      <div><p className="text-[12.5px] font-medium text-white/75">Usage-based charges {per==='year'?'· year to date':'· this period'}</p><p className="text-[11px] text-white/40 mt-0.5">SMS, MMS &amp; calls — billed to your card at cost</p></div>
-      <span className="text-[22px] font-bold text-white tabular-nums">${spend.toFixed(2)}</span>
+      <div><p className="text-[12.5px] font-medium text-white/75">Phone &amp; SMS charges · this month</p><p className="text-[11px] text-white/40 mt-0.5">Numbers, texting &amp; carrier fees — billed at cost with this invoice</p></div>
+      <span className="text-[22px] font-bold text-white tabular-nums">${((typeof _liveUsageBill!=='undefined'&&_liveUsageBill)?_liveUsageBill.monthTotal:spend).toFixed(2)}</span>
     </div>
   </div>);
 }
@@ -15452,6 +15454,13 @@ function SettingsBillingPage({goTo}){
         </div>
         {/* 4 · Usage this period — single canonical usage meters section */}
         <BillingUsageSection threshold={usageThreshold}/>
+
+        {/* Phone & SMS itemized charges — single-homed here (the Phone numbers page only keeps the spend-limit control) */}
+        {(()=>{const ub=(typeof _liveUsageBill!=='undefined'&&_liveUsageBill)||{monthTotal:0,charges:[]};if(!(ub.charges||[]).length)return null;
+          return(<div className={BILLING_CARD}>
+            <div className="flex items-center justify-between gap-3 mb-3"><div><p className={BILLING_EYE}>Phone &amp; SMS charges</p><p className="text-white/45 text-[12px] mt-1">Each item lands on your monthly Stripe invoice at cost — no wallet, no top-ups.</p></div><button onClick={()=>goTo('settings-phone-numbers')} className="text-[12px] text-brand-300 hover:text-brand-200 transition-colors shrink-0">Manage numbers →</button></div>
+            <div className="flex flex-col">{(ub.charges||[]).slice(0,6).map((t,i,a)=>(<div key={t.id} className={['flex items-center gap-3 px-2 py-2.5',i<a.length-1?'border-b border-white/[0.04]':''].join(' ')}><p className="text-[12.5px] text-white/80 flex-1 min-w-0 truncate">{t.label}</p><span className="text-[11px] text-white/35 shrink-0">{t.at}</span><span className="text-[12.5px] font-semibold tabular-nums shrink-0 text-white/70">${Math.abs(t.amt).toFixed(2)}</span></div>))}</div>
+          </div>);})()}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* 5 · Usage & spending controls */}
           <div className={BILLING_CARD}>
@@ -15660,7 +15669,7 @@ const PERM_FEATURE_SINGLE=[
   {key:'bulkDelete',label:'Bulk delete',desc:'Delete many records at once.'},
   {key:'manageTags',label:'Manage tags & statuses',desc:'Edit shared tags and status options.'},
   {key:'manageSeq',label:'Manage sequences / automations',desc:'Create and edit automations.'},
-  {key:'managePhone',label:'Manage phone numbers & compliance',desc:'Buy/release numbers, spend from the wallet, submit A2P registrations.'},
+  {key:'managePhone',label:'Manage phone numbers & compliance',desc:'Buy/release numbers, set the spend limit, submit A2P registrations.'},
 ];
 // "Team Lead and above" can see sensitive fields; Sales Rep / Read Only cannot.
 const PERM_SENSITIVE_VISIBLE=['Owner','Admin','Sales Manager','Team Lead'];
@@ -15940,7 +15949,7 @@ function SettingsPermissionsPage({goTo}){
               <FeatRow label="Change workspace settings" desc="Edit workspace-wide configuration." on={f.settings} onToggle={()=>toggleFeature('settings')}/>
               <FeatRow label="Manage sequences & automations" desc="Build and edit outreach and automations." on={f.manageSeq} onToggle={()=>toggleFeature('manageSeq')} note={(f.manageSeq&&!adminSel)?gateNote:null}/>
               <FeatRow label="Manage tags & statuses" desc="Edit the shared tags and status options." on={f.manageTags} onToggle={()=>toggleFeature('manageTags')} note={(f.manageTags&&!adminSel)?gateNote:null}/>
-              <FeatRow label="Manage phone numbers & compliance" desc="Buy numbers, spend from the wallet, submit A2P registrations." on={f.managePhone} onToggle={()=>toggleFeature('managePhone')} note={(f.managePhone&&!adminSel)?gateNote:null}/>
+              <FeatRow label="Manage phone numbers & compliance" desc="Buy numbers, set the spend limit, submit A2P registrations." on={f.managePhone} onToggle={()=>toggleFeature('managePhone')} note={(f.managePhone&&!adminSel)?gateNote:null}/>
               <GroupHead>Data</GroupHead>
               <FeatRow label="Export to a spreadsheet" desc="Download records as a CSV file." on={f.export} onToggle={()=>toggleFeature('export')}/>
               <FeatRow label="Delete in bulk" desc="Remove many records at once." on={f.bulkDelete} onToggle={()=>toggleFeature('bulkDelete')}/>
@@ -16022,7 +16031,7 @@ function PermissionMatrixPage({goTo}){
       {label:'Edit roles & permissions',desc:'This screen',cells:roles.map(r=>adminGate(r.key)?pill('full','Can edit'):pill('view','View only'))},
       {label:'Workspace settings',desc:'General, custom fields, integrations',cells:roles.map(r=>adminGate(r.key)?pill('full','Can edit'):pill('view','View only'))},
       {label:'Manage tags & statuses',desc:'Shared tags and status options',cells:roles.map(r=>adminGate(r.key)?pill('full','Can edit'):pill('view','View only',null,!!F(r).manageTags))},
-      {label:'Phone numbers & wallet',desc:'Buy numbers, Trust center, wallet spend',cells:roles.map(r=>(adminGate(r.key)&&F(r).managePhone)?pill('full','Can manage'):pill('none','—'))},
+      {label:'Phone numbers & billing',desc:'Buy numbers, Trust center, usage billing',cells:roles.map(r=>(adminGate(r.key)&&F(r).managePhone)?pill('full','Can manage'):pill('none','—'))},
       {label:'Billing & plan',desc:'Plan, seats, payment, invoices',cells:roles.map(r=>r.key==='Owner'?pill('full','Full'):r.key==='Admin'?pill('lim','Can open',null,true):pill('none','—'))},
     ]},
   ];
@@ -16972,25 +16981,74 @@ function IntegBrowser({cards}){
 }
 // ── Settings › Phone numbers — managed telephony (numbers bought in-app, GHL-style) + A2P Trust center (US/CA v1) ──
 const PHONE_VERTICALS=['Professional Services','Software / SaaS','Real Estate','Healthcare','Retail / E-commerce','Finance','Education','Other'];
-const A2P_USE_CASES=['Low-volume mixed','Mixed (sales & support)','Marketing','Customer care'];
+// Twilio TrustHub / TFV field vocabularies (verified vs twilio.com API schemas 2026-07-10)
+const PHONE_INDUSTRIES=['Technology','Professional services','Real estate','Healthcare','Retail','Education','Financial services','Construction','Hospitality','Automotive','Non-profit','Government','Other'];
+const PHONE_REGIONS=[['USA_AND_CANADA','USA & Canada'],['EUROPE','Europe'],['LATIN_AMERICA','Latin America'],['ASIA','Asia'],['AFRICA','Africa'],['AUSTRALIA','Australia']];
+const REP_POSITIONS=['CEO','CFO','Director','GM','VP','General Counsel','Other'];
+const REG_ID_TYPES=['EIN (US)','DUNS','CBN (Canada)','VAT','Other'];
+const BRAND_COMPANY_TYPES=['private','public','non-profit','government'];
+const STOCK_EXCHANGES=['NASDAQ','NYSE','AMEX','LSE','TSX','ASX','Other'];
+const TFV_OPTIN_TYPES=['Web form','Verbal','Paper form','Via text','Mobile QR code'];
+const TFV_VOLUMES=['1,000','10,000','100,000','250,000','1,000,000+'];
+const TFV_USE_CASES=['Customer care','Account notifications','Marketing','Delivery notifications','Two-factor authentication','Events','Fraud alerts'];
+const A2P_USE_CASES=['Low-volume mixed','Mixed (sales & support)','Marketing','Customer care','Account notifications','Delivery notifications','2FA / one-time passcodes'];
 const A2P_OPTIN_METHODS=['Website form','Verbal / phone call','Paper form','Keyword / text-to-join'];
-function PhoneChip({s}){const M={active:['Active','#34d399'],verified:['Verified','#34d399'],approved:['Approved','#34d399'],ok:['Ready to send','#34d399'],pending:['Pending review','#fbbf24'],queued:['Queued','#818cf8'],needs:['Needs registration','#fbbf24'],porting:['Porting in','#60a5fa'],unverified:['Unverified','#f87171'],rejected:['Rejected','#f87171'],none:['Not registered','#94a3b8']};const st=M[s]||[String(s),'#94a3b8'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap" style={{background:st[1]+'14',color:st[1],boxShadow:'inset 0 0 0 1px '+st[1]+'33'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st[1]}}/>{st[0]}</span>);}
+function PhoneChip({s}){const M={active:['Active','#34d399'],verified:['Verified','#34d399'],approved:['Approved','#34d399'],ok:['Ready to send','#34d399'],pending:['In review','#fbbf24'],queued:['Queued','#818cf8'],needs:['Needs registration','#fbbf24'],porting:['Porting in','#60a5fa'],unverified:['Unverified','#f87171'],rejected:['Needs fixes','#f87171'],none:['Not registered','#94a3b8']};const st=M[s]||[String(s),'#94a3b8'];return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap" style={{background:st[1]+'14',color:st[1],boxShadow:'inset 0 0 0 1px '+st[1]+'33'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st[1]}}/>{st[0]}</span>);}
 function PortNumberModal({close,onPort}){
-  const [f,setF]=React.useState({number:'',carrier:'',account:'',pin:''});
+  const [f,setF]=React.useState({number:'',carrier:'',name:'',address:'',account:'',pin:''});
   useEscKey(close);const set=(k,v)=>setF(x=>({...x,[k]:v}));
-  const valid=f.number.replace(/\D/g,'').length>=10&&f.carrier.trim();
+  const valid=f.number.replace(/\D/g,'').length>=10&&f.carrier.trim()&&f.name.trim()&&f.address.trim();
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Port a number in</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Bring your existing number</p><p className="text-[11.5px] text-white/45 mt-0.5">Move ("port") a number you already own into nrtur — customers keep texting and calling the same number.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="px-5 py-5 flex flex-col gap-3.5">
-        <input value={f.number} onChange={e=>set('number',e.target.value)} placeholder="Number to port · +1 415 555 0123" className={INP}/>
-        <input value={f.carrier} onChange={e=>set('carrier',e.target.value)} placeholder="Current carrier (e.g. Verizon)" className={INP}/>
-        <div className="grid grid-cols-2 gap-3"><input value={f.account} onChange={e=>set('account',e.target.value)} placeholder="Account number" className={INP}/><input value={f.pin} onChange={e=>set('pin',e.target.value)} placeholder="Transfer PIN" className={INP}/></div>
-        <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Ports usually complete in 5–10 business days (simulated here as ~2 days on the workspace clock). Your number keeps working on the old carrier until the port lands — no downtime.</p>
+        <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Number to move</label><input value={f.number} onChange={e=>set('number',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>
+        <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Who provides it today?</label><input value={f.carrier} onChange={e=>set('carrier',e.target.value)} placeholder="e.g. Verizon, RingCentral, Google Voice" className={INP}/></div>
+        <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Account holder name</label><input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Exactly as registered with your provider" className={INP}/><p className="text-[11px] text-amber-300/70 mt-1.5">Must match your provider's records exactly — mismatched account info is the #1 reason ports get rejected.</p></div>
+        <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Service address on file</label><input value={f.address} onChange={e=>set('address',e.target.value)} placeholder="The address your provider has for this account" className={INP}/></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Account number</label><input value={f.account} onChange={e=>set('account',e.target.value)} placeholder="From your provider's bill" className={INP}/></div>
+          <div><label className="block text-[11px] font-medium text-white/45 mb-1.5">Transfer PIN</label><input value={f.pin} onChange={e=>set('pin',e.target.value)} placeholder="Required for mobile numbers" className={INP}/></div>
+        </div>
+        <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Next: we email you a Letter of Authorization to e-sign (ports cancel if it's unsigned within 30 days), and your provider may ask for a recent bill. Ports usually complete in 5–15 business days (simulated here as ~2 days). Your number keeps working with your old provider until the move lands — no downtime, no missed texts.</p>
       </div>
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onPort({number:fmtPhone(f.number),carrier:f.carrier.trim()});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Start port</button></div>
+    </div>
+  </React.Fragment>);
+}
+// Toll-Free Verification — mirrors Twilio's TFV submission (tollfree-verification resource): use-case
+// category + volume, summary, production sample, opt-in type + PUBLIC proof URL. Opt-in problems
+// (errors 30498–30512) cause nearly every rejection, so the form leads the user there.
+function TollFreeVerifyModal({num,profile,close,onSubmit}){
+  const [f,setF]=React.useState({notifEmail:(profile&&profile.rep&&profile.rep.email)||'',useCase:TFV_USE_CASES[0],volume:TFV_VOLUMES[0],summary:'',sample:'',optInType:TFV_OPTIN_TYPES[0],optInUrl:''});
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
+  const Min=({v,n})=>(<span className={['ml-auto text-[10px] tabular-nums font-normal',(v||'').trim().length>=n?'text-emerald-300':'text-white/30'].join(' ')}>{(v||'').trim().length}/{n} min</span>);
+  const okUrl=(u)=>/^https?:\/\/\S+\.\S+/i.test((u||'').trim());
+  const valid=/\S+@\S+\.\S+/.test(f.notifEmail)&&f.summary.trim().length>=20&&f.sample.trim().length>=20&&okUrl(f.optInUrl);
+  const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
+  const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
+  return(<React.Fragment>
+    <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
+    <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[560px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Verify your toll-free number</p><p className="text-[11.5px] text-white/45 mt-0.5">{num.number} — unverified toll-free numbers can't text US/CA at all.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
+        {profile&&<div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11.5px] text-white/45"><I.ShieldCheck size={12} className="text-emerald-300 shrink-0"/><span>Business name &amp; website come from your approved profile — <span className="text-white/75">{profile.legalName}</span>{profile.website?(' · '+profile.website):''}</span></div>}
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LBL}>Use case category</label><div className="relative"><select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{TFV_USE_CASES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+          <div><label className={LBL}>Monthly message volume</label><div className="relative"><select value={f.volume} onChange={e=>set('volume',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{TFV_VOLUMES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+        </div>
+        <div><label className={LBL+' flex items-center'}>Use case summary <span className="text-red-300/80 ml-1">*</span><Min v={f.summary} n={20}/></label><textarea rows={3} value={f.summary} onChange={e=>set('summary',e.target.value)} placeholder="We text appointment reminders and order updates to customers who opted in on our booking site." className={INP+' resize-none leading-relaxed'}/></div>
+        <div><label className={LBL+' flex items-center'}>Production message sample <span className="text-red-300/80 ml-1">*</span><Min v={f.sample} n={20}/></label><textarea rows={2} value={f.sample} onChange={e=>set('sample',e.target.value)} placeholder={'Hi {{first_name}}, your appointment is confirmed for Thu 2pm. Reply STOP to opt out.'} className={INP+' resize-none leading-relaxed'}/></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LBL}>How do people opt in?</label><div className="relative"><select value={f.optInType} onChange={e=>set('optInType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{TFV_OPTIN_TYPES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+          <div><label className={LBL}>Notification email</label><input value={f.notifEmail} onChange={e=>set('notifEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
+        </div>
+        <div><label className={LBL}>Opt-in proof URL <span className="text-red-300/80">*</span></label><input value={f.optInUrl} onChange={e=>set('optInUrl',e.target.value)} placeholder="https://yoursite.com/opt-in-screenshot.png" className={INP+(f.optInUrl&&!okUrl(f.optInUrl)?' border-red-500/40':'')}/><p className="text-[11px] text-white/35 mt-1.5 leading-relaxed">A public link to an image of your opt-in (form, QR code, or call script) showing your business name. Nearly every rejection is an opt-in problem — private URLs, pre-checked boxes, or missing branding.</p></div>
+        <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Reviews typically take ~3 business days (simulated here as ~1 day). Texting from {num.number} stays blocked until verification passes.</p>
+      </div>
+      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({useCase:f.useCase,volume:f.volume,summary:f.summary.trim(),sample:f.sample.trim(),optInType:f.optInType,optInUrl:f.optInUrl.trim(),notifEmail:f.notifEmail.trim()});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
     </div>
   </React.Fragment>);
 }
@@ -17048,7 +17106,7 @@ function BuyNumberModal({close,onBuy,compOk,brand,bundles,onBundle}){
   </React.Fragment>);
 }
 function TrustProfileModal({close,onSubmit,initial}){
-  const [f,setF]=React.useState({entityType:(initial&&initial.entityType)||'LLC',legalName:(initial&&initial.legalName)||'',ein:(initial&&initial.ein)||'',address:(initial&&initial.address)||'',website:(initial&&initial.website)||'',repName:(initial&&initial.rep&&initial.rep.name)||'',repTitle:(initial&&initial.rep&&initial.rep.title)||'',repEmail:(initial&&initial.rep&&initial.rep.email)||'',repPhone:(initial&&initial.rep&&initial.rep.phone)||''});
+  const [f,setF]=React.useState({entityType:(initial&&initial.entityType)||'LLC',legalName:(initial&&initial.legalName)||'',regType:(initial&&initial.regType)||REG_ID_TYPES[0],ein:(initial&&initial.ein)||'',industry:(initial&&initial.industry)||PHONE_INDUSTRIES[0],regions:(initial&&initial.regions)||['USA_AND_CANADA'],address:(initial&&initial.address)||'',website:(initial&&initial.website)||'',repName:(initial&&initial.rep&&initial.rep.name)||'',repPosition:(initial&&initial.rep&&initial.rep.position)||REP_POSITIONS[0],repTitle:(initial&&initial.rep&&initial.rep.title)||'',repEmail:(initial&&initial.rep&&initial.rep.email)||'',repPhone:(initial&&initial.rep&&initial.rep.phone)||''});
   const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
   const valid=f.legalName.trim()&&f.address.trim()&&f.repName.trim()&&/\S+@\S+\.\S+/.test(f.repEmail);
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
@@ -17063,37 +17121,42 @@ function TrustProfileModal({close,onSubmit,initial}){
           <div><label className={LBL}>Legal business name</label><input value={f.legalName} onChange={e=>set('legalName',e.target.value)} placeholder="Acme Digital LLC" className={INP}/></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={LBL}>Tax ID (EIN / BN)</label><input value={f.ein} onChange={e=>set('ein',e.target.value)} placeholder="82-0000000" className={INP}/></div>
+          <div><label className={LBL}>Business registration</label><div className="flex gap-2"><div className="relative w-[112px] shrink-0"><select value={f.regType} onChange={e=>set('regType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{REG_ID_TYPES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div><input value={f.ein} onChange={e=>set('ein',e.target.value)} placeholder="82-0000000" className={INP}/></div></div>
           <div><label className={LBL}>Website</label><input value={f.website} onChange={e=>set('website',e.target.value)} placeholder="https://…" className={INP}/></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LBL}>Business industry</label><div className="relative"><select value={f.industry} onChange={e=>set('industry',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{PHONE_INDUSTRIES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+          <div><label className={LBL}>Regions of operation</label><div className="flex flex-wrap gap-1.5 pt-0.5">{PHONE_REGIONS.map(([k,l])=>(<button key={k} type="button" onClick={()=>set('regions',f.regions.includes(k)?f.regions.filter(x=>x!==k):[...f.regions,k])} className={['px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-all',f.regions.includes(k)?'border-brand-500/40 bg-brand-500/[0.08] text-brand-200':'border-white/[0.07] bg-white/[0.02] text-white/40 hover:border-white/[0.14]'].join(' ')}>{l}</button>))}</div></div>
         </div>
         <div><label className={LBL}>Business address</label><input value={f.address} onChange={e=>set('address',e.target.value)} placeholder="Street, city, state" className={INP}/></div>
         <p className="text-[10.5px] font-medium text-white/35 uppercase tracking-[0.14em] pt-1">Authorized representative</p>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={LBL}>Full name</label><input value={f.repName} onChange={e=>set('repName',e.target.value)} placeholder="Alex Morgan" className={INP}/></div>
-          <div><label className={LBL}>Job title</label><input value={f.repTitle} onChange={e=>set('repTitle',e.target.value)} placeholder="Owner" className={INP}/></div>
+          <div><label className={LBL}>Job position</label><div className="relative"><select value={f.repPosition} onChange={e=>set('repPosition',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{REP_POSITIONS.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><label className={LBL}>Work email</label><input value={f.repEmail} onChange={e=>set('repEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
           <div><label className={LBL}>Phone</label><input value={f.repPhone} onChange={e=>set('repPhone',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>
         </div>
+        <div><label className={LBL}>Business title <span className="text-white/25 normal-case">(their exact title, e.g. "Owner & founder")</span></label><input value={f.repTitle} onChange={e=>set('repTitle',e.target.value)} placeholder="Owner" className={INP}/></div>
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Carriers verify this identity first — your A2P brand, campaigns and number trust all hang off it. Usually approved within a day.</p>
       </div>
-      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({entityType:f.entityType,legalName:f.legalName.trim(),ein:f.ein.trim(),address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)},status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
+      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({entityType:f.entityType,legalName:f.legalName.trim(),regType:f.regType,ein:f.ein.trim(),industry:f.industry,regions:f.regions,address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),position:f.repPosition,title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)},status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
     </div>
   </React.Fragment>);
 }
 function A2pBrandModal({close,onSubmit,initial}){
   const [bt,setBt]=React.useState((initial&&initial.type)||'standard');
-  const [f,setF]=React.useState({legalName:(initial&&initial.legalName)||'',ein:(initial&&initial.ein)||'',address:(initial&&initial.address)||'',vertical:(initial&&initial.vertical)||PHONE_VERTICALS[0],website:(initial&&initial.website)||'',mobile:''});
+  const [f,setF]=React.useState({legalName:(initial&&initial.legalName)||'',ein:(initial&&initial.ein)||'',address:(initial&&initial.address)||'',vertical:(initial&&initial.vertical)||PHONE_VERTICALS[0],website:(initial&&initial.website)||'',mobile:'',companyType:(initial&&initial.companyType)||'private',ticker:(initial&&initial.ticker)||'',exchange:(initial&&initial.exchange)||STOCK_EXCHANGES[0],contactEmail:(initial&&initial.contactEmail)||''});
   const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
   const sole=bt==='soleProp';
-  const valid=f.legalName.trim()&&f.address.trim()&&(sole?f.mobile.replace(/\D/g,'').length>=10:f.ein.trim());
+  const valid=f.legalName.trim()&&f.address.trim()&&(sole?f.mobile.replace(/\D/g,'').length>=10:(f.ein.trim()&&/\S+@\S+\.\S+/.test(f.contactEmail)&&(f.companyType!=='public'||f.ticker.trim())));
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[560px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Register your A2P brand</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Verify your business</p><p className="text-[11.5px] text-white/45 mt-0.5">Carriers call this your "A2P brand" — it proves who's sending the texts.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           {[['standard','Registered business','Has a tax ID (EIN / Canadian BN). Full throughput tiers.'],['soleProp','Sole proprietor','No tax ID. Limited to 1 campaign + 1 number, low throughput.']].map(([k,l,d])=>(
@@ -17109,34 +17172,44 @@ function A2pBrandModal({close,onSubmit,initial}){
           <div><label className={LBL}>Industry vertical</label><div className="relative"><select value={f.vertical} onChange={e=>set('vertical',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{PHONE_VERTICALS.map(v=><option key={v}>{v}</option>)}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
           <div><label className={LBL}>Website</label><input value={f.website} onChange={e=>set('website',e.target.value)} placeholder="https://…" className={INP}/></div>
         </div>
+        {!sole&&<div className="grid grid-cols-2 gap-3">
+          <div><label className={LBL}>Company type</label><div className="relative"><select value={f.companyType} onChange={e=>set('companyType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{BRAND_COMPANY_TYPES.map(o=>(<option key={o} value={o}>{o.charAt(0).toUpperCase()+o.slice(1)}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+          <div><label className={LBL}>Brand contact email</label><input value={f.contactEmail} onChange={e=>set('contactEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
+        </div>}
+        {!sole&&f.companyType==='public'&&<div className="grid grid-cols-2 gap-3">
+          <div><label className={LBL}>Stock ticker</label><input value={f.ticker} onChange={e=>set('ticker',e.target.value.toUpperCase())} placeholder="ACME" className={INP}/></div>
+          <div><label className={LBL}>Stock exchange</label><div className="relative"><select value={f.exchange} onChange={e=>set('exchange',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{STOCK_EXCHANGES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+        </div>}
         <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Brands are usually verified within minutes to 24 hours. Your campaign registration unlocks after the brand verifies.</p>
       </div>
-      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({type:bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
+      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({type:bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),companyType:sole?'private':f.companyType,ticker:f.companyType==='public'?f.ticker.trim():'',exchange:f.companyType==='public'?f.exchange:'',contactEmail:sole?'':f.contactEmail.trim(),mobile:sole?fmtPhone(f.mobile):'',status:'pending',note:'Submitted just now'});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit for review</button></div>
     </div>
   </React.Fragment>);
 }
-function A2pCampaignModal({close,onSubmit}){
-  const [f,setF]=React.useState({useCase:A2P_USE_CASES[1],s1:'',s2:'',optInMethod:A2P_OPTIN_METHODS[0],optInDesc:'',optOut:true});
+function A2pCampaignModal({close,onSubmit,brand}){
+  const [f,setF]=React.useState({useCase:A2P_USE_CASES[1],desc:'',s1:'',s2:'',ctLinks:true,ctPhone:false,ctAge:false,ctLend:false,optInDesc:'',optOut:true});
   const set=(k,v)=>setF(x=>({...x,[k]:v}));useEscKey(close);
-  const valid=f.s1.trim()&&f.optInDesc.trim();
+  // Twilio-parity validation: description 40+, each sample 20+ (two required), consent 40+ — the Console minimums.
+  const Min=({v,n})=>(<span className={['ml-auto text-[10px] tabular-nums font-normal',(v||'').trim().length>=n?'text-emerald-300':'text-white/30'].join(' ')}>{(v||'').trim().length}/{n} min</span>);
+  const valid=f.desc.trim().length>=40&&f.s1.trim().length>=20&&f.s2.trim().length>=20&&f.optInDesc.trim().length>=40;
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={close}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[560px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><p className="text-[15px] font-semibold text-white">Register an A2P campaign</p><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Tell carriers what you'll send</p><p className="text-[11.5px] text-white/45 mt-0.5">Carriers call this a "campaign" — they approve your use case before texting turns on.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
-        <div><label className={LBL}>Use case</label><div className="relative"><select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
-        <div><label className={LBL}>Sample message 1</label><textarea rows={2} value={f.s1} onChange={e=>set('s1',e.target.value)} placeholder={'Hi {{first_name}}, thanks for reaching out — are you free for a quick call this week?'} className={INP+' resize-none leading-relaxed'}/></div>
-        <div><label className={LBL}>Sample message 2 (optional)</label><textarea rows={2} value={f.s2} onChange={e=>set('s2',e.target.value)} placeholder={'Your proposal is ready: {{deal_link}}.'} className={INP+' resize-none leading-relaxed'}/></div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className={LBL}>How do contacts opt in?</label><div className="relative"><select value={f.optInMethod} onChange={e=>set('optInMethod',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_OPTIN_METHODS.map(u=><option key={u}>{u}</option>)}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
-          <div className="flex items-end pb-1"><label className="flex items-center gap-2.5 text-[12.5px] text-white/70 cursor-pointer"><Toggle on={f.optOut} onChange={v=>set('optOut',v)}/>Auto-append “Reply STOP to opt out”</label></div>
-        </div>
-        <div><label className={LBL}>Describe the opt-in (carriers read this)</label><textarea rows={2} value={f.optInDesc} onChange={e=>set('optInDesc',e.target.value)} placeholder="Contacts check an SMS consent box on our website/booking form before we ever text them." className={INP+' resize-none leading-relaxed'}/></div>
-        <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">$15 one-time verification fee · manual carrier vetting can take up to ~2 weeks. SMS sending stays paused until the campaign is approved.</p>
+        {brand&&<div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11.5px] text-white/45"><I.ShieldCheck size={12} className="text-emerald-300 shrink-0"/><span>Registers under your verified brand — <span className="text-white/75">{brand.legalName}</span>. Your workspace numbers attach automatically.</span></div>}
+        <div><label className={LBL}>A2P campaign use case</label><div className="relative"><select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div></div>
+        <div><label className={LBL+' flex items-center'}>Campaign description <span className="text-red-300/80 ml-1">*</span><Min v={f.desc} n={40}/></label><textarea rows={3} value={f.desc} onChange={e=>set('desc',e.target.value)} placeholder="Who is sending, who receives, and why — e.g. Acme Digital LLC sends sales follow-ups and support replies to customers who opted in on our website." className={INP+' resize-none leading-relaxed'}/><p className="text-[11px] text-white/35 mt-1.5">The first thing reviewers read — a vague description is a top rejection reason.</p></div>
+        <div><label className={LBL+' flex items-center'}>Sample message #1 <span className="text-red-300/80 ml-1">*</span><Min v={f.s1} n={20}/></label><textarea rows={2} value={f.s1} onChange={e=>set('s1',e.target.value)} placeholder={'Hi {{first_name}}, thanks for reaching out — are you free for a quick call this week?'} className={INP+' resize-none leading-relaxed'}/></div>
+        <div><label className={LBL+' flex items-center'}>Sample message #2 <span className="text-red-300/80 ml-1">*</span><Min v={f.s2} n={20}/></label><textarea rows={2} value={f.s2} onChange={e=>set('s2',e.target.value)} placeholder={'Your proposal is ready: {{deal_link}}. Reply STOP to opt out.'} className={INP+' resize-none leading-relaxed'}/><p className="text-[11px] text-white/35 mt-1.5">Twilio requires two samples (20+ characters each). Name your business in each, keep the {'{{merge_fields}}'} you actually send, and never use public link shorteners like bit.ly.</p></div>
+        <div><label className={LBL}>Message contents</label><div className="grid grid-cols-2 gap-2">{[['ctLinks','Messages include embedded links'],['ctPhone','Messages include phone numbers'],['ctAge','Age-gated content (CTIA)'],['ctLend','Direct lending / loan arrangements']].map(([k,l])=>(<button key={k} type="button" onClick={()=>set(k,!f[k])} className={['flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[11.5px] transition-all',f[k]?'border-brand-500/40 bg-brand-500/[0.07] text-white/85':'border-white/[0.07] bg-white/[0.02] text-white/45 hover:border-white/[0.14]'].join(' ')}><span className={['w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0',f[k]?'bg-brand-500 border-brand-500 text-white':'border-white/25'].join(' ')}>{f[k]&&<I.Check size={9} stroke={3}/>}</span>{l}</button>))}</div></div>
+        <div><label className={LBL+' flex items-center'}>How do end-users consent to receive messages? <span className="text-red-300/80 ml-1">*</span><Min v={f.optInDesc} n={40}/></label><textarea rows={3} value={f.optInDesc} onChange={e=>set('optInDesc',e.target.value)} placeholder="End users opt in by checking the SMS-consent box on our website form (https://yoursite.com/contact); the page shows our privacy policy and 'Message and data rates may apply.'" className={INP+' resize-none leading-relaxed'}/><p className="text-[11px] text-white/35 mt-1.5">List every opt-in path with its URL — reviewers open it. Vague consent wording is the #1 rejection reason.</p></div>
+        <div className="flex items-center"><label className="flex items-center gap-2.5 text-[12.5px] text-white/70 cursor-pointer"><Toggle on={f.optOut} onChange={v=>set('optOut',v)}/>Use default STOP/HELP handling — “Reply STOP to opt out” is auto-appended</label></div>
+        <p className="text-[11.5px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">$15 one-time carrier fee — added to your next invoice. Manual carrier vetting can take up to ~2 weeks; texting stays paused until the campaign is approved.</p>
       </div>
-      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({id:'cmp_'+Date.now(),useCase:f.useCase,samples:[f.s1.trim(),f.s2.trim()].filter(Boolean),optInMethod:f.optInMethod,optInDesc:f.optInDesc.trim(),optOut:f.optOut,status:'pending',submittedDaysAgo:0,fee:15});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit · $15</button></div>
+      <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={()=>{if(valid)onSubmit({id:'cmp_'+Date.now(),useCase:f.useCase,description:f.desc.trim(),samples:[f.s1.trim(),f.s2.trim()],contents:{links:f.ctLinks,phone:f.ctPhone,ageGated:f.ctAge,lending:f.ctLend},optInDesc:f.optInDesc.trim(),optOut:f.optOut,status:'pending',submittedDaysAgo:0,fee:15});}} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>Submit · $15</button></div>
     </div>
   </React.Fragment>);
 }
@@ -17148,10 +17221,11 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
   const [step,setStep]=React.useState(0);
   const [f,setF]=React.useState({
     bt:B.type||'standard',
-    entityType:P.entityType||'LLC',legalName:P.legalName||'',ein:P.ein||'',address:P.address||'',website:P.website||'',
-    repName:(P.rep&&P.rep.name)||'',repTitle:(P.rep&&P.rep.title)||'',repEmail:(P.rep&&P.rep.email)||'',repPhone:(P.rep&&P.rep.phone)||'',
-    vertical:B.vertical||PHONE_VERTICALS[0],mobile:B.mobile||'',
-    useCase:C.useCase||A2P_USE_CASES[1],s1:(C.samples&&C.samples[0])||'',s2:(C.samples&&C.samples[1])||'',
+    entityType:P.entityType||'LLC',legalName:P.legalName||'',regType:P.regType||REG_ID_TYPES[0],ein:P.ein||'',industry:P.industry||PHONE_INDUSTRIES[0],regions:P.regions||['USA_AND_CANADA'],address:P.address||'',website:P.website||'',
+    repName:(P.rep&&P.rep.name)||'',repPosition:(P.rep&&P.rep.position)||REP_POSITIONS[0],repTitle:(P.rep&&P.rep.title)||'',repEmail:(P.rep&&P.rep.email)||'',repPhone:(P.rep&&P.rep.phone)||'',
+    vertical:B.vertical||PHONE_VERTICALS[0],mobile:B.mobile||'',companyType:B.companyType||'private',ticker:B.ticker||'',exchange:B.exchange||STOCK_EXCHANGES[0],brandEmail:B.contactEmail||(P.rep&&P.rep.email)||'',
+    useCase:C.useCase||A2P_USE_CASES[1],desc:C.description||'',s1:(C.samples&&C.samples[0])||'',s2:(C.samples&&C.samples[1])||'',
+    ctLinks:C.contents?!!C.contents.links:true,ctPhone:!!(C.contents&&C.contents.phone),ctAge:!!(C.contents&&C.contents.ageGated),ctLend:!!(C.contents&&C.contents.lending),
     optInMethod:C.optInMethod||A2P_OPTIN_METHODS[0],optInDesc:C.optInDesc||'',
     optInConfirm:C.optInConfirm||`You're subscribed to {{business}} alerts. Msg & data rates may apply. Reply HELP for help, STOP to cancel.`,
     stopMsg:C.stopMsg||`You're unsubscribed and won't receive more messages. Reply START to resubscribe.`,
@@ -17165,25 +17239,26 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
   const mktUse=/market|mixed/i.test(f.useCase);
   const valid=[true,
     !!(f.legalName.trim()&&f.address.trim()&&f.repName.trim()&&okEmail(f.repEmail)&&(sole||f.ein.trim())),
-    !!(f.vertical&&(!sole||f.mobile.replace(/\D/g,'').length>=10)),
-    !!(f.s1.trim()&&(!mktUse||f.s2.trim())),
-    !!(f.optInDesc.trim()&&f.optInConfirm.trim()&&okUrl(f.privacyUrl)&&okUrl(f.termsUrl)),
+    !!(f.vertical&&(sole?f.mobile.replace(/\D/g,'').length>=10:(okEmail(f.brandEmail)&&(f.companyType!=='public'||f.ticker.trim())))),
+    !!(f.desc.trim().length>=40&&f.s1.trim().length>=20&&f.s2.trim().length>=20),
+    !!(f.optInDesc.trim().length>=40&&f.optInConfirm.trim().length>=20&&okUrl(f.privacyUrl)&&okUrl(f.termsUrl)),
     true];
-  const STEPS=[{n:'Eligibility'},{n:'Business profile'},{n:'A2P brand'},{n:'Campaign'},{n:'Consent & policies'},{n:'Review'}];
+  const STEPS=[{n:'Business type'},{n:'Business profile'},{n:'Brand'},{n:'Campaign'},{n:'Consent & policies'},{n:'Review'}];
   const go=(n)=>{if(n>step){for(let i=step;i<n;i++)if(!valid[i]){setStep(i);return;}}setStep(Math.max(0,Math.min(STEPS.length-1,n)));};
   const doSubmit=()=>{for(let i=0;i<valid.length;i++)if(!valid[i]){setStep(i);return;}onSubmit({
-    profile:{entityType:sole?'Sole proprietorship':f.entityType,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)}},
-    brand:{type:f.bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),mobile:sole?fmtPhone(f.mobile):''},
-    campaign:{useCase:f.useCase,samples:[f.s1.trim(),f.s2.trim()].filter(Boolean),optInMethod:f.optInMethod,optInDesc:f.optInDesc.trim(),optInConfirm:f.optInConfirm.trim(),stopMsg:f.stopMsg.trim(),helpMsg:f.helpMsg.trim(),optOut:f.optOut,privacyUrl:f.privacyUrl.trim(),termsUrl:f.termsUrl.trim()},
+    profile:{entityType:sole?'Sole proprietorship':f.entityType,legalName:f.legalName.trim(),regType:sole?'':f.regType,ein:sole?'':f.ein.trim(),industry:f.industry,regions:f.regions,address:f.address.trim(),website:f.website.trim(),rep:{name:f.repName.trim(),position:f.repPosition,title:f.repTitle.trim(),email:f.repEmail.trim(),phone:fmtPhone(f.repPhone)}},
+    brand:{type:f.bt,legalName:f.legalName.trim(),ein:sole?'':f.ein.trim(),address:f.address.trim(),vertical:f.vertical,website:f.website.trim(),mobile:sole?fmtPhone(f.mobile):'',companyType:sole?'private':f.companyType,ticker:f.companyType==='public'?f.ticker.trim():'',exchange:f.companyType==='public'?f.exchange:'',contactEmail:sole?'':f.brandEmail.trim()},
+    campaign:{useCase:f.useCase,description:f.desc.trim(),samples:[f.s1.trim(),f.s2.trim()],contents:{links:f.ctLinks,phone:f.ctPhone,ageGated:f.ctAge,lending:f.ctLend},optInMethod:f.optInMethod,optInDesc:f.optInDesc.trim(),optInConfirm:f.optInConfirm.trim(),stopMsg:f.stopMsg.trim(),helpMsg:f.helpMsg.trim(),optOut:f.optOut,privacyUrl:f.privacyUrl.trim(),termsUrl:f.termsUrl.trim()},
   });};
   const INP='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white placeholder:text-white/25 outline-none focus:border-brand-500/40 transition-colors';
   const LBL='block text-[11px] font-medium text-white/45 mb-1.5';const TA=INP+' resize-none leading-relaxed';
+  const Min=({v,n})=>(<span className={['ml-auto text-[10px] tabular-nums font-normal',(v||'').trim().length>=n?'text-emerald-300':'text-white/30'].join(' ')}>{(v||'').trim().length}/{n} min</span>);
   const Chev=(node)=>(<div className="relative">{node}<I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div>);
   const InheritChip=({l,v})=>(<div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"><span className="text-[11px] text-white/40 shrink-0">{l}</span><span className={['text-[12px] truncate ml-2',v?'text-white/80':'text-amber-300'].join(' ')}>{v||'— add in profile'}</span></div>);
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/50" onClick={close}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] overflow-hidden left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[760px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--s850)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
-      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Register for SMS · A2P 10DLC</p><p className="text-[11.5px] text-white/45 mt-0.5">One guided registration — fill it once; carriers review each stage in turn.</p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
+      <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"><div><p className="text-[15px] font-semibold text-white">Set up text messaging</p><p className="text-[11.5px] text-white/45 mt-0.5">One guided registration — fill it once; carriers review each stage in turn. <span className="text-white/30">· A2P 10DLC</span></p></div><button onClick={close} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       <div className="shrink-0 px-5 py-3 border-b border-white/[0.05] overflow-x-auto scroll-area"><div className="flex items-center gap-1 w-max">{STEPS.map((s,i)=>{const done=i<step&&valid[i];const cur=i===step;const locked=i>step&&!valid.slice(0,i).every(Boolean);return(<React.Fragment key={i}>{i>0&&<span className="w-4 h-px bg-white/10 shrink-0"/>}<button onClick={()=>go(i)} disabled={locked} className={['inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all',cur?'bg-brand-500 text-white shadow-brand':done?'text-emerald-300 bg-emerald-500/10':locked?'text-white/25 cursor-not-allowed':'text-white/50 hover:text-white bg-white/[0.03]'].join(' ')}><span className={['w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold',cur?'bg-white/25':done?'bg-emerald-500/25':'bg-white/[0.08]'].join(' ')}>{done?<I.Check size={9} stroke={3}/>:i+1}</span>{s.n}</button></React.Fragment>);})}</div></div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-4">
         {step===0&&(<React.Fragment>
@@ -17197,41 +17272,50 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
             <div><label className={LBL}>Legal business name{sole?' (your full legal name)':''}</label><input value={f.legalName} onChange={e=>set('legalName',e.target.value)} placeholder={sole?'Alex Morgan':'Acme Digital LLC'} className={INP}/></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {!sole&&<div><label className={LBL}>Tax ID (EIN / BN)</label><input value={f.ein} onChange={e=>set('ein',e.target.value)} placeholder="82-0000000" className={INP}/></div>}
+            {!sole&&<div><label className={LBL}>Business registration</label><div className="flex gap-2"><div className="relative w-[112px] shrink-0"><select value={f.regType} onChange={e=>set('regType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{REG_ID_TYPES.map(o=>(<option key={o}>{o}</option>))}</select><I.ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/></div><input value={f.ein} onChange={e=>set('ein',e.target.value)} placeholder="82-0000000" className={INP}/></div></div>}
             <div className={sole?'col-span-2':''}><label className={LBL}>Website</label><input value={f.website} onChange={e=>set('website',e.target.value)} placeholder="https://…" className={INP}/></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Business industry</label>{Chev(<select value={f.industry} onChange={e=>set('industry',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{PHONE_INDUSTRIES.map(o=>(<option key={o}>{o}</option>))}</select>)}</div>
+            <div><label className={LBL}>Regions of operation</label><div className="flex flex-wrap gap-1.5 pt-0.5">{PHONE_REGIONS.map(([k,l])=>(<button key={k} type="button" onClick={()=>set('regions',f.regions.includes(k)?f.regions.filter(x=>x!==k):[...f.regions,k])} className={['px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-all',f.regions.includes(k)?'border-brand-500/40 bg-brand-500/[0.08] text-brand-200':'border-white/[0.07] bg-white/[0.02] text-white/40 hover:border-white/[0.14]'].join(' ')}>{l}</button>))}</div></div>
           </div>
           <div><label className={LBL}>Business address</label><input value={f.address} onChange={e=>set('address',e.target.value)} placeholder="Street, city, state" className={INP}/></div>
           <p className="text-[10.5px] font-medium text-white/35 uppercase tracking-[0.14em] pt-1">Authorized representative</p>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={LBL}>Full name</label><input value={f.repName} onChange={e=>set('repName',e.target.value)} placeholder="Alex Morgan" className={INP}/></div>
-            <div><label className={LBL}>Job title</label><input value={f.repTitle} onChange={e=>set('repTitle',e.target.value)} placeholder="Owner" className={INP}/></div>
+            <div><label className={LBL}>Job position</label>{Chev(<select value={f.repPosition} onChange={e=>set('repPosition',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{REP_POSITIONS.map(o=>(<option key={o}>{o}</option>))}</select>)}</div>
             <div><label className={LBL}>Work email</label><input value={f.repEmail} onChange={e=>set('repEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
             <div><label className={LBL}>Phone</label><input value={f.repPhone} onChange={e=>set('repPhone',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>
           </div>
+          <div><label className={LBL}>Business title <span className="text-white/25 normal-case">(their exact title, e.g. "Owner & founder")</span></label><input value={f.repTitle} onChange={e=>set('repTitle',e.target.value)} placeholder="Owner" className={INP}/></div>
         </React.Fragment>)}
         {step===2&&(<React.Fragment>
-          <p className="text-[12px] text-white/55 leading-relaxed">Your A2P brand is your identity at The Campaign Registry. It <span className="text-white/80">inherits from your business profile</span> — only these are new.</p>
+          <p className="text-[12px] text-white/55 leading-relaxed">Your brand is your identity at the carrier registry — it proves who's sending. It <span className="text-white/80">inherits from your business profile</span> — only these are new.</p>
           <div className="grid grid-cols-2 gap-2.5"><InheritChip l="Legal name" v={f.legalName.trim()}/>{!sole?<InheritChip l="Tax ID" v={f.ein.trim()}/>:<InheritChip l="Entity" v="Sole proprietor"/>}<InheritChip l="Address" v={f.address.trim()}/><InheritChip l="Website" v={f.website.trim()}/></div>
           <button onClick={()=>setStep(1)} className="self-start text-[11.5px] font-medium text-brand-300 hover:text-brand-200">Edit these in Business profile →</button>
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div><label className={LBL}>Industry vertical</label>{Chev(<select value={f.vertical} onChange={e=>set('vertical',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{PHONE_VERTICALS.map(v=><option key={v}>{v}</option>)}</select>)}</div>
             {sole&&<div><label className={LBL}>Your mobile (one-time code)</label><input value={f.mobile} onChange={e=>set('mobile',e.target.value)} placeholder="+1 415 555 0123" className={INP}/></div>}
+            {!sole&&<div><label className={LBL}>Company type</label>{Chev(<select value={f.companyType} onChange={e=>set('companyType',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{BRAND_COMPANY_TYPES.map(o=>(<option key={o} value={o}>{o.charAt(0).toUpperCase()+o.slice(1)}</option>))}</select>)}</div>}
           </div>
+          {!sole&&<div className="grid grid-cols-2 gap-3">
+            <div><label className={LBL}>Brand contact email</label><input value={f.brandEmail} onChange={e=>set('brandEmail',e.target.value)} placeholder="alex@company.com" className={INP}/></div>
+            {f.companyType==='public'&&<div><label className={LBL}>Stock ticker · exchange</label><div className="flex gap-2"><input value={f.ticker} onChange={e=>set('ticker',e.target.value.toUpperCase())} placeholder="ACME" className={INP}/><div className="relative w-[110px] shrink-0">{Chev(<select value={f.exchange} onChange={e=>set('exchange',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{STOCK_EXCHANGES.map(o=>(<option key={o}>{o}</option>))}</select>)}</div></div></div>}
+          </div>}
           {sole&&<p className="text-[11px] text-white/40 leading-relaxed">Carriers text a one-time code to a real mobile (not a CRM/VoIP number). One mobile can verify at most 3 brands, ever.</p>}
         </React.Fragment>)}
         {step===3&&(<React.Fragment>
-          <div><label className={LBL}>Use case</label>{Chev(<select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select>)}{mktUse&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.Info size={10}/>Marketing / mixed use cases get closer carrier review and need two sample messages.</p>}</div>
-          <div><label className={LBL}>Sample message 1 <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.s1} onChange={e=>set('s1',e.target.value)} placeholder="Hi {{first_name}}, thanks for reaching out — free for a quick call this week?" className={TA}/></div>
-          <div><label className={LBL}>Sample message 2 {mktUse?<span className="text-red-300/80">*</span>:<span className="text-white/30">(optional)</span>}</label><textarea rows={2} value={f.s2} onChange={e=>set('s2',e.target.value)} placeholder="Your proposal is ready: {{deal_link}}. Reply STOP to opt out." className={TA}/></div>
-          <p className="text-[11px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Carriers read these to confirm your messages match the use case — use realistic examples with the {'{{merge_fields}}'} you actually send.</p>
+          <div><label className={LBL}>A2P campaign use case</label>{Chev(<select value={f.useCase} onChange={e=>set('useCase',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_USE_CASES.map(u=><option key={u}>{u}</option>)}</select>)}{mktUse&&<p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1.5"><I.Info size={10}/>Marketing / mixed use cases get closer carrier review — make each sample clearly match the use case.</p>}</div>
+          <div><label className={LBL+' flex items-center'}>Campaign description <span className="text-red-300/80 ml-1">*</span><Min v={f.desc} n={40}/></label><textarea rows={3} value={f.desc} onChange={e=>set('desc',e.target.value)} placeholder="Who is sending, who receives, and why — e.g. Acme Digital LLC sends sales follow-ups and support replies to customers who opted in on our website." className={TA}/><p className="text-[11px] text-white/35 mt-1.5">The first thing reviewers read — a vague description is a top rejection reason.</p></div>
+          <div><label className={LBL+' flex items-center'}>Sample message #1 <span className="text-red-300/80 ml-1">*</span><Min v={f.s1} n={20}/></label><textarea rows={2} value={f.s1} onChange={e=>set('s1',e.target.value)} placeholder="Hi {{first_name}}, thanks for reaching out — free for a quick call this week?" className={TA}/></div>
+          <div><label className={LBL+' flex items-center'}>Sample message #2 <span className="text-red-300/80 ml-1">*</span><Min v={f.s2} n={20}/></label><textarea rows={2} value={f.s2} onChange={e=>set('s2',e.target.value)} placeholder="Your proposal is ready: {{deal_link}}. Reply STOP to opt out." className={TA}/></div>
+          <div><label className={LBL}>Message contents</label><div className="grid grid-cols-2 gap-2">{[['ctLinks','Messages include embedded links'],['ctPhone','Messages include phone numbers'],['ctAge','Age-gated content (CTIA)'],['ctLend','Direct lending / loan arrangements']].map(([k,l])=>(<button key={k} type="button" onClick={()=>set(k,!f[k])} className={['flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-[11.5px] transition-all',f[k]?'border-brand-500/40 bg-brand-500/[0.07] text-white/85':'border-white/[0.07] bg-white/[0.02] text-white/45 hover:border-white/[0.14]'].join(' ')}><span className={['w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0',f[k]?'bg-brand-500 border-brand-500 text-white':'border-white/25'].join(' ')}>{f[k]&&<I.Check size={9} stroke={3}/>}</span>{l}</button>))}</div></div>
+          <p className="text-[11px] text-white/40 leading-relaxed rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">Twilio requires two sample messages (20+ characters each). Name your business in each, keep the {'{{merge_fields}}'} you actually send, and never use public link shorteners like bit.ly — instant rejection.</p>
         </React.Fragment>)}
         {step===4&&(<React.Fragment>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={LBL}>How do contacts opt in?</label>{Chev(<select value={f.optInMethod} onChange={e=>set('optInMethod',e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{A2P_OPTIN_METHODS.map(u=><option key={u}>{u}</option>)}</select>)}</div>
-            <div className="flex items-end pb-1"><label className="flex items-center gap-2.5 text-[12.5px] text-white/70 cursor-pointer"><Toggle on={f.optOut} onChange={v=>set('optOut',v)}/>Auto-append “Reply STOP to opt out”</label></div>
-          </div>
-          <div><label className={LBL}>Describe the opt-in (carriers read this) <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.optInDesc} onChange={e=>set('optInDesc',e.target.value)} placeholder="Contacts check an SMS-consent box on our website / booking form before we ever text them." className={TA}/></div>
-          <div><label className={LBL}>Opt-in confirmation message <span className="text-red-300/80">*</span></label><textarea rows={2} value={f.optInConfirm} onChange={e=>set('optInConfirm',e.target.value)} className={TA}/></div>
+          <div><label className={LBL+' flex items-center'}>How do end-users consent to receive messages? <span className="text-red-300/80 ml-1">*</span><Min v={f.optInDesc} n={40}/></label><textarea rows={3} value={f.optInDesc} onChange={e=>set('optInDesc',e.target.value)} placeholder="End users opt in by checking the SMS-consent box on our website form (https://yoursite.com/contact); the page shows our privacy policy and 'Message and data rates may apply.'" className={TA}/><p className="text-[11px] text-white/35 mt-1.5 leading-relaxed">List every opt-in path with its URL — reviewers open it. Vague consent wording is the #1 campaign rejection.</p></div>
+          <div className="flex items-center"><label className="flex items-center gap-2.5 text-[12.5px] text-white/70 cursor-pointer"><Toggle on={f.optOut} onChange={v=>set('optOut',v)}/>Use default STOP/HELP handling — “Reply STOP to opt out” is auto-appended</label></div>
+          <div><label className={LBL+' flex items-center'}>Opt-in confirmation message <span className="text-red-300/80 ml-1">*</span><Min v={f.optInConfirm} n={20}/></label><textarea rows={2} value={f.optInConfirm} onChange={e=>set('optInConfirm',e.target.value)} className={TA}/><p className="text-[11px] text-white/35 mt-1.5">Sent right after opt-in — must name your business, confirm the subscription, and mention HELP/STOP.</p></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={LBL}>STOP reply</label><textarea rows={2} value={f.stopMsg} onChange={e=>set('stopMsg',e.target.value)} className={TA}/></div>
             <div><label className={LBL}>HELP reply</label><textarea rows={2} value={f.helpMsg} onChange={e=>set('helpMsg',e.target.value)} className={TA}/></div>
@@ -17244,11 +17328,11 @@ function TrustRegistrationWizard({close,onSubmit,initial}){
         </React.Fragment>)}
         {step===5&&(()=>{const Grp=({title,i,rows})=>(<div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"><div className="flex items-center justify-between mb-2.5"><p className="text-[12.5px] font-semibold text-white">{title}</p><button onClick={()=>setStep(i)} className="text-[11px] font-medium text-brand-300 hover:text-brand-200">Edit</button></div><div className="flex flex-col gap-1.5">{rows.filter(Boolean).map(([l,v],j)=>(<div key={j} className="flex items-start justify-between gap-3 text-[12px]"><span className="text-white/40 shrink-0">{l}</span><span className="text-white/80 text-right min-w-0 break-words">{v||'—'}</span></div>))}</div></div>);return(<React.Fragment>
           <p className="text-[12px] text-white/55">Review everything before you submit — jump back to any step to fix it.</p>
-          <Grp title="Business profile" i={1} rows={[['Business',f.legalName+(sole?' · Sole proprietor':f.ein?(' · '+f.ein):'')],['Address',f.address],['Website',f.website],['Rep',f.repName+(f.repEmail?(' · '+f.repEmail):'')]]}/>
-          <Grp title="A2P brand" i={2} rows={[['Type',sole?'Sole proprietor':'Registered business'],['Vertical',f.vertical],sole&&['Mobile',f.mobile]]}/>
-          <Grp title="Campaign" i={3} rows={[['Use case',f.useCase],['Sample 1',f.s1],f.s2&&['Sample 2',f.s2]]}/>
+          <Grp title="Business profile" i={1} rows={[['Business',f.legalName+(sole?' · Sole proprietor':f.ein?(' · '+f.ein):'')],['Industry',f.industry],['Address',f.address],['Website',f.website],['Rep',f.repName+(f.repPosition?(' · '+f.repPosition):'')+(f.repEmail?(' · '+f.repEmail):'')]]}/>
+          <Grp title="A2P brand" i={2} rows={[['Type',sole?'Sole proprietor':('Registered business · '+f.companyType)],['Vertical',f.vertical],!sole&&['Contact',f.brandEmail],sole&&['Mobile',f.mobile]]}/>
+          <Grp title="Campaign" i={3} rows={[['Use case',f.useCase],['Description',f.desc],['Sample 1',f.s1],['Sample 2',f.s2]]}/>
           <Grp title="Consent & policies" i={4} rows={[['Opt-in',f.optInMethod],['Privacy',f.privacyUrl],['Terms',f.termsUrl]]}/>
-          <div className="rounded-xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-white">Fees</p><p className="text-[11px] text-white/50 mt-0.5">One-time $15 campaign vetting, debited from your wallet on submit. Recurring monthly carrier fees apply by use case.</p></div><span className="text-[16px] font-semibold text-white tabular-nums shrink-0">$15</span></div>
+          <div className="rounded-xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-white">Fees</p><p className="text-[11px] text-white/50 mt-0.5">One-time $15 campaign vetting — added to your next invoice on submit. Recurring monthly carrier fees apply by use case.</p></div><span className="text-[16px] font-semibold text-white tabular-nums shrink-0">$15</span></div>
         </React.Fragment>);})()}
       </div>
       <div className="shrink-0 flex items-center gap-3 px-5 py-4 border-t border-white/[0.06]">
@@ -17274,6 +17358,7 @@ function SettingsPhoneNumbersPage({goTo}){
   const [portOpen,setPortOpen]=React.useState(false);
   const [brandOpen,setBrandOpen]=React.useState(false);
   const [campOpen,setCampOpen]=React.useState(false);
+  const [tfvNum,setTfvNum]=React.useState(null); // toll-free number being verified via the TFV form
   const [profileOpen,setProfileOpen]=React.useState(false); // Trust Hub step 1: business/customer profile
   const [wizardOpen,setWizardOpen]=React.useState(false); // unified A2P registration wizard (primary path; the 3 cards below are the status dashboard + per-stage edit)
   const [cnamDraft,setCnamDraft]=React.useState('');
@@ -17284,10 +17369,10 @@ function SettingsPhoneNumbersPage({goTo}){
   const onBuy=(o)=>{
     if(soleProp&&nums.length>=1){toast('Sole-proprietor brands are limited to 1 number','warning');return;}
     crm.setPhoneNumbers(a=>[...a,{id:'pn_'+Date.now(),number:o.number,label:o.type==='tollfree'?'Toll-free':'New number',country:o.country,type:o.type,caps:{voice:true,sms:true,mms:o.type!=='tollfree'},assignedTo:null,isDefault:!a.some(x=>!x.released),monthly:o.monthly,purchasedAt:'Just now',status:'active',...(o.type==='tollfree'?{tfStatus:'unverified'}:{})}]);
-    if(crm.walletDebit)crm.walletDebit(o.monthly,'Number purchase · '+o.number); // Phase 4: first month debits the wallet; renews monthly
+    if(crm.usageAccrue)crm.usageAccrue(o.monthly,'Number purchase · '+o.number); // first month accrues to the monthly Stripe invoice; renews monthly
     // A2P is workspace-level: a US/CA-local number inherits the already-approved campaign (no re-registration) — say so at the moment of surprise.
     const _a2pReady=(typeof comp!=='undefined')&&comp&&comp.ok&&o.type==='local'&&(o.country==='US'||o.country==='CA');
-    setBuyOpen(false);toast(o.number+' purchased · $'+o.monthly.toFixed(2)+'/mo from your wallet'+(_a2pReady?' · inherits your approved A2P campaign — ready to send.':''));};
+    setBuyOpen(false);toast(o.number+' purchased · $'+o.monthly.toFixed(2)+'/mo added to your monthly invoice'+(_a2pReady?' · inherits your approved A2P campaign — ready to send.':''));};
   const onPort=(o)=>{crm.setPhoneNumbers(a=>[...a,{id:'pn_'+Date.now(),number:o.number,label:'Porting from '+o.carrier,country:'US',type:'local',caps:{voice:true,sms:true,mms:true},assignedTo:null,isDefault:false,monthly:1.15,purchasedAt:'Port in progress',status:'porting',portAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);setPortOpen(false);toast('Port started for '+o.number+' — lands in ~2 simulated days');};
   const release=(n)=>openConfirm({title:'Release '+n.number+'?',body:'The number returns to the carrier pool immediately and can be claimed by anyone else. Monthly billing stops. This cannot be undone.',confirmLabel:'Release number',danger:true,onConfirm:()=>{crm.setPhoneNumbers(a=>a.map(x=>x.id===n.id?{...x,released:true,isDefault:false}:x));toast('Released '+n.number);}});
   const advanceReview=()=>{try{const r=_autoAdvance(864e5);toast('Simulated +1 day of carrier review');}catch(e){}};
@@ -17303,19 +17388,19 @@ function SettingsPhoneNumbersPage({goTo}){
     crm.setSmsBrand({...data.brand,status:brandVerified?'verified':(profApproved?'pending':'queued'),atNow:now,note:brandVerified?(brand.note||'Verified after review'):(profApproved?'Submitted — in review':'Queued — submits when profile approves')});
     if(campSettled){/* reviewing an already-submitted registration — leave the campaigns array untouched, no re-charge */}
     else{crm.setSmsCampaigns(a=>{const list=(a||[]);const rest=(firstCamp?list.slice(1):list).filter(Boolean);return [{id:(firstCamp&&firstCamp.id)||'cmp_'+Date.now(),...data.campaign,status:'queued',submittedDaysAgo:0,fee:15,submittedAtNow:now,note:'Queued — submits when brand verifies'},...rest];}); // reconcile: replace only the wizard-owned first campaign, preserve any others a standard brand added via the card
-      if(crm.walletDebit)crm.walletDebit(15,'A2P campaign verification fee');} // charge ONLY when a new campaign is actually submitted
+      if(crm.usageAccrue)crm.usageAccrue(15,'A2P campaign verification fee');} // charge ONLY when a new campaign is actually submitted
     setWizardOpen(false);toast(campSettled?'Registration reviewed — your live campaign is unchanged.':'Registration submitted — watch each stage clear here, or Simulate +1 day.');};
   const regDone=[profile&&profile.status==='approved',brand&&brand.status==='verified',camps.some(c=>c&&c.status==='approved')].filter(Boolean).length;
   const CARD='rounded-2xl border border-white/[0.06] bg-white/[0.03]';
-  const tabsCtl=(<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] w-fit">{[['numbers','Numbers'],['trust','Trust center'],['wallet','Wallet & usage']].map(([k,l])=>(<button key={k} onClick={()=>setTab(k)} className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',tab===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>);
-  return(<SettingsShell active="settings-phone-numbers" goTo={goTo} subtitle="Buy and manage workspace numbers, register messaging with carriers, and fund usage from the wallet." tabs={tabsCtl}>
+  const tabsCtl=(<div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] w-fit">{[['numbers','Numbers'],['trust','Trust center']].map(([k,l])=>(<button key={k} onClick={()=>setTab(k)} className={['px-3.5 py-1.5 rounded-lg text-[12.5px] font-medium transition-all',tab===k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>);
+  return(<SettingsShell active="settings-phone-numbers" goTo={goTo} subtitle="Buy and manage workspace numbers and register messaging with carriers — usage bills to your card through Stripe." tabs={tabsCtl}>
     {settingsIsAdmin()&&!effCanManagePhone()&&<div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-2.5 text-[12.5px] text-amber-200"><I.Lock size={14} className="shrink-0"/><span>View-only — your role doesn’t have the “Manage phone numbers & compliance” permission.</span></div>}
     <div className={['flex items-center gap-3 px-4 py-3 rounded-2xl border',comp.ok?'border-emerald-500/20 bg-emerald-500/[0.06]':'border-amber-500/25 bg-amber-500/[0.07]'].join(' ')}>
       {comp.ok?<I.Check size={15} className="text-emerald-300 shrink-0"/>:<I.Ban size={15} className="text-amber-300 shrink-0"/>}
       <p className={['text-[12.5px] leading-relaxed',comp.ok?'text-emerald-200':'text-amber-200'].join(' ')}>{comp.ok?'Messaging is live — your numbers are registered and approved for SMS.':comp.reason}</p>
       {!comp.ok&&<button onClick={()=>setTab('trust')} className="ml-auto shrink-0 text-[12px] font-medium text-amber-100 hover:text-white underline underline-offset-2 transition-colors">Open Trust center</button>}
     </div>
-    {tab==='numbers'&&(<div className={CARD+' overflow-hidden'}>
+    {tab==='numbers'&&(<div className="flex flex-col gap-4"><div className={CARD+' overflow-hidden'}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
         <div><p className="text-[14px] font-semibold text-white">Workspace numbers</p><p className="text-[12px] text-white/45 mt-0.5">{nums.length} number{nums.length===1?'':'s'} · ${monthly.toFixed(2)}/mo · billed to your workspace</p></div>
         {!readOnly&&<div className="flex items-center gap-2"><button onClick={()=>setPortOpen(true)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Port in</button><button onClick={()=>setBuyOpen(true)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Phone size={13}/>Buy number</button></div>}
@@ -17330,54 +17415,74 @@ function SettingsPhoneNumbersPage({goTo}){
         <span className="text-[12px] text-white/45 tabular-nums">${(n.monthly||0).toFixed(2)}/mo</span>
         {!readOnly&&<button onClick={()=>release(n)} title="Release number" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-300 hover:bg-red-500/10 transition-colors"><I.X size={13}/></button>}
       </div>))}</div>)}
+    </div>
+    {/* Texting spend limit — an operational safety cap. All money (charges, invoices, payment method) is single-homed on Settings › Billing. */}
+    {(()=>{const ub=crm.usageBill||{limit:100,monthTotal:0,charges:[]};const pct=ub.limit>0?Math.min(100,Math.round(ub.monthTotal/ub.limit*100)):0;const capped=ub.limit>0&&ub.monthTotal>=ub.limit;
+      return(<div className={CARD+' px-5 py-4'}>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="min-w-0"><p className="text-[13.5px] font-semibold text-white">Texting spend limit</p><p className="text-[11.5px] text-white/40 mt-0.5">A safety cap — if this month's usage reaches it, outbound texting pauses. Usage bills to your card via Stripe; charges and invoices live on <button onClick={()=>goTo('settings-billing')} className="text-brand-300 hover:text-brand-200 font-medium">Billing</button>.</p></div>
+          {!readOnly&&<div className="flex items-center gap-1 shrink-0"><span className="text-[13px] text-white/45">$</span><input value={ub.limit} onChange={e=>{const v=parseInt(e.target.value.replace(/\D/g,''),10);crm.setUsageBill(x=>({...x,limit:isNaN(v)?0:v}));}} inputMode="numeric" className="w-[70px] px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white text-right outline-none focus:border-brand-500/40 tabular-nums"/></div>}
+        </div>
+        <div className="mt-3 h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className={['h-full rounded-full transition-all',capped?'bg-red-400':pct>=80?'bg-amber-400':'bg-emerald-400'].join(' ')} style={{width:pct+'%'}}/></div>
+        <p className="text-[11px] text-white/40 mt-1.5 tabular-nums">${ub.monthTotal.toFixed(2)} of ${ub.limit} this month · {pct}%</p>
+        {capped&&<div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/[0.08] border border-red-500/25 text-[11.5px] text-red-200"><I.Ban size={12} className="shrink-0 mt-0.5"/><span>Limit reached — outbound texting is paused. Raise the limit to resume.</span></div>}
+      </div>);})()}
     </div>)}
     {tab==='trust'&&(<div className="flex flex-col gap-4">
       {/* Primary registration path — one guided wizard. The three numbered cards below are now the STATUS dashboard + per-stage edit-and-resubmit. */}
       <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-xl bg-brand-500/15 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.ShieldCheck size={16}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white">SMS registration · A2P 10DLC</p><p className="text-[12px] text-white/50 mt-0.5">{comp.ok?'All set — your numbers are registered and approved for SMS.':(regDone+' of 3 stages complete — fill it once; carriers review each in turn.')}</p></div></div>
+        <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-xl bg-brand-500/15 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.ShieldCheck size={16}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white">Text messaging registration</p><p className="text-[12px] text-white/50 mt-0.5">{comp.ok?'All set — your numbers are registered and approved for texting.':(regDone+' of 3 stages complete — fill it once; carriers review each in turn.')} <span className="text-white/30">· A2P 10DLC</span></p></div></div>
         {!readOnly&&<button onClick={()=>setWizardOpen(true)} className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.ShieldCheck size={13}/>{comp.ok?'Review registration':(profile?'Continue registration':'Start registration')}</button>}
       </div>
-      <div className={CARD+' px-5 py-4'}>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[13px] font-bold">1</span><div><p className="text-[14px] font-semibold text-white flex items-center gap-2">Business profile {profile?<PhoneChip s={profile.status}/>:<PhoneChip s="none"/>}</p><p className="text-[12px] text-white/45 mt-0.5">{profile?(profile.legalName+' · '+profile.entityType+(profile.rep&&profile.rep.name?(' · Rep: '+profile.rep.name):'')):'Your verified legal identity — carriers check this first; brand, campaigns and number trust hang off it.'}</p></div></div>
-          {!readOnly&&<button onClick={()=>setProfileOpen(true)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">{profile?'Edit & resubmit':'Submit profile'}</button>}
-        </div>
-        {profile&&profile.note&&<p className="text-[11px] text-white/35 mt-2">{profile.note}</p>}
-      </div>
-      <div className={CARD+' px-5 py-4'}>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[13px] font-bold">2</span><div><p className="text-[14px] font-semibold text-white flex items-center gap-2">A2P brand {brand?<PhoneChip s={brand.status}/>:<PhoneChip s="none"/>}</p><p className="text-[12px] text-white/45 mt-0.5">{brand?(brand.legalName+(brand.type==='soleProp'?' · Sole proprietor':brand.ein?(' · EIN '+brand.ein):'')):'Registers your business with The Campaign Registry — requires an approved business profile.'}</p></div></div>
-          {!readOnly&&<button onClick={()=>{if(!profile||profile.status!=='approved'){toast('Step 1 first — your business profile must be approved','warning');return;}setBrandOpen(true);}} className={['px-3.5 py-2 rounded-xl text-[12.5px] font-medium transition-all',(!profile||profile.status!=='approved')?'text-white/35 bg-white/[0.03] border border-white/[0.06] cursor-not-allowed':'text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08]'].join(' ')}>{brand?'Edit & resubmit':'Register brand'}</button>}
-        </div>
-        {brand&&brand.note&&<p className="text-[11px] text-white/35 mt-2">{brand.note}</p>}
-      </div>
+      {/* One compact status card — Twilio-accurate: in-review and approved items are LOCKED (read-only); only rejected items can be fixed & resubmitted. */}
       <div className={CARD+' overflow-hidden'}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
-          <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[13px] font-bold shrink-0">3</span><div><p className="text-[14px] font-semibold text-white">A2P campaigns</p><p className="text-[12px] text-white/45 mt-0.5">What you send — carriers approve the use case before SMS flows.</p></div></div>
-          {!readOnly&&<button onClick={()=>{if(!brand||brand.status!=='verified'){toast('Register and verify your brand first','warning');return;}if(soleProp&&camps.length>=1){toast('Sole-proprietor brands are limited to 1 campaign','warning');return;}setCampOpen(true);}} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Register campaign</button>}
+        <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[14px] font-semibold text-white">Registration status</p><p className="text-[12px] text-white/45 mt-0.5">Approved items are locked — carriers treat any change as a new review. Only items that need fixes can be edited.</p></div>
+        <div className="divide-y divide-white/[0.04]">
+        <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap">
+          <span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[12px] font-bold shrink-0">1</span>
+          <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white flex items-center gap-2">Business profile {profile?<PhoneChip s={profile.status}/>:<PhoneChip s="none"/>}</p><p className="text-[11.5px] text-white/40 mt-0.5">{profile?(profile.legalName+' · '+profile.entityType+(profile.rep&&profile.rep.name?(' · Rep: '+profile.rep.name):'')):'Who you are — your verified legal identity. Carriers check this first.'}</p>{profile&&profile.note&&<p className="text-[11px] text-white/35 mt-1">{profile.note}</p>}</div>
+          {!readOnly&&(!profile
+            ?<button onClick={()=>setProfileOpen(true)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all shrink-0">Submit profile</button>
+            :profile.status==='pending'?<span className="text-[11px] text-white/35 shrink-0">In review — locked until carriers respond</span>
+            :profile.status==='approved'?(<div className="text-right shrink-0"><button onClick={()=>setProfileOpen(true)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Update info</button><p className="text-[10px] text-amber-300/80 mt-1">Changes go back to carrier review</p></div>)
+            :<button onClick={()=>setProfileOpen(true)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-amber-200 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-all shrink-0">Fix & resubmit</button>)}
         </div>
-        {camps.length===0?(<p className="px-5 py-6 text-[12.5px] text-white/40">No campaigns yet — SMS stays paused until one is approved.</p>)
-        :(<div className="divide-y divide-white/[0.04]">{camps.map(c=>(<div key={c.id} className="px-5 py-3.5 flex items-center gap-4 flex-wrap">
-          <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90 flex items-center gap-2">{c.useCase}<PhoneChip s={c.status}/></p><p className="text-[11.5px] text-white/40 mt-0.5 truncate">{(c.samples&&c.samples[0])||''}</p></div>
-          <span className="text-[11px] text-white/35 shrink-0">{c.status==='pending'?('In review · submitted '+((c.submittedDaysAgo||0)===0?'just now':c.submittedDaysAgo+'d ago')):(c.note||'')}</span>
-        </div>))}</div>)}
+        <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap">
+          <span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[12px] font-bold shrink-0">2</span>
+          <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white flex items-center gap-2">A2P brand {brand?<PhoneChip s={brand.status}/>:<PhoneChip s="none"/>}</p><p className="text-[11.5px] text-white/40 mt-0.5">{brand?(brand.legalName+(brand.type==='soleProp'?' · Sole proprietor':brand.ein?(' · EIN '+brand.ein):'')):'Registers your business with the carrier registry — needs an approved business profile.'}</p>{brand&&brand.note&&<p className="text-[11px] text-white/35 mt-1">{brand.note}</p>}</div>
+          {!readOnly&&(!brand
+            ?<button onClick={()=>{if(!profile||profile.status!=='approved'){toast('Step 1 first — your business profile must be approved','warning');return;}setBrandOpen(true);}} className={['px-3.5 py-2 rounded-xl text-[12.5px] font-medium transition-all shrink-0',(!profile||profile.status!=='approved')?'text-white/35 bg-white/[0.03] border border-white/[0.06] cursor-not-allowed':'text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08]'].join(' ')}>Register brand</button>
+            :brand.status==='pending'?<span className="text-[11px] text-white/35 shrink-0">In review — locked until carriers respond</span>
+            :brand.status==='verified'?<span className="text-[10.5px] text-white/35 shrink-0 max-w-[230px] text-right leading-relaxed">Locked after approval — update your Business profile and the brand re-verifies automatically</span>
+            :<button onClick={()=>setBrandOpen(true)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-amber-200 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500/15 transition-all shrink-0">Fix & resubmit</button>)}
+        </div>
+        <div className="px-5 py-3.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="w-7 h-7 rounded-lg bg-brand-500/12 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 text-[12px] font-bold shrink-0">3</span>
+            <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white">A2P campaigns</p><p className="text-[11.5px] text-white/40 mt-0.5">What you send — carriers approve the use case before texting turns on.</p></div>
+            {!readOnly&&<button onClick={()=>{if(!brand||brand.status!=='verified'){toast('Register and verify your brand first','warning');return;}if(soleProp&&camps.length>=1){toast('Sole-proprietor brands are limited to 1 campaign','warning');return;}setCampOpen(true);}} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all shrink-0">Register campaign</button>}
+          </div>
+          {camps.length===0?(<p className="mt-2 pl-10 text-[12px] text-white/40">No campaigns yet — texting stays paused until one is approved.</p>)
+          :(<div className="mt-2.5 pl-10 flex flex-col gap-2.5">{camps.map(c=>(<div key={c.id} className="flex items-center gap-3 flex-wrap">
+            <div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white/90 flex items-center gap-2">{c.useCase}<PhoneChip s={c.status}/></p><p className="text-[11px] text-white/35 mt-0.5 truncate">{(c.samples&&c.samples[0])||''}</p></div>
+            <span className="text-[10.5px] text-white/35 shrink-0 max-w-[220px] text-right leading-relaxed">{c.status==='pending'?('In review · submitted '+((c.submittedDaysAgo||0)===0?'just now':c.submittedDaysAgo+'d ago')+' — locked'):c.status==='approved'?'Locked after approval — a new use case is a new campaign':(c.note||'')}</span>
+          </div>))}</div>)}
+        </div>
+        </div>
       </div>
       {nums.some(n=>n.type==='tollfree')&&(<div className={CARD+' overflow-hidden'}>
         <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[14px] font-semibold text-white">Toll-free verification</p><p className="text-[12px] text-white/45 mt-0.5">Separate from A2P — unverified toll-free numbers can't text US/CA at all.</p></div>
-        <div className="divide-y divide-white/[0.04]">{nums.filter(n=>n.type==='tollfree').map(n=>(<div key={n.id} className="px-5 py-3.5 flex items-center gap-4"><p className="text-[13px] font-mono text-white/90 flex-1">{n.number}</p><PhoneChip s={n.tfStatus||'unverified'}/>{(!n.tfStatus||n.tfStatus==='unverified')&&!readOnly&&<button onClick={()=>{crm.setPhoneNumbers(a=>a.map(x=>x.id===n.id?{...x,tfStatus:'pending',tfAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}:x));toast('Toll-free verification submitted');}} className="px-3 py-1.5 rounded-lg text-[11.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Submit verification</button>}</div>))}</div>
+        <div className="divide-y divide-white/[0.04]">{nums.filter(n=>n.type==='tollfree').map(n=>(<div key={n.id} className="px-5 py-3.5 flex items-center gap-4"><p className="text-[13px] font-mono text-white/90 flex-1">{n.number}</p><PhoneChip s={n.tfStatus||'unverified'}/>{(!n.tfStatus||n.tfStatus==='unverified')&&!readOnly&&<button onClick={()=>setTfvNum(n)} className="px-3 py-1.5 rounded-lg text-[11.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Start verification</button>}</div>))}</div>
       </div>)}
       <div className={CARD+' overflow-hidden'}>
-        <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[14px] font-semibold text-white">Voice trust</p><p className="text-[12px] text-white/45 mt-0.5">Caller-ID branding and call signing for your voice numbers.</p></div>
+        <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[14px] font-semibold text-white">Calling trust</p><p className="text-[12px] text-white/45 mt-0.5">The registration above covers texting — this covers calls: put your business name on caller ID so answered calls don't start with “who is this?”, and keep your calls out of “Spam likely”.</p></div>
         <div className="divide-y divide-white/[0.04]">
           <div className="px-5 py-3.5 flex items-center gap-4 flex-wrap">
-            <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90">CNAM caller-ID name</p><p className="text-[11.5px] text-white/40 mt-0.5">What US carriers display when you call — max 15 characters.</p></div>
+            <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90">Caller-ID name (CNAM)</p><p className="text-[11.5px] text-white/40 mt-0.5">The name people see when you call — e.g. “NORTHLIGHT” instead of an unknown number. Max 15 characters, applies to every workspace number.</p></div>
             {crm.cnam?(<React.Fragment><span className="text-[12.5px] font-mono text-white/80">{crm.cnam.name}</span><PhoneChip s={crm.cnam.status}/></React.Fragment>)
             :!readOnly?(<div className="flex items-center gap-2"><input value={cnamDraft} onChange={e=>setCnamDraft(e.target.value.slice(0,15))} placeholder="NORTHLIGHT" className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12px] font-mono text-white outline-none focus:border-brand-500/40 w-[150px]"/><button onClick={()=>{if(!cnamDraft.trim())return;crm.setCnam({name:cnamDraft.trim().toUpperCase(),status:'pending',atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())});toast('CNAM registration submitted');}} className="px-3 py-1.5 rounded-lg text-[11.5px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">Register</button></div>):<PhoneChip s="none"/>}
           </div>
-          <div className="px-5 py-3.5 flex items-center gap-4">
-            <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90">SHAKEN/STIR call signing</p><p className="text-[11.5px] text-white/40 mt-0.5">Calls from nrtur-managed numbers are signed with full attestation (A) — carriers treat them as verified, not “spam likely”.</p></div>
-            <PhoneChip s="active"/>
-          </div>
+          <p className="px-5 py-3 text-[11px] text-white/35 leading-relaxed">All calls from nrtur-managed numbers are automatically signed and verified (SHAKEN/STIR, full attestation) — carriers treat them as verified, not “spam likely”. Nothing to set up.</p>
         </div>
       </div>
       {(crm.regBundles||[]).length>0&&(<div className={CARD+' overflow-hidden'}>
@@ -17389,35 +17494,12 @@ function SettingsPhoneNumbersPage({goTo}){
         {!readOnly&&<button onClick={advanceReview} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Calendar size={12}/>Simulate +1 day</button>}
       </div>
     </div>)}
-    {tab==='wallet'&&(()=>{const w=crm.wallet||{balance:0,auto:{on:false,threshold:10,amount:25},txns:[]};const u=crm.smsUsage||{sms:0,mms:0,segments:0};
-      const addFunds=(amt)=>{crm.setWallet(x=>({...x,balance:+(x.balance+amt).toFixed(2),txns:[{id:'wt_'+Date.now(),label:'Wallet top-up',amt:amt,at:'Just now'},...x.txns]}));toast('Added $'+amt.toFixed(2)+' to the wallet');};
-      return(<div className="flex flex-col gap-4">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className={CARD+' p-5'}>
-            <div className="flex items-center gap-3 mb-1"><span className="w-9 h-9 rounded-xl bg-emerald-500/12 ring-1 ring-emerald-500/25 flex items-center justify-center text-emerald-300"><I.CreditCard size={15}/></span><p className="text-[13px] text-white/55">Wallet balance</p></div>
-            <p className="text-[28px] font-semibold text-white tabular-nums">${w.balance.toFixed(2)}</p>
-            {!readOnly&&<div className="flex items-center gap-2 mt-3">{[25,50].map(a=>(<button key={a} onClick={()=>addFunds(a)} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">+ ${a}</button>))}</div>}
-            <div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center justify-between gap-3 flex-wrap">
-              <div className="min-w-0"><p className="text-[12.5px] font-medium text-white">Auto-recharge</p><p className="text-[11px] text-white/40 mt-0.5">Top up ${w.auto.amount} when the balance drops below ${w.auto.threshold}.</p></div>
-              <Toggle on={!!(w.auto&&w.auto.on)} onChange={readOnly?()=>{}:((v)=>crm.setWallet(x=>({...x,auto:{...x.auto,on:v}})))}/>
-            </div>
-          </div>
-          <div className={CARD+' p-5'}>
-            <p className="text-[13px] text-white/55 mb-3">Usage this period</p>
-            <div className="grid grid-cols-3 gap-3">{[['SMS sent',u.sms],['MMS sent',u.mms],['Segments',u.segments]].map(([l,v])=>(<div key={l} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 text-center"><p className="text-[20px] font-semibold text-white tabular-nums">{v}</p><p className="text-[10.5px] text-white/40 mt-0.5">{l}</p></div>))}</div>
-            <p className="text-[11px] text-white/35 mt-3 leading-relaxed">Usage meters on every real send — $0.01 per SMS segment, $0.02 per MMS — and debits the wallet automatically. Numbers renew monthly at their listed price.</p>
-          </div>
-        </div>
-        <div className={CARD+' overflow-hidden'}>
-          <div className="px-5 py-4 border-b border-white/[0.05]"><p className="text-[14px] font-semibold text-white">Transactions</p></div>
-          <div className="divide-y divide-white/[0.04]">{(w.txns||[]).slice(0,14).map(t=>(<div key={t.id} className="px-5 py-3 flex items-center gap-3"><p className="text-[12.5px] text-white/80 flex-1 min-w-0 truncate">{t.label}</p><span className="text-[11px] text-white/35 shrink-0">{t.at}</span><span className={['text-[12.5px] font-semibold tabular-nums shrink-0',t.amt>=0?'text-emerald-300':'text-white/70'].join(' ')}>{t.amt>=0?'+':'−'}${Math.abs(t.amt).toFixed(2)}</span></div>))}</div>
-        </div>
-      </div>);})()}
     {buyOpen&&<BuyNumberModal close={()=>setBuyOpen(false)} onBuy={onBuy} compOk={comp.ok} brand={brand} bundles={crm.regBundles||[]} onBundle={(o)=>{crm.setRegBundles(a=>[...a,{id:'rb_'+Date.now(),...o,status:'pending',atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);toast('Regulatory bundle submitted — usually approved within a day');}}/>}
     {portOpen&&<PortNumberModal close={()=>setPortOpen(false)} onPort={onPort}/>}
     {brandOpen&&<A2pBrandModal close={()=>setBrandOpen(false)} initial={brand||(profile?{legalName:profile.legalName,ein:profile.ein,address:profile.address,website:profile.website}:null)} onSubmit={(b)=>{crm.setSmsBrand({...b,atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())});setBrandOpen(false);toast('Brand submitted — verification usually takes minutes to 24h');}}/>}
-    {campOpen&&<A2pCampaignModal close={()=>setCampOpen(false)} onSubmit={(c)=>{crm.setSmsCampaigns(a=>[...a,{...c,submittedAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);if(crm.walletDebit)crm.walletDebit(15,'A2P campaign verification fee');setCampOpen(false);toast('Campaign submitted for carrier review · $15 verification fee from wallet');}}/>}
+    {campOpen&&<A2pCampaignModal brand={brand} close={()=>setCampOpen(false)} onSubmit={(c)=>{crm.setSmsCampaigns(a=>[...a,{...c,submittedAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}]);if(crm.usageAccrue)crm.usageAccrue(15,'A2P campaign verification fee');setCampOpen(false);toast('Campaign submitted for carrier review · $15 carrier fee added to your next invoice');}}/>}
     {profileOpen&&<TrustProfileModal close={()=>setProfileOpen(false)} initial={profile} onSubmit={(p)=>{crm.setTrustProfile({...p,atNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())});setProfileOpen(false);toast('Business profile submitted — usually approved within a day');}}/>}
+    {tfvNum&&<TollFreeVerifyModal num={tfvNum} profile={profile} close={()=>setTfvNum(null)} onSubmit={(d)=>{crm.setPhoneNumbers(a=>a.map(x=>x.id===tfvNum.id?{...x,tfStatus:'pending',tfv:d,tfAtNow:(typeof _autoNow!=='undefined'?_autoNow:Date.now())}:x));setTfvNum(null);toast('Toll-free verification submitted — reviews typically take ~3 business days');}}/>}
     {wizardOpen&&<TrustRegistrationWizard close={()=>setWizardOpen(false)} onSubmit={submitRegistration} initial={{profile,brand,campaign:(camps&&camps[0])||null}}/>}
     {confirmNode}
   </SettingsShell>);
@@ -19143,7 +19225,7 @@ function autoRunNodes(nodes,record,ctx,out,top){
     if(k==='removeTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:(r[ctx.tagField]||[]).filter(x=>x!==tg)}));out.effects.push("🏷 Removed tag '"+tg+"'");continue;}
     if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else if(n.setField==='Lead score'){const cur=record.score||0;const sv=String(n.setValue||'');const nv=/reset/i.test(sv)?0:Math.max(0,Math.min(100,cur+(parseInt(sv.replace(/[^0-9-]/g,''),10)||0)));_patch(()=>({score:nv}));record.score=nv;/* keep the running score so a 2nd score action in the same flow accumulates + the crossing fires once */if(ctx.ent==='lead'&&cur<SCORE_HOT&&nv>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{...record,score:nv},['Lead score reached']);}catch(e){}},0);out.effects.push('✎ Lead score '+(/reset/i.test(sv)?'reset → 0':(sv+' → '+nv)));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
     if(k==='welcome'||k==='proposal'||k==='reengage'){const _tc=(_cid!=null)?(_liveContacts||[]).find(c=>c&&c.id===_cid):null;if((record&&record.dnc)||(_tc&&(_tc.dnc||contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')))){out.effects.push('✉ Email skipped — suppressed'+(_tc?(' ('+(_tc.name||'contact')+')'):''));continue;}out.effects.push('✉ Email sent · '+(n.template||'template'));continue;} /* honors the unified suppression store — the Suppression page promises "auto-skipped in every sequence & automation" */
-    if(k==='sms'){const _g=canSendSms(record);if(!_g.ok){out.effects.push('💬 SMS skipped — '+_g.reason);continue;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('sms',1,'Automation SMS'+(n.template?(' · '+n.template):''));out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;} /* A2P gate: unregistered/DNC sends are skipped with the reason, like a real carrier block; approved sends meter usage + debit the wallet */
+    if(k==='sms'){const _g=canSendSms(record);if(!_g.ok){out.effects.push('💬 SMS skipped — '+_g.reason);continue;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('sms',1,'Automation SMS'+(n.template?(' · '+n.template):''));out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;} /* A2P gate: unregistered/DNC sends are skipped with the reason, like a real carrier block; approved sends meter usage onto the monthly invoice */
     if(k==='slack'||k==='celebrate'){out.effects.push('🔔 '+(n.channel||'#sales')+' notified');continue;}
     if(k==='enrollEmail'||k==='enrollSms'){if(_cid!=null){const _tc=(_liveContacts||[]).find(c=>c&&c.id===_cid);if(_tc){const _blk=_tc.dnc||(k==='enrollEmail'?(contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')):(supPhoneBlocked(_tc.phone,'sms')||supChannelOff(_tc.id,'sms')));if(_blk){out.effects.push('➜ Enrollment skipped — '+(_tc.name||'contact')+(_tc.dnc?' is Do Not Contact':' is suppressed on this channel'));continue;}}} /* makes the builder's "suppressed contacts are skipped" claim real — channel-aware for both email & SMS enrollment */ if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
     if(k==='sendPush'){out.effects.push('📲 Push sent');continue;}
@@ -24493,11 +24575,11 @@ function App(){
   const [smsCampaigns,setSmsCampaigns]=React.useState(SMS_CAMPAIGNS_SEED); // A2P campaigns (approval gates SMS sending)
   const [trustProfile,setTrustProfile]=React.useState(TRUST_PROFILE_SEED); // Trust Hub business/customer profile — the root registration
   const [cnam,setCnam]=React.useState(null); // voice trust: CNAM caller-ID display name ({name,status,atNow} | null)
-  const [wallet,setWallet]=React.useState(WALLET_SEED); // Phase 4: workspace wallet — purchases, fees & usage debit here
-  const [smsUsage,setSmsUsage]=React.useState({sms:0,mms:0,segments:0}); // Phase 4: real usage counters (0 seed — campaign was never approved)
-  const [regBundles,setRegBundles]=React.useState([]); // Phase 4: international regulatory bundles (per-country KYC before purchase)
-  const walletDebit=(amt,label)=>{if(!(amt>0))return;setWallet(w=>{let bal=+(w.balance-amt).toFixed(2);let txns=[{id:'wt_'+Date.now()+Math.floor(Math.random()*1e3),label,amt:-amt,at:'Just now'},...w.txns];if(w.auto&&w.auto.on&&bal<w.auto.threshold){bal=+(bal+w.auto.amount).toFixed(2);txns=[{id:'wt_ar_'+Date.now(),label:'Auto-recharge',amt:+w.auto.amount,at:'Just now'},...txns];setTimeout(()=>{try{window.__nrturToast&&window.__nrturToast('⚡ Wallet auto-recharged +$'+w.auto.amount.toFixed(2),'success');}catch(e){}},0);}return{...w,balance:bal,txns};});};
-  const meterSms=(kind,segs,label)=>{const n=Math.max(1,segs||1);setSmsUsage(u=>({...u,[kind]:(u[kind]||0)+1,segments:(u.segments||0)+n}));walletDebit(+(n*(kind==='mms'?0.02:0.01)).toFixed(2),label||('SMS usage · '+n+' segment'+(n>1?'s':'')));};
+  const [usageBill,setUsageBill]=React.useState(USAGE_SEED); // no wallet: charges accrue here and bill to the card via Stripe on the monthly invoice
+  const [smsUsage,setSmsUsage]=React.useState({sms:0,mms:0,segments:0}); // real usage counters (0 seed — campaign was never approved)
+  const [regBundles,setRegBundles]=React.useState([]); // international regulatory bundles (per-country KYC before purchase)
+  const usageAccrue=(amt,label)=>{if(!(amt>0))return;setUsageBill(u=>{const t=+(u.monthTotal+amt).toFixed(2);const hitCap=u.limit>0&&t>=u.limit&&u.monthTotal<u.limit;const hitWarn=!hitCap&&u.limit>0&&t>=u.limit*0.8&&u.monthTotal<u.limit*0.8;if(hitCap)setTimeout(()=>{try{window.__nrturToast&&window.__nrturToast('Monthly spend limit reached — outbound texting is paused','warning');}catch(e){}},0);else if(hitWarn)setTimeout(()=>{try{window.__nrturToast&&window.__nrturToast('Heads up — 80% of your monthly spend limit used','warning');}catch(e){}},0);return{...u,monthTotal:t,charges:[{id:'ch_'+Date.now()+Math.floor(Math.random()*1e3),label,amt,at:'Just now'},...u.charges]};});};
+  const meterSms=(kind,segs,label)=>{const n=Math.max(1,segs||1);setSmsUsage(u=>({...u,[kind]:(u[kind]||0)+1,segments:(u.segments||0)+n}));usageAccrue(+(n*(kind==='mms'?0.02:0.01)).toFixed(2),label||('SMS usage · '+n+' segment'+(n>1?'s':'')));};
   const [propData,setPropData]=React.useState(propSeed);
   const propsCtx=React.useMemo(()=>({props:propData,setProps:setPropData}),[propData]);
   const [conns,setConns]=React.useState({stripe:true});
@@ -24508,7 +24590,7 @@ function App(){
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
   _livePerms=rolePerms; // R9-L3: mirror the persisted permission matrix so rolePermsOf/effCanObject/effCanCustom read live edits
-  _livePhoneNumbers=phoneNumbers;_liveSmsBrand=smsBrand;_liveSmsCampaigns=smsCampaigns;_liveRegBundles=regBundles;_liveTrustProfile=trustProfile;_liveCnam=cnam; // telephony mirrors → smsComplianceState()/canSendSms()
+  _livePhoneNumbers=phoneNumbers;_liveSmsBrand=smsBrand;_liveSmsCampaigns=smsCampaigns;_liveRegBundles=regBundles;_liveTrustProfile=trustProfile;_liveCnam=cnam;_liveUsageBill=usageBill; // telephony mirrors → smsComplianceState()/canSendSms()
   const [pipelines,setPipelines]=React.useState(defaultPipelinesSeed); // P1-1: pipelines are SHARED state — config persists across navigation
   _livePipelines=pipelines; // mirror so module helpers + the deal detail resolve any pipeline's stages
   const [activities,setActivities]=React.useState([]); // R3: persisted user-logged activities (notes/calls/meetings/tasks) keyed by subjectType+subjectId — survive navigation
@@ -24598,7 +24680,7 @@ function App(){
     customObjects,setCustomObjects,
     rolePerms,setRolePerms, // R9-L3: persisted permission matrix
     phoneNumbers,setPhoneNumbers,smsBrand,setSmsBrand,smsCampaigns,setSmsCampaigns, // managed telephony + A2P Trust center
-    wallet,setWallet,walletDebit,smsUsage,regBundles,setRegBundles, // Phase 4: wallet + usage + intl bundles
+    usageBill,setUsageBill,usageAccrue,smsUsage,regBundles,setRegBundles, // usage billing (Stripe monthly invoice, no wallet) + intl bundles
     trustProfile,setTrustProfile,cnam,setCnam, // Trust Hub: business profile + CNAM voice trust
     updateCustomObject:(id,patch)=>setCustomObjects(a=>a.map(o=>o.id===id?{...o,...patch}:o)),
     setCustomRecords:(objId,fn)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(typeof fn==='function'?fn(o.records||[]):fn)}:o)),
@@ -24636,7 +24718,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,wallet,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -24652,7 +24734,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,approvalRules,setApprovalRules,approvals,setApprovals,autoLogs,setSmsBrand,setSmsCampaigns,setPhoneNumbers,setRegBundles,setTrustProfile,setCnam,walletDebit,meterSms,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,approvalRules,setApprovalRules,approvals,setApprovals,autoLogs,setSmsBrand,setSmsCampaigns,setPhoneNumbers,setRegBundles,setTrustProfile,setCnam,usageAccrue,meterSms,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,at:act.at!=null?act.at:Date.now(),subjectType:kind,subjectId:recId},...a]), // `at` = absolute wall-clock stamp: stable sort key + honest link-later rendering (ts is a frozen relative label)
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};

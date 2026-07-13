@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box}
+.pxr-scroll::-webkit-scrollbar{width:10px;height:10px}
+.pxr-scroll::-webkit-scrollbar-thumb{background:var(--fg5);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+select.pxr-sel{-webkit-appearance:none;appearance:none}
+input.pxr-inp::placeholder{color:var(--fg4)}
+</style>
+</helmet>
+<div style="{{ shell }}">
+  <div style="max-width:1280px;margin:0 auto;padding:28px 28px 64px">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+      <div style="width:44px;height:44px;border-radius:13px;background:var(--brandTint);color:var(--brand);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--brandBorder);flex-shrink:0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <div style="min-width:0;flex:1">
+        <h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.02em;color:var(--fg)">Roles &amp; permissions</h1>
+        <p style="margin:4px 0 0;font-size:13.5px;color:var(--fg3);max-width:560px;line-height:1.5">Decide what each type of teammate can see and do — in plain terms.</p>
+      </div>
+      <div style="display:flex;gap:4px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:4px;flex-shrink:0">
+        <button onClick="{{ viewEditor }}" style="{{ tabEditorStyle }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          Set up a role
+        </button>
+        <button onClick="{{ viewMatrix }}" style="{{ tabMatrixStyle }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Compare all roles
+        </button>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div style="display:flex;gap:8px 26px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px 16px;margin-bottom:22px">
+      <span style="display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--fg3)"><span style="width:19px;height:19px;border-radius:999px;background:var(--brandTint);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;box-shadow:inset 0 0 0 1px var(--brandBorder);flex-shrink:0">1</span>Everyone on your team has one role</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--fg3)"><span style="width:19px;height:19px;border-radius:999px;background:var(--brandTint);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;box-shadow:inset 0 0 0 1px var(--brandBorder);flex-shrink:0">2</span>The role decides what they can see and do</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;font-size:12px;color:var(--fg3)"><span style="width:19px;height:19px;border-radius:999px;background:var(--brandTint);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;box-shadow:inset 0 0 0 1px var(--brandBorder);flex-shrink:0">3</span>Not sure? <button onClick="{{ viewMatrix }}" style="border:none;background:none;padding:0;cursor:pointer;color:var(--brand);font-size:12px;font-weight:600;font-family:inherit">Compare all roles</button> side by side</span>
+    </div>
+
+    <!-- ============ EDITOR ============ -->
+    <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- Role rail -->
+      <div style="width:262px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--fg4);padding:0 4px 2px">Pick a role</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:6px;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ roleList }}" as="r" hint-placeholder-count="6">
+            <button onClick="{{ r.onSelect }}" style="{{ r.rowStyle }}">
+              <span style="width:11px;height:11px;border-radius:999px;flex-shrink:0;background:{{ r.color }};box-shadow:{{ r.dotGlow }}"></span>
+              <span style="min-width:0;flex:1;text-align:left">
+                <span style="display:block;font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.key }}</span>
+                <span style="display:block;font-size:11px;color:var(--fg3);margin-top:1px">{{ r.tag }}</span>
+              </span>
+              <sc-if value="{{ r.people }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:10px;font-weight:600;color:var(--fg3);background:var(--card2);border-radius:999px;padding:2px 7px;flex-shrink:0;box-shadow:inset 0 0 0 1px var(--border)">{{ r.people }}</span>
+              </sc-if>
+            </button>
+          </sc-for>
+        </div>
+        <button onClick="{{ dupRole }}" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border:1px dashed var(--border2);border-radius:12px;background:var(--card);cursor:pointer;color:var(--brand);font-size:12px;font-weight:600;font-family:inherit;width:100%;text-align:left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Duplicate “{{ selKey }}” as a new role
+        </button>
+        <p style="margin:0;padding:0 6px;font-size:11px;color:var(--fg4);line-height:1.5">Custom roles never get billing or admin access, whatever you switch on.</p>
+      </div>
+
+      <!-- Role detail -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+        <!-- Summary banner -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+              <span style="{{ selChipStyle }}"><span style="width:8px;height:8px;border-radius:999px;background:{{ selColor }}"></span>{{ selKey }}</span>
+              <sc-if value="{{ isCustom }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--brand);background:var(--brandTint);border-radius:5px;padding:2px 6px;box-shadow:inset 0 0 0 1px var(--brandBorder)">Custom</span></sc-if>
+              <span style="font-size:11.5px;color:var(--fg4)">{{ selCount }}</span>
+            </div>
+            <p style="margin:0;font-size:15px;font-weight:600;color:var(--fg);line-height:1.5;max-width:640px">{{ selSummary }}</p>
+            <p style="margin:6px 0 0;font-size:11.5px;color:var(--fg4)">This summary updates live as you change the settings below.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+            <sc-if value="{{ showDiscard }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ discard }}" style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid var(--border);border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;color:var(--fg3);background:transparent;font-family:inherit">Discard</button>
+            </sc-if>
+            <button onClick="{{ save }}" style="{{ saveStyle }}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              {{ saveLabel }}
+            </button>
+          </div>
+          <sc-if value="{{ isCustom }}" hint-placeholder-val="{{ false }}">
+            <div style="width:100%;display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:11px;margin-top:2px">
+              <button onClick="{{ delRole }}" style="{{ delStyle }}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                {{ delLabel }}
+              </button>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Owner locked note -->
+        <sc-if value="{{ lockedBanner }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px 16px;display:flex;gap:10px;align-items:flex-start">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--fg3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span style="font-size:12.5px;color:var(--fg2);line-height:1.55">The Owner always has full access, so these settings are locked. To change who owns the workspace, transfer ownership from <b style="font-weight:600;color:var(--fg)">Settings → Team</b>.</span>
+          </div>
+        </sc-if>
+
+        <!-- Record access -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+          <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:14px;font-weight:700;color:var(--fg)">What records can they work with?</div>
+            <p style="margin:3px 0 0;font-size:12px;color:var(--fg3);max-width:460px;line-height:1.5">Pick one level for everything — most teams need nothing more. You can fine-tune per record type below.</p>
+            <!-- level legend -->
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:13px">
+              <sc-for list="{{ levelLegend }}" as="l" hint-placeholder-count="4">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--fg3)"><span style="width:9px;height:9px;border-radius:3px;background:{{ l.color }}"></span><b style="color:var(--fg2);font-weight:600">{{ l.label }}</b> {{ l.hint }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Master row -->
+          <div style="display:flex;align-items:center;gap:16px;padding:15px 20px;background:var(--card2);flex-wrap:wrap">
+            <div style="flex:1;min-width:200px;display:flex;align-items:center;gap:12px">
+              <span style="width:30px;height:30px;border-radius:8px;background:var(--brandTint);color:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 0 0 1px var(--brandBorder)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+              <div style="min-width:0">
+                <div style="font-size:13.5px;font-weight:700;color:var(--fg)">All record types</div>
+                <div style="font-size:11.5px;color:var(--fg3);margin-top:1px">{{ masterPlain }}</div>
+              </div>
+            </div>
+            <div style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
+              <sc-for list="{{ masterOpts }}" as="opt" hint-placeholder-count="4">
+                <button onClick="{{ opt.onClick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+              </sc-for>
+            </div>
+            <div style="width:158px;display:flex;justify-content:flex-end;flex-shrink:0">
+              <sc-if value="{{ masterShowSel }}" hint-placeholder-val="{{ true }}">
+                <div style="position:relative">
+                  <select class="pxr-sel" value="{{ masterScope }}" onChange="{{ onMasterScope }}" style="{{ masterSelStyle }}">
+                    <option value="Own">Only their own</option>
+                    <option value="Team">Their team’s</option>
+                    <option value="All">Everyone’s</option>
+                  </select>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+              </sc-if>
+              <sc-if value="{{ masterVaries }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:11.5px;color:var(--fg4);padding:6px 0">Varies by type</span>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- Read Only warning -->
+          <sc-if value="{{ roWarn }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:10px 20px;background:var(--warnBg);border-top:1px solid var(--warnRing);display:flex;gap:9px;align-items:flex-start">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warnFg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m10.29 3.86-8.4 14.55A2 2 0 0 0 3.61 21h16.78a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+              <span style="font-size:12px;color:var(--fg2);line-height:1.5">Unusual setup: <b style="font-weight:600">Read Only</b> normally can’t change anything, but you’ve allowed editing here. Double-check that’s intended.</span>
+            </div>
+          </sc-if>
+
+          <!-- Expander -->
+          <button onClick="{{ toggleTypes }}" style="width:100%;display:flex;align-items:center;gap:7px;padding:11px 20px;border:none;border-top:1px solid var(--border);background:transparent;cursor:pointer;color:var(--brand);font-size:12px;font-weight:600;font-family:inherit;text-align:left">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="{{ chevStyle }}"><path d="m6 9 6 6 6-6"/></svg>
+            {{ typesLabel }}
+          </button>
+
+          <sc-if value="{{ showTypes }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ records }}" as="rec" hint-placeholder-count="8">
+              <div style="{{ rec.rowStyle }}">
+                <div style="flex:1;min-width:0;display:flex;align-items:center;gap:12px">
+                  <span style="width:30px;height:30px;border-radius:8px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:11px;font-weight:700;flex-shrink:0">{{ rec.initial }}</span>
+                  <div style="min-width:0">
+                    <div style="font-size:13.5px;font-weight:600;color:var(--fg)">{{ rec.name }}</div>
+                    <div style="font-size:11.5px;color:var(--fg3);margin-top:1px">{{ rec.plain }}</div>
+                  </div>
+                </div>
+                <div style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
+                  <sc-for list="{{ rec.opts }}" as="opt" hint-placeholder-count="4">
+                    <button onClick="{{ opt.onClick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="width:158px;display:flex;justify-content:flex-end;flex-shrink:0">
+                  <sc-if value="{{ rec.showScope }}" hint-placeholder-val="{{ true }}">
+                    <div style="position:relative">
+                      <select class="pxr-sel" value="{{ rec.scope }}" onChange="{{ rec.onScope }}" style="{{ rec.selStyle }}">
+                        <option value="Own">Only their own</option>
+                        <option value="Team">Their team’s</option>
+                        <option value="All">Everyone’s</option>
+                      </select>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg4)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <div style="padding:11px 20px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--card2)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span style="font-size:11.5px;color:var(--fg3);line-height:1.45">Your custom objects follow the same rules as <b style="color:var(--fg2);font-weight:600">Contacts</b>.</span>
+          </div>
+        </div>
+
+        <!-- Feature access -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+          <div style="padding:16px 20px 13px;border-bottom:1px solid var(--border)">
+            <div style="font-size:14px;font-weight:700;color:var(--fg)">What else can they do?</div>
+            <p style="margin:3px 0 0;font-size:12px;color:var(--fg3)">Abilities that apply across the whole workspace, not just one record type.</p>
+          </div>
+          <sc-for list="{{ featGroups }}" as="g" hint-placeholder-count="3">
+            <div style="padding:6px 0">
+              <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--fg4);padding:10px 20px 6px">{{ g.title }}</div>
+              <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 20px">
+                  <div style="min-width:0">
+                    <div style="font-size:13px;font-weight:500;color:var(--fg)">{{ it.label }}</div>
+                    <div style="font-size:11.5px;color:var(--fg3);margin-top:1px">{{ it.desc }}</div>
+                    <sc-if value="{{ it.note }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:11px;color:var(--warnFg);margin-top:4px;display:flex;gap:6px;align-items:flex-start;line-height:1.45">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="m10.29 3.86-8.4 14.55A2 2 0 0 0 3.61 21h16.78a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+                        <span>{{ it.note }}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                  <button onClick="{{ it.onToggle }}" style="{{ it.toggleStyle }}"><span style="{{ it.knobStyle }}"></span></button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- Billing -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+          <div style="display:flex;gap:12px;align-items:flex-start;min-width:0">
+            <span style="width:34px;height:34px;border-radius:9px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--fg3);flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span>
+            <div style="min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:6px">Manage billing &amp; plan
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div style="font-size:11.5px;color:var(--fg3);margin-top:2px">{{ billingNote }}</div>
+            </div>
+          </div>
+          <span style="{{ billingBadgeStyle }}">{{ billingBadge }}</span>
+        </div>
+
+        <!-- Sensitive preview -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+          <div style="padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+            <div style="flex:1;min-width:0"><span style="font-size:13px;font-weight:600;color:var(--fg)">Can they see private numbers?</span><span style="font-size:11.5px;color:var(--fg3);margin-left:8px">Fields marked sensitive — like revenue — are hidden unless allowed above.</span></div>
+          </div>
+          <div style="padding:15px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:11px;background:var(--card2);border:1px solid var(--border)">
+              <span style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--fg4);display:inline-flex;align-items:center;gap:6px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Annual revenue
+              </span>
+              <span style="{{ sensValStyle }}">{{ sensVal }}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--fg3);margin-top:10px">This is what a <b style="color:var(--fg2);font-weight:600">{{ selKey }}</b> would see on a record.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ============ MATRIX ============ -->
+    <sc-if value="{{ isMatrix }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- role cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <sc-for list="{{ roleCards }}" as="r" hint-placeholder-count="6">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;color:{{ r.color }};background:{{ r.tint }};box-shadow:inset 0 0 0 1px {{ r.ring }}"><span style="width:7px;height:7px;border-radius:999px;background:{{ r.color }}"></span>{{ r.key }}</span>
+            </div>
+            <p style="margin:0;font-size:12px;color:var(--fg3);line-height:1.5">{{ r.summary }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- heads up callout -->
+      <div style="background:var(--warnBg);border:1px solid var(--warnRing);border-radius:14px;padding:15px 17px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--warnFg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m10.29 3.86-8.4 14.55A2 2 0 0 0 3.61 21h16.78a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--warnFg)">A few things still work differently than the settings suggest</div>
+            <ul style="margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ divergences }}" as="d" hint-placeholder-count="3">
+                <li style="display:flex;gap:8px;font-size:12px;color:var(--fg2);line-height:1.5"><span style="width:5px;height:5px;border-radius:999px;background:var(--warnFg);flex-shrink:0;margin-top:6px"></span><span>{{ d }}</span></li>
+              </sc-for>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- legend + search -->
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+          <sc-for list="{{ matrixLegend }}" as="l" hint-placeholder-count="4">
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--fg3)"><span style="{{ l.pill }}">{{ l.label }}</span> {{ l.hint }}</span>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:11px;background:var(--card);border:1px solid var(--border);min-width:250px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="pxr-inp" value="{{ q }}" onChange="{{ onQ }}" placeholder="Find an ability… try “export”" style="flex:1;border:none;outline:none;background:transparent;font-size:12.5px;color:var(--fg);font-family:inherit"/>
+        </div>
+      </div>
+
+      <!-- table -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+        <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+        <div class="pxr-scroll" style="overflow:auto;max-height:640px">
+          <table style="width:100%;border-collapse:collapse;min-width:860px">
+            <thead>
+              <tr>
+                <th style="{{ cornerTh }}">Ability</th>
+                <sc-for list="{{ roleCards }}" as="r" hint-placeholder-count="6">
+                  <th style="{{ roleTh }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                      <span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;color:{{ r.color }};background:{{ r.tint }};box-shadow:inset 0 0 0 1px {{ r.ring }}"><span style="width:6px;height:6px;border-radius:999px;background:{{ r.color }}"></span>{{ r.key }}</span>
+                    </div>
+                  </th>
+                </sc-for>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ matrixSections }}" as="sec" hint-placeholder-count="4">
+                <tr>
+                  <td colspan="{{ colspan }}" style="{{ secTh }}">
+                    <span style="font-size:10.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--brand)">{{ sec.title }}</span>
+                    <span style="display:block;font-size:11px;color:var(--fg3);font-weight:400;margin-top:3px;max-width:640px;line-height:1.45">{{ sec.note }}</span>
+                  </td>
+                </tr>
+                <sc-for list="{{ sec.rows }}" as="row" hint-placeholder-count="4">
+                  <tr>
+                    <th scope="row" style="{{ rowTh }}">
+                      <span style="display:block;font-size:12.5px;font-weight:600;color:var(--fg)">{{ row.label }}</span>
+                      <span style="display:block;font-size:11px;color:var(--fg3);margin-top:1px;line-height:1.4">{{ row.desc }}</span>
+                    </th>
+                    <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
+                      <td style="{{ cellTd }}">
+                        <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px">
+                          <span style="{{ cell.style }}">{{ cell.label }}<sc-if value="{{ cell.diverge }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:999px;background:var(--warnFg);margin-left:1px"></span></sc-if></span>
+                          <sc-if value="{{ cell.sub }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;color:var(--fg4)">{{ cell.sub }}</span></sc-if>
+                        </div>
+                      </td>
+                    </sc-for>
+                  </tr>
+                </sc-for>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        </sc-if>
+        <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:44px 24px;text-align:center">
+            <p style="margin:0;font-size:13px;font-weight:600;color:var(--fg2)">Nothing matches “{{ q }}”.</p>
+            <p style="margin:5px 0 0;font-size:12px;color:var(--fg4)">Try another word — like “export”, “billing”, or “delete”.</p>
+          </div>
+        </sc-if>
+      </div>
+      <p style="margin:0;font-size:11px;color:var(--fg4);padding:0 2px">Amber dot = works differently today (see the note above). Custom roles follow the same model, but never get admin access to workspace settings or billing.</p>
+    </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1300,&quot;height&quot;:940},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;editor&quot;,&quot;matrix&quot;],&quot;default&quot;:&quot;editor&quot;,&quot;tsType&quot;:&quot;'editor'|'matrix'&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+const BUILTIN_ROLES=[
+  {key:'Owner',color:'#eab308',tag:'Owns the workspace',summary:'Can do everything — including billing and deleting the workspace.',builtin:true},
+  {key:'Admin',color:'#f59e0b',tag:'Runs the workspace',summary:'Manages the whole workspace and every record. Everything except billing.',builtin:true},
+  {key:'Sales Manager',color:'#6366f1',tag:'Leads the whole team',summary:'Full access to every record and report across the entire team.',builtin:true},
+  {key:'Team Lead',color:'#7c3aed',tag:'Leads one team',summary:'Views and edits their team’s records, but can’t delete them.',builtin:true},
+  {key:'Sales Rep',color:'#3b82f6',tag:'Works their own deals',summary:'Views and edits only the records they personally own.',builtin:true},
+  {key:'Read Only',color:'#94a3b8',tag:'Look, don’t touch',summary:'Can view everything, but can’t create, edit, or delete anything.',builtin:true},
+];
+const CUSTOM_COLORS=['#10b981','#14b8a6','#ec4899','#f97316','#22d3ee'];
+const ROLE_PEOPLE={'Owner':'You','Admin':'1 person','Sales Manager':'','Team Lead':'','Sales Rep':'4 people','Read Only':''};
+const ROLE_PREFIX={'Owner':['The Owner',true],'Admin':['Admins',false],'Sales Manager':['Sales Managers',false],'Team Lead':['Team Leads',false],'Sales Rep':['Sales Reps',false],'Read Only':['Read Only members',false]};
+const OBJECTS=['Contacts','Leads','Companies','Deals','Tasks','Sequences','Email Templates','Forms'];
+const LEVELS=['None','View','Edit','Full'];
+const SEED_LEVEL={'Owner':'Full','Admin':'Full','Sales Manager':'Full','Team Lead':'Edit','Sales Rep':'Edit','Read Only':'View'};
+const SEED_SCOPE={'Owner':'All','Admin':'All','Sales Manager':'All','Team Lead':'Team','Sales Rep':'Own','Read Only':'All'};
+const FEAT={
+  'Owner':{rView:1,rCreate:1,rEdit:1,rShare:1,userMgmt:1,settings:1,manageSeq:1,manageTags:1,export:1,bulkDelete:1,sensitive:1,billing:1},
+  'Admin':{rView:1,rCreate:1,rEdit:1,rShare:1,userMgmt:1,settings:1,manageSeq:1,manageTags:1,export:1,bulkDelete:1,sensitive:1,billing:0},
+  'Sales Manager':{rView:1,rCreate:1,rEdit:1,rShare:1,userMgmt:0,settings:0,manageSeq:1,manageTags:1,export:1,bulkDelete:1,sensitive:1,billing:0},
+  'Team Lead':{rView:1,rCreate:1,rEdit:0,rShare:0,userMgmt:0,settings:0,manageSeq:0,manageTags:0,export:1,bulkDelete:0,sensitive:1,billing:0},
+  'Sales Rep':{rView:1,rCreate:0,rEdit:0,rShare:0,userMgmt:0,settings:0,manageSeq:0,manageTags:0,export:0,bulkDelete:0,sensitive:0,billing:0},
+  'Read Only':{rView:1,rCreate:0,rEdit:0,rShare:0,userMgmt:0,settings:0,manageSeq:0,manageTags:0,export:0,bulkDelete:0,sensitive:0,billing:0},
+};
+const THEMES={
+  dark:{'--bg':'#07070f','--bg2':'#0d0d1a','--card':'rgba(255,255,255,0.02)','--card2':'rgba(255,255,255,0.045)','--border':'rgba(255,255,255,0.07)','--border2':'rgba(255,255,255,0.12)','--fg':'#ffffff','--fg2':'rgba(255,255,255,0.82)','--fg3':'rgba(255,255,255,0.52)','--fg4':'rgba(255,255,255,0.38)','--fg5':'rgba(255,255,255,0.18)','--brand':'#a5b4fc','--brandTint':'rgba(99,102,241,0.14)','--brandBorder':'rgba(99,102,241,0.36)','--accent':'#6366f1','--warnFg':'#fbbf24','--warnBg':'rgba(245,158,11,0.10)','--warnRing':'rgba(245,158,11,0.28)','--cardSolid':'#0c0c16','--danger':'#f87171','cs':'dark'},
+  light:{'--bg':'#f1f2f6','--bg2':'#e9ecf3','--card':'#ffffff','--card2':'#f5f7fb','--border':'rgba(17,24,39,0.10)','--border2':'rgba(15,23,42,0.16)','--fg':'#0f172a','--fg2':'#1e293b','--fg3':'#64748b','--fg4':'#94a3b8','--fg5':'#cbd5e1','--brand':'#4f46e5','--brandTint':'#eef2ff','--brandBorder':'rgba(79,70,229,0.28)','--accent':'#4f46e5','--warnFg':'#b45309','--warnBg':'#fffbeb','--warnRing':'rgba(180,83,9,0.28)','--cardSolid':'#ffffff','--danger':'#dc2626','cs':'light'},
+};
+const PAL={
+  dark:{full:['#34d399','rgba(16,185,129,0.14)','rgba(16,185,129,0.32)'],lim:['#fbbf24','rgba(245,158,11,0.14)','rgba(245,158,11,0.32)'],view:['#94a3b8','rgba(148,163,184,0.14)','rgba(148,163,184,0.26)'],none:['#64748b','rgba(255,255,255,0.03)','rgba(255,255,255,0.09)']},
+  light:{full:['#047857','#ecfdf5','rgba(5,150,105,0.30)'],lim:['#b45309','#fffbeb','rgba(180,83,9,0.30)'],view:['#475569','#f1f5f9','rgba(71,85,105,0.22)'],none:['#94a3b8','#f8fafc','rgba(15,23,42,0.10)']},
+};
+const LEVEL_KIND={None:'none',View:'view',Edit:'lim',Full:'full'};
+const LEVEL_PLAIN={None:'No access',View:'Can view only',Edit:'Can view, add & edit',Full:'Can view, add, edit & delete'};
+const LEVEL_PHRASE={None:'can’t access records at all',View:'can look at records, but not change anything',Edit:'can view, add and edit records',Full:'can do everything with records, including delete'};
+const SCOPE_PHRASE={Own:' — but only the ones they own',Team:' — for their whole team',All:' across the whole workspace'};
+const clone=(x)=>JSON.parse(JSON.stringify(x));
+
+class Component extends DCLogic{
+  constructor(props){
+    super(props);
+    const access={};
+    BUILTIN_ROLES.forEach(r=>{
+      const recs={};
+      OBJECTS.forEach(o=>{recs[o]={level:SEED_LEVEL[r.key],scope:SEED_SCOPE[r.key]};});
+      access[r.key]={records:recs,feat:{...FEAT[r.key]}};
+    });
+    this.state={
+      view:(props.startView==='matrix'?'matrix':'editor'),
+      sel:'Sales Rep',
+      roles:BUILTIN_ROLES.map(r=>({...r})),
+      access,
+      baseline:clone(access),
+      dirty:false,
+      saved:false,
+      showTypes:false,
+      confirmDel:false,
+      q:'',
+    };
+  }
+  isLocked(){return this.state.sel==='Owner';}
+  curTheme(){return this.props.theme==='light'?'light':'dark';}
+  setLevel(obj,level){if(this.isLocked())return;this.setState(s=>{const a=clone(s.access);a[s.sel].records[obj].level=level;return{access:a,dirty:true,saved:false};});}
+  setScope(obj,scope){if(this.isLocked())return;this.setState(s=>{const a=clone(s.access);a[s.sel].records[obj].scope=scope;return{access:a,dirty:true,saved:false};});}
+  setAll(level){if(this.isLocked())return;this.setState(s=>{const a=clone(s.access);OBJECTS.forEach(o=>{a[s.sel].records[o].level=level;});return{access:a,dirty:true,saved:false};});}
+  setAllScope(scope){if(this.isLocked())return;this.setState(s=>{const a=clone(s.access);OBJECTS.forEach(o=>{a[s.sel].records[o].scope=scope;});return{access:a,dirty:true,saved:false};});}
+  toggleFeat(k){
+    if(this.isLocked())return;
+    this.setState(s=>{
+      const a=clone(s.access);const f=a[s.sel].feat;
+      const next=f[k]?0:1;f[k]=next;
+      // keep report permissions coherent: create/edit/share need view
+      if(k==='rView'&&!next){f.rCreate=0;f.rEdit=0;f.rShare=0;}
+      if((k==='rCreate'||k==='rEdit'||k==='rShare')&&next){f.rView=1;}
+      return{access:a,dirty:true,saved:false};
+    });
+  }
+  dupRole(){
+    this.setState(s=>{
+      const src=s.roles.find(r=>r.key===s.sel);
+      let base=src.key+' copy',name=base,n=2;
+      while(s.roles.some(r=>r.key===name)){name=base+' '+n;n++;}
+      const color=CUSTOM_COLORS[s.roles.filter(r=>!r.builtin).length%CUSTOM_COLORS.length];
+      const roles=[...s.roles,{key:name,color,tag:'Custom · based on '+src.key,summary:'Custom role based on '+src.key+'. Adjust it freely.',builtin:false}];
+      const access=clone(s.access);access[name]=clone(s.access[s.sel]);access[name].feat.billing=0;
+      const baseline=clone(s.baseline);baseline[name]=clone(access[name]);
+      return{roles,access,baseline,sel:name,confirmDel:false,dirty:true,saved:false};
+    });
+  }
+  delRole(){
+    this.setState(s=>{
+      if(!s.confirmDel)return{confirmDel:true};
+      const roles=s.roles.filter(r=>r.key!==s.sel);
+      const access=clone(s.access);delete access[s.sel];
+      const baseline=clone(s.baseline);delete baseline[s.sel];
+      return{roles,access,baseline,sel:'Sales Rep',confirmDel:false,dirty:false,saved:false};
+    });
+  }
+
+  recBadge(level,scope){
+    let kind,label;
+    if(level==='None'){kind='none';label='No access';}
+    else if(level==='View'){kind='view';label='View only';}
+    else if(level==='Full'&&scope==='All'){kind='full';label='Full';}
+    else {kind='lim';label='Limited';}
+    const sub=level==='None'?null:(scope==='All'?'All records':scope==='Team'?'Team’s records':'Own records');
+    return this.mkPill(kind,label,sub);
+  }
+  mkPill(kind,label,sub,diverge){
+    const [fg,bg,ring]=PAL[this.curTheme()][kind];
+    return {label,sub:sub||null,diverge:!!diverge,style:`display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;color:${fg};background:${bg};box-shadow:inset 0 0 0 1px ${ring}`};
+  }
+  featPill(v,yes,no){return v?this.mkPill('full',yes||'Allowed'):this.mkPill('none',no||'—');}
+
+  renderVals(){
+    const S=this.state, t=this.curTheme(), th=THEMES[t], pal=PAL[t];
+    const varStr=Object.keys(th).filter(k=>k.startsWith('--')).map(k=>k+':'+th[k]).join(';');
+    const shell=varStr+';min-height:100%;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;color-scheme:'+th.cs;
+    const locked=this.isLocked();
+
+    const seg=(active,color,bg,ring)=>{
+      let st=active
+        ? `padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:600;transition:all .12s;color:${color};background:${bg};box-shadow:inset 0 0 0 1px ${ring}`
+        : `padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:600;transition:all .12s;color:var(--fg3);background:transparent`;
+      st+=locked?';cursor:not-allowed;opacity:'+(active?'0.75':'0.45'):';cursor:pointer';
+      return st;
+    };
+    const pillTab=(active)=>active
+      ? 'display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--fg);background:var(--card);box-shadow:inset 0 0 0 1px var(--border2),0 1px 3px rgba(0,0,0,0.12)'
+      : 'display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--fg3);background:transparent';
+
+    // role rail
+    const roleList=S.roles.map(r=>({
+      key:r.key,color:r.color,tag:r.tag,
+      people:r.builtin?(ROLE_PEOPLE[r.key]||false):'Custom',
+      dotGlow:r.key===S.sel?('0 0 9px '+r.color+'99'):'none',
+      onSelect:()=>this.setState({sel:r.key,confirmDel:false}),
+      rowStyle:'display:flex;align-items:center;gap:10px;padding:9px 11px;border:none;border-radius:11px;cursor:pointer;transition:all .12s;width:100%;background:'+(r.key===S.sel?'var(--card2)':'transparent')+';box-shadow:'+(r.key===S.sel?'inset 0 0 0 1px var(--border2)':'none'),
+    }));
+
+    const selRole=S.roles.find(r=>r.key===S.sel)||S.roles[0];
+    const acc=S.access[S.sel];
+    const isCustom=!selRole.builtin;
+
+    // master (all record types)
+    const levels=OBJECTS.map(o=>acc.records[o].level);
+    const scopes=OBJECTS.map(o=>acc.records[o].scope);
+    const levelsUniform=levels.every(l=>l===levels[0]);
+    const scopesUniform=scopes.every(sc=>sc===scopes[0]);
+    const mixed=!levelsUniform||!scopesUniform;
+    const masterLevel=levelsUniform?levels[0]:null;
+    const masterOpts=LEVELS.map(L=>{
+      const active=levelsUniform&&masterLevel===L;
+      const [fg,bg,ring]=pal[LEVEL_KIND[L]];
+      return {label:L,onClick:()=>this.setAll(L),style:seg(active,fg,bg,ring)};
+    });
+    const masterPlain=levelsUniform?LEVEL_PLAIN[masterLevel]:'Mixed — different per record type';
+    const masterShowSel=levelsUniform&&scopesUniform&&masterLevel!=='None';
+    const masterVaries=!masterShowSel&&!(levelsUniform&&masterLevel==='None');
+    const showTypes=S.showTypes||mixed;
+    const typesLabel=mixed?'Shown while access varies by type':(showTypes?'Hide record types':'Fine-tune by record type');
+    const chevStyle='transition:transform .15s;transform:rotate('+(showTypes?'180deg':'0deg')+')';
+
+    // live summary sentence
+    const [prefix,singular]=ROLE_PREFIX[S.sel]||['People with this role',false];
+    let selSummary;
+    if(!levelsUniform){selSummary=prefix+(singular?' has':' have')+' custom access for each record type — see the list below.';}
+    else if(masterLevel==='None'){selSummary=prefix+' '+LEVEL_PHRASE.None+'.';}
+    else{
+      const scope=scopesUniform?scopes[0]:null;
+      selSummary=prefix+' '+LEVEL_PHRASE[masterLevel]+(scope?SCOPE_PHRASE[scope]:' — with different reach per record type')+'.';
+    }
+    if(S.sel==='Owner')selSummary+=' They also manage billing and the plan.';
+
+    // per-type records
+    const selBase='padding:6px 28px 6px 11px;border-radius:9px;font-size:11.5px;font-weight:500;color:var(--fg2);background:var(--card2);border:1px solid var(--border);outline:none;color-scheme:'+th.cs;
+    const selStyle=selBase+(locked?';pointer-events:none;opacity:0.55':';cursor:pointer');
+    const records=OBJECTS.map((o)=>{
+      const rec=acc.records[o];
+      const opts=LEVELS.map(L=>{
+        const active=rec.level===L;
+        const [fg,bg,ring]=pal[LEVEL_KIND[L]];
+        return {label:L,onClick:()=>this.setLevel(o,L),style:seg(active,fg,bg,ring)};
+      });
+      return {
+        name:o,initial:o.slice(0,2).toUpperCase(),
+        plain:LEVEL_PLAIN[rec.level],
+        opts,scope:rec.scope||'All',showScope:rec.level!=='None',
+        onScope:(e)=>this.setScope(o,e.target.value),
+        selStyle,
+        rowStyle:'display:flex;align-items:center;gap:16px;padding:13px 20px;border-top:1px solid var(--border)',
+      };
+    });
+
+    const levelLegend=[
+      {label:'None',hint:'no access',color:pal.none[0]},
+      {label:'View',hint:'read only',color:pal.view[0]},
+      {label:'Edit',hint:'add & change',color:pal.lim[0]},
+      {label:'Full',hint:'+ delete',color:pal.full[0]},
+    ];
+
+    // warnings
+    const roWarn=S.sel==='Read Only'&&levels.some(l=>l==='Edit'||l==='Full');
+
+    // count line
+    const accessible=levels.filter(l=>l!=='None').length;
+    const featKeys=['rView','rCreate','rEdit','rShare','userMgmt','settings','manageSeq','manageTags','export','bulkDelete','sensitive'];
+    const featOn=featKeys.filter(k=>acc.feat[k]).length;
+    const selCount=accessible+' of 8 record types · '+featOn+' of 11 abilities';
+
+    // feature groups
+    const f=acc.feat;
+    const adminSel=S.sel==='Owner'||S.sel==='Admin';
+    const toggleStyle=(on)=>'position:relative;width:40px;height:23px;border-radius:999px;border:none;flex-shrink:0;transition:all .15s;background:'+(on?'var(--accent)':(t==='dark'?'rgba(255,255,255,0.12)':'#cbd5e1'))+(locked?';cursor:not-allowed;opacity:0.55':';cursor:pointer');
+    const knobStyle=(on)=>'position:absolute;top:2.5px;left:'+(on?'19.5px':'2.5px')+';width:18px;height:18px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:all .15s';
+    const gateNote='Today only Owner and Admin can actually manage this — for every other role the page opens read-only.';
+    const mkItem=(k,label,desc,note)=>({label,desc,note:note||false,onToggle:()=>this.toggleFeat(k),toggleStyle:toggleStyle(!!f[k]),knobStyle:knobStyle(!!f[k])});
+    const featGroups=[
+      {title:'Reports & dashboards',items:[
+        mkItem('rView','View reports','See analytics and dashboards.'),
+        mkItem('rCreate','Create reports','Build new reports and dashboards.'),
+        mkItem('rEdit','Edit reports','Change existing reports.'),
+        mkItem('rShare','Share reports','Send reports to other people.'),
+      ]},
+      {title:'Team & workspace',items:[
+        mkItem('userMgmt','Invite & manage people','Add or remove teammates and set their roles.'),
+        mkItem('settings','Change workspace settings','Edit workspace-wide configuration.'),
+        mkItem('manageSeq','Manage sequences & automations','Build and edit outreach and automations.',(f.manageSeq&&!adminSel)?gateNote:false),
+        mkItem('manageTags','Manage tags & statuses','Edit the shared tags and status options.',(f.manageTags&&!adminSel)?gateNote:false),
+      ]},
+      {title:'Data',items:[
+        mkItem('export','Export to a spreadsheet','Download records as a CSV file.'),
+        mkItem('bulkDelete','Delete in bulk','Remove many records at once.'),
+        mkItem('sensitive','See sensitive fields','View fields marked sensitive, like revenue.'),
+      ]},
+    ];
+
+    // billing
+    const isOwner=S.sel==='Owner';
+    const billingNote=isOwner?'The Owner is the only role that can manage billing — this can’t be turned off.':(isCustom?'Custom roles can never manage billing. Only the Owner can.':'Only the Owner can manage billing. Transfer ownership to change who.');
+    const billingBadge=isOwner?'Always on':'Owner only';
+    const billingBadgeStyle=isOwner
+      ?`display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:600;color:${pal.full[0]};background:${pal.full[1]};box-shadow:inset 0 0 0 1px ${pal.full[2]}`
+      :`display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--fg3);background:var(--card2);box-shadow:inset 0 0 0 1px var(--border)`;
+
+    // sensitive preview
+    const sens=!!f.sensitive;
+    const sensVal=sens?'$8,400,000':'•••••• hidden';
+    const sensValStyle=sens?'font-size:13px;font-weight:700;color:var(--fg)':'font-size:12px;font-family:ui-monospace,monospace;color:var(--fg4)';
+
+    const selChipStyle=`display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;color:${selRole.color};background:${selRole.color}22;box-shadow:inset 0 0 0 1px ${selRole.color}55`;
+    const saveLabel=S.saved?'Saved':(S.dirty?'Save changes':'All saved');
+    const saveStyle=(S.dirty)
+      ?'display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;color:#fff;background:var(--accent);box-shadow:0 4px 16px rgba(99,102,241,0.3)'
+      :'display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:default;color:var(--fg4);background:var(--card2);box-shadow:inset 0 0 0 1px var(--border)';
+    const delLabel=S.confirmDel?'Really delete this role? Click again to confirm':'Delete this role';
+    const delStyle='display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--danger);background:'+(S.confirmDel?(t==='dark'?'rgba(239,68,68,0.12)':'#fef2f2'):'transparent');
+
+    // ===== matrix =====
+    const roleCards=BUILTIN_ROLES.map(r=>({key:r.key,color:r.color,summary:r.summary,tint:r.color+'1f',ring:r.color+'55'}));
+    const repBadge=(ff)=>{
+      if(ff.rView&&ff.rCreate&&ff.rEdit&&ff.rShare)return this.mkPill('full','Full');
+      if(ff.rView&&(ff.rCreate||ff.rEdit||ff.rShare))return this.mkPill('lim','Limited');
+      if(ff.rView)return this.mkPill('view','View only');
+      return this.mkPill('none','No access');
+    };
+    const adminGate=(k)=>k==='Owner'||k==='Admin';
+    const allSections=[
+      {title:'Records',note:'Every record type — contacts, leads, companies, deals and tasks — currently shares one rule per role. Custom objects follow the Contacts rule.',rows:[
+        {label:'All record types',desc:'Contacts, leads, companies, deals & tasks',cells:BUILTIN_ROLES.map(r=>this.recBadge(SEED_LEVEL[r.key],SEED_SCOPE[r.key]))},
+      ]},
+      {title:'Tools & features',note:'Shared workspace tools. Roles that can’t manage a tool can still open it read-only.',rows:[
+        {label:'Reports & dashboards',desc:'View, create, edit & share analytics',cells:BUILTIN_ROLES.map(r=>repBadge(FEAT[r.key]))},
+        {label:'Sequences & automations',desc:'Build outreach and automations',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can manage'):this.mkPill('view','View only',null,FEAT[r.key].manageSeq))},
+        {label:'Email & SMS templates',desc:'Shared template library',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can manage'):this.mkPill('view','View only'))},
+        {label:'Forms',desc:'Lead-capture forms',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can manage'):this.mkPill('view','View only'))},
+        {label:'Duplicates & suppression',desc:'Merge duplicates, manage unsubscribes',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can manage'):this.mkPill('view','View only'))},
+      ]},
+      {title:'Data',note:'Bulk actions and access to protected information.',rows:[
+        {label:'Export to a spreadsheet',desc:'Download records as a CSV file',cells:BUILTIN_ROLES.map(r=>this.featPill(FEAT[r.key].export,'Allowed','—'))},
+        {label:'Delete in bulk',desc:'Remove many records at once',cells:BUILTIN_ROLES.map(r=>this.featPill(FEAT[r.key].bulkDelete,'Allowed','—'))},
+        {label:'See sensitive fields',desc:'Protected values like revenue',cells:BUILTIN_ROLES.map(r=>FEAT[r.key].sensitive?this.mkPill('full','Visible'):this.mkPill('none','Hidden'))},
+      ]},
+      {title:'Administration',note:'Who can run the workspace itself. Personal settings are always yours to change.',rows:[
+        {label:'Personal settings',desc:'Own profile, notifications & availability',cells:BUILTIN_ROLES.map(()=>this.mkPill('full','Full'))},
+        {label:'Invite & manage people',desc:'Add, remove & assign roles',cells:BUILTIN_ROLES.map(r=>this.featPill(FEAT[r.key].userMgmt,'Allowed','—'))},
+        {label:'Edit roles & permissions',desc:'This screen',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can edit'):this.mkPill('view','View only'))},
+        {label:'Workspace settings',desc:'General, custom fields, integrations',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can edit'):this.mkPill('view','View only'))},
+        {label:'Manage tags & statuses',desc:'Shared tags and status options',cells:BUILTIN_ROLES.map(r=>adminGate(r.key)?this.mkPill('full','Can edit'):this.mkPill('view','View only',null,FEAT[r.key].manageTags))},
+        {label:'Billing & plan',desc:'Plan, seats, payment, invoices',cells:BUILTIN_ROLES.map(r=>r.key==='Owner'?this.mkPill('full','Full'):r.key==='Admin'?this.mkPill('lim','Can open',null,true):this.mkPill('none','—'))},
+      ]},
+    ];
+    const ql=S.q.trim().toLowerCase();
+    const matrixSections=allSections.map(sec=>({...sec,rows:sec.rows.filter(row=>!ql||row.label.toLowerCase().includes(ql)||(row.desc||'').toLowerCase().includes(ql))})).filter(sec=>sec.rows.length);
+    const hasRows=matrixSections.length>0;
+
+    const divergences=[
+      'Sales Managers can be granted “manage sequences, automations, tags & statuses” in the role settings, but those pages currently open read-only for them.',
+      'Billing is meant for the Owner only, yet an Admin can still open the billing page today.',
+      'Report permissions (view / create / edit / share) are shown per role but aren’t all enforced yet — only CSV export is fully wired.',
+    ];
+    const matrixLegend=[
+      {label:'Full',hint:'can do everything',pill:this.mkPill('full','Full').style},
+      {label:'Limited',hint:'scoped or partial',pill:this.mkPill('lim','Limited').style},
+      {label:'View only',hint:'can look, not change',pill:this.mkPill('view','View only').style},
+      {label:'No access',hint:'hidden or blocked',pill:this.mkPill('none','No access').style},
+    ];
+
+    const cornerTh='position:sticky;left:0;top:0;z-index:3;text-align:left;padding:12px 18px;font-size:10.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--fg4);background:var(--bg2);border-bottom:1px solid var(--border);min-width:230px';
+    const roleTh='position:sticky;top:0;z-index:2;padding:11px 10px;background:var(--bg2);border-bottom:1px solid var(--border);min-width:132px;text-align:center';
+    const secTh='padding:16px 18px 8px;background:var(--bg);border-bottom:1px solid var(--border)';
+    const rowTh='position:sticky;left:0;z-index:1;text-align:left;padding:12px 18px;background:var(--cardSolid);border-top:1px solid var(--border);min-width:230px;vertical-align:top;font-weight:400';
+    const cellTd='padding:12px 10px;text-align:center;border-top:1px solid var(--border);vertical-align:middle';
+
+    return {
+      shell,isEditor:S.view==='editor',isMatrix:S.view==='matrix',
+      viewEditor:()=>this.setState({view:'editor'}),viewMatrix:()=>this.setState({view:'matrix'}),
+      tabEditorStyle:pillTab(S.view==='editor'),tabMatrixStyle:pillTab(S.view==='matrix'),
+      roleList,
+      dupRole:()=>this.dupRole(),
+      selKey:S.sel,selColor:selRole.color,selSummary,selChipStyle,selCount,
+      isCustom,lockedBanner:locked,roWarn,
+      delRole:()=>this.delRole(),delLabel,delStyle,
+      save:()=>this.setState(s=>({dirty:false,saved:true,baseline:{...clone(s.baseline),[s.sel]:clone(s.access[s.sel])}})),
+      saveLabel,saveStyle,
+      showDiscard:S.dirty,
+      discard:()=>this.setState(s=>({access:{...clone(s.access),[s.sel]:clone(s.baseline[s.sel])},dirty:false,saved:false})),
+      masterOpts,masterPlain,masterShowSel,masterVaries,
+      masterScope:scopesUniform?scopes[0]:'All',
+      onMasterScope:(e)=>this.setAllScope(e.target.value),
+      masterSelStyle:selStyle,
+      showTypes,typesLabel,chevStyle,
+      toggleTypes:()=>{if(mixed)return;this.setState(s=>({showTypes:!s.showTypes}));},
+      records,levelLegend,
+      featGroups,
+      billingNote,billingBadge,billingBadgeStyle,
+      sensVal,sensValStyle,
+      roleCards,divergences,matrixLegend,matrixSections,hasRows,noMatch:!hasRows,
+      q:S.q,onQ:(e)=>this.setState({q:e.target.value}),
+      colspan:BUILTIN_ROLES.length+1,
+      cornerTh,roleTh,secTh,rowTh,cellTd,
+    };
+  }
+}
+</script>
+</body>
+</html>

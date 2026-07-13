@@ -72,6 +72,56 @@ Two fixes after owner review:
    - `smsComplianceState` is now profile-aware: with no brand, the blocking reason walks you to the profile step first. **Bug found & fixed during verification**: the pre-mount seed fallback (`_liveSmsBrand||SMS_BRAND_SEED`) masked a legitimately-null brand after mount — fallbacks now apply only before App mounts.
 Verified: pending campaign → `campaign`; brand removed + profile pending → `profile` ("pending review"); profile removed → "Business profile not submitted"; boots clean.
 
+## Wallet removed + Trust center made Twilio-accurate — 2026-07-10 (owner-directed)
+Owner: "we don't need the wallet — all payments through Stripe; make the Trust center Twilio-accurate; why is an approved profile editable?; keep it simple." Research pass (aNinja + Close/JustCall/Salesmsg/Podium/HubSpot/Aircall/GHL + Twilio TrustHub docs) before building.
+
+**Billing — no wallet.** The prepaid wallet (balance, top-ups, auto-recharge) is gone. Replaced with the HubSpot/Aircall arrears model: every charge (number purchase/renewal, $15 campaign fee, per-segment usage) **accrues to the monthly Stripe invoice** — `walletDebit` → `usageAccrue` on all 5 charge sites; tab renamed **"Usage & billing"** (this-month total + usage tiles + "billed to your card via Stripe" + Manage-payment link + Charges list). The wallet's hidden job (fraud cap) is now an explicit **Monthly spend limit** (default $100, admin-editable, Close's pattern): 80% → warning toast, 100% → **outbound texting pauses** — enforced in `canSendSms` via a `_liveUsageBill` mirror (code `'spend'`), warning banners on the tab. Limit 0 = no cap.
+
+**Trust center — approved means locked (real Twilio semantics).** Twilio: approved/in-review Customer Profiles "can't be updated" (updates → re-review); Brand updates flow through the profile + re-vet; Campaign edit exists **only for FAILED** (approved-edit is private beta); approved TFV is final. The three big numbered cards collapsed into one compact **"Registration status"** card with truth-table actions: Business profile approved → quiet **"Update info"** + "Changes go back to carrier review" caption (was a bare "Edit & resubmit"); brand verified → **no edit button**, note "Locked after approval — update your Business profile and the brand re-verifies automatically"; campaigns approved → "Locked after approval — a new use case is a new campaign"; pending anything → "In review — locked". `PhoneChip`: pending → **"In review"**, rejected → **"Needs fixes"**. Header renamed **"Text messaging registration"** (A2P 10DLC as small print); "The Campaign Registry" → "the carrier registry"; SHAKEN/STIR chip row → one footnote ("nothing to set up").
+
+**Market note (aNinja check):** aNinja has NO self-serve A2P UI at all (concierge via support email) and bills plan-allowance + add-on rates with no wallet — nrtur's guided wizard is ahead; the no-wallet model matches the wallet-free majority (HubSpot/Aircall/Podium/Salesmsg); GHL's credits wallet is the exception we deliberately dropped.
+
+Verified headless: spend gate (compliance-ok + over-limit → `'spend'` block with reason; under-limit ok; limit-0 no cap), zero "Edit & resubmit" on the page, Update-info + locked notes render, boots clean.
+
+### Follow-up same day — money single-homed on Billing (owner: "why is Usage & billing here when we already have a Billing page?")
+The owner was right — it duplicated Settings › Billing (which already had a static "Usage-based charges · SMS, MMS & calls" line). Fixed:
+- **Phone numbers page is back to two tabs** (Numbers · Trust center). The Usage & billing tab is gone.
+- **Numbers tab keeps only the operational control:** a compact **"Texting spend limit"** card (limit input + this-month progress bar + paused banner) that links to Billing for money. Rationale: the spend limit is a texting safety switch, not billing.
+- **Settings › Billing owns all money:** the usage card's footer now shows the **live** phone total (was static), and a new **"Phone & SMS charges"** card lists the itemized charges (each lands on the monthly Stripe invoice) with a "Manage numbers →" link back.
+- Stale `canSendSms` spend reason updated (no longer points at the deleted tab).
+
+### Forms made plain-English (same pass)
+- **Port in** — retitled **"Bring your existing number"** with a one-line explanation (move a number you already own; customers keep texting/calling the same number), labeled fields with human hints ("Account number — from your provider's bill", "Transfer PIN — ask your provider"), and the no-downtime note. Flow verified end-to-end headless: submit → "Porting in" chip → +2 simulated days → **Active**.
+- **Brand modal** → "Verify your business" (subtitle: carriers call this your "A2P brand"). **Campaign modal** → "Tell carriers what you'll send" (subtitle: carriers call this a "campaign"); fee note now says "added to your next invoice".
+- **Wizard** → header "Set up text messaging" (A2P 10DLC as small print); steps renamed to plain English; "The Campaign Registry" → "the carrier registry".
+
+### Campaign forms made Twilio-form-exact — 2026-07-10 (owner: "why mismatching · make it same form as Twilio")
+The owner caught a real inconsistency: the wizard's campaign step and the standalone Register-campaign form disagreed (sample 2 required vs "(optional)"; the standalone form collected fewer fields), and both were missing fields real Twilio requires. Twilio's Console campaign form was verified field-by-field against twilio.com docs (quickstart, collect-business-info, Usa2p API, error codes 30886/30892/30893/30895/30909), then BOTH forms were rebuilt from that one field set:
+
+| Twilio Console field | nrtur now |
+|---|---|
+| A2P Brand (dropdown) | Shown as a locked caption — "registers under your verified brand; workspace numbers attach automatically" (managed model) |
+| Campaign use case | Dropdown, expanded list (+ Account/Delivery notifications, 2FA) |
+| **Campaign description** — required, 40–4,096 chars | **Added to both forms** — textarea with a live `n/40 min` counter; helper: who sends / who receives / why |
+| **Sample message #1 & #2** — two boxes, each 20+ chars | Both required in BOTH forms (fixes the mismatch); live `n/20 min` counters; helper: name your business, keep {{merge_fields}}, no public link shorteners |
+| **Message contents** — 4 checkboxes | **Added**: embedded links · phone numbers · age-gated (CTIA) · direct lending |
+| "How do end-users consent to receive messages?" — required, 40–2,048 chars | Exact Twilio question replaces the old opt-in-method dropdown (Twilio has no dropdown — free text only); `n/40 min` counter; helper cites the #1 rejection (error 30909, vague consent) |
+| Opt-out/HELP — Twilio defaults recommended | "Use default STOP/HELP handling" toggle |
+| Opt-in confirmation message — 20–320 chars | Wizard consent step, with counter + helper |
+
+Wizard step renamed "What you send" → **"Campaign"** (Twilio's own term; plain-English kept in helper text). Validation now enforces the real Console minimums, so the Submit button gates exactly like Twilio's. Seed campaign gained `description` + `contents` so review-mode prefills stay valid. Verified headless: modal shows all Twilio fields with counters, Submit disabled until minimums met then enables; wizard chip says Campaign, campaign step has description + contents, consent step has the exact question and no dropdown; zero console errors.
+
+### ALL remaining trust forms brought to Twilio parity — same day (owner: "is every A2P form Twilio?")
+Honest audit answer was no — only the campaign form was exact. A second doc-verification pass (TrustHub Customer-Profile API, TFV API resource, port-in API) closed the rest:
+
+- **Business profile** (modal + wizard step 1): + **Business registration** ID-type dropdown (EIN/DUNS/CBN/VAT/Other) beside the number · + **Business industry** dropdown · + **Regions of operation** multi-chips (USA & Canada default) · rep now has the **Job position** dropdown (CEO/CFO/Director/GM/VP/General Counsel/Other — Twilio's exact list) *and* the free-text **Business title** (Twilio collects both).
+- **A2P brand** (modal + wizard step 2): + **Company type** (private/public/non-profit/government) with conditional **stock ticker + exchange** when public · + **Brand contact email** (required by Twilio since Oct 2024) — prefilled from the rep. (Constant named `BRAND_COMPANY_TYPES` — plain `COMPANY_TYPES` already exists for company records and collided on first boot; caught by the headless run.)
+- **Toll-free verification — the big gap, now a real form.** The bare "Submit verification" button became a full TFV drawer mirroring Twilio's tollfree-verification resource: use-case **category** + **monthly volume** dropdowns, **use-case summary** and **production message sample** (20-char counters), **opt-in type** (web form / verbal / paper / via text / QR), **notification email**, and the **opt-in proof URL** (public image of the opt-in) — with the honest warning that *nearly every TFV rejection is an opt-in problem* (errors 30498–30512: private URLs, pre-checked boxes, missing branding). Business name/website prefill from the approved profile; ~3-business-day review note.
+- **Port-in**: + **Account holder name** with the "must match your provider's records — mismatches are the #1 port rejection" warning · + **Service address on file** · + the **Letter of Authorization** step in the note (e-sign, 30-day expiry, recent bill may be requested; 5–15 business days). Start-port stays disabled until holder + address are filled.
+- **Voice trust card** → retitled **"Calling trust"** with a connector line ("the registration above covers texting — this covers calls"), CNAM explained plainly ("the name people see when you call").
+
+Verified headless end-to-end: all five forms render their new fields, port gating works, and the TFV flow was exercised for real (bought a toll-free number → Start verification → full form). Zero console errors.
+
 ## Not built (out of scope by design)
 - Real payment rails for wallet top-ups (Stripe checkout etc.) — top-ups are simulated like all money movement in the prototype.
 - Per-message sequence send simulation (enrollment is DNC-gated; a sequence "send engine" doesn't exist yet anywhere in the prototype).
