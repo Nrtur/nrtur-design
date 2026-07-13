@@ -24121,15 +24121,21 @@ function CoTagInput({value,onChange}){
 }
 // ── Create / edit a custom record (reuses DrawerField + ARLookup) ──
 function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
-  const blank=()=>{const o={};(def.fields||[]).forEach(f=>{o[f.key]=f.type==='Multi select'?[]:'';});(def.relationships||[]).forEach(r=>{o[r.key]=r.many?[]:'';});return o;};
+  const blank=()=>{const o={};(def.fields||[]).forEach(f=>{o[f.key]=f.type==='Multi select'?[]:(f.defaultValue!=null&&f.defaultValue!==''?f.defaultValue:'');});(def.relationships||[]).forEach(r=>{o[r.key]=r.many?[]:'';});return o;};
   const [draft,setDraft]=React.useState(()=>mode==='edit'?{...record}:{name:'',owner:'AM',tags:[],...blank()});
   const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
   // Dirty = draft differs from the initial snapshot (works for create: starts blank; and edit: starts pre-filled).
   const _initRef=React.useRef(null);const _snap=JSON.stringify(draft);if(_initRef.current===null)_initRef.current=_snap;
   const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);
   const onClose=attemptClose;
-  const valid=(draft.name||'').trim();
-  const save=()=>{if(!valid)return;onSave({...draft,name:draft.name.trim(),ownerColor:coOwnerColor(draft.owner)});};
+  const [submitted,setSubmitted]=React.useState(false);
+  // Enforce the field rules the builder promised (were ignored): hidden fields never show; create-form-excluded
+  // fields are skipped on create; required fields block save with an inline message; defaults seeded in blank().
+  const shownFields=(def.fields||[]).filter(f=>f.detail!=='hidden'&&(mode==='edit'||f.create!==false));
+  const _fieldEmpty=(f)=>{const v=draft[f.key];return v==null||v===''||(Array.isArray(v)&&!v.length);};
+  const missingReq=shownFields.filter(f=>f.required&&_fieldEmpty(f));
+  const valid=(draft.name||'').trim(); // Create button enables on name; required-field enforcement runs in save()
+  const save=()=>{setSubmitted(true);if(!(draft.name||'').trim()||missingReq.length)return;onSave({...draft,name:draft.name.trim(),ownerColor:coOwnerColor(draft.owner)});};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -24137,10 +24143,11 @@ function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-3.5">
         <div><label className={CO_LBL}>{def.primaryLabel||'Name'}<span className="text-red-400/70 ml-0.5">*</span></label><input autoFocus value={draft.name||''} onChange={e=>set('name',e.target.value)} placeholder={def.primaryLabel||'Name'} className={CO_INP}/></div>
         <div><label className={CO_LBL}>Owner</label><select value={draft.owner||'AM'} onChange={e=>set('owner',e.target.value)} className={CO_SEL} style={{colorScheme:'dark'}}>{(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>
-        {(def.fields||[]).map(f=>(<DrawerField key={f.id} f={{label:f.label,type:coCtrlType(f.type),options:coFieldOpts(f),required:f.required}} value={draft[f.key]} onChange={v=>set(f.key,v)}/>))}
+        {shownFields.map(f=>(<DrawerField key={f.id} f={{label:f.label,type:coCtrlType(f.type),options:coFieldOpts(f),required:f.required}} value={draft[f.key]} onChange={v=>set(f.key,v)}/>))}
         {(def.relationships||[]).map(rel=>{const meta=coTargetMeta(crm,rel.target);return(<div key={rel.id}><label className={CO_LBL}>{rel.label}</label><CoLinkField crm={crm} target={rel.target} many={rel.many} value={draft[rel.key]} onChange={v=>set(rel.key,v)} placeholder={'Link a '+meta.label.toLowerCase()+'…'} Icon={meta.Icon}/></div>);})}
         <div><label className={CO_LBL}>Tags</label><CoTagInput value={draft.tags||[]} onChange={v=>set('tags',v)}/></div>
       </div>
+      {submitted&&missingReq.length>0&&<div className="shrink-0 px-5 pt-3"><div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/25 text-[12px] text-red-200"><I.AlertTriangle size={13} className="shrink-0 mt-0.5"/><span>Fill required field{missingReq.length>1?'s':''}: {missingReq.map(f=>f.label).join(', ')}.</span></div></div>}
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{mode==='edit'?'Save changes':'Create '+def.singular}</button></div>
       {guardNode}
     </div>
