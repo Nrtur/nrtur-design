@@ -12963,6 +12963,11 @@ const TRIGGER_CATS=[
     {name:'Custom record updated',hint:'a field on a custom record changes'},
     {name:'Custom record stage changed',hint:'a custom record moves between stages'}]},
 ];
+// Triggers the runtime actually emits (verified against every fireEntity/fireDealAutomationEvents call site plus
+// the simulated clock). The other ~40 render as "Coming soon" (unselectable) in the picker so a user never builds
+// an automation on a trigger that can silently never fire.
+const AUTO_LIVE_TRIGGERS=new Set(['Contact created','Contact updated','Tag added','Tag removed','Status changed','Lead created','Lead status changed','Lead qualified','Lead score reached','Lead assigned','Company created','Company type changed','Account became Customer','Company owner changed','Deal created','Deal stage changed','Deal moved to Proposal','Deal won','Deal lost','Deal value changed','Deal inactive 7 days','Email received','SMS reply received','Task overdue','Call logged','Invoice overdue']);
+const triggerIsLive=(name)=>AUTO_LIVE_TRIGGERS.has(name);
 const TRIGGER_BY_CAT=(cat)=>{const g=TRIGGER_CATS.find(x=>x.cat===cat);return g?{cat:g.cat,Icon:g.Icon,color:g.color,hint:''}:{cat:'Contact',Icon:I.Users,color:'#60a5fa',hint:''};};
 const TRIGGER_META=(name)=>{for(const g of TRIGGER_CATS){const t=g.triggers.find(x=>x.name===name);if(t)return{cat:g.cat,Icon:g.Icon,color:g.color,hint:t.hint};}
   // Infer a category for triggers not in the catalog (keyword match)
@@ -13484,11 +13489,11 @@ function TriggerPicker({current,onPick,close}){
             <div key={g.cat}>
               <div className="flex items-center gap-2 mb-2"><span className="w-6 h-6 rounded-md flex items-center justify-center" style={{background:g.color+'2e',color:g.color}}><g.Icon size={13}/></span><p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em]">{g.cat}</p></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {list.map(t=>{const sel=current===t.name;return(
-                  <button key={t.name} onClick={()=>{onPick(t.name);close();}} className={['flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all',sel?'bg-brand-500/12 border-brand-500/40':'bg-white/[0.025] border-white/[0.07] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}>
-                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{background:g.color}}/>
-                    <div className="min-w-0"><p className="text-[13px] font-medium text-white leading-tight">{t.name}</p><p className="text-[11px] text-white/45 mt-0.5 leading-snug">Fires when {t.hint}.</p></div>
-                    {sel&&<I.Check size={14} className="ml-auto text-brand-300 shrink-0"/>}
+                {list.map(t=>{const sel=current===t.name;const live=triggerIsLive(t.name);return(
+                  <button key={t.name} disabled={!live} onClick={()=>{if(!live)return;onPick(t.name);close();}} title={live?'':'This trigger isn’t wired to the automation engine yet — coming soon.'} className={['flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all',!live?'bg-white/[0.015] border-white/[0.05] opacity-55 cursor-not-allowed':sel?'bg-brand-500/12 border-brand-500/40':'bg-white/[0.025] border-white/[0.07] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}>
+                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{background:live?g.color:'rgba(255,255,255,0.2)'}}/>
+                    <div className="min-w-0"><p className="text-[13px] font-medium text-white leading-tight flex items-center gap-1.5 flex-wrap">{t.name}{!live&&<span className="text-[9px] font-semibold uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded px-1 py-0.5">Coming soon</span>}</p><p className="text-[11px] text-white/45 mt-0.5 leading-snug">Fires when {t.hint}.</p></div>
+                    {sel&&live&&<I.Check size={14} className="ml-auto text-brand-300 shrink-0"/>}
                   </button>
                 );})}
               </div>
