@@ -17658,17 +17658,18 @@ function SettingsIntegrationsPage({goTo}){
   const apiKey='nrtur_sk_live_8Kd2mP9xQ7vR4nL6wY3tB1cF';
   const [detail,setDetail]=React.useState(null);
   const wsReadOnly=!settingsIsAdmin();
+  const {confirmNode,openConfirm}=useConfirm();
   // Workspace page shows ONLY workspace-scoped integrations — an admin connects these once for everyone.
   const wsIntgs=INTG_DEFS.filter(i=>i.scope==='workspace');
   // One unified card list (apps + SMS providers) — each a descriptor the browser searches, filters & groups.
   const cards=[];
-  wsIntgs.forEach(intg0=>{const isAd=intg0.key==='meta-ads'||intg0.key==='google-ads';const on=isAd?ads.isConnected(intg0.key):!!conns[intg0.key];const cs=!!intg0.comingSoon;const intg=(isAd&&on)?{...intg0,meta:ads.summary(intg0.key)}:intg0;const open=()=>{if(cs){custToast(intg.name+' — coming soon');return;}if(isAd){setAdModal(intg0);}else{setGenModal(intg);}};const cfg=isAd?(()=>goTo('settings-ad-leads')):open;const h={onConnect:open,onConfigure:cfg,onDisconnect:()=>{if(isAd){ads.disconnectSource(intg0.key);}else{disconnect(intg0.key);}custToast(intg.name+' disconnected');}};cards.push({key:intg0.key,cat:intg0.cat,on,q:intg0.name+' '+intg0.desc+' '+intg0.cat,node:<IntegCard key={intg0.key} intg={intg} on={on} comingSoon={cs} onOpen={()=>setDetail({intg,on,comingSoon:cs,...h})} {...h}/>});});
+  wsIntgs.forEach(intg0=>{const isAd=intg0.key==='meta-ads'||intg0.key==='google-ads';const on=isAd?ads.isConnected(intg0.key):!!conns[intg0.key];const cs=!!intg0.comingSoon;const intg=(isAd&&on)?{...intg0,meta:ads.summary(intg0.key)}:intg0;const open=()=>{if(cs){custToast(intg.name+' — coming soon');return;}if(isAd){setAdModal(intg0);}else{setGenModal(intg);}};const cfg=isAd?(()=>goTo('settings-ad-leads')):open;const h={onConnect:open,onConfigure:cfg,onDisconnect:()=>openConfirm({title:'Disconnect '+intg.name+'?',body:'Removes this connection for the whole workspace — new syncs stop until it is reconnected. Data already synced is kept.',confirmLabel:'Disconnect',danger:true,onConfirm:()=>{if(isAd){ads.disconnectSource(intg0.key);}else{disconnect(intg0.key);}custToast(intg.name+' disconnected');}})};cards.push({key:intg0.key,cat:intg0.cat,on,q:intg0.name+' '+intg0.desc+' '+intg0.cat,node:<IntegCard key={intg0.key} intg={intg} on={on} comingSoon={cs} onOpen={()=>setDetail({intg,on,comingSoon:cs,...h})} {...h}/>});});
   // SMS runs on the MANAGED model: nrtur provisions each workspace a Twilio SUBACCOUNT and you buy numbers in-app
   // (Settings › Phone numbers) — the default user never touches a Twilio account. The one card kept here is the
   // opt-in ADVANCED / agency BYO tier (per docs/phone/twilio-integration-model-decision.md). It does NOT power the
   // SMS Inbox/Sequences (that gate reads managed numbers only), so we don't claim it does. Vonage was removed —
   // it isn't part of the model and connected nothing. conns.twilio is kept because the voice dialer reads it (see PROV).
-  [{key:'twilio',name:'Twilio — advanced (BYO)',desc:'Advanced: bring your own Twilio account (for agencies & developers). Everyone else texts & calls from a managed number — set it up in Settings › Phone numbers, no Twilio account needed.',iconColor:'#e13128',cat:'Communication',scope:'workspace',scopes:['Bring your own Twilio account','Advanced / agency setup — managed numbers are the default'],open:()=>setTwilioModal(true)}].forEach(p=>{const on=!!conns[p.key];const h={onConnect:p.open,onConfigure:p.open,onDisconnect:()=>{disconnect(p.key);custToast(p.name+' disconnected');}};cards.push({key:p.key,cat:p.cat,on,q:p.name+' '+p.desc+' SMS text messaging BYO advanced '+p.cat,node:<IntegCard key={p.key} intg={p} on={on} onOpen={()=>setDetail({intg:p,on,...h})} {...h}/>});});
+  [{key:'twilio',name:'Twilio — advanced (BYO)',desc:'Advanced: bring your own Twilio account (for agencies & developers). Everyone else texts & calls from a managed number — set it up in Settings › Phone numbers, no Twilio account needed.',iconColor:'#e13128',cat:'Communication',scope:'workspace',scopes:['Bring your own Twilio account','Advanced / agency setup — managed numbers are the default'],open:()=>setTwilioModal(true)}].forEach(p=>{const on=!!conns[p.key];const h={onConnect:p.open,onConfigure:p.open,onDisconnect:()=>openConfirm({title:'Disconnect '+p.name+'?',body:'Removes this connection for the whole workspace.',confirmLabel:'Disconnect',danger:true,onConfirm:()=>{disconnect(p.key);custToast(p.name+' disconnected');}})};cards.push({key:p.key,cat:p.cat,on,q:p.name+' '+p.desc+' SMS text messaging BYO advanced '+p.cat,node:<IntegCard key={p.key} intg={p} on={on} onOpen={()=>setDetail({intg:p,on,...h})} {...h}/>});});
   const connectedCount=cards.filter(c=>c.on).length;
   return(
     <SettingsShell active="settings-integrations" goTo={goTo} subtitle={'Connections your whole workspace shares. '+connectedCount+' active.'}>
@@ -17696,6 +17697,7 @@ function SettingsIntegrationsPage({goTo}){
       {twilioModal&&<TwilioSetupModal close={()=>setTwilioModal(false)} onConnected={()=>connect('twilio')}/>}
       {genModal&&<GenericConnectModal intg={genModal} close={()=>setGenModal(null)} onConnected={()=>connect(genModal.key)}/>}
       {adModal&&<AdSourceConnectModal intg={adModal} close={()=>setAdModal(null)} onConnected={(payload)=>{ads.connectSource(adModal.key,payload);custToast(adModal.name+' connected ✓');}}/>}
+      {confirmNode}
     </SettingsShell>
   );
 }
@@ -17936,12 +17938,13 @@ function AdFormDiscoveryModal({sourceKey,existing,onAdd,onBlank,close}){
 }
 function SettingsAdLeadsPage({goTo}){
   const ads=React.useContext(AdsContext);
+  const {confirmNode,openConfirm}=useConfirm();
   const [discoverSrc,setDiscoverSrc]=React.useState(null);
   const [groupBy,setGroupBy]=React.useState('source');
   const [feedSrc,setFeedSrc]=React.useState('all');   // intake-feed filter: all | meta-ads | google-ads
   const [feedAll,setFeedAll]=React.useState(false);   // show 8 vs all
   const upd=(form)=>ads.setForms(fs=>fs.map(f=>f.id===form.id?form:f));
-  const removeForm=(id)=>ads.setForms(fs=>fs.filter(f=>f.id!==id));
+  const removeForm=(id)=>{const f=ads.forms.find(x=>x.id===id);openConfirm({title:'Delete this lead form?',body:'"'+((f&&f.name)||'This form')+'" and its field mapping are removed. Leads already captured are kept.',confirmLabel:'Delete form',danger:true,onConfirm:()=>ads.setForms(fs=>fs.filter(x=>x.id!==id))});};
   const _toast=(m,k)=>{if(window.__nrturToast)window.__nrturToast(m,k||'success');};
   // Add one blank form — fallback for a form not in the discovered list.
   const addBlank=(sourceKey)=>{const src=adSourceByKey(sourceKey);const id='lf_'+Date.now()+Math.floor(Math.random()*1000);ads.setForms(fs=>[...fs,{id,sourceKey,name:'New lead form',campaign:'',asset:(src.assets[0]||{}).name||'',stage:'New',tag:adSlug(src.short)+'-lead',owner:'Round-robin',map:src.fields.map(f=>({ad:f,crm:AD_AUTOMAP[f]||'__ignore',label:AD_FIELD_LABELS[f]||f}))}]);_toast('Blank lead form added — map its fields below');};
@@ -17994,7 +17997,7 @@ function SettingsAdLeadsPage({goTo}){
               <div className="flex flex-wrap gap-1.5">{((st.assets)||src.assets.map(a=>a.name)).map(a=>(<span key={a} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-white/[0.05] border border-white/[0.08] text-white/65"><I.Globe size={9}/>{a}</span>))}</div>
               <p className="text-[11px] text-white/40">{nForms} lead form{nForms===1?'':'s'} mapped</p>
             </div>
-            <button onClick={()=>ads.disconnectSource(src.key)} className="text-[12px] font-medium text-red-300 hover:text-red-200">Disconnect</button>
+            <button onClick={()=>openConfirm({title:'Disconnect '+src.name+'?',body:'New '+(src.short||src.name)+' leads stop syncing and its forms stop receiving. Leads already captured are kept.',confirmLabel:'Disconnect',danger:true,onConfirm:()=>ads.disconnectSource(src.key)})} className="text-[12px] font-medium text-red-300 hover:text-red-200">Disconnect</button>
           </>):(
             <><p className="text-[12px] text-white/50 leading-relaxed mb-3">Not connected. Connect {src.short} on the Integrations page to pull its lead forms in with campaign attribution.</p>
             <button onClick={()=>goTo('settings-integrations')} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plug size={12}/>Connect on Integrations</button></>
@@ -18055,6 +18058,7 @@ function SettingsAdLeadsPage({goTo}){
       </div>
     </div>
     {discoverSrc&&<AdFormDiscoveryModal sourceKey={discoverSrc} existing={ads.forms.filter(f=>f.sourceKey===discoverSrc)} onAdd={addForms} onBlank={()=>addBlank(discoverSrc)} close={()=>setDiscoverSrc(null)}/>}
+    {confirmNode}
   </SettingsShell>);
 }
 // ?? Profile Page ??????????????????????????????????????????????????????????????
@@ -22071,14 +22075,17 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
   const [seg,setSeg]=React.useState('upcoming');
   const [open,setOpen]=React.useState(null);
   const [menu,setMenu]=React.useState(null);
+  const {confirmNode,openConfirm}=useConfirm();
   const now=new Date();
   const isPast=(m)=>m.status==='cancelled'||m.date<now;
   const list=meetings.filter(m=>seg==='upcoming'?!isPast(m):isPast(m)).sort((a,b)=>seg==='upcoming'?a.date-b.date:b.date-a.date);
   const counts={upcoming:meetings.filter(m=>!isPast(m)).length,past:meetings.filter(isPast).length};
-  const cancel=(id)=>{setMeetings(ms=>ms.map(m=>m.id===id?{...m,status:'cancelled'}:m));setOpen(null);setMenu(null);addToast('Meeting cancelled');};
+  const doCancel=(id)=>{setMeetings(ms=>ms.map(m=>m.id===id?{...m,status:'cancelled'}:m));setOpen(null);setMenu(null);addToast('Meeting cancelled');};
+  const cancel=(id)=>{const m=meetings.find(x=>x.id===id);openConfirm({title:'Cancel this meeting?',body:'"'+((m&&m.name)||'This meeting')+'"'+((m&&m.contactName)?(' with '+m.contactName):'')+' will be marked cancelled and the invitee notified.',confirmLabel:'Cancel meeting',danger:true,onConfirm:()=>doCancel(id)});};
   const saveNotes=(id,notes)=>setMeetings(ms=>ms.map(m=>m.id===id?{...m,notes}:m));
   const openM=meetings.find(m=>m.id===open);
   return(<div className="flex-1 overflow-y-auto scroll-area">
+    {confirmNode}
     {menu&&<div className="fixed inset-0 z-20" onClick={()=>setMenu(null)}/>}
     <div className="max-w-[920px] mx-auto px-6 py-6">
       <div className="flex items-center gap-4 mb-5 flex-wrap">
@@ -23242,7 +23249,7 @@ function PaymentsPage({goTo,nav}){
               <div className="text-right sm:text-left"><span className="text-[13px] font-semibold text-white tabular-nums">{payMoney(s.amount)}</span><span className="text-[11px] text-white/40">/{s.interval==='year'?'yr':'mo'}</span><span className="sm:hidden flex justify-end mt-1"><PayPill map={PAY_SUB_ST} k={s.status}/></span></div>
               <span className="hidden sm:block"><PayPill map={PAY_SUB_ST} k={s.status}/></span>
               <span className="hidden sm:block text-[12px] text-white/55">{s.nextBill}</span>
-              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{(s.status==='active'||s.status==='past-due')&&<button onClick={()=>billSub(s)} className={menuItem}><I.Note size={13}/>{s.status==='past-due'?'Collect payment':'Bill this period'}</button>}{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active',s.status==='cancelled'?'Subscription reactivated':'Subscription marked active')} className={menuItem}><I.Check size={13}/>{s.status==='cancelled'?'Reactivate':'Mark active'}</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>setSubStatus(s,'cancelled','Subscription cancelled')} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
+              <div className="relative justify-self-end" onClick={e=>e.stopPropagation()}><button onClick={()=>setSubMenu(subMenu===s.id?null:s.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.More size={14}/></button>{subMenu===s.id&&(<div className={menuCls} style={menuStyle}>{(s.status==='active'||s.status==='past-due')&&<button onClick={()=>billSub(s)} className={menuItem}><I.Note size={13}/>{s.status==='past-due'?'Collect payment':'Bill this period'}</button>}{s.status!=='active'&&<button onClick={()=>setSubStatus(s,'active',s.status==='cancelled'?'Subscription reactivated':'Subscription marked active')} className={menuItem}><I.Check size={13}/>{s.status==='cancelled'?'Reactivate':'Mark active'}</button>}{s.status!=='past-due'&&<button onClick={()=>setSubStatus(s,'past-due','Marked past-due — dunning can trigger')} className={menuItem}><I.AlertTriangle size={13}/>Mark past-due</button>}{s.status!=='cancelled'&&<button onClick={()=>{setSubMenu(null);openConfirm({title:'Cancel subscription?',body:'"'+(s.customer||s.plan||'This subscription')+'" stops billing at the end of the current period — no further invoices are raised. You can reactivate it later.',confirmLabel:'Cancel subscription',danger:true,onConfirm:()=>setSubStatus(s,'cancelled','Subscription cancelled')});}} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12.5px] text-red-300 hover:bg-red-500/10 transition-colors text-left"><I.Ban size={13}/>Cancel</button>}</div>)}</div>
             </div>))}
         </div>)}
 
@@ -23788,6 +23795,7 @@ function FunnelBuilderPage({goTo,nav}){
   const {funnels,updateFunnel}=useFunnels();
   const crm=React.useContext(CrmDataContext);
   const cal=React.useContext(CalendarContext);
+  const {confirmNode,openConfirm}=useConfirm();
   const fid=nav&&typeof nav==='object'?nav.id:nav;
   const funnel=funnels.find(f=>f.id===fid)||funnels[0];
   const canEdit=effCanCreateAny();
@@ -23812,7 +23820,7 @@ function FunnelBuilderPage({goTo,nav}){
   const delBlock=(id)=>{setSteps(steps=>steps.map((s,i)=>i===stepIdx?{...s,blocks:(s.blocks||[]).filter(b=>b.id!==id)}:s));setSelBlock(null);};
   const addStep=()=>{const ns=fStep('New step','optin',[fSpace(16),fHead('New step headline'),fText('Describe this step.')]);setSteps(steps=>[...steps,ns]);setStepIdx(funnel.steps.length);setSelBlock(null);};
   const moveStep=(idx,dir)=>{const j=idx+dir;if(j<0||j>=funnel.steps.length)return;setSteps(steps=>{const a=[...steps];const t=a[idx];a[idx]=a[j];a[j]=t;return a;});setStepIdx(j);};
-  const delStep=(idx)=>{if(funnel.steps.length<=1){if(window.__nrturToast)window.__nrturToast('A funnel needs at least one step','warning');return;}setSteps(steps=>steps.filter((_,i)=>i!==idx));setStepIdx(Math.max(0,idx-1));setSelBlock(null);};
+  const delStep=(idx)=>{if(funnel.steps.length<=1){if(window.__nrturToast)window.__nrturToast('A funnel needs at least one step','warning');return;}const st=funnel.steps[idx];openConfirm({title:'Delete this step?',body:'"'+((st&&(st.name||st.label||st.title))||'This step')+'" and all its blocks are removed from the funnel.',confirmLabel:'Delete step',danger:true,onConfirm:()=>{setSteps(steps=>steps.filter((_,i)=>i!==idx));setStepIdx(Math.max(0,idx-1));setSelBlock(null);}});};
   const toggleStatus=()=>{const wasLive=funnel.status==='live';updateFunnel(funnel.id,f=>({...f,status:f.status==='live'?'draft':'live'}));if(window.__nrturToast)window.__nrturToast(wasLive?'Funnel set to draft':'Funnel is now live');};
   const copyLink=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://'+funnelShareUrl(funnel));}catch(e){}if(window.__nrturToast)window.__nrturToast('Funnel link copied');};
   // preview submit — the real native wiring
@@ -23968,6 +23976,7 @@ function FunnelBuilderPage({goTo,nav}){
         </div>
       </div></div>}
     </div>
+    {confirmNode}
   </div>);
 }
 // ═══════════════ Custom Objects — user-defined record types (Projects, Tickets, …) ═══════════════
