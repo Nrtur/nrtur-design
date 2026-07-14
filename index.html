@@ -9805,6 +9805,7 @@ const CO_SEED_DEALS=[
 ];
 let _liveDeals=null; // live deals array, set by App on each render; falls back to the STAGES_DATA seed
 let _liveContacts=null; // Wave 3: live contacts array, set by App on each render; falls back to the CONTACTS_DATA seed
+let _liveConns=null; // live integration connections (conns), set by App — lets the automation runtime honestly skip integration steps (e.g. Slack) when the integration isn't connected
 let _liveSeqEnrollments=null; // stage-bulk enroll: live sequence-membership records, set by App each render
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
 let _liveLeads=null; // live leads array, set by App on each render; used to resolve calendar task/event links to lead ids
@@ -12846,6 +12847,20 @@ const LOGIC_PRESETS_A={
   waitUntil:{key:'waitUntil',label:'Wait until…',       Icon:I.Clock,     bg:'rgba(245,158,11,0.18)',  fg:'#fbbf24', kind:'waitUntil'},
   goal:     {key:'goal',     label:'Goal / exit',       Icon:I.Target,    bg:'rgba(52,211,153,0.18)',  fg:'#34d399', kind:'goal'},
 };
+// Plain-English one-liner for each node, shown in the +add-node picker (mirrors the TRIGGER_CATS "hint" pattern).
+const NODE_DESCS={
+  assign:'Route this record to a rep or round-robin', welcome:'Send an email from a template', sms:'Text the contact from a workspace number',
+  task:'Create a follow-up task for a rep', proposal:'Send a proposal email from a template', slack:'Post a message to a Slack channel',
+  reminder:'Set a personal reminder for a rep', scheduleMeeting:'Auto-schedule a meeting', reengage:'Send a re-engagement email',
+  flag:'Flag the record for manual review', celebrate:'Post a team celebration to Slack', report:'Generate and send a report',
+  updateField:'Change a field value on the record', addTag:'Add a tag to the record', removeTag:'Remove a tag from the record',
+  webhook:'Call an external URL (POST / GET)', createLead:'Create or update a lead', convertLead:'Convert the lead to a contact',
+  createCompany:'Create a company record', createDeal:'Open a new deal', enrollSms:'Enroll in an SMS sequence',
+  enrollEmail:'Enroll in an email sequence', enrollSmartList:'Add to a smart list', removeSmartList:'Remove from a smart list',
+  sendPush:'Send a push notification', sendInApp:'Send an in-app message',
+  condition:'Branch Yes / No on a field test', branch:'Split records into named paths', mapFields:'Map incoming webhook fields',
+  wait:'Pause the flow for a set delay', waitUntil:'Hold until a condition becomes true', goal:'Exit early once a goal is met',
+};
 // Condition fields the rule engine (evalRule) can evaluate — reused from Smart Views
 const AUTO_COND_FIELDS=['Status','Owner','Tag','Health score','Has open deal','Deal value','Last contacted','Lead status','Lead source','Lead score','Company type','Company industry'];
 // Lead/Company condition config (kept separate so the contact Smart-Views builder is untouched). evalRule returns true for these in the mock test trace.
@@ -13153,13 +13168,15 @@ function FlowInserter({onInsert,variant,compact}){
   const [open,setOpen]=React.useState(false);
   const ref=React.useRef(null);
   React.useEffect(()=>{const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const row=(s)=>(<button key={s.key} onClick={()=>{onInsert(makeNode(s));setOpen(false);}} className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.06] text-left transition-colors"><span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{background:s.bg,color:s.fg}}><s.Icon size={12}/></span><span className="text-[12px] text-white/75">{s.label}</span></button>);
-  const pop=(<div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[60] w-[252px] max-h-[330px] overflow-y-auto scroll-area rounded-xl border border-white/[0.10] pb-2" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-    <p className="px-3 pt-2 pb-1 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">Actions</p>
-    {Object.values(STEP_PRESETS_A).map(row)}
+  const row=(s)=>(<button key={s.key} onClick={()=>{onInsert(makeNode(s));setOpen(false);}} className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-white/[0.07] text-left transition-colors"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{background:s.bg,color:s.fg}}><s.Icon size={15}/></span><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-white leading-tight">{s.label}</span><span className="block text-[11px] text-white/45 leading-snug mt-0.5">{NODE_DESCS[s.key]||''}</span></span></button>);
+  const grp=(title,arr)=>arr.length?(<React.Fragment key={title}><p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold text-white/55 uppercase tracking-[0.14em]">{title}</p>{arr.map(row)}</React.Fragment>):null;
+  const _logic=Object.values(LOGIC_PRESETS_A).filter(x=>['condition','branch','mapFields'].indexOf(x.kind)>=0);
+  const _timing=Object.values(LOGIC_PRESETS_A).filter(x=>['wait','waitUntil','goal'].indexOf(x.kind)>=0);
+  const pop=(<div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[60] w-[320px] max-h-[440px] overflow-y-auto scroll-area rounded-xl border border-white/[0.14] pb-2" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 20px 56px rgba(0,0,0,0.65)'}}>
+    {grp('Actions',Object.values(STEP_PRESETS_A))}
     <div className="mx-3 my-1 border-t border-white/[0.07]"/>
-    <p className="px-3 pt-2 pb-1 text-[10px] font-medium text-white/35 uppercase tracking-[0.14em]">Logic & flow</p>
-    {Object.values(LOGIC_PRESETS_A).map(row)}
+    {grp('Logic & flow',_logic)}
+    {grp('Timing',_timing)}
   </div>);
   if(variant==='first'){
     return(<div ref={ref} className="relative flex items-center justify-center py-1">
@@ -13168,9 +13185,9 @@ function FlowInserter({onInsert,variant,compact}){
     </div>);
   }
   return(<div ref={ref} className="relative flex flex-col items-center group/ins">
-    <span className="w-[2px] bg-white/[0.10]" style={{height:compact?8:12}}/>
-    <button onClick={()=>setOpen(o=>!o)} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all w-6 h-6',open?'text-white bg-brand-500 border border-brand-500':'text-white/50 border border-white/[0.12] hover:text-white hover:border-brand-500/40'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s800)'}}><I.Plus size={13} stroke={2.6}/></button>
-    <span className="w-[2px] bg-white/[0.10]" style={{height:compact?8:12}}/>
+    <span className="w-[2px] bg-white/[0.16]" style={{height:compact?8:12}}/>
+    <button onClick={()=>setOpen(o=>!o)} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all w-6 h-6',open?'text-white bg-brand-500 border border-brand-500':'text-white/70 border border-white/[0.20] hover:text-white hover:border-brand-500/50'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s800)'}}><I.Plus size={13} stroke={2.6}/></button>
+    <span className="w-[2px] bg-white/[0.16]" style={{height:compact?8:12}}/>
     {open&&pop}
   </div>);
 }
@@ -13191,20 +13208,20 @@ const TILE_W=248;
 function NodeTile({accent,Icon,title,summary,eyebrow,selected,onClick,onDelete,onDuplicate,noTopPort,noBottomPort,badge}){
   accent=accent||'#818cf8';
   Icon=Icon||I.AlertTriangle;
-  const port='absolute left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full border-2';
+  const port='absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2';
   return(
     <div className="relative flex flex-col items-center shrink-0" style={{width:TILE_W}}>
       {eyebrow&&<p className="text-[8px] font-medium uppercase tracking-[0.16em] text-brand-300 mb-1">{eyebrow}</p>}
-      <div onClick={onClick} className={['group relative w-full cursor-pointer rounded-2xl border bg-[var(--s850)] flex flex-row items-center text-left gap-3 pl-4 pr-4 py-3 transition-all',selected?'border-brand-500/50 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-white/[0.08] hover:ring-1 hover:ring-white/[0.12] hover:-translate-y-px'].join(' ')} style={{minHeight:68,boxShadow:selected?undefined:'0 2px 10px rgba(0,0,0,0.28)'}}>
+      <div onClick={onClick} className={['group relative w-full cursor-pointer rounded-2xl border bg-[var(--s800)] flex flex-row items-center text-left gap-3 pl-4 pr-4 py-3 transition-all',selected?'border-brand-500/60 ring-1 ring-brand-500/50 shadow-[0_0_16px_rgba(99,102,241,0.25)]':'border-white/[0.14] ring-1 ring-white/[0.04] hover:border-white/[0.24] hover:ring-white/[0.10] hover:-translate-y-px'].join(' ')} style={{minHeight:68,boxShadow:selected?undefined:'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 14px rgba(0,0,0,0.55)'}}>
         <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full" style={{background:accent}}/>
-        {!noTopPort&&<span className={port+' -top-[5px]'} style={{background:accent,borderColor:'var(--s950)'}}/>}
+        {!noTopPort&&<span className={port+' -top-[5px]'} style={{background:accent,borderColor:'var(--s800)'}}/>}
         <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{background:accent+'24',color:accent}}><Icon size={18}/></span>
         <div className="min-w-0 flex-1">
           <p className="text-[12.5px] font-semibold text-white leading-tight truncate">{title}</p>
           {summary&&<p className="text-[10.5px] text-white/50 leading-snug truncate mt-0.5">{summary}</p>}
           {badge}
         </div>
-        {!noBottomPort&&<span className={port+' -bottom-[5px]'} style={{background:accent,borderColor:'var(--s950)'}}/>}
+        {!noBottomPort&&<span className={port+' -bottom-[5px]'} style={{background:accent,borderColor:'var(--s800)'}}/>}
         {(onDelete||onDuplicate)&&<div className="absolute -top-2 -right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onDuplicate&&<button onClick={e=>{e.stopPropagation();onDuplicate();}} title="Duplicate" className="w-5 h-5 rounded-full bg-[var(--s800)] border border-white/[0.12] text-white/40 hover:text-brand-300 hover:border-brand-500/40 flex items-center justify-center transition-colors"><I.Copy size={10}/></button>}
           {onDelete&&<button onClick={e=>{e.stopPropagation();onDelete();}} title="Remove" className="w-5 h-5 rounded-full bg-[var(--s800)] border border-white/[0.12] text-white/40 hover:text-red-400 hover:border-red-500/40 flex items-center justify-center transition-colors"><I.X size={10}/></button>}
@@ -13220,26 +13237,26 @@ function BranchSplit({lanes,goTo,flowName,onAddPath,canAddPath}){
   const barW=Math.max(0,(lanes.length-1)*PITCH);
   return(
     <div className="flex flex-col items-center">
-      <span className="w-[2px] bg-white/[0.10]" style={{height:14}}/>
-      {lanes.length>1&&<div className="bg-white/[0.10] rounded-full" style={{height:2,width:barW}}/>}
+      <span className="w-[2px] bg-white/[0.16]" style={{height:14}}/>
+      {lanes.length>1&&<div className="bg-white/[0.16] rounded-full" style={{height:2,width:barW}}/>}
       <div className="flex flex-row items-stretch" style={{gap:48}}>
         {lanes.map(l=>(
           <div key={l.key} className="flex flex-col items-center self-stretch" style={{width:TILE_W}}>
-            <span className="w-[2px] bg-white/[0.10]" style={{height:12}}/>
+            <span className="w-[2px] bg-white/[0.16]" style={{height:12}}/>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-[0.1em] mb-1 max-w-full" style={{background:l.color+'24',color:l.color}}>
               {l.onLabelChange?<input value={l.label} onChange={e=>l.onLabelChange(e.target.value)} className="bg-transparent outline-none w-[54px]" style={{color:l.color}}/>:<span className="truncate">{l.label}</span>}
               {l.onRemove&&<button onClick={l.onRemove} title="Remove path" className="text-white/40 hover:text-red-400 shrink-0"><I.X size={9}/></button>}
             </span>
             <FlowList nodes={l.nodes} onChange={l.onChange} goTo={goTo} compact flowName={flowName}/>
             {/* filler connector — grows so every lane reaches the merge bar at the same y */}
-            <span className="w-[2px] flex-1 bg-white/[0.10]" style={{minHeight:12}}/>
+            <span className="w-[2px] flex-1 bg-white/[0.16]" style={{minHeight:12}}/>
           </div>
         ))}
       </div>
       {/* merge: lanes rejoin into a single dot, then the main flow continues from here */}
-      {lanes.length>1&&<div className="bg-white/[0.10] rounded-full" style={{height:2,width:barW}}/>}
-      <span className="w-[2px] bg-white/[0.10]" style={{height:10}}/>
-      <span className="w-3 h-3 rounded-full bg-[var(--s800)] border-2 border-white/[0.18]" title="Paths merge here"/>
+      {lanes.length>1&&<div className="bg-white/[0.16] rounded-full" style={{height:2,width:barW}}/>}
+      <span className="w-[2px] bg-white/[0.16]" style={{height:10}}/>
+      <span className="w-3 h-3 rounded-full bg-[var(--s800)] border-2 border-white/[0.22]" title="Paths merge here"/>
       {canAddPath&&<button onClick={onAddPath} className="mt-2 text-[11px] text-brand-300 hover:text-brand-200 inline-flex items-center gap-1"><I.Plus size={11}/>Add path</button>}
     </div>
   );
@@ -13314,6 +13331,7 @@ function EmailNodeTemplatePicker({node,onChange}){
 }
 function ActionConfig({node,onChange,goTo}){
   const k=node.key;
+  const {conns}=React.useContext(IntegrationsContext); // integration-dependent actions (Slack) show real connect status
   if(k==='assign')return(<ActionField label="Assign to" hint="Round-robin spreads leads evenly across the team."><ASel value={node.assignTo} opts={REP_OPTS} onChange={v=>onChange({assignTo:v})}/></ActionField>);
   if(k==='welcome'||k==='reengage'||k==='proposal')return(<React.Fragment>
     <EmailNodeTemplatePicker node={node} onChange={onChange}/>
@@ -13332,10 +13350,13 @@ function ActionConfig({node,onChange,goTo}){
     <div className="grid grid-cols-2 gap-2"><ActionField label="Meeting type"><ASel value={node.meetingType} opts={MEETING_TYPES} onChange={v=>onChange({meetingType:v})}/></ActionField><ActionField label="With"><ASel value={node.withWhom} opts={REP_OPTS} onChange={v=>onChange({withWhom:v})}/></ActionField></div>
     <div className="grid grid-cols-2 gap-2"><ActionField label="When"><ASel value={node.when} opts={MEETING_WHEN} onChange={v=>onChange({when:v})}/></ActionField><ActionField label="Duration"><ASel value={node.duration} opts={MEETING_DUR} onChange={v=>onChange({duration:v})}/></ActionField></div>
   </React.Fragment>);
-  if(k==='slack'||k==='celebrate')return(<React.Fragment>
+  if(k==='slack'||k==='celebrate'){const slackOn=!!(conns&&conns.slack);return(<React.Fragment>
+    {slackOn
+      ? <div className="flex items-center gap-1.5 text-[11px] text-emerald-300/85 mb-1"><I.Check size={11} stroke={2.6}/>Connected to your Slack workspace</div>
+      : <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-2.5 py-2 mb-1 flex items-start gap-1.5 text-[11px] text-amber-200"><I.AlertTriangle size={11} className="shrink-0 mt-px"/><span>Slack isn't connected — this step is skipped until you <button onClick={()=>goTo&&goTo('settings-integrations')} className="underline font-medium text-amber-100 hover:text-white">connect Slack</button>.</span></div>}
     <ActionField label="Post to channel"><ASel value={node.channel} opts={SLACK_CHANNELS} onChange={v=>onChange({channel:v})}/></ActionField>
     <ActionField label="Message" hint="Placeholders: {{contact}}, {{deal}}, {{owner}}."><ATxt value={node.message} onChange={v=>onChange({message:v})} ph="Message text"/></ActionField>
-  </React.Fragment>);
+  </React.Fragment>);}
   if(k==='reminder')return(<React.Fragment>
     <div className="grid grid-cols-2 gap-2"><ActionField label="Remind"><ASel value={node.assignTo} opts={REP_OPTS} onChange={v=>onChange({assignTo:v})}/></ActionField><ActionField label="In"><ASel value={node.due} opts={DUR_OPTS} onChange={v=>onChange({due:v})}/></ActionField></div>
     <ActionField label="Note"><ATxt value={node.note} onChange={v=>onChange({note:v})} ph="Reminder note"/></ActionField>
@@ -13553,7 +13574,12 @@ function TriggerPicker({current,onPick,close}){
 function simulateFlow(nodes,c,out,depth){
   depth=depth||0;
   for(const n of (nodes||[])){
-    if(n.kind==='action'){out.push({label:n.label,detail:actionSummary(n)||'completed',status:'ok',Icon:n.Icon,depth});}
+    if(n.kind==='action'){
+      // Integration-dependent steps show honestly in the trace: a Slack step is SKIPPED when Slack isn't connected
+      // (was always a green "notified", which is what made it look like it sends regardless).
+      const _slackOff=(n.key==='slack'||n.key==='celebrate')&&!(typeof _liveConns!=='undefined'&&_liveConns&&_liveConns.slack);
+      out.push({label:n.label,detail:_slackOff?'skipped — Slack not connected':(actionSummary(n)||'completed'),status:_slackOff?'skip':'ok',Icon:n.Icon,depth});
+    }
     else if(n.kind==='wait'){out.push({label:'Wait '+delayText(nodeDelay(n)),detail:'flow paused here (simulated)',status:'wait',Icon:I.Clock,depth});}
     else if(n.kind==='waitUntil'){const met=evalRule(c,n);out.push({label:'Wait until '+n.field+' '+n.op+' '+n.value,detail:met?'already true — continue immediately':'would wait up to '+delayText(nodeTimeout(n)),status:met?'ok':'wait',Icon:I.Clock,depth});}
     else if(n.kind==='goal'){const met=evalRule(c,n);out.push({label:'Goal: '+n.field+' '+n.op+' '+n.value,detail:met?'goal met — exit automation':'not met — keep going',status:met?'exit':'skip',Icon:I.Target,depth});if(met)return true;}
@@ -13655,7 +13681,7 @@ function AutomationBuilderPage({goTo,nav}){
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-5xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 items-start">
-              <div className="overflow-x-auto scroll-area pb-2">
+              <div className="overflow-x-auto scroll-area rounded-2xl border border-white/[0.06] p-6" style={{backgroundColor:'var(--s925)',backgroundImage:'radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px)',backgroundSize:'22px 22px'}}>
                 <div className="flex flex-col items-center w-fit min-w-full mx-auto">
                   <NodeTile eyebrow="Trigger" accent="#818cf8" Icon={tm.Icon} title={trigger} summary={'Fires when '+tm.hint} selected={triggerOpen} onClick={()=>setTriggerOpen(true)} noTopPort/>
                   <FlowCfgProvider ent={({Contact:'contact',Lead:'lead',Company:'company',Deal:'deal'})[(tm&&tm.cat)]||'deal'}><FlowList nodes={nodes} onChange={setFlow} goTo={goTo} flowName={name}/></FlowCfgProvider>
@@ -19441,7 +19467,7 @@ function autoRunNodes(nodes,record,ctx,out,top){
     if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else if(n.setField==='Lead score'){const cur=record.score||0;const sv=String(n.setValue||'');const nv=/reset/i.test(sv)?0:Math.max(0,Math.min(100,cur+(parseInt(sv.replace(/[^0-9-]/g,''),10)||0)));_patch(()=>({score:nv}));record.score=nv;/* keep the running score so a 2nd score action in the same flow accumulates + the crossing fires once */if(ctx.ent==='lead'&&cur<SCORE_HOT&&nv>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{...record,score:nv},['Lead score reached']);}catch(e){}},0);out.effects.push('✎ Lead score '+(/reset/i.test(sv)?'reset → 0':(sv+' → '+nv)));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
     if(k==='welcome'||k==='proposal'||k==='reengage'){const _tc=(_cid!=null)?(_liveContacts||[]).find(c=>c&&c.id===_cid):null;if((record&&record.dnc)||(_tc&&(_tc.dnc||contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')))){out.effects.push('✉ Email skipped — suppressed'+(_tc?(' ('+(_tc.name||'contact')+')'):''));continue;}out.effects.push('✉ Email sent · '+(n.template||'template'));continue;} /* honors the unified suppression store — the Suppression page promises "auto-skipped in every sequence & automation" */
     if(k==='sms'){const _g=canSendSms(record);if(!_g.ok){out.effects.push('💬 SMS skipped — '+_g.reason);continue;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('sms',1,'Automation SMS'+(n.template?(' · '+n.template):''));out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;} /* A2P gate: unregistered/DNC sends are skipped with the reason, like a real carrier block; approved sends meter usage onto the monthly invoice */
-    if(k==='slack'||k==='celebrate'){out.effects.push('🔔 '+(n.channel||'#sales')+' notified');continue;}
+    if(k==='slack'||k==='celebrate'){const _slk=(typeof _liveConns!=='undefined'&&_liveConns&&_liveConns.slack);out.effects.push('🔔 '+(n.channel||'#sales')+(_slk?' notified':' skipped — Slack not connected'));continue;}
     if(k==='enrollEmail'||k==='enrollSms'){if(_cid!=null){const _tc=(_liveContacts||[]).find(c=>c&&c.id===_cid);if(_tc){const _blk=_tc.dnc||(k==='enrollEmail'?(contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')):(supPhoneBlocked(_tc.phone,'sms')||supChannelOff(_tc.id,'sms')));if(_blk){out.effects.push('➜ Enrollment skipped — '+(_tc.name||'contact')+(_tc.dnc?' is Do Not Contact':' is suppressed on this channel'));continue;}}} /* makes the builder's "suppressed contacts are skipped" claim real — channel-aware for both email & SMS enrollment */ if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===(n.seq||k))?a:[{seqId:(n.seq||k),contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);out.effects.push('➜ Enrolled in '+(n.seq||'sequence'));continue;}
     if(k==='sendPush'){out.effects.push('📲 Push sent');continue;}
     if(k==='sendInApp'){out.effects.push('📲 In-app sent');continue;}
@@ -24943,6 +24969,7 @@ function App(){
   const [propData,setPropData]=React.useState(propSeed);
   const propsCtx=React.useMemo(()=>({props:propData,setProps:setPropData}),[propData]);
   const [conns,setConns]=React.useState({stripe:true});
+  _liveConns=conns; // mirror for the non-React automation runtime (autoRunNodes) so Slack steps skip when disconnected
   const integCtx=React.useMemo(()=>({conns,connect:(k)=>setConns(c=>({...c,[k]:true})),disconnect:(k)=>setConns(c=>({...c,[k]:false}))}),[conns]);
   const [deals,setDeals]=React.useState(()=>_seed.deals);
   _liveDeals=deals; // keep the module-level pointer in sync so allDeals()/dealsForCompany() read live data
