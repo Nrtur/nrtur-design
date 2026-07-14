@@ -21247,29 +21247,35 @@ function schedRrDistLabel(k){const f=SCHED_RR_DIST.find(d=>d[0]===k);return f?f[
 function schedMember(av){return TEAM_MEMBERS.find(t=>t.avatar===av)||TEAM_MEMBERS[0];}
 function schedHostNames(hosts){return (hosts||[]).map(av=>schedMember(av).name);}
 function schedHostsLabel(hosts){const ns=schedHostNames(hosts);if(ns.length===0)return '—';if(ns.length===1)return ns[0];if(ns.length===2)return ns[0]+' & '+ns[1];return ns.slice(0,-1).join(', ')+' & '+ns[ns.length-1];}
-// Mock: which team members have personally connected a calendar. Conflict-checking a host needs
-// their own calendar connected, so the editor warns when a chosen host hasn't connected one.
+const SCHED_OWNER='AM'; // the current user / public-page owner avatar
+// Which team members have a calendar connected. For the OWNER this is overridden at booking time by the live
+// personalConns flag (they actually connect it in Settings › My calendar); teammates use this seed until real
+// per-user calendar sync exists. Conflict-checking a host needs their own calendar connected, so the editor
+// warns when a chosen host hasn't connected one.
 const SCHED_HOST_CALENDARS={AM:true,SC:true,JK:true,RL:false,MR:false};
 function schedHostConnected(av){return SCHED_HOST_CALENDARS[av]!==false;}
 function schedHostsUnconnected(hosts){return (hosts||[]).filter(av=>!schedHostConnected(av));}
-// Deterministic per-host "busy" simulation, layered on the ONE real availability window so we can
-// demo round-robin distribution + collective intersection without a second availability store.
-function schedHostFreeAt(avatar,date,slot){
-  if(avatar==='AM')return true; // the page owner — their real availability IS the base store
-  const mins=schedParseTime(slot);const h=(avatar.charCodeAt(0)*7+(avatar.charCodeAt(1)||0)*13+date.getDate()*3+mins)%10;
-  return h>=3; // ~30% of a host's own slots read as busy on their connected calendar
+// A host is free at a slot only when it collides with NOTHING they're already committed to: their real nrtur
+// bookings (always known) and — if their calendar is connected — their external calendar's busy events, each
+// widened by the event's buffers. ctx={dur,meetings,connectedFn,bufBefore,bufAfter}. This is the calendar-first
+// availability the booking page runs on; it replaces the old deterministic "~30% busy" hash mock.
+function schedHostFreeAt(av,date,slot,ctx){
+  ctx=ctx||{};
+  const connected=ctx.connectedFn?ctx.connectedFn(av):schedHostConnected(av);
+  const busy=schedBusyIntervals(av,date,ctx.meetings,connected);
+  return schedSlotFits(schedParseTime(slot),ctx.dur||30,busy,ctx.bufBefore,ctx.bufAfter);
 }
 // Round-robin: choose the host for a slot per the distribution method.
 //  availability -> first host free at that slot · priority -> hosts in listed order, first free
 //  equal -> rotate by slot index so per-day counts stay within ~1 (well inside the ~3 rule)
-function schedRrAssign(hosts,date,slot,method,slotIndex){
+function schedRrAssign(hosts,date,slot,method,slotIndex,ctx){
   const pool=(hosts&&hosts.length?hosts:['AM']);
-  if(method==='equal'){const start=((slotIndex||0)%pool.length);for(let i=0;i<pool.length;i++){const av=pool[(start+i)%pool.length];if(schedHostFreeAt(av,date,slot))return av;}return pool[start];}
-  for(const av of pool){if(schedHostFreeAt(av,date,slot))return av;}
+  if(method==='equal'){const start=((slotIndex||0)%pool.length);for(let i=0;i<pool.length;i++){const av=pool[(start+i)%pool.length];if(schedHostFreeAt(av,date,slot,ctx))return av;}return pool[start];}
+  for(const av of pool){if(schedHostFreeAt(av,date,slot,ctx))return av;}
   return pool[0];
 }
 // Collective: a slot is bookable only when EVERY required host is free (the intersection).
-function schedCollectiveFree(hosts,date,slot){return (hosts&&hosts.length?hosts:['AM']).every(av=>schedHostFreeAt(av,date,slot));}
+function schedCollectiveFree(hosts,date,slot,ctx){return (hosts&&hosts.length?hosts:['AM']).every(av=>schedHostFreeAt(av,date,slot,ctx));}
 // Class: deterministic seats already taken for a slot, so "X of N left" reads consistently.
 function schedSeatsTaken(date,slot,cap){const mins=schedParseTime(slot);return Math.min(cap,(date.getDate()*17+mins)%(cap+1));}
 const SCHED_DEFAULT_EVENT_TYPES=[
@@ -21291,6 +21297,36 @@ function schedSlug(s){return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,
 function schedParseTime(t){const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)/i);if(!m)return 0;let h=(+m[1])%12;if(/pm/i.test(m[3]))h+=12;return h*60+(+m[2]);}
 function schedFmtTime(mins){let h=Math.floor(mins/60);const m=mins%60;const ap=h<12?'AM':'PM';let hr=h%12;if(hr===0)hr=12;return hr+':'+String(m).padStart(2,'0')+' '+ap;}
 function schedDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// ── Connected-calendar free/busy (the calendar-first booking model) ──────────────────────────────────────────
+// PROTOTYPE STAND-IN for the real Google/Outlook free/busy API: seeded external "busy" events per host, tagged
+// with the calendar they came from — the owner AM deliberately has blocks on TWO different calendars (Work · Google
+// and Personal · iCloud) to show the multi-calendar READ set every scheduling tool uses (Calendly/Cal.com/Zoho: many
+// calendars scanned for conflicts). Engineers replace schedSeedHostBusy with a live free/busy fetch keyed by the
+// rep's connected calendar accounts. Real in-app bookings are folded in separately (they're always known).
+function schedSeedHostBusy(){
+  const n=new Date();const k=(off)=>schedDateKey(new Date(n.getFullYear(),n.getMonth(),n.getDate()+off));
+  return {
+    AM:[{cal:'Work · Google',date:k(1),from:'2:00 PM',to:'3:00 PM',title:'Team standup'},{cal:'Personal · iCloud',date:k(2),from:'11:00 AM',to:'12:00 PM',title:'Dentist'},{cal:'Work · Google',date:k(3),from:'3:00 PM',to:'4:30 PM',title:'Roadmap review'}],
+    SC:[{cal:'Work',date:k(1),from:'9:00 AM',to:'10:30 AM',title:'Busy'},{cal:'Work',date:k(2),from:'1:00 PM',to:'2:00 PM',title:'Busy'}],
+    JK:[{cal:'Work',date:k(1),from:'3:00 PM',to:'5:00 PM',title:'Busy'},{cal:'Work',date:k(3),from:'9:00 AM',to:'11:00 AM',title:'Busy'}],
+    RL:[],MR:[],
+  };
+}
+const SCHED_HOST_BUSY=schedSeedHostBusy();
+// Busy intervals (minutes-from-midnight) for a host on a date: external connected-calendar events (only when the
+// host's calendar is connected) + every non-cancelled nrtur booking assigned to that host. Bookings ALWAYS count —
+// nrtur owns them — so double-booking is prevented even before a calendar is connected.
+function schedBusyIntervals(av,date,meetings,includeExternal){
+  const key=schedDateKey(date);const out=[];
+  if(includeExternal)(SCHED_HOST_BUSY[av]||[]).forEach(b=>{if(b.date===key){const s=schedParseTime(b.from),e=schedParseTime(b.to);if(e>s)out.push({s,e});}});
+  (meetings||[]).forEach(m=>{const md=m.date instanceof Date?m.date:new Date(m.date);if(m&&m.status!=='cancelled'&&m.rep===av&&schedDateKey(md)===key){const st=md.getHours()*60+md.getMinutes();out.push({s:st,e:st+(m.duration||30)});}});
+  return out;
+}
+// Does a [start, start+dur] slot (widened by before/after buffers) avoid every busy interval? (half-open overlap test)
+function schedSlotFits(startMin,dur,busy,before,after){const s=startMin-(before||0),e=startMin+dur+(after||0);return !(busy||[]).some(b=>s<b.e&&e>b.s);}
+// Parse a buffer label ("None","15 min") → minutes; a daily-cap label ("No limit","4 meetings") → a number/Infinity.
+function schedBufferMin(str){if(!str||/none/i.test(str))return 0;const m=String(str).match(/(\d+)/);return m?(+m[1]):0;}
+function schedCapLimit(str){if(!str||/no limit/i.test(str))return Infinity;const m=String(str).match(/(\d+)/);return m?(+m[1]):Infinity;}
 function schedSlotsFor(avail,date,duration){
   const dayName=SCHED_DAYS[(date.getDay()+6)%7];
   const ov=avail.overrides.find(o=>o.date===schedDateKey(date));
@@ -21663,7 +21699,7 @@ function SchedAvailabilityTab({avail,setAvail,addToast,automation,setAutomation}
   </div>);
 }
 
-function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,crm,addMeeting,goTo}){
+function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,crm,addMeeting,meetings,goTo}){
   const [slug,setSlug]=React.useState(initialSlug||(eventTypes[0]&&eventTypes[0].slug));
   const et=eventTypes.find(e=>e.slug===slug)||eventTypes[0];
   const [bookResult,setBookResult]=React.useState(null);
@@ -21692,18 +21728,30 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   const firstDow=new Date(month.getFullYear(),month.getMonth(),1).getDay();
   const cells=[];for(let i=0;i<firstDow;i++)cells.push(null);for(let dn=1;dn<=daysInMonth;dn++)cells.push(new Date(month.getFullYear(),month.getMonth(),dn));
   const baseSlots=date?schedSlotsFor(avail,date,et.duration):[];
-  // Types layer on top of the base availability without a second store:
-  //  collective -> intersection of all hosts · round-robin (booker-choice) -> chosen host's free slots
+  // Is the OWNER's own calendar connected? Read the live personalConns flag (the real connect state, not a seed) so
+  // connecting/disconnecting in Settings › My calendar actually changes what the booking page offers.
+  const ownerConnected=(()=>{const pc=(crm&&crm.personalConns)||{};return !!(pc['google-calendar']||pc['outlook-calendar']||pc['apple-calendar']);})();
+  const connectedFn=(av)=>av===SCHED_OWNER?ownerConnected:schedHostConnected(av);
+  // Context threaded into the free/busy math: each host's real bookings + (if connected) their calendar's busy,
+  // widened by the larger of the event's and the workspace's buffers.
+  const bookCtx={dur:(et&&et.duration)||30,meetings,connectedFn,bufBefore:Math.max(schedBufferMin(et&&et.bufferBefore),schedBufferMin(avail&&avail.buffer)),bufAfter:Math.max(schedBufferMin(et&&et.bufferAfter),schedBufferMin(avail&&avail.buffer))};
+  // Availability is now calendar-first: a slot survives only if the acting host is actually free then — no double-
+  // booking against real meetings, no collision with their connected calendar, buffers respected — then capped per day.
+  //  collective -> intersection of all hosts · round-robin -> union (any host free) · individual/class -> the owner host.
   const slots=(()=>{if(!date)return [];
     let base=baseSlots;
-    if(calType==='collective')base=baseSlots.filter(s=>schedCollectiveFree(etHosts,date,s));
-    else if(calType==='roundrobin'&&et.letBookerChoose&&chosenHost)base=baseSlots.filter(s=>schedHostFreeAt(chosenHost,date,s));
+    if(calType==='collective')base=base.filter(s=>schedCollectiveFree(etHosts,date,s,bookCtx));
+    else if(calType==='roundrobin')base=base.filter(s=>(et.letBookerChoose&&chosenHost)?schedHostFreeAt(chosenHost,date,s,bookCtx):etHosts.some(av=>schedHostFreeAt(av,date,s,bookCtx)));
+    else base=base.filter(s=>schedHostFreeAt(etHosts[0]||SCHED_OWNER,date,s,bookCtx));
+    // Per-day cap: for single-host types, close the whole day once the anchor host reaches the configured cap.
+    const _cap=schedCapLimit(avail&&avail.dailyCap);
+    if(_cap!==Infinity&&calType!=='roundrobin'){const _anchor=etHosts[0]||SCHED_OWNER;const _dk=schedDateKey(date);const _dayCount=(meetings||[]).filter(m=>m&&m.status!=='cancelled'&&m.rep===_anchor&&schedDateKey(m.date instanceof Date?m.date:new Date(m.date))===_dk).length;if(_dayCount>=_cap)base=[];}
     // Enforce minimum notice: drop any slot sooner than now + the event's notice window (this also removes times that
-    // have already passed on "today" — the grid used to offer a slot 30 minutes from now). Booking rules honored, not decorative.
+    // have already passed on "today"). Booking rules honored, not decorative.
     const _noticeMs=schedNoticeMs((et&&et.minNotice)||(avail&&avail.minNotice));const _cutoff=Date.now()+_noticeMs;
     const _slotMs=(s)=>{const dt=new Date(date.getFullYear(),date.getMonth(),date.getDate(),0,0,0,0);dt.setMinutes(schedParseTime(s));return dt.getTime();};
     return base.filter(s=>_slotMs(s)>=_cutoff);})();
-  const rrAssignFor=(s)=>(et.letBookerChoose&&chosenHost)?chosenHost:schedRrAssign(etHosts,date,s,et.distribution,baseSlots.indexOf(s));
+  const rrAssignFor=(s)=>(et.letBookerChoose&&chosenHost)?chosenHost:schedRrAssign(etHosts,date,s,et.distribution,baseSlots.indexOf(s),bookCtx);
   const goMonth=(dir)=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()+dir,1));
   const copy=()=>{try{navigator.clipboard&&navigator.clipboard.writeText('https://nrtur.app/book/alex/'+(et?et.slug:''));}catch(e){}addToast('Link copied ✓');};
   const dateLabel=date?(CAL_DAYS[date.getDay()]+', '+CAL_MONTHS[date.getMonth()]+' '+date.getDate()):'';
@@ -21792,6 +21840,9 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
         <span className="text-[10px] font-medium text-white/35 uppercase tracking-[0.14em] mr-1.5">Previewing</span>
         {eventTypes.map(e=>(<button key={e.id} onClick={()=>setSlug(e.slug)} className={['inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium ring-1 transition-all',e.slug===slug?'bg-brand-500/12 text-white ring-brand-500/30':'text-white/50 ring-white/[0.08] hover:text-white hover:bg-white/[0.04]'].join(' ')}><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:e.color}}/>{e.name}</button>))}
       </div>)}
+      {/* Admin-only hint (outside the public frame): when the owner's calendar isn't connected we can only block
+          nrtur's own bookings, never their external events — nudge them to connect, per the connected-calendar model. */}
+      {!ownerConnected&&(<div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3.5 py-2.5 flex items-start gap-2 text-[12px] text-amber-200"><I.Calendar size={13} className="shrink-0 mt-0.5"/><span>Your calendar isn't connected, so only nrtur bookings block times here — your external events won't. <button onClick={()=>goTo('settings-calendar-personal')} className="font-medium underline hover:text-white">Connect your calendar</button> to auto-block real conflicts.</span></div>)}
       {/* ── Browser window: exactly how an invitee sees your public booking page ── */}
       <div className="rounded-2xl border border-white/[0.10] overflow-hidden shadow-2xl" style={{background:'var(--s900)'}}>
         {/* browser chrome + address bar */}
@@ -22168,7 +22219,7 @@ function CalendarPage({goTo,nav}){
         {schedTab==='bookings'&&(bookingPreview!==null
           ?(<div className="flex-1 flex flex-col min-h-0">
               <div className="shrink-0 px-6 py-2.5 border-b border-white/[0.05] flex items-center gap-3" style={{background:'var(--s925)'}}><button onClick={()=>setBookingPreview(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ChevronLeft size={14}/>Back to Bookings</button><span className="text-[12.5px] text-white/45">Public booking page preview</span></div>
-              <SchedBookingPageTab eventTypes={sched.eventTypes} avail={sched.availability} initialSlug={bookingPreview} addToast={addToast} automation={sched.automation} crm={crm} addMeeting={sched.addMeeting} goTo={goTo}/>
+              <SchedBookingPageTab eventTypes={sched.eventTypes} avail={sched.availability} initialSlug={bookingPreview} addToast={addToast} automation={sched.automation} crm={crm} addMeeting={sched.addMeeting} meetings={sched.meetings} goTo={goTo}/>
             </div>)
           :(<div className="flex-1 flex flex-col min-h-0">
               <SchedBookingsTab eventTypes={sched.eventTypes} avail={sched.availability} setAvail={sched.setAvailability} addToast={addToast} goTo={goTo} onNew={()=>setEtDrawer('new')} onEdit={(et)=>setEtDrawer(et)} onPreview={(et)=>setBookingPreview(et?et.slug:((sched.eventTypes[0]&&sched.eventTypes[0].slug)||''))} onGotoAvailability={()=>setSchedTab('eventtypes')}/>
@@ -24819,7 +24870,7 @@ function App(){
   const [members,setMembers]=React.useState(()=>TEAM_MEMBERS_SEED.map(m=>({...m}))); // workspace members — SHARED so Settings › Team and the invite-accept page agree (accepting an invite adds here)
   const [suppression,setSuppression]=React.useState(SUPPRESSION_SEED); // unified suppression store (emails/domains/phones/channels/compliance) — single source of truth read by the UI, the contact record, and the send paths
   _liveSuppression=suppression; // mirror for the non-React send paths (contactEmailSuppressed / stageBulkAudience)
-  const [personalConns,setPersonalConns]=React.useState({}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree
+  const [personalConns,setPersonalConns]=React.useState({'google-calendar':true}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree. Demo: the owner (Alex) has connected their Google calendar, so the booking page shows calendar-first conflict-blocking out of the box.
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
   const [seqEnrollments,setSeqEnrollments]=React.useState([]); // stage-bulk: REAL sequence membership — {seqId,contactId,dealId,stage,at,by}; dedupe + timeline read this
