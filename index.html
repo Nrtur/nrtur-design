@@ -6394,7 +6394,6 @@ const DUP_FIELDS={
 const dupObjIcon=(object)=>object==='company'?I.Building:object==='lead'?I.Target:I.Users;
 const dupCompanyOf=(object,r)=>object==='company'?(r.domain||r.website||''):object==='lead'?(r.company||''):(r.co||'');
 const dupCreatedOf=(r)=>r.createdAt||r.created||'-';
-function dupActivities(r){const n=Math.abs(parseInt(r.id,10)||1);return 2+(n*13)%8;}
 // Detects duplicate groups within a record array. Returns [{id,confidence,matchedOn,records}].
 function detectDuplicates(object,records){
   const recs=(records||[]).filter(r=>!r.archived&&!r.converted&&!r.deleted);
@@ -6451,16 +6450,17 @@ function dupFieldConflict(object,f,records){
   return new Set(vals).size>1;
 }
 // -- Part C: field-by-field merge drawer (becomes bottom sheet on mobile) --
-function MergeDrawer({object,group,close,onMerge}){
+function MergeDrawer({object,group,activities,close,onMerge}){
   const fields=DUP_FIELDS[object];
+  const actCount=(r)=>(activities||[]).filter(x=>x.subjectType===object&&x.subjectId===r.id).length; // REAL count from the shared activity store (was a synthetic hash of the record id)
   const [primaryId,setPrimaryId]=React.useState(group.records[0].id);
   const [choices,setChoices]=React.useState(()=>{const c={};fields.forEach(f=>{c[f.key]=group.records[0].id;});return c;});
   const [combineActivities,setCombineActivities]=React.useState(true);
   const [combineTags,setCombineTags]=React.useState(true);
   useEscKey(close);
   const pickPrimary=(id)=>{setPrimaryId(id);const c={};fields.forEach(f=>{c[f.key]=id;});setChoices(c);};
-  const totalActivities=group.records.reduce((a,r)=>a+dupActivities(r),0);
-  const doMerge=()=>{const {merged,removedIds}=dupBuildMerged(object,group,{primaryId,choices,combineTags});onMerge(merged,removedIds);};
+  const totalActivities=group.records.reduce((a,r)=>a+actCount(r),0);
+  const doMerge=()=>{const {merged,removedIds}=dupBuildMerged(object,group,{primaryId,choices,combineTags});onMerge(merged,removedIds,combineActivities);};
   return(<div className="dup-drawer-wrap fixed inset-0 z-[180] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
     <div className="dup-drawer h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:480,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
@@ -6474,7 +6474,7 @@ function MergeDrawer({object,group,close,onMerge}){
             <button key={r.id} onClick={()=>pickPrimary(r.id)} className={['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',a?'bg-brand-500/10 border-brand-500/40 ring-1 ring-brand-500/25':'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.04]'].join(' ')}>
               <span className="w-4 h-4 rounded-full border flex items-center justify-center shrink-0" style={{borderColor:a?'#818cf8':'rgba(255,255,255,0.25)'}}>{a&&<span className="w-2 h-2 rounded-full bg-brand-400"/>}</span>
               <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-semibold shrink-0" style={{background:r.color||'#6366f1'}}>{r.avatar||dupInit(r.name)}</span>
-              <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white truncate">{r.name}</span><span className="block text-[11px] text-white/45 truncate">{r.email||dupCompanyOf(object,r)||'-'} - {dupActivities(r)} activities</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-[13px] font-medium text-white truncate">{r.name}</span><span className="block text-[11px] text-white/45 truncate">{r.email||dupCompanyOf(object,r)||'-'} - {actCount(r)} activities</span></span>
               {a&&<span className="text-[10px] font-medium text-brand-200 px-2 py-0.5 rounded-full bg-brand-500/20 shrink-0">Primary</span>}
             </button>);})}
         </div>
@@ -6552,16 +6552,39 @@ function DuplicatesView({object,showToolbar}){
   const groups=allGroups.filter(g=>dismissed.indexOf(g.id)<0);
   const primaryFor=(g)=>primaryBy[g.id]||g.records[0].id;
   const setPrimary=(g,id)=>setPrimaryBy(s=>({...s,[g.id]:id}));
-  const applyMerge=(merged,removedIds)=>{setter(arr=>arr.filter(r=>removedIds.indexOf(r.id)<0).map(r=>r.id===merged.id?merged:r));toast('Records merged ✓');setMergeGroup(null);};
+  // A real, non-destructive merge (mirrors the deal merge doMergeDeals): the survivor is written, the losers are
+  // SOFT-deleted to the recycle bin (restorable — never hard-dropped), and every child relationship is RE-PARENTED to
+  // the survivor so nothing is orphaned. Without this, merge silently stranded the losers' deals + timelines.
+  const applyMerge=(merged,removedIds,combineActs)=>{
+    setter(arr=>arr.map(r=>r.id===merged.id?merged:(removedIds.indexOf(r.id)<0?r:{...r,deleted:true,mergedInto:merged.id,deletedAt:Date.now(),deletedBy:CURRENT_USER.name})));
+    // Losers' central activities: re-parent to the survivor (combine), or drop them if the timelines aren't combined.
+    crm.setActivities(a=>combineActs===false
+      ? a.filter(x=>!(x.subjectType===object&&removedIds.indexOf(x.subjectId)>=0))
+      : a.map(x=>(x.subjectType===object&&removedIds.indexOf(x.subjectId)>=0)?{...x,subjectId:merged.id}:x));
+    // Re-parent child records: contact → its deals; company → its contacts + deals.
+    if(object==='contact'){crm.setDeals(ds=>ds.map(d=>{let n=d;
+      if(removedIds.indexOf(d.primaryContactId)>=0)n={...n,primaryContactId:merged.id,primaryContact:merged.name};
+      if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.some(id=>removedIds.indexOf(id)>=0))n={...n,additionalContactIds:Array.from(new Set(d.additionalContactIds.map(id=>removedIds.indexOf(id)>=0?merged.id:id)))};
+      return n;}));}
+    else if(object==='company'){crm.setContacts(cs=>cs.map(c=>removedIds.indexOf(c.companyId)>=0?{...c,companyId:merged.id,co:merged.name}:c));crm.setDeals(ds=>ds.map(d=>removedIds.indexOf(d.companyId)>=0?{...d,companyId:merged.id,company:merged.name}:d));}
+    crm.addActivity(object,merged.id,mkAct('note',{ts:0,by:CURRENT_USER.avatar,title:'🔀 Merged '+removedIds.length+' duplicate '+meta.label+(removedIds.length>1?'s':''),body:'Fields resolved to this record; tags combined; their deals'+(combineActs===false?'':', activities')+' and links re-parented here. The duplicate'+(removedIds.length>1?'s were':' was')+' moved to the recycle bin.'}));
+    toast('Merged '+removedIds.length+' duplicate'+(removedIds.length>1?'s':'')+' ✓');setMergeGroup(null);};
   const dismiss=(g)=>{setDismissed(d=>[...d,g.id]);toast('Marked as not a duplicate');};
   const scan=()=>{setScanKey(k=>k+1);const n=detectDuplicates(object,records).filter(g=>dismissed.indexOf(g.id)<0).length;toast('Scan complete - '+n+' duplicate'+(n===1?'':'s')+' found');};
   const bulkMerge=()=>{
     const highs=groups.filter(g=>g.confidence==='high');
     if(!highs.length){toast('No high-confidence duplicates to merge','warning');return;}
-    openConfirm({title:'Bulk merge '+highs.length+' group'+(highs.length>1?'s':'')+'?',body:'This keeps the first record of each high-confidence match as primary, combines tags and activity, and removes the rest. This cannot be undone.',confirmLabel:'Merge '+highs.length+' group'+(highs.length>1?'s':''),danger:false,onConfirm:()=>{
-      let removedAll=[];const mergedMap={};
-      highs.forEach(g=>{const {merged,removedIds}=dupBuildMerged(object,g,{primaryId:g.records[0].id,combineTags:true});removedAll=removedAll.concat(removedIds);mergedMap[merged.id]=merged;});
-      setter(arr=>arr.filter(r=>removedAll.indexOf(r.id)<0).map(r=>mergedMap[r.id]||r));
+    openConfirm({title:'Bulk merge '+highs.length+' group'+(highs.length>1?'s':'')+'?',body:'Keeps the first record of each high-confidence match as primary, combines tags + activity, re-parents their deals and timelines, and moves the duplicates to the recycle bin (restorable).',confirmLabel:'Merge '+highs.length+' group'+(highs.length>1?'s':''),danger:false,onConfirm:()=>{
+      const mergedMap={};const reparent={}; // survivorId→merged record · loserId→survivorId
+      highs.forEach(g=>{const {merged,removedIds}=dupBuildMerged(object,g,{primaryId:g.records[0].id,combineTags:true});mergedMap[merged.id]=merged;removedIds.forEach(id=>{reparent[id]=merged.id;});});
+      const survivorName=(id)=>(mergedMap[id]||{}).name;
+      setter(arr=>arr.map(r=>mergedMap[r.id]?mergedMap[r.id]:(reparent[r.id]!=null?{...r,deleted:true,mergedInto:reparent[r.id],deletedAt:Date.now(),deletedBy:CURRENT_USER.name}:r)));
+      crm.setActivities(a=>a.map(x=>(x.subjectType===object&&reparent[x.subjectId]!=null)?{...x,subjectId:reparent[x.subjectId]}:x));
+      if(object==='contact'){crm.setDeals(ds=>ds.map(d=>{let n=d;
+        if(reparent[d.primaryContactId]!=null)n={...n,primaryContactId:reparent[d.primaryContactId],primaryContact:survivorName(reparent[d.primaryContactId])||n.primaryContact};
+        if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.some(id=>reparent[id]!=null))n={...n,additionalContactIds:Array.from(new Set(d.additionalContactIds.map(id=>reparent[id]!=null?reparent[id]:id)))};
+        return n;}));}
+      else if(object==='company'){crm.setContacts(cs=>cs.map(c=>reparent[c.companyId]!=null?{...c,companyId:reparent[c.companyId],co:survivorName(reparent[c.companyId])||c.co}:c));crm.setDeals(ds=>ds.map(d=>reparent[d.companyId]!=null?{...d,companyId:reparent[d.companyId],company:survivorName(reparent[d.companyId])||d.company}:d));}
       toast('Merged '+highs.length+' high-confidence group'+(highs.length>1?'s':'')+' ✓');
     }});
   };
@@ -6605,7 +6628,7 @@ function DuplicatesView({object,showToolbar}){
                 {detailRow(I.Phone,r.phone)}
                 {object==='company'?detailRow(I.Globe,r.website||r.domain):detailRow(I.Building,dupCompanyOf(object,r))}
                 {detailRow(I.Calendar,dupCreatedOf(r))}
-                {detailRow(I.History,dupActivities(r)+' activities')}
+                {detailRow(I.History,(crm.activities.filter(x=>x.subjectType===object&&x.subjectId===r.id).length)+' activities')}
               </div>
               <label className={['mt-0.5 inline-flex items-center gap-2 text-[11.5px] font-medium cursor-pointer select-none',isP?'text-brand-200':'text-white/50 hover:text-white/80'].join(' ')}>
                 <input type="radio" name={'dup-primary-'+g.id} checked={isP} onChange={()=>setPrimary(g,r.id)} className="sr-only"/>
@@ -6620,7 +6643,7 @@ function DuplicatesView({object,showToolbar}){
           <button onClick={()=>dismiss(g)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.04] transition-all"><I.X size={13}/>Not a duplicate</button>
         </div>
       </div>);})}
-    {mergeGroup&&<MergeDrawer object={object} group={{id:mergeGroup.id,confidence:mergeGroup.confidence,matchedOn:mergeGroup.matchedOn,records:mergeGroup._pid?[...mergeGroup.records].sort((a,b)=>(a.id===mergeGroup._pid?-1:b.id===mergeGroup._pid?1:0)):mergeGroup.records}} close={()=>setMergeGroup(null)} onMerge={applyMerge}/>}
+    {mergeGroup&&<MergeDrawer object={object} activities={crm.activities} group={{id:mergeGroup.id,confidence:mergeGroup.confidence,matchedOn:mergeGroup.matchedOn,records:mergeGroup._pid?[...mergeGroup.records].sort((a,b)=>(a.id===mergeGroup._pid?-1:b.id===mergeGroup._pid?1:0)):mergeGroup.records}} close={()=>setMergeGroup(null)} onMerge={applyMerge}/>}
     {confirmNode}
   </div>);
 }
@@ -25003,7 +25026,7 @@ function App(){
       if(window.__nrturToast)window.__nrturToast('✓ Approved · '+(ap.recordName||'deal')+' → '+(ap.targetName||'moved'),'success');}else if(decision==='rejected'&&window.__nrturToast)window.__nrturToast('Approval rejected · '+((ap&&ap.recordName)||'deal'),'warning');},
     // Lifecycle: winning a deal advances its primary contact to Customer (unless already Customer/Lost), logged on the contact's Changes tab.
     promoteWonContact:(deal)=>{if(!deal||deal.primaryContactId==null)return;const ct=contacts.find(x=>x.id===deal.primaryContactId);if(!ct||ct.cstatus==='Customer'||ct.cstatus==='Lost')return;setContacts(cs=>cs.map(x=>x.id===deal.primaryContactId?{...x,cstatus:'Customer'}:x));setActivities(a=>[{...mkAct('field',{ts:0,by:'nrtur',title:'Status → Customer',body:'Auto-set when “'+(deal.name||deal.company||'a deal')+'” was won.'}),subjectType:'contact',subjectId:deal.primaryContactId},...a]);},
-    activities,
+    activities,setActivities,
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,at:act.at!=null?act.at:Date.now(),subjectType:kind,subjectId:recId},...a]), // `at` = absolute wall-clock stamp: stable sort key + honest link-later rendering (ts is a frozen relative label)
     // R2 link-later: setting/clearing dealId on an EXISTING comm activity — one row, two views, never a copy.
     updateActivity:(id,patch)=>setActivities(a=>a.map(x=>x.id===id?{...x,...patch}:x)),
