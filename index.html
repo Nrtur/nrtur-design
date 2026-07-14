@@ -13988,56 +13988,94 @@ const PERSONAL_CAL_PROVIDERS=[
   {key:'outlook',intgKey:'outlook-calendar',name:'Outlook / Microsoft',color:'#0078D4',desc:'Sync with Outlook.com or Microsoft 365.'},
   {key:'apple',intgKey:'apple-calendar',name:'Apple / iCloud',color:'#0b0b0f',desc:'Sync with your iCloud calendar.'},
 ];
-function PersonalCalendarCard({provider}){
-  // Shared store — the SAME personalConns the Integrations catalog + onboarding write (keyed by INTG_DEFS
-  // key), so connecting here or there all agree and persist across navigation.
-  const crm=React.useContext(CrmDataContext);
-  const connected=!!(crm.personalConns||{})[provider.intgKey];
-  const [connecting,setConnecting]=React.useState(false);
+function calProvider(key){return PERSONAL_CAL_PROVIDERS.find(p=>p.key===key)||PERSONAL_CAL_PROVIDERS[0];}
+// The owner's connected calendar ACCOUNTS. Each account (one OAuth connection) exposes sub-CALENDARS; each carries a
+// `check` READ flag (scanned for conflicts) independent of exactly one `dest` write-destination across all accounts.
+// This mirrors Calendly/Cal.com/Zoho (multi-account, read-set ≠ destination). Calendar NAMES align with
+// SCHED_HOST_BUSY['AM'] tags so unchecking a calendar actually stops its events blocking booking slots.
+function seedCalAccounts(){return [
+  {id:'acc_g',provider:'google',email:'alex@bloom.co',calendars:[
+    {id:'cal_g1',name:'Work · Google',primary:true,check:true,dest:true},
+    {id:'cal_g2',name:'Team events',check:true,dest:false},
+    {id:'cal_g3',name:'Holidays (US)',check:false,dest:false},
+  ]},
+  {id:'acc_ic',provider:'apple',email:'alex@icloud.com',calendars:[
+    {id:'cal_ic1',name:'Personal · iCloud',primary:true,check:true,dest:false},
+  ]},
+];}
+// A freshly-connected account seeds a primary + a couple of sub-calendars so the read-set/destination UI has content.
+function calSeedFor(provider){
+  const rid=()=>'cal_'+Math.random().toString(36).slice(2,8);
+  const map={google:{email:'alex@bloom.co',primary:'Work · Google',extra:['Team events','Holidays (US)']},outlook:{email:'alex@outlook.com',primary:'Work · Outlook',extra:['Birthdays']},apple:{email:'alex@icloud.com',primary:'Personal · iCloud',extra:[]}};
+  const cfg=map[provider]||map.google;
+  return {id:'acc_'+provider+'_'+Math.random().toString(36).slice(2,6),provider,email:cfg.email,calendars:[{id:rid(),name:cfg.primary,primary:true,check:true,dest:false},...cfg.extra.map(n=>({id:rid(),name:n,check:false,dest:false}))]};
+}
+function calAllCals(accounts){return (accounts||[]).flatMap(a=>(a.calendars||[]).map(c=>({...c,acc:a})));}
+function calCheckedNames(accounts){const s=new Set();(accounts||[]).forEach(a=>(a.calendars||[]).forEach(c=>{if(c.check)s.add(c.name);}));return s;}
+function calCheckedCount(accounts){return calAllCals(accounts).filter(c=>c.check).length;}
+function calDestCal(accounts){return calAllCals(accounts).find(c=>c.dest)||null;}
+function calProvidersConnected(accounts){return new Set((accounts||[]).map(a=>a.provider));}
+// One connected account: its sub-calendars each get a "check for conflicts" toggle (the READ set) and can be set as
+// the single booking destination (the WRITE target). Disconnect removes the whole account.
+function CalAccountCard({account,onToggleCheck,onSetDest,onDisconnect}){
+  const pv=calProvider(account.provider);
   const [twoWay,setTwoWay]=React.useState(true);
-  const t=React.useRef(null);
-  React.useEffect(()=>()=>clearTimeout(t.current),[]);
-  const connect=()=>{setConnecting(true);t.current=setTimeout(()=>{setConnecting(false);crm.setPersonalConns(m=>({...m,[provider.intgKey]:true}));custToast(provider.name+' connected ✓');},1100);};
-  const disconnect=()=>{clearTimeout(t.current);crm.setPersonalConns(m=>{const n={...m};delete n[provider.intgKey];return n;});setTwoWay(true);custToast(provider.name+' disconnected');};
-  return(<div className={['rounded-2xl border p-5 flex flex-col transition-all',connected?'border-emerald-500/25 bg-emerald-500/[0.04]':'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.10]'].join(' ')}>
-    <div className="flex items-start justify-between mb-3">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:provider.color+'22',color:provider.color==='#0b0b0f'?'#e5e7eb':provider.color,border:'1px solid '+(provider.color==='#0b0b0f'?'rgba(255,255,255,0.18)':provider.color+'40')}}><I.Calendar size={17}/></div>
-      {connected
-        ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25"><I.Check size={11} stroke={2.6}/>Connected</span>
-        : <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/30">Personal</span>}
+  const dark=pv.color==='#0b0b0f';
+  return(<div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-5">
+    <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:pv.color+'22',color:dark?'#e5e7eb':pv.color,border:'1px solid '+(dark?'rgba(255,255,255,0.18)':pv.color+'40')}}><I.Calendar size={17}/></div>
+        <div className="min-w-0"><div className="flex items-center gap-2"><p className="text-[14px] font-semibold text-white truncate">{pv.name}</p><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/12 text-emerald-300 ring-1 ring-emerald-500/25"><I.Check size={10} stroke={2.6}/>Connected</span></div><p className="text-[12px] text-white/45 truncate">{account.email}</p></div>
+      </div>
+      <button onClick={()=>onDisconnect(account.id)} className="shrink-0 text-[12px] font-medium text-red-300 hover:text-red-200 px-2 py-1">Disconnect</button>
     </div>
-    <p className="text-[15px] font-semibold text-white">{provider.name}</p>
-    <p className="text-[12px] text-white/50 mt-1 leading-relaxed flex-1">{provider.desc}</p>
-    {connected?(<div className="mt-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
-        <div className="min-w-0"><p className="text-[12.5px] font-medium text-white">2-way sync</p><p className="text-[11px] text-white/45 mt-0.5 leading-snug">Write nrtur events back to this calendar.</p></div>
-        <Toggle on={twoWay} onChange={setTwoWay}/>
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300/80"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>{twoWay?'Syncing both ways':'Read-only sync'}</span>
-        <button onClick={disconnect} className="text-[12px] font-medium text-red-300 hover:text-red-200 px-2 py-1">Disconnect</button>
-      </div>
-    </div>):(<div className="mt-4">
-      <button onClick={connect} disabled={connecting} className={['inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all',connecting?'text-white/60 bg-white/[0.06] cursor-wait':'text-white shadow-brand hover:-translate-y-0.5'].join(' ')} style={connecting?undefined:{background:provider.color==='#0b0b0f'?'#1f2937':provider.color}}>
-        {connecting?(<><span className="w-3.5 h-3.5 rounded-full border-2 border-white/25 border-t-white/80 animate-spin"/>Connecting…</>):(<><I.Lock size={13}/>Connect</>)}
-      </button>
-    </div>)}
+    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="grid grid-cols-[1fr_92px_92px] items-center gap-2 px-3.5 py-2 text-[10px] font-medium text-white/35 uppercase tracking-[0.10em] bg-white/[0.02] border-b border-white/[0.05]"><span>Calendar</span><span className="text-center" title="Scan this calendar's events for conflicts">Check</span><span className="text-center" title="Create new bookings on this calendar">Destination</span></div>
+      {(account.calendars||[]).map((c,i)=>(<div key={c.id} className={['grid grid-cols-[1fr_92px_92px] items-center gap-2 px-3.5 py-2.5',i>0?'border-t border-white/[0.04]':''].join(' ')}>
+        <div className="min-w-0 flex items-center gap-2"><span className="text-[13px] text-white/80 truncate">{c.name}</span>{c.primary&&<span className="text-[9px] font-medium uppercase tracking-wide text-white/35 px-1.5 py-0.5 rounded bg-white/[0.05] shrink-0">Primary</span>}</div>
+        <div className="flex justify-center"><Toggle on={!!c.check} onChange={()=>onToggleCheck(account.id,c.id)}/></div>
+        <div className="flex justify-center"><button onClick={()=>onSetDest(c.id)} title="Create new bookings here" className={['w-5 h-5 rounded-full border flex items-center justify-center transition-all',c.dest?'border-brand-400 bg-brand-500':'border-white/25 hover:border-white/50'].join(' ')}>{c.dest&&<span className="w-2 h-2 rounded-full bg-white"/>}</button></div>
+      </div>))}
+    </div>
+    <div className="flex items-center gap-2 mt-3"><span className="text-[12px] text-white/55">2-way sync</span><Toggle on={twoWay} onChange={setTwoWay}/><span className="text-[11px] text-white/35 truncate">{twoWay?'Bookings write back · external cancels flow in':'Read-only'}</span></div>
   </div>);
 }
 function SettingsCalendarPersonalPage({goTo}){
-  const sched=React.useContext(SchedulingContext);
-  return(<SettingsShell active="settings-calendar-personal" goTo={goTo} subtitle="Connect your personal calendar so your bookings and meetings stay in sync.">
+  const crm=React.useContext(CrmDataContext);
+  const accounts=crm.calAccounts||[];
+  const [connecting,setConnecting]=React.useState(null);
+  const tmr=React.useRef(null);
+  React.useEffect(()=>()=>clearTimeout(tmr.current),[]);
+  const addable=PERSONAL_CAL_PROVIDERS.filter(p=>!calProvidersConnected(accounts).has(p.key));
+  const dest=calDestCal(accounts);const checkedN=calCheckedCount(accounts);
+  const toggleCheck=(accId,calId)=>crm.setCalAccounts(a=>a.map(ac=>ac.id!==accId?ac:{...ac,calendars:ac.calendars.map(c=>c.id===calId?{...c,check:!c.check}:c)}));
+  // Exactly one destination across ALL accounts (the WRITE target), independent of the read-set.
+  const setDest=(calId)=>crm.setCalAccounts(a=>a.map(ac=>({...ac,calendars:ac.calendars.map(c=>({...c,dest:c.id===calId}))})));
+  const disconnect=(accId)=>{const acc=accounts.find(x=>x.id===accId);crm.setCalAccounts(a=>{let next=a.filter(x=>x.id!==accId);
+      if(!calDestCal(next)&&next.length){const t0=next[0].calendars.find(c=>c.primary)||next[0].calendars[0];if(t0)next=next.map((ac,i)=>i!==0?ac:{...ac,calendars:ac.calendars.map(c=>({...c,dest:c.id===t0.id}))});}
+      return next;});
+    if(acc)crm.setPersonalConns(m=>{const n={...m};delete n[calProvider(acc.provider).intgKey];return n;});
+    custToast((acc?calProvider(acc.provider).name:'Calendar')+' disconnected');};
+  const connect=(provider)=>{setConnecting(provider);tmr.current=setTimeout(()=>{setConnecting(null);const seeded=calSeedFor(provider);crm.setCalAccounts(a=>{const next=[...a,seeded];if(!calDestCal(next))seeded.calendars[0].dest=true;return next;});crm.setPersonalConns(m=>({...m,[calProvider(provider).intgKey]:true}));custToast(calProvider(provider).name+' connected ✓');},1100);};
+  return(<SettingsShell active="settings-calendar-personal" goTo={goTo} subtitle="Connect your personal calendars so your bookings and meetings stay in sync.">
     <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.05] px-4 py-3 flex items-start gap-2.5 text-[12.5px] text-brand-100">
-      <I.UserCog size={14} className="shrink-0 mt-0.5 text-brand-300"/><span><span className="font-semibold">Personal settings.</span> Each teammate connects their own calendar — these connections aren't shared with your workspace.</span>
+      <I.UserCog size={14} className="shrink-0 mt-0.5 text-brand-300"/><span><span className="font-semibold">Personal settings.</span> Each teammate connects their own calendars — these aren't shared with your workspace. Every calendar you <span className="font-medium">check</span> is scanned to block conflicts; new bookings are created on the one <span className="font-medium">destination</span> you pick.</span>
+    </div>
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12.5px]">
+      <span className="flex items-center gap-2 text-white/70"><I.Check size={13} className="text-emerald-300/70"/>Conflicts checked across <span className="font-semibold text-white">{checkedN}</span> calendar{checkedN===1?'':'s'}</span>
+      <span className="flex items-center gap-2 text-white/70"><I.Calendar size={13} className="text-brand-300/70"/>Bookings created on <span className="font-semibold text-white">{dest?dest.name:'— none set'}</span></span>
     </div>
     <div>
-      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-1.5">Calendar integrations</p>
-      <p className="text-[12.5px] text-white/50 mb-4">Connect a calendar so your bookings and meetings stay in sync. Each person connects their own.</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PERSONAL_CAL_PROVIDERS.map(p=>(<PersonalCalendarCard key={p.key} provider={p}/>))}
-      </div>
-      <p className="text-[11.5px] text-white/35 mt-3 flex items-center gap-1.5"><I.Calendar size={12} className="text-white/30 shrink-0"/>Your bookings and meetings sync to your personal calendar.</p>
+      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-3">Connected calendar accounts</p>
+      {accounts.length?(<div className="flex flex-col gap-4">{accounts.map(a=>(<CalAccountCard key={a.id} account={a} onToggleCheck={toggleCheck} onSetDest={setDest} onDisconnect={disconnect}/>))}</div>):(<div className="rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.02] px-4 py-6 text-center text-[13px] text-white/45">No calendars connected — only your nrtur bookings will block times. Connect one below to auto-block real conflicts.</div>)}
     </div>
+    {addable.length>0&&(<div>
+      <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-3">Add a calendar account</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{addable.map(p=>{const dark=p.color==='#0b0b0f';return(<button key={p.key} onClick={()=>connect(p.key)} disabled={connecting===p.key} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:border-white/[0.16] p-4 flex items-center gap-3 text-left transition-all disabled:cursor-wait">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{background:p.color+'22',color:dark?'#e5e7eb':p.color,border:'1px solid '+(dark?'rgba(255,255,255,0.18)':p.color+'40')}}>{connecting===p.key?<span className="w-3.5 h-3.5 rounded-full border-2 border-white/25 border-t-white/80 animate-spin"/>:<I.Plus size={15}/>}</div>
+        <div className="min-w-0"><p className="text-[13px] font-medium text-white truncate">{p.name}</p><p className="text-[11px] text-white/45 truncate">{connecting===p.key?'Connecting…':p.desc}</p></div>
+      </button>);})}</div>
+    </div>)}
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 flex items-center gap-3">
       <span className="w-9 h-9 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Clock size={16}/></span>
       <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white">Availability & event types</p><p className="text-[12px] text-white/45 mt-0.5">Set the hours people can book and manage your event types in Calendar — your single source of truth.</p></div>
@@ -21244,7 +21282,8 @@ function schedHostsUnconnected(hosts){return (hosts||[]).filter(av=>!schedHostCo
 function schedHostFreeAt(av,date,slot,ctx){
   ctx=ctx||{};
   const connected=ctx.connectedFn?ctx.connectedFn(av):schedHostConnected(av);
-  const busy=schedBusyIntervals(av,date,ctx.meetings,connected);
+  const checked=ctx.checkedCalsFor?ctx.checkedCalsFor(av):null;
+  const busy=schedBusyIntervals(av,date,ctx.meetings,connected,checked);
   return schedSlotFits(schedParseTime(slot),ctx.dur||30,busy,ctx.bufBefore,ctx.bufAfter);
 }
 // Round-robin: choose the host for a slot per the distribution method.
@@ -21298,9 +21337,11 @@ const SCHED_HOST_BUSY=schedSeedHostBusy();
 // Busy intervals (minutes-from-midnight) for a host on a date: external connected-calendar events (only when the
 // host's calendar is connected) + every non-cancelled nrtur booking assigned to that host. Bookings ALWAYS count —
 // nrtur owns them — so double-booking is prevented even before a calendar is connected.
-function schedBusyIntervals(av,date,meetings,includeExternal){
+function schedBusyIntervals(av,date,meetings,includeExternal,checkedCals){
   const key=schedDateKey(date);const out=[];
-  if(includeExternal)(SCHED_HOST_BUSY[av]||[]).forEach(b=>{if(b.date===key){const s=schedParseTime(b.from),e=schedParseTime(b.to);if(e>s)out.push({s,e});}});
+  // External calendar events count only if the calendar is connected AND (for the owner) its "check for conflicts"
+  // is on — checkedCals is the Set of checked calendar names; absent → every connected calendar counts (other hosts).
+  if(includeExternal)(SCHED_HOST_BUSY[av]||[]).forEach(b=>{if(b.date===key&&(!checkedCals||checkedCals.has(b.cal))){const s=schedParseTime(b.from),e=schedParseTime(b.to);if(e>s)out.push({s,e});}});
   (meetings||[]).forEach(m=>{const md=m.date instanceof Date?m.date:new Date(m.date);if(m&&m.status!=='cancelled'&&m.rep===av&&schedDateKey(md)===key){const st=md.getHours()*60+md.getMinutes();out.push({s:st,e:st+(m.duration||30)});}});
   return out;
 }
@@ -21713,10 +21754,11 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
   // Is the OWNER's own calendar connected? Read the live personalConns flag (the real connect state, not a seed) so
   // connecting/disconnecting in Settings › My calendar actually changes what the booking page offers.
   const ownerConnected=(()=>{const pc=(crm&&crm.personalConns)||{};return !!(pc['google-calendar']||pc['outlook-calendar']||pc['apple-calendar']);})();
+  const ownerCheckedCals=calCheckedNames((crm&&crm.calAccounts)||[]); // the owner's READ set — only checked calendars' events block (from Settings › My calendar)
   const connectedFn=(av)=>av===SCHED_OWNER?ownerConnected:schedHostConnected(av);
-  // Context threaded into the free/busy math: each host's real bookings + (if connected) their calendar's busy,
+  // Context threaded into the free/busy math: each host's real bookings + (if connected) their checked calendars' busy,
   // widened by the larger of the event's and the workspace's buffers.
-  const bookCtx={dur:(et&&et.duration)||30,meetings,connectedFn,bufBefore:Math.max(schedBufferMin(et&&et.bufferBefore),schedBufferMin(avail&&avail.buffer)),bufAfter:Math.max(schedBufferMin(et&&et.bufferAfter),schedBufferMin(avail&&avail.buffer))};
+  const bookCtx={dur:(et&&et.duration)||30,meetings,connectedFn,checkedCalsFor:(av)=>av===SCHED_OWNER?ownerCheckedCals:null,bufBefore:Math.max(schedBufferMin(et&&et.bufferBefore),schedBufferMin(avail&&avail.buffer)),bufAfter:Math.max(schedBufferMin(et&&et.bufferAfter),schedBufferMin(avail&&avail.buffer))};
   // Availability is now calendar-first: a slot survives only if the acting host is actually free then — no double-
   // booking against real meetings, no collision with their connected calendar, buffers respected — then capped per day.
   //  collective -> intersection of all hosts · round-robin -> union (any host free) · individual/class -> the owner host.
@@ -24852,7 +24894,8 @@ function App(){
   const [members,setMembers]=React.useState(()=>TEAM_MEMBERS_SEED.map(m=>({...m}))); // workspace members — SHARED so Settings › Team and the invite-accept page agree (accepting an invite adds here)
   const [suppression,setSuppression]=React.useState(SUPPRESSION_SEED); // unified suppression store (emails/domains/phones/channels/compliance) — single source of truth read by the UI, the contact record, and the send paths
   _liveSuppression=suppression; // mirror for the non-React send paths (contactEmailSuppressed / stageBulkAudience)
-  const [personalConns,setPersonalConns]=React.useState({'google-calendar':true}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree. Demo: the owner (Alex) has connected their Google calendar, so the booking page shows calendar-first conflict-blocking out of the box.
+  const [personalConns,setPersonalConns]=React.useState({'google-calendar':true,'apple-calendar':true}); // per-user personal integration connections (calendar etc.) — shared so onboarding + Settings agree. Demo: the owner (Alex) has two calendar accounts connected, so the booking page shows calendar-first conflict-blocking out of the box.
+  const [calAccounts,setCalAccounts]=React.useState(seedCalAccounts); // owner's connected calendar ACCOUNTS → sub-calendars (each with a check-for-conflicts READ flag) + one write-destination. Drives the booking page's connected-calendar busy scan; kept in sync with personalConns.
   const [automations,setAutomations]=React.useState(AUTO_INIT); // P0-1: shared automations store — runtime engine + Settings page + builder all read/write this
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
   const [seqEnrollments,setSeqEnrollments]=React.useState([]); // stage-bulk: REAL sequence membership — {seqId,contactId,dealId,stage,at,by}; dedupe + timeline read this
@@ -24968,11 +25011,12 @@ function App(){
     members,setMembers,
     suppression,setSuppression,
     personalConns,setPersonalConns,
+    calAccounts,setCalAccounts,
     automations,setAutomations,autoLogs,
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,calAccounts,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op. calAccounts added: the My-calendar page's read-set/destination toggles mutate only it, so it MUST be a dep too.
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
