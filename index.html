@@ -17583,14 +17583,14 @@ function SettingsPhoneNumbersPage({goTo}){
       </div>))}</div>)}
     </div>
     {/* Texting spend limit — an operational safety cap. All money (charges, invoices, payment method) is single-homed on Settings › Billing. */}
-    {(()=>{const ub=crm.usageBill||{limit:100,monthTotal:0,charges:[]};const pct=ub.limit>0?Math.min(100,Math.round(ub.monthTotal/ub.limit*100)):0;const capped=ub.limit>0&&ub.monthTotal>=ub.limit;
+    {(()=>{const ub=crm.usageBill||{limit:100,monthTotal:0,charges:[]};const noCap=!(ub.limit>0);const pct=ub.limit>0?Math.min(100,Math.round(ub.monthTotal/ub.limit*100)):0;const capped=ub.limit>0&&ub.monthTotal>=ub.limit;
       return(<div className={CARD+' px-5 py-4'}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="min-w-0"><p className="text-[13.5px] font-semibold text-white">Texting spend limit</p><p className="text-[11.5px] text-white/40 mt-0.5">A safety cap — if this month's usage reaches it, outbound texting pauses. Usage bills to your card via Stripe; charges and invoices live on <button onClick={()=>goTo('settings-billing')} className="text-brand-300 hover:text-brand-200 font-medium">Billing</button>.</p></div>
-          {!readOnly&&<div className="flex items-center gap-1 shrink-0"><span className="text-[13px] text-white/45">$</span><input value={ub.limit} onChange={e=>{const v=parseInt(e.target.value.replace(/\D/g,''),10);crm.setUsageBill(x=>({...x,limit:isNaN(v)?0:v}));}} inputMode="numeric" className="w-[70px] px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white text-right outline-none focus:border-brand-500/40 tabular-nums"/></div>}
+          {!readOnly&&<div className="flex items-center gap-1 shrink-0"><span className="text-[13px] text-white/45">$</span><input value={ub.limit} onChange={e=>{const v=parseInt(e.target.value.replace(/\D/g,''),10);crm.setUsageBill(x=>({...x,limit:isNaN(v)?0:v}));}} inputMode="numeric" title="Set to 0 (or blank) for no monthly cap" placeholder="No cap" className="w-[70px] px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white text-right outline-none focus:border-brand-500/40 tabular-nums"/></div>}
         </div>
-        <div className="mt-3 h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className={['h-full rounded-full transition-all',capped?'bg-red-400':pct>=80?'bg-amber-400':'bg-emerald-400'].join(' ')} style={{width:pct+'%'}}/></div>
-        <p className="text-[11px] text-white/40 mt-1.5 tabular-nums">${ub.monthTotal.toFixed(2)} of ${ub.limit} this month · {pct}%</p>
+        <div className="mt-3 h-2 rounded-full bg-white/[0.06] overflow-hidden">{noCap?<div className="h-full rounded-full bg-white/15" style={{width:'100%'}}/>:<div className={['h-full rounded-full transition-all',capped?'bg-red-400':pct>=80?'bg-amber-400':'bg-emerald-400'].join(' ')} style={{width:pct+'%'}}/>}</div>
+        <p className="text-[11px] text-white/40 mt-1.5 tabular-nums">{noCap?('$'+ub.monthTotal.toFixed(2)+' used this month · no cap set — texting never auto-pauses'):('$'+ub.monthTotal.toFixed(2)+' of $'+ub.limit+' this month · '+pct+'%')}</p>
         {capped&&<div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/[0.08] border border-red-500/25 text-[11.5px] text-red-200"><I.Ban size={12} className="shrink-0 mt-0.5"/><span>Limit reached — outbound texting is paused. Raise the limit to resume.</span></div>}
       </div>);})()}
     </div>)}
@@ -22094,7 +22094,15 @@ function schedMeetingToEvent(m){
   const end=new Date(start.getTime()+((m.duration||30)*60000));
   return {id:'sched-'+m.id,type:'meeting',title:(m.name||'Meeting')+(m.contactName?(' · '+m.contactName):''),allDay:false,date:start,end,contact:m.contactName||null,contactId:m.contactId!=null?m.contactId:null,deal:m.dealName||null,notes:m.notes||'',assignee:m.rep||'AM',location:m.location||'',status:m.status,_booking:true};
 }
-function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
+// Inverse of schedMeetingToEvent: map a calendar-scheduled meeting (CalendarContext item, type:'meeting') into the
+// meeting shape the Meetings tab renders — so that tab is the ONE canonical list of EVERY meeting, not just booking-
+// link ones. Tagged _fromCalendar (+ calId) so cancel/notes route back to CalendarContext, not SchedulingContext.
+function calEventToMeeting(e){
+  const start=e.date instanceof Date?e.date:new Date(e.date);
+  const dur=e.end?Math.max(15,Math.round((new Date(e.end).getTime()-start.getTime())/60000)):(e.duration||30);
+  return {id:e.id,calId:e.id,_fromCalendar:true,name:e.title||'Meeting',color:(EVENT_TYPES.meeting&&EVENT_TYPES.meeting.color)||'#6366f1',date:start,duration:dur,location:e.location||'',status:e.status||'confirmed',contactId:e.contactId!=null?e.contactId:null,contactName:e.contact||null,dealName:e.deal||null,notes:e.notes||'',host:'Alex Morgan',rep:e.assignee||'AM',questions:[]};
+}
+function SchedMeetingsTab({meetings,setMeetings,calUpdate,addToast,goTo}){
   const [seg,setSeg]=React.useState('upcoming');
   const [open,setOpen]=React.useState(null);
   const [menu,setMenu]=React.useState(null);
@@ -22103,9 +22111,9 @@ function SchedMeetingsTab({meetings,setMeetings,addToast,goTo}){
   const isPast=(m)=>m.status==='cancelled'||m.date<now;
   const list=meetings.filter(m=>seg==='upcoming'?!isPast(m):isPast(m)).sort((a,b)=>seg==='upcoming'?a.date-b.date:b.date-a.date);
   const counts={upcoming:meetings.filter(m=>!isPast(m)).length,past:meetings.filter(isPast).length};
-  const doCancel=(id)=>{setMeetings(ms=>ms.map(m=>m.id===id?{...m,status:'cancelled'}:m));setOpen(null);setMenu(null);addToast('Meeting cancelled');};
+  const doCancel=(id)=>{const m=meetings.find(x=>x.id===id);if(m&&m._fromCalendar){if(calUpdate)calUpdate({id:m.calId,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});}else{setMeetings(ms=>ms.map(x=>x.id===id?{...x,status:'cancelled'}:x));}setOpen(null);setMenu(null);addToast('Meeting cancelled');};
   const cancel=(id)=>{const m=meetings.find(x=>x.id===id);openConfirm({title:'Cancel this meeting?',body:'"'+((m&&m.name)||'This meeting')+'"'+((m&&m.contactName)?(' with '+m.contactName):'')+' will be marked cancelled and the invitee notified.',confirmLabel:'Cancel meeting',danger:true,onConfirm:()=>doCancel(id)});};
-  const saveNotes=(id,notes)=>setMeetings(ms=>ms.map(m=>m.id===id?{...m,notes}:m));
+  const saveNotes=(id,notes)=>{const m=meetings.find(x=>x.id===id);if(m&&m._fromCalendar){if(calUpdate)calUpdate({id:m.calId,notes});}else{setMeetings(ms=>ms.map(x=>x.id===id?{...x,notes}:x));}};
   const openM=meetings.find(m=>m.id===open);
   return(<div className="flex-1 overflow-y-auto scroll-area">
     {confirmNode}
@@ -22293,7 +22301,7 @@ function CalendarPage({goTo,nav}){
           {schedTab==='calendar'&&calConnected&&<button onClick={()=>openNew(current)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Event</button>}
           {schedTab==='bookings'&&bookingPreview===null&&<button onClick={()=>setEtDrawer('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New booking link</button>}
         </React.Fragment>}/>
-        {schedTab==='meetings'&&<SchedMeetingsTab meetings={meetings} setMeetings={setMeetings} addToast={addToast} goTo={goTo}/>}
+        {schedTab==='meetings'&&<SchedMeetingsTab meetings={[...meetings,...events.filter(e=>e&&e.type==='meeting'&&!e.deleted).map(calEventToMeeting)]} setMeetings={setMeetings} calUpdate={updateItem} addToast={addToast} goTo={goTo}/>}
         {schedTab==='bookings'&&(bookingPreview!==null
           ?(<div className="flex-1 flex flex-col min-h-0">
               <div className="shrink-0 px-6 py-2.5 border-b border-white/[0.05] flex items-center gap-3" style={{background:'var(--s925)'}}><button onClick={()=>setBookingPreview(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-white/70 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.ChevronLeft size={14}/>Back to Bookings</button><span className="text-[12.5px] text-white/45">Public booking page preview</span></div>
