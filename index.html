@@ -5781,28 +5781,36 @@ function ContactsFilterPanel({close,onApply}){
   );
 }
 // ?? DuplicateDetectionModal ???????????????????????????????????????????????????
-function DuplicateDetectionModal({email,close,onKeepBoth,onMerge}){
-  const existing={name:'Sarah Chen',email:'sarah@meridian.co',co:'Meridian Agency',status:'Active',last:'2h ago',deal:'$24k'};
+// Create-time duplicate check: shows the REAL matching contact (found by a live email scan) beside the one being
+// created. "Use existing" opens that contact (filling any gaps from the form); "Keep both" creates the new one anyway.
+function DuplicateDetectionModal({existing,incoming,close,onKeepBoth,onMerge}){
+  const inName=(((((incoming&&incoming.first)||'')+' '+((incoming&&incoming.last)||'')).trim())||((incoming&&incoming.email)||'New contact'));
+  const ex=existing||{};
+  const exOwner=(function(){const u=userByCode(ex.owner);return u?u.name:'';})();
+  const cards=[
+    {label:'Existing contact',accent:true,name:ex.name||'—',avatar:ex.avatar||arInitials(ex.name||'?'),color:ex.color||'#6366f1',rows:[['Email',ex.email],['Company',ex.co||ex.company],['Status',ex.cstatus||ex.status],['Last seen',ex.last],['Owner',exOwner]]},
+    {label:'New contact',accent:false,name:inName,avatar:arInitials(inName),color:'#64748b',rows:[['Email',incoming&&incoming.email],['Company',incoming&&incoming.company],['Status','New'],['Last seen','Now'],['Owner','You']]},
+  ];
   return(
     <div className="fixed inset-0 z-[150] flex items-center justify-center" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}}>
       <div style={{width:560,background:'var(--pop)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,backdropFilter:'blur(24px)',boxShadow:'0 0 0 1px rgba(255,255,255,0.04),0 32px 80px rgba(0,0,0,0.65)',padding:24}}>
         <div className="flex items-start gap-4 mb-6">
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 flex items-center justify-center shrink-0"><I.Users size={17} style={{color:'#fbbf24'}}/></div>
-          <div><p className="text-white text-[15px] font-semibold">Possible duplicate detected</p><p className="text-white/55 text-[13px] mt-1">A contact with email <span className="text-white font-medium">{email}</span> already exists.</p></div>
+          <div><p className="text-white text-[15px] font-semibold">Possible duplicate detected</p><p className="text-white/55 text-[13px] mt-1">A contact with email <span className="text-white font-medium">{(incoming&&incoming.email)||''}</span> already exists.</p></div>
         </div>
         <div className="grid grid-cols-2 gap-3 mb-6">
-          {[{label:'Existing contact',data:existing,accent:true},{label:'New contact',data:{name:'Sarah Chen',email,co:'Meridian Agency',status:'New',last:'Now',deal:'-'},accent:false}].map(({label,data,accent})=>(
-            <div key={label} className={['rounded-xl p-4 border',accent?'bg-brand-500/08 border-brand-500/25':'bg-white/[0.03] border-white/[0.08]'].join(' ')}>
-              <p className={['text-[10px] font-medium uppercase tracking-[0.14em] mb-3',accent?'text-brand-300':'text-white/40'].join(' ')}>{label}</p>
-              <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-semibold text-white shrink-0">SC</div><p className="text-[13px] font-medium text-white">{data.name}</p></div>
-              {[['Email',data.email],['Company',data.co],['Status',data.status],['Last seen',data.last],['Deal',data.deal]].map(([k,v])=>(<div key={k} className="flex items-start gap-2 mb-1.5"><span className="text-[11px] text-white/35 w-16 shrink-0">{k}</span><span className="text-[11px] text-white/75">{v}</span></div>))}
+          {cards.map(c=>(
+            <div key={c.label} className={['rounded-xl p-4 border',c.accent?'bg-brand-500/08 border-brand-500/25':'bg-white/[0.03] border-white/[0.08]'].join(' ')}>
+              <p className={['text-[10px] font-medium uppercase tracking-[0.14em] mb-3',c.accent?'text-brand-300':'text-white/40'].join(' ')}>{c.label}</p>
+              <div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><p className="text-[13px] font-medium text-white truncate">{c.name}</p></div>
+              {c.rows.map(([k,v])=>(<div key={k} className="flex items-start gap-2 mb-1.5"><span className="text-[11px] text-white/35 w-16 shrink-0">{k}</span><span className="text-[11px] text-white/75 truncate">{v||'—'}</span></div>))}
             </div>
           ))}
         </div>
         <div className="flex gap-3">
           <button onClick={close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button>
           <button onClick={onKeepBoth||close} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/80 bg-white/[0.06] border border-white/[0.10] hover:bg-white/[0.09] transition-all">Keep both</button>
-          <button onClick={onMerge||close} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Merge contacts</button>
+          <button onClick={onMerge||close} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand border-none transition-all">Use existing</button>
         </div>
       </div>
     </div>
@@ -6538,6 +6546,8 @@ function DupListTable({object,groups,primaryFor,onMerge,onDismiss}){
 function DuplicatesView({object,showToolbar}){
   const meta=DUP_META[object];
   const crm=React.useContext(CrmDataContext);
+  const cal=React.useContext(CalendarContext);     // tasks live here — re-parented on a contact merge
+  const sched=React.useContext(SchedulingContext); // booked meetings live here — re-parented on a contact merge
   const records=crm[meta.listKey]||[];
   const setter=crm[meta.setKey];
   const [dismissed,setDismissed]=React.useState([]);
@@ -6567,7 +6577,11 @@ function DuplicatesView({object,showToolbar}){
       if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.some(id=>removedIds.indexOf(id)>=0))n={...n,additionalContactIds:Array.from(new Set(d.additionalContactIds.map(id=>removedIds.indexOf(id)>=0?merged.id:id)))};
       return n;}));}
     else if(object==='company'){crm.setContacts(cs=>cs.map(c=>removedIds.indexOf(c.companyId)>=0?{...c,companyId:merged.id,co:merged.name}:c));crm.setDeals(ds=>ds.map(d=>removedIds.indexOf(d.companyId)>=0?{...d,companyId:merged.id,company:merged.name}:d));}
-    crm.addActivity(object,merged.id,mkAct('note',{ts:0,by:CURRENT_USER.avatar,title:'🔀 Merged '+removedIds.length+' duplicate '+meta.label+(removedIds.length>1?'s':''),body:'Fields resolved to this record; tags combined; their deals'+(combineActs===false?'':', activities')+' and links re-parented here. The duplicate'+(removedIds.length>1?'s were':' was')+' moved to the recycle bin.'}));
+    if(object==='contact'){ // cross-context re-parent: tasks (CalendarContext) + booked meetings (SchedulingContext) that pointed at a loser
+      if(cal&&cal.items&&cal.updateItem)cal.items.forEach(it=>{if(it&&removedIds.indexOf(it.contactId)>=0)cal.updateItem({id:it.id,contactId:merged.id,contact:merged.name});});
+      if(sched&&sched.setMeetings)sched.setMeetings(ms=>ms.map(m=>(m&&removedIds.indexOf(m.contactId)>=0)?{...m,contactId:merged.id,contactName:merged.name}:m));
+    }
+    crm.addActivity(object,merged.id,mkAct('note',{ts:0,by:CURRENT_USER.avatar,title:'🔀 Merged '+removedIds.length+' duplicate '+meta.label+(removedIds.length>1?'s':''),body:'Fields resolved to this record; tags combined; their deals'+(combineActs===false?'':', activities')+(object==='contact'?', tasks and meetings':'')+' and links re-parented here. The duplicate'+(removedIds.length>1?'s were':' was')+' moved to the recycle bin.'}));
     toast('Merged '+removedIds.length+' duplicate'+(removedIds.length>1?'s':'')+' ✓');setMergeGroup(null);};
   const dismiss=(g)=>{setDismissed(d=>[...d,g.id]);toast('Marked as not a duplicate');};
   const scan=()=>{setScanKey(k=>k+1);const n=detectDuplicates(object,records).filter(g=>dismissed.indexOf(g.id)<0).length;toast('Scan complete - '+n+' duplicate'+(n===1?'':'s')+' found');};
@@ -6585,6 +6599,10 @@ function DuplicatesView({object,showToolbar}){
         if(Array.isArray(d.additionalContactIds)&&d.additionalContactIds.some(id=>reparent[id]!=null))n={...n,additionalContactIds:Array.from(new Set(d.additionalContactIds.map(id=>reparent[id]!=null?reparent[id]:id)))};
         return n;}));}
       else if(object==='company'){crm.setContacts(cs=>cs.map(c=>reparent[c.companyId]!=null?{...c,companyId:reparent[c.companyId],co:survivorName(reparent[c.companyId])||c.co}:c));crm.setDeals(ds=>ds.map(d=>reparent[d.companyId]!=null?{...d,companyId:reparent[d.companyId],company:survivorName(reparent[d.companyId])||d.company}:d));}
+      if(object==='contact'){ // cross-context re-parent for every merged group at once
+        if(cal&&cal.items&&cal.updateItem)cal.items.forEach(it=>{if(it&&reparent[it.contactId]!=null)cal.updateItem({id:it.id,contactId:reparent[it.contactId],contact:survivorName(reparent[it.contactId])});});
+        if(sched&&sched.setMeetings)sched.setMeetings(ms=>ms.map(m=>(m&&reparent[m.contactId]!=null)?{...m,contactId:reparent[m.contactId],contactName:survivorName(reparent[m.contactId])}:m));
+      }
       toast('Merged '+highs.length+' high-confidence group'+(highs.length>1?'s':'')+' ✓');
     }});
   };
@@ -8277,12 +8295,17 @@ function ContactDetailPage({goTo,nav}){
 // ?? AddContactPage ????????????????????????????????????????????????????????????
 function AddContactPage({goTo,nav}){
   const initialMode=nav==='multiple'?'multiple':'single';
+  const crm=React.useContext(CrmDataContext);
   const [dupModal,setDupModal]=React.useState(false);
-  const [dupEmail,setDupEmail]=React.useState('');
+  const [dupHit,setDupHit]=React.useState(null);   // the REAL existing contact matched by email
+  const [dupForm,setDupForm]=React.useState(null);  // the form being submitted
   const [toast,setToast]=React.useState('');
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2400);};
-  const KNOWN=['sarah@meridian.co','james@summit.co','maria@bloom.co'];
-  const onSingle=(form)=>{const e=(form.email||'').toLowerCase().trim();if(KNOWN.includes(e)){setDupEmail(form.email);setDupModal(true);}else{goTo('contact-detail');}};
+  // Build a real contact record from the form (mirrors the quick-add shape) and persist it — the single-add used to
+  // just goTo('contact-detail') and create nothing.
+  const createReal=(form)=>{const id=Date.now()+Math.floor(Math.random()*1000);const name=(((form.first||'')+' '+(form.last||'')).trim())||form.first||'New contact';crm.setContacts(a=>[{id,name,first:form.first||name,last:form.last||'',co:form.company||'',company:form.company||'',email:form.email||'',phone:form.phone||'',title:form.title||'',avatar:arInitials(name),color:arPick(),status:'Active',cstatus:form.status||'Prospect',owner:'AM',ownerColor:'#3b82f6',last:'Just now',deal:'—',days:0,tags:[],archived:false},...a]);return id;};
+  // Live duplicate scan against the REAL contact store (was a hardcoded 3-email KNOWN list + a fake 'Sarah Chen' card).
+  const onSingle=(form)=>{const em=dupNormEmail(form.email);const hit=em?(crm.contacts||[]).find(c=>!c.deleted&&c.email&&dupNormEmail(c.email)===em):null;if(hit){setDupHit(hit);setDupForm(form);setDupModal(true);}else{const id=createReal(form);showToast('Contact created');setTimeout(()=>goTo('contact-detail',id),450);}};
   const onBulk=(n)=>{showToast(n+(n===1?' contact':' contacts')+' added');setTimeout(()=>goTo('contacts'),700);};
   const title=initialMode==='multiple'?'Add multiple contacts':'Add a contact';
   const subtitle=initialMode==='multiple'?'Type or paste a whole list — add many people in one save, or jump back to bulk import from Contacts.':'Add one person to your CRM. Same form as Quick add.';
@@ -8304,7 +8327,7 @@ function AddContactPage({goTo,nav}){
         </div>
         <AppFooter/>
       </div>
-      {dupModal&&<DuplicateDetectionModal email={dupEmail} close={()=>setDupModal(false)} onKeepBoth={()=>{setDupModal(false);goTo('contacts');}} onMerge={()=>{setDupModal(false);goTo('contact-detail');}}/>}
+      {dupModal&&<DuplicateDetectionModal existing={dupHit} incoming={dupForm} close={()=>setDupModal(false)} onKeepBoth={()=>{setDupModal(false);const id=createReal(dupForm);showToast('Both kept — new contact created');setTimeout(()=>goTo('contact-detail',id),450);}} onMerge={()=>{setDupModal(false);const h=dupHit,fm=dupForm||{};crm.setContacts(a=>a.map(c=>{if(!h||c.id!==h.id)return c;const p={...c};if(!p.phone&&fm.phone)p.phone=fm.phone;if(!p.co&&fm.company){p.co=fm.company;p.company=fm.company;}if(!p.title&&fm.title)p.title=fm.title;return p;}));showToast('Merged into the existing contact');goTo('contact-detail',h?h.id:null);}}/>}
       {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25" style={{boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}}><I.Check size={14} stroke={2.4}/>{toast}</div>)}
     </div>
   );
