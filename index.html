@@ -7318,7 +7318,7 @@ const DR_SEL="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/
 const COMMON_JOB_TITLES=['CEO','CTO','CFO','COO','CMO','Founder','Co-Founder','President','Owner','Partner','VP of Sales','VP of Marketing','VP of Engineering','VP of Product','Head of Growth','Head of Product','Head of Operations','Head of Sales','Director of Sales','Director of Marketing','Director of Operations','Sales Manager','Marketing Manager','Product Manager','Engineering Manager','Operations Manager','Account Executive','Account Manager','Business Development Manager','Software Engineer','Product Designer','Consultant','Office Manager'];
 function DrawerField({f,value,onChange}){
   const _crm=React.useContext(CrmDataContext);
-  const label=(<label className="block text-[11px] font-medium text-white/45 mb-1.5">{f.label}{f.required&&<span className="text-red-400/70 ml-0.5">*</span>}</label>);
+  const label=(<React.Fragment><label className="block text-[11px] font-medium text-white/45 mb-1.5">{f.label}{f.required&&<span className="text-red-400/70 ml-0.5">*</span>}{f.unique&&<span className="ml-1.5 text-[9px] font-medium text-white/30 uppercase tracking-wide">Unique</span>}</label>{f.help&&<p className="text-[10.5px] text-white/40 -mt-1 mb-1.5 leading-snug">{f.help}</p>}</React.Fragment>);
   if(!drEditable(f)){
     let disp;
     if(f.type==='user')disp=userByCode(value)?userByCode(value).name:'—';
@@ -24222,7 +24222,8 @@ function coSeedObjects(){
     id:'cob_proj',singular:'Project',plural:'Projects',icon:'Folder',color:'#a78bfa',primaryLabel:'Project name',
     fields:[
       {id:'f_stage',key:'f_stage',label:'Stage',type:'Single select',options:['Planning','In progress','On hold','Complete'],detail:'primary',col:true,required:false},
-      {id:'f_budget',key:'f_budget',label:'Budget',type:'Currency',detail:'primary',col:true},
+      {id:'f_budget',key:'f_budget',label:'Budget',type:'Currency',detail:'primary',col:true,help:'Total approved budget for the project, in USD.'},
+      {id:'f_code',key:'f_code',label:'Project code',type:'Text',detail:'primary',col:false,unique:true,help:'A unique short code for this project (e.g. PRJ-001).'},
       {id:'f_due',key:'f_due',label:'Due date',type:'Date',detail:'primary',col:true},
       {id:'f_priority',key:'f_priority',label:'Priority',type:'Single select',options:['Low','Medium','High'],detail:'secondary',col:true},
       {id:'f_notes',key:'f_notes',label:'Notes',type:'Long text',detail:'secondary'},
@@ -24234,10 +24235,10 @@ function coSeedObjects(){
       {id:'r_contacts',key:'r_contacts',label:'Team contacts',target:'contact',many:true},
     ],
     records:[
-      {id:'rec_1',name:'Meridian website rebuild',owner:'AM',ownerColor:'#3b82f6',tags:['priority','q3'],f_stage:'In progress',f_budget:24000,f_due:'2026-08-15',f_priority:'High',f_notes:'Full marketing-site rebuild on a new CMS, with phased content migration.',f_brief:'<b>Goal:</b> rebuild the marketing site on a modern CMS.<ul><li>Phase 1 — content audit &amp; migration</li><li>Phase 2 — new design system</li><li>Phase 3 — launch &amp; QA</li></ul>',f_docs:[{name:'proposal.pdf',size:'940 KB'},{name:'floor-plan-final.pdf',size:'820 KB'}],r_company:'Meridian Agency',r_contacts:['Sarah Chen'],createdBy:'AM',createdAt:'Jun 2, 2026',agoMin:ago(15),archived:false,deleted:false,acts:[{type:'note',ts:ago(2),title:'Kickoff call done',body:'Aligned on scope and timeline with the client.'},{type:'field',ts:ago(6),title:'Stage → In progress',body:'Moved from Planning after the SOW was signed.'}]},
-      {id:'rec_2',name:'Summit onboarding rollout',owner:'JK',ownerColor:'#8b5cf6',tags:['onboarding'],f_stage:'Planning',f_budget:12000,f_due:'2026-09-01',f_priority:'Medium',f_notes:'Phased onboarding across eight seats.',r_company:'Summit Digital',r_contacts:['James Rivera'],createdBy:'JK',createdAt:'Jun 8, 2026',agoMin:ago(9),archived:false,deleted:false,acts:[]},
-      {id:'rec_3',name:'Forge expansion plan',owner:'AM',ownerColor:'#3b82f6',tags:['expansion'],f_stage:'On hold',f_budget:44000,f_due:'2026-10-10',f_priority:'High',f_notes:'Awaiting Q4 budget sign-off before resuming.',r_company:'Forge & Co',r_contacts:['Emily Tran'],createdBy:'AM',createdAt:'May 28, 2026',agoMin:ago(20),archived:false,deleted:false,acts:[{type:'note',ts:ago(3),title:'Paused pending budget',body:'Client paused until Q4 budget is confirmed.'}]},
-      {id:'rec_4',name:'Internal CRM cleanup',owner:'SC',ownerColor:'#10b981',tags:[],f_stage:'Complete',f_budget:0,f_due:'2026-06-01',f_priority:'Low',f_notes:'Dedupe and re-tag legacy records.',r_company:'',r_contacts:[],createdBy:'SC',createdAt:'May 1, 2026',agoMin:ago(40),archived:false,deleted:false,acts:[]},
+      {id:'rec_1',name:'Meridian website rebuild',owner:'AM',ownerColor:'#3b82f6',tags:['priority','q3'],f_stage:'In progress',f_code:'PRJ-001',f_budget:24000,f_due:'2026-08-15',f_priority:'High',f_notes:'Full marketing-site rebuild on a new CMS, with phased content migration.',f_brief:'<b>Goal:</b> rebuild the marketing site on a modern CMS.<ul><li>Phase 1 — content audit &amp; migration</li><li>Phase 2 — new design system</li><li>Phase 3 — launch &amp; QA</li></ul>',f_docs:[{name:'proposal.pdf',size:'940 KB'},{name:'floor-plan-final.pdf',size:'820 KB'}],r_company:'Meridian Agency',r_contacts:['Sarah Chen'],createdBy:'AM',createdAt:'Jun 2, 2026',agoMin:ago(15),archived:false,deleted:false,acts:[{type:'note',ts:ago(2),title:'Kickoff call done',body:'Aligned on scope and timeline with the client.'},{type:'field',ts:ago(6),title:'Stage → In progress',body:'Moved from Planning after the SOW was signed.'}]},
+      {id:'rec_2',name:'Summit onboarding rollout',owner:'JK',ownerColor:'#8b5cf6',tags:['onboarding'],f_stage:'Planning',f_code:'PRJ-002',f_budget:12000,f_due:'2026-09-01',f_priority:'Medium',f_notes:'Phased onboarding across eight seats.',r_company:'Summit Digital',r_contacts:['James Rivera'],createdBy:'JK',createdAt:'Jun 8, 2026',agoMin:ago(9),archived:false,deleted:false,acts:[]},
+      {id:'rec_3',name:'Forge expansion plan',owner:'AM',ownerColor:'#3b82f6',tags:['expansion'],f_stage:'On hold',f_code:'PRJ-003',f_budget:44000,f_due:'2026-10-10',f_priority:'High',f_notes:'Awaiting Q4 budget sign-off before resuming.',r_company:'Forge & Co',r_contacts:['Emily Tran'],createdBy:'AM',createdAt:'May 28, 2026',agoMin:ago(20),archived:false,deleted:false,acts:[{type:'note',ts:ago(3),title:'Paused pending budget',body:'Client paused until Q4 budget is confirmed.'}]},
+      {id:'rec_4',name:'Internal CRM cleanup',owner:'SC',ownerColor:'#10b981',tags:[],f_stage:'Complete',f_code:'PRJ-004',f_budget:0,f_due:'2026-06-01',f_priority:'Low',f_notes:'Dedupe and re-tag legacy records.',r_company:'',r_contacts:[],createdBy:'SC',createdAt:'May 1, 2026',agoMin:ago(40),archived:false,deleted:false,acts:[]},
     ],
   }];
 }
@@ -24393,7 +24394,8 @@ function CoTagInput({value,onChange}){
 function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
   const blank=()=>{const o={};(def.fields||[]).forEach(f=>{o[f.key]=f.type==='Multi select'?[]:(f.defaultValue!=null&&f.defaultValue!==''?f.defaultValue:'');});(def.relationships||[]).forEach(r=>{o[r.key]=r.many?[]:'';});return o;};
   const [draft,setDraft]=React.useState(()=>mode==='edit'?{...record}:{name:'',owner:'AM',tags:[],...blank()});
-  const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
+  const [uniqErr,setUniqErr]=React.useState([]); // fields whose value collides with an existing record
+  const set=(k,v)=>{if(uniqErr.length)setUniqErr([]);setDraft(d=>({...d,[k]:v}));};
   // Dirty = draft differs from the initial snapshot (works for create: starts blank; and edit: starts pre-filled).
   const _initRef=React.useRef(null);const _snap=JSON.stringify(draft);if(_initRef.current===null)_initRef.current=_snap;
   const {attemptClose,guardNode}=useCloseGuard(_snap!==_initRef.current,_close);
@@ -24405,7 +24407,12 @@ function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
   const _fieldEmpty=(f)=>{const v=draft[f.key];return v==null||v===''||(Array.isArray(v)&&!v.length);};
   const missingReq=shownFields.filter(f=>f.required&&_fieldEmpty(f));
   const valid=(draft.name||'').trim(); // Create button enables on name; required-field enforcement runs in save()
-  const save=()=>{setSubmitted(true);if(!(draft.name||'').trim()||missingReq.length)return;onSave({...draft,name:draft.name.trim(),ownerColor:coOwnerColor(draft.owner)});};
+  const save=()=>{setSubmitted(true);if(!(draft.name||'').trim()||missingReq.length)return;
+    // enforce fields marked Unique against the existing records (exclude self on edit)
+    const _recs=((crm.customObjects||[]).find(o=>o.id===def.id)||def||{}).records||[];
+    const _dupF=shownFields.filter(f=>f.unique).filter(f=>{const v=draft[f.key];if(v==null||v==='')return false;const nv=String(v).trim().toLowerCase();return _recs.some(r=>!r.deleted&&r.id!==((record||{}).id)&&String(r[f.key]==null?'':r[f.key]).trim().toLowerCase()===nv);});
+    if(_dupF.length){setUniqErr(_dupF);return;}
+    onSave({...draft,name:draft.name.trim(),ownerColor:coOwnerColor(draft.owner)});};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[186] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
@@ -24413,11 +24420,12 @@ function CustomRecordDrawer({mode,def,record,crm,onClose:_close,onSave}){
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-3.5">
         <div><label className={CO_LBL}>{def.primaryLabel||'Name'}<span className="text-red-400/70 ml-0.5">*</span></label><input autoFocus value={draft.name||''} onChange={e=>set('name',e.target.value)} placeholder={def.primaryLabel||'Name'} className={CO_INP}/></div>
         <div><label className={CO_LBL}>Owner</label><select value={draft.owner||'AM'} onChange={e=>set('owner',e.target.value)} className={CO_SEL} style={{colorScheme:'dark'}}>{(typeof TEAM_MEMBERS!=='undefined'?TEAM_MEMBERS:[]).map(m=>(<option key={m.avatar} value={m.avatar} style={{background:'var(--s900)'}}>{m.name}</option>))}</select></div>
-        {shownFields.map(f=>(<DrawerField key={f.id} f={{label:f.label,type:coCtrlType(f.type),options:coFieldOpts(f),required:f.required}} value={draft[f.key]} onChange={v=>set(f.key,v)}/>))}
+        {shownFields.map(f=>(<DrawerField key={f.id} f={{label:f.label,type:coCtrlType(f.type),options:coFieldOpts(f),required:f.required,help:f.help,unique:f.unique}} value={draft[f.key]} onChange={v=>set(f.key,v)}/>))}
         {(def.relationships||[]).map(rel=>{const meta=coTargetMeta(crm,rel.target);return(<div key={rel.id}><label className={CO_LBL}>{rel.label}</label><CoLinkField crm={crm} target={rel.target} many={rel.many} value={draft[rel.key]} onChange={v=>set(rel.key,v)} placeholder={'Link a '+meta.label.toLowerCase()+'…'} Icon={meta.Icon}/></div>);})}
         <div><label className={CO_LBL}>Tags</label><CoTagInput value={draft.tags||[]} onChange={v=>set('tags',v)}/></div>
       </div>
       {submitted&&missingReq.length>0&&<div className="shrink-0 px-5 pt-3"><div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/25 text-[12px] text-red-200"><I.AlertTriangle size={13} className="shrink-0 mt-0.5"/><span>Fill required field{missingReq.length>1?'s':''}: {missingReq.map(f=>f.label).join(', ')}.</span></div></div>}
+      {uniqErr.length>0&&<div className="shrink-0 px-5 pt-3"><div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/25 text-[12px] text-red-200"><I.AlertTriangle size={13} className="shrink-0 mt-0.5"/><span>Already in use — {uniqErr.map(f=>f.label).join(', ')} must be unique.</span></div></div>}
       <div className="shrink-0 flex gap-3 px-5 py-4 border-t border-white/[0.06]"><button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Cancel</button><button onClick={save} disabled={!valid} className={['flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all',valid?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')}>{mode==='edit'?'Save changes':'Create '+def.singular}</button></div>
       {guardNode}
     </div>
