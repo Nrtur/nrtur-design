@@ -11872,7 +11872,7 @@ function InboxPage({goTo,nav}){
   const [tab,setTab]=React.useState(navCh==='calls'||navCh==='sms'?navCh:'all');
   const [callPreload,setCallPreload]=React.useState(null);
   const callsApi=React.useRef(null);
-  const {contacts:_allContacts,addActivity:_addAct,updateContact:_updCt,seqEnrollments:_seqEnr,setSeqEnrollments:_setSeqEnr,customSeqs:_customSeqs}=React.useContext(CrmDataContext);
+  const {contacts:_allContacts,addActivity:_addAct,updateContact:_updCt,seqEnrollments:_seqEnr,setSeqEnrollments:_setSeqEnr,customSeqs:_customSeqs,setSuppression:_setSupp}=React.useContext(CrmDataContext);
   const [folder,setFolder]=React.useState('inbox');
   const [emails,setEmails]=React.useState(()=>MAIL_EMAILS.map(e=>({...e,folder:e.folder||'inbox'})));
   const [selectedId,setSelectedId]=React.useState(1);
@@ -11976,26 +11976,52 @@ function InboxPage({goTo,nav}){
     const ct=_allContacts.find(c=>c.id===cid&&!c.deleted)||_allContacts.find(c=>!c.deleted&&c.phone);
     if(!ct)return;
     const body=opts.body||_smsInBodies[simS.current%_smsInBodies.length];
-    const norm=_supNormPhone(ct.phone);
-    // route: match by contactId OR by normalized phone number
-    let conv=smsConvosRef.current.find(s=>(s.contactId!=null&&s.contactId===ct.id)||(norm&&_supNormPhone(s.phone)===norm));
+    // the sender's texting number = their existing thread's number, else their contact number
+    const existing=smsConvosRef.current.find(s=>(s.contactId!=null&&s.contactId===ct.id)||s.contact===ct.name);
+    const fromPhone=(existing&&existing.phone)||ct.phone||'';
+    const norm=_supNormPhone(fromPhone);
+    // ── SMS compliance keywords resolved at the messaging layer, like a carrier gateway ──
+    const _kw=String(body).trim().toUpperCase().replace(/[^A-Z]/g,'');
+    const isStop=/^(STOP|STOPALL|UNSUBSCRIBE|CANCEL|END|QUIT|OPTOUT)$/.test(_kw);
+    const isStart=/^(START|UNSTOP|OPTIN)$/.test(_kw);
+    const isHelp=/^(HELP|INFO)$/.test(_kw);
+    const kwAction=isStop||isStart||isHelp;
+    // route: existing thread (by contact / number), else create one
+    let conv=existing||(norm?smsConvosRef.current.find(s=>_supNormPhone(s.phone)===norm):null);
     const created=!conv;
-    const msg={from:ct.name,me:false,body,time:'Just now'};
+    const inMsg={from:ct.name,me:false,body,time:'Just now'};
+    // carrier-style auto-reply for STOP/START/HELP
+    const autoBody=isStop?"You're unsubscribed from nrtur texts — no more messages will be sent. Reply START to opt back in.":isStart?"You're re-subscribed to nrtur texts. Reply STOP to opt out anytime.":isHelp?"nrtur alerts: reply STOP to unsubscribe. Msg&data rates may apply. Help: help@nrtur.io":null;
+    const outMsg=autoBody?{from:'nrtur',me:true,body:autoBody,time:'Just now',auto:true}:null;
+    const newMsgs=outMsg?[inMsg,outMsg]:[inMsg];
+    const prev=autoBody||body;
     if(conv){
       // R10-12: don't yank the user off a thread they're composing in; R10-34: unread only when NOT viewing it.
+      // A compliance keyword IS selected so the opt-out/opt-in result is visible.
       const viewing=smsSel&&smsSel.id===conv.id;
-      setSmsConvos(cs=>cs.map(x=>x.id===conv.id?{...x,messages:[...x.messages,msg],preview:body,time:'Just now',unread:!viewing}:x));
-      if(viewing)setSmsSel(s=>({...s,messages:[...s.messages,msg],preview:body,time:'Just now'}));
+      const upd={...conv,messages:[...conv.messages,...newMsgs],preview:prev,time:'Just now',unread:kwAction?false:!viewing};
+      setSmsConvos(cs=>cs.map(x=>x.id===conv.id?upd:x));
+      if(kwAction||viewing)setSmsSel(upd);
     }else{
-      conv={id:Date.now(),contactId:ct.id,contact:ct.name,avatar:ct.avatar,color:ct.color,phone:ct.phone||'',preview:body,time:'Just now',unread:true,messages:[msg]};
+      conv={id:Date.now(),contactId:ct.id,contact:ct.name,avatar:ct.avatar,color:ct.color,phone:fromPhone,preview:prev,time:'Just now',unread:!kwAction,messages:newMsgs};
       setSmsConvos(cs=>[conv,...cs]);
+      if(kwAction)setSmsSel(conv);
+    }
+    // STOP writes a real SMS suppression row on the SENDER'S NUMBER (read by canSendSms / composer lock); START lifts it
+    if(isStop&&_setSupp){
+      _setSupp(s=>{const ph=(s.phones||[]);if(norm&&ph.some(x=>_supNormPhone(x.phone)===norm&&(x.channel==='sms'||x.channel==='both')))return s;return {...s,phones:[{id:'p'+Date.now(),source:'Reply STOP',date:supNewDate(),phone:fromPhone,channel:'sms',reason:'Replied STOP'},...ph]};});
+    }else if(isStart&&_setSupp){
+      _setSupp(s=>({...s,phones:(s.phones||[]).filter(x=>!(norm&&_supNormPhone(x.phone)===norm&&(x.channel==='sms'||x.channel==='both')))}));
     }
     const ds=dealsForPerson(ct.id);const dl=ds.length===1?ds[0]:null;
-    _addAct('contact',ct.id,{...mkAct('sms',{ts:0,by:ct.name.split(' ')[0],title:'Inbound SMS',body,payload:{dir:'in'}}),...(dl?{dealId:dl.id}:{})});
+    const actTitle=isStop?'Inbound SMS — STOP (opted out of SMS)':isStart?'Inbound SMS — START (opted back in)':isHelp?'Inbound SMS — HELP (auto-replied)':'Inbound SMS';
+    _addAct('contact',ct.id,{...mkAct('sms',{ts:0,by:ct.name.split(' ')[0],title:actTitle,body,payload:{dir:'in'}}),...(dl?{dealId:dl.id}:{})});
     _updCt(ct.id,{last:'Just now',lastActivity:'Just now',days:0});
-    replyUnenroll(ct.id,ct.name.split(' ')[0],'sms');
-    setTimeout(()=>{try{fireEntityAutomationEvents('contact',ct,['SMS reply received']);}catch(e){}},0);
-    setTab('sms');window.__nrturToast&&window.__nrturToast('Inbound SMS — '+ct.name+(ct.phone?(' ('+ct.phone+')'):'')+(created?' · new thread':''),'success');
+    if(isStop)replyUnenroll(ct.id,ct.name.split(' ')[0],'sms'); // opting out ends any SMS sequences
+    else if(!isStart&&!isHelp){replyUnenroll(ct.id,ct.name.split(' ')[0],'sms');setTimeout(()=>{try{fireEntityAutomationEvents('contact',ct,['SMS reply received']);}catch(e){}},0);}
+    setTab('sms');
+    const toastMsg=isStop?(ct.name+' opted out — SMS suppressed'):isStart?(ct.name+' opted back in — SMS re-enabled'):isHelp?('Auto-replied to HELP — '+ct.name):('Inbound SMS — '+ct.name+(fromPhone?(' ('+fromPhone+')'):'')+(created?' · new thread':''));
+    window.__nrturToast&&window.__nrturToast(toastMsg,isStop?'warning':'success');
   };
   React.useEffect(()=>{
     if(!nav)return;
@@ -12017,6 +12043,10 @@ function InboxPage({goTo,nav}){
   const attachMms=(kind)=>{const pool=MMS_SAMPLE[kind]||MMS_SAMPLE.image;const m=pool[Math.floor(Math.random()*pool.length)];setMmsAtt(a=>[...a,{...m,uid:Date.now()+Math.random()}]);};
   const removeMmsAtt=(uid)=>setMmsAtt(a=>a.filter(x=>x.uid!==uid));
   const smsMedia=smsSel?smsSel.messages.reduce((a,m)=>a.concat(m.media||[]),[]):[]; // all media across the open thread
+  // per-thread SMS suppression (replied STOP / channel off) → locks the composer, mirrors canSendSms
+  const _smsSuppCt=smsSel&&smsSel.contactId!=null?(_liveContacts||[]).find(c=>c.id===smsSel.contactId&&!c.deleted):null;
+  const _smsSuppPhone=smsSel?(smsSel.phone||(_smsSuppCt&&_smsSuppCt.phone)||''):'';
+  const _smsSupp=smsSel?(supPhoneBlocked(_smsSuppPhone,'sms')||(smsSel.contactId!=null&&supChannelOff(smsSel.contactId,'sms'))):false;
   const [logModal,setLogModal]=React.useState(false);
   const ma=React.useContext(MailAccountsContext);
   const mailShort=(()=>{const a=ma.accounts;if(a.length===0)return'No mailbox';const provs=new Set(a.map(x=>x.provider).filter(Boolean));return a.length===1?((PROVIDERS[a[0].provider]||{}).short||'Email'):(provs.size===1?((PROVIDERS[a[0].provider]||{}).short||'Email'):'Mail');})();
@@ -12052,6 +12082,10 @@ function InboxPage({goTo,nav}){
               <button disabled={!mailSynced} onClick={()=>{setSimOpen(false);simInboundEmail(true);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors disabled:opacity-40">Email — from a known contact</button>
               <button disabled={!mailSynced} onClick={()=>{setSimOpen(false);simInboundEmail(false);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors disabled:opacity-40">Email — from an unknown sender</button>
               <button onClick={()=>{setSimOpen(false);simInboundSms();}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS — routed to sender by number</button>
+              <div className="px-3 pt-1.5 pb-1 text-[9.5px] font-medium text-white/35 uppercase tracking-[0.14em]">Compliance keywords</div>
+              <button onClick={()=>{setSimOpen(false);simInboundSms({contactId:2,body:'STOP'});}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS — reply “STOP” (opt-out)</button>
+              <button onClick={()=>{setSimOpen(false);simInboundSms({contactId:2,body:'HELP'});}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS — reply “HELP”</button>
+              <button onClick={()=>{setSimOpen(false);simInboundSms({contactId:2,body:'START'});}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS — reply “START” (opt back in)</button>
             </div>}
           </div>}
           {(tab==='email'||tab==='all')&&mailSynced&&effCanCreateAny()&&<button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>}
@@ -12081,11 +12115,12 @@ function InboxPage({goTo,nav}){
             <div className="flex-1 overflow-y-auto scroll-area px-6 py-5 flex flex-col gap-3">{smsSel.messages.map((msg,i)=>(<div key={i} className={['flex',msg.me?'justify-end':'justify-start'].join(' ')}><div className={['max-w-[72%] rounded-2xl overflow-hidden text-[13px] leading-relaxed',msg.me?'bg-brand-500 text-white rounded-br-sm':'bg-white/[0.07] border border-white/[0.08] text-white/85 rounded-bl-sm'].join(' ')}>{msg.media&&msg.media.length>0&&(<div className={['p-1.5 grid gap-1.5',msg.media.length===1?'grid-cols-1':'grid-cols-2'].join(' ')}>{msg.media.map((m,j)=>m.type==='file'?<button key={j} onClick={()=>showToast('Downloading '+m.name)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-black/15 hover:bg-black/25 transition-colors text-left min-w-[190px]"><span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0"><I.Note size={14}/></span><span className="min-w-0 flex-1"><span className="block text-[12px] font-medium truncate">{m.name}</span><span className="block text-[10.5px] opacity-70">{m.size}</span></span><I.Download size={13} className="opacity-70 shrink-0"/></button>:<MmsThumb key={j} m={m} onOpen={()=>setLightbox(m)} className={msg.media.length===1?'w-full max-w-[260px] aspect-[4/3]':'w-full aspect-square'}/>)}</div>)}{msg.body&&<p className="px-4 pt-2.5 pb-0.5">{msg.body}</p>}<p className={['text-[10px] px-4 pb-2',msg.body?'pt-1':'pt-2',msg.me?'text-white/60':'text-white/35'].join(' ')}>{msg.time}</p></div></div>))}</div>
             <div className="shrink-0 border-t border-white/[0.05] p-4" style={{background:'var(--s925)'}}>
               {(()=>{const _g=smsComplianceState();return !_g.ok?(<div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/[0.08] border border-amber-500/25 text-[11.5px] text-amber-200"><I.Ban size={12} className="shrink-0"/><span className="min-w-0 truncate">{_g.reason}</span><button onClick={()=>goTo('settings-phone-numbers')} className="ml-auto shrink-0 font-medium text-amber-100 hover:text-white underline underline-offset-2 transition-colors">Open Phone numbers</button></div>):null;})()}
+              {_smsSupp&&(<div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/[0.10] border border-rose-500/30 text-[11.5px] text-rose-200"><I.Ban size={12} className="shrink-0"/><span className="min-w-0">This contact opted out of SMS (replied STOP). Texting is disabled until they reply START.</span></div>)}
               <div className="flex items-center gap-1.5 mb-2 flex-wrap"><span className="text-[10px] font-medium text-white/30 uppercase tracking-[0.14em] mr-1">Insert</span>{SMS_VARS.slice(0,4).map(v=>(<button key={v.token} onClick={()=>insertVar(v.token)} title={v.desc} className="px-2 py-0.5 rounded-md text-[10.5px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/18 transition-all">{v.token}</button>))}</div>
               <div className="rounded-xl border border-white/[0.08] focus-within:border-brand-500/40 transition-all" style={{background:'var(--field6)'}}>
                 {mmsAtt.length>0&&(<div className="px-3 pt-3 flex items-center gap-2 flex-wrap">{mmsAtt.map(m=>(<div key={m.uid} className="relative">{m.type==='file'?<div className="inline-flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] text-white/75 bg-white/[0.05] border border-white/[0.08]"><I.Note size={12} className="text-violet-300"/>{m.name}<span className="text-white/35">{m.size}</span></div>:<div className="w-14 h-14 rounded-lg overflow-hidden border border-white/[0.1] relative" style={{background:m.grad}}>{m.type==='video'&&<span className="absolute inset-0 flex items-center justify-center text-white"><I.Play size={12}/></span>}</div>}<button onClick={()=>removeMmsAtt(m.uid)} title="Remove" className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 border border-white/20 text-white flex items-center justify-center hover:bg-black"><I.X size={8}/></button></div>))}</div>)}
-                <textarea ref={draftRef} value={draft} onChange={e=>setDraft(e.target.value)} rows={3} placeholder="Type a message…" className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30"/>
-                <div className="flex items-center justify-between px-3 pb-3 gap-2"><div className="flex items-center gap-1 min-w-0">{_smsFromOpts.length>0&&<div className="relative"><select value={smsFrom} onChange={e=>setSmsFrom(e.target.value)} title="Send from this number" className="pl-2 pr-6 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/60 outline-none appearance-none cursor-pointer" style={{colorScheme:'dark',background:'var(--s850)'}}>{_smsFromOpts.map(n=>(<option key={n}>{n}</option>))}</select><I.ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>}<button onClick={()=>attachMms('image')} title="Attach image" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Image size={15}/></button><button onClick={()=>attachMms('video')} title="Attach video" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Play size={14}/></button><button onClick={()=>attachMms('file')} title="Attach file" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Paperclip size={15}/></button><span className={['text-[11px] tabular-nums ml-1 truncate',(seg.segs>1&&!mmsAtt.length)?'text-amber-300':'text-white/30'].join(' ')}>{mmsAtt.length>0?(mmsAtt.length+' media · MMS'):(draft.length+' chars · '+seg.segs+' SMS')}</span></div><button disabled={!draft.trim()&&mmsAtt.length===0} onClick={()=>{const _rc=(smsSel.contactId!=null?(_liveContacts||[]).find(c=>c.id===smsSel.contactId&&!c.deleted):null)||(_liveContacts||[]).find(c=>c.name===smsSel.contact&&!c.deleted);const _g=canSendSms(_rc);if(!_g.ok){showToast(_g.reason);return;}const _media=mmsAtt.map(({uid,..._m})=>_m);const _isMms=_media.length>0;if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms(_isMms?'mms':'sms',_isMms?1:seg.segs,(_isMms?'MMS to ':'SMS to ')+smsSel.contact);const _msg={from:'Alex Morgan',me:true,body:draft.trim(),time:'Just now',...(_isMms?{media:_media}:{})};const _prev=_isMms?(draft.trim()||(_media.length+' '+(_media[0].type==='file'?'file':'photo')+(_media.length===1?'':'s'))):draft.trim();setSmsConvos(cs=>cs.some(c=>c.id===smsSel.id)?cs.map(c=>c.id===smsSel.id?{...c,messages:[...c.messages,_msg],preview:_prev,time:'Just now'}:c):[{...smsSel,messages:[...smsSel.messages,_msg],preview:_prev,time:'Just now'},...cs]);setSmsSel(s=>({...s,messages:[...s.messages,_msg],preview:_prev,time:'Just now'}));if(_rc){const _dl=dealsForPerson(_rc.id);_addAct&&_addAct('contact',_rc.id,{...mkAct(_isMms?'mms':'sms',{ts:0,by:CURRENT_USER.avatar,title:(_isMms?'MMS sent':'SMS sent'),body:_prev,payload:{dir:'out',...(_isMms?{media:_media}:{})}}),...(_dl.length===1?{dealId:_dl[0].id}:{})});_updCt&&_updCt(_rc.id,{last:'Just now',lastActivity:'Just now',days:0});}setDraft('');setMmsAtt([]);showToast(_isMms?'MMS sent':'Message sent');}} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',(draft.trim()||mmsAtt.length)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send {mmsAtt.length>0?'MMS':'SMS'}</button></div>
+                <textarea ref={draftRef} value={draft} onChange={e=>setDraft(e.target.value)} rows={3} disabled={_smsSupp} placeholder={_smsSupp?"This contact opted out of SMS":"Type a message…"} className="w-full bg-transparent outline-none resize-none px-4 pt-3 pb-1 text-[13px] text-white placeholder:text-white/30 disabled:cursor-not-allowed"/>
+                <div className="flex items-center justify-between px-3 pb-3 gap-2"><div className="flex items-center gap-1 min-w-0">{_smsFromOpts.length>0&&<div className="relative"><select value={smsFrom} onChange={e=>setSmsFrom(e.target.value)} title="Send from this number" className="pl-2 pr-6 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/60 outline-none appearance-none cursor-pointer" style={{colorScheme:'dark',background:'var(--s850)'}}>{_smsFromOpts.map(n=>(<option key={n}>{n}</option>))}</select><I.ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div>}<button onClick={()=>attachMms('image')} title="Attach image" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Image size={15}/></button><button onClick={()=>attachMms('video')} title="Attach video" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Play size={14}/></button><button onClick={()=>attachMms('file')} title="Attach file" className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"><I.Paperclip size={15}/></button><span className={['text-[11px] tabular-nums ml-1 truncate',(seg.segs>1&&!mmsAtt.length)?'text-amber-300':'text-white/30'].join(' ')}>{mmsAtt.length>0?(mmsAtt.length+' media · MMS'):(draft.length+' chars · '+seg.segs+' SMS')}</span></div><button disabled={(!draft.trim()&&mmsAtt.length===0)||_smsSupp} onClick={()=>{const _rc=(smsSel.contactId!=null?(_liveContacts||[]).find(c=>c.id===smsSel.contactId&&!c.deleted):null)||(_liveContacts||[]).find(c=>c.name===smsSel.contact&&!c.deleted)||{id:smsSel.contactId,name:smsSel.contact,phone:smsSel.phone};const _g=canSendSms(_rc);if(!_g.ok){showToast(_g.reason);return;}const _media=mmsAtt.map(({uid,..._m})=>_m);const _isMms=_media.length>0;if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms(_isMms?'mms':'sms',_isMms?1:seg.segs,(_isMms?'MMS to ':'SMS to ')+smsSel.contact);const _msg={from:'Alex Morgan',me:true,body:draft.trim(),time:'Just now',...(_isMms?{media:_media}:{})};const _prev=_isMms?(draft.trim()||(_media.length+' '+(_media[0].type==='file'?'file':'photo')+(_media.length===1?'':'s'))):draft.trim();setSmsConvos(cs=>cs.some(c=>c.id===smsSel.id)?cs.map(c=>c.id===smsSel.id?{...c,messages:[...c.messages,_msg],preview:_prev,time:'Just now'}:c):[{...smsSel,messages:[...smsSel.messages,_msg],preview:_prev,time:'Just now'},...cs]);setSmsSel(s=>({...s,messages:[...s.messages,_msg],preview:_prev,time:'Just now'}));if(_rc){const _dl=dealsForPerson(_rc.id);_addAct&&_addAct('contact',_rc.id,{...mkAct(_isMms?'mms':'sms',{ts:0,by:CURRENT_USER.avatar,title:(_isMms?'MMS sent':'SMS sent'),body:_prev,payload:{dir:'out',...(_isMms?{media:_media}:{})}}),...(_dl.length===1?{dealId:_dl[0].id}:{})});_updCt&&_updCt(_rc.id,{last:'Just now',lastActivity:'Just now',days:0});}setDraft('');setMmsAtt([]);showToast(_isMms?'MMS sent':'Message sent');}} className={['inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all border-none',((draft.trim()||mmsAtt.length)&&!_smsSupp)?'bg-brand-500 hover:bg-brand-400 text-white shadow-brand cursor-pointer':'bg-white/[0.06] text-white/30 cursor-not-allowed'].join(' ')}><I.Send size={11} stroke={2.4}/>Send {mmsAtt.length>0?'MMS':'SMS'}</button></div>
               </div>
             </div>
           </div>):(<div className="flex-1 flex items-center justify-center"><div className="text-center"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/25"><I.Hash size={22}/></div><p className="text-[14px] font-medium text-white/50">Select a conversation</p></div></div>)}
