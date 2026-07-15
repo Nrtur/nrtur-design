@@ -11932,7 +11932,7 @@ function InboxPage({goTo,nav}){
   // + R4 deal association + 'Email received'/'SMS reply received' automation trigger + reply-unenroll.
   // Unknown sender → lands unmatched; the detail pane offers the Create-lead branch.
   const [simOpen,setSimOpen]=React.useState(false);const simRef=React.useRef(null);useClickOutside(simRef,()=>setSimOpen(false));
-  const simK=React.useRef(0);const simU=React.useRef(0);
+  const simK=React.useRef(0);const simU=React.useRef(0);const simS=React.useRef(0);
   const SIM_KNOWN_IDS=[3,205,6];
   const SIM_UNKNOWN=[{name:'Nadia Osei',email:'nadia@brightloop.io',company:'Brightloop'},{name:'Viktor Hale',email:'viktor@halesys.io',company:'Hale Systems'},{name:'Lena Brandt',email:'lena@brandt.co',company:'Brandt & Co'}];
   const SIM_SUBJECTS=[{s:'Quick question about the proposal',p:'Had a look at the pricing — can we do a quick call this week to walk through it?'},{s:'Re: next steps',p:'Thanks for the walkthrough. Who should we loop in from our side for the technical review?'},{s:'Budget approved — timeline?',p:'Good news, budget is approved. What does onboarding look like from here?'}];
@@ -11964,23 +11964,38 @@ function InboxPage({goTo,nav}){
     setEmails(es=>[row,...es]);setFolder('inbox');setSelectedId(row.id);if(tab!=='email')setTab('email');
     window.__nrturToast&&window.__nrturToast('Inbound email — '+row.from,'success');
   };
-  const simInboundSms=()=>{
-    const conv=smsConvosRef.current[0];if(!conv)return; // deterministic demo: first thread
-    const ct=(conv.contactId!=null?_allContacts.find(c=>c.id===conv.contactId):null)||_allContacts.find(c=>c.name===conv.contact);
-    const body='Sounds good — one question on pricing before we sign. Can you call me tomorrow morning?';
-    const msg={from:conv.contact,me:false,body,time:'Just now'};
-    // R10-12: don't yank the user off a thread they're composing in; R10-34: unread only when NOT viewing it.
-    const viewing=smsSel&&smsSel.id===conv.id;
-    setSmsConvos(cs=>cs.map(x=>x.id===conv.id?{...x,messages:[...x.messages,msg],preview:body,time:'Just now',unread:!viewing}:x));
-    if(viewing)setSmsSel(s=>({...s,messages:[...s.messages,msg],preview:body,time:'Just now'}));
-    if(ct){
-      const ds=dealsForPerson(ct.id);const dl=ds.length===1?ds[0]:null;
-      _addAct('contact',ct.id,{...mkAct('sms',{ts:0,by:ct.name.split(' ')[0],title:'Inbound SMS',body,payload:{dir:'in'}}),...(dl?{dealId:dl.id}:{})});
-      _updCt(ct.id,{last:'Just now',lastActivity:'Just now',days:0});
-      replyUnenroll(ct.id,ct.name.split(' ')[0],'sms');
-      setTimeout(()=>{try{fireEntityAutomationEvents('contact',ct,['SMS reply received']);}catch(e){}},0);
+  const _smsInBodies=['Sounds good — one question on pricing before we sign. Can you call me tomorrow morning?','Thanks! Could you resend the latest proposal PDF?','Perfect — Thursday works for us.','Quick one: does nrtur handle multiple pipelines?'];
+  // Inbound SMS now ROUTES BY SENDER NUMBER (not "thread[0]"): pick a sender (rotating across
+  // contacts, incl. one with no seeded thread), normalize their phone via _supNormPhone, then find
+  // the thread for that (contact / number) — creating one if none exists. Mirrors how a real carrier
+  // webhook resolves From→conversation. contactId/opts let other surfaces drive a specific sender.
+  const simInboundSms=(opts)=>{
+    opts=opts||{};
+    const pool=[1,2,8,5,3]; // 3 has no seeded SMS thread → proves find-or-create routing
+    const cid=opts.contactId!=null?opts.contactId:pool[simS.current++%pool.length];
+    const ct=_allContacts.find(c=>c.id===cid&&!c.deleted)||_allContacts.find(c=>!c.deleted&&c.phone);
+    if(!ct)return;
+    const body=opts.body||_smsInBodies[simS.current%_smsInBodies.length];
+    const norm=_supNormPhone(ct.phone);
+    // route: match by contactId OR by normalized phone number
+    let conv=smsConvosRef.current.find(s=>(s.contactId!=null&&s.contactId===ct.id)||(norm&&_supNormPhone(s.phone)===norm));
+    const created=!conv;
+    const msg={from:ct.name,me:false,body,time:'Just now'};
+    if(conv){
+      // R10-12: don't yank the user off a thread they're composing in; R10-34: unread only when NOT viewing it.
+      const viewing=smsSel&&smsSel.id===conv.id;
+      setSmsConvos(cs=>cs.map(x=>x.id===conv.id?{...x,messages:[...x.messages,msg],preview:body,time:'Just now',unread:!viewing}:x));
+      if(viewing)setSmsSel(s=>({...s,messages:[...s.messages,msg],preview:body,time:'Just now'}));
+    }else{
+      conv={id:Date.now(),contactId:ct.id,contact:ct.name,avatar:ct.avatar,color:ct.color,phone:ct.phone||'',preview:body,time:'Just now',unread:true,messages:[msg]};
+      setSmsConvos(cs=>[conv,...cs]);
     }
-    setTab('sms');window.__nrturToast&&window.__nrturToast('Inbound SMS — '+conv.contact,'success');
+    const ds=dealsForPerson(ct.id);const dl=ds.length===1?ds[0]:null;
+    _addAct('contact',ct.id,{...mkAct('sms',{ts:0,by:ct.name.split(' ')[0],title:'Inbound SMS',body,payload:{dir:'in'}}),...(dl?{dealId:dl.id}:{})});
+    _updCt(ct.id,{last:'Just now',lastActivity:'Just now',days:0});
+    replyUnenroll(ct.id,ct.name.split(' ')[0],'sms');
+    setTimeout(()=>{try{fireEntityAutomationEvents('contact',ct,['SMS reply received']);}catch(e){}},0);
+    setTab('sms');window.__nrturToast&&window.__nrturToast('Inbound SMS — '+ct.name+(ct.phone?(' ('+ct.phone+')'):'')+(created?' · new thread':''),'success');
   };
   React.useEffect(()=>{
     if(!nav)return;
@@ -12036,7 +12051,7 @@ function InboxPage({goTo,nav}){
               <p className="px-3 py-1.5 text-[9.5px] font-medium text-white/35 uppercase tracking-[0.14em]">Runs the identity waterfall</p>
               <button disabled={!mailSynced} onClick={()=>{setSimOpen(false);simInboundEmail(true);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors disabled:opacity-40">Email — from a known contact</button>
               <button disabled={!mailSynced} onClick={()=>{setSimOpen(false);simInboundEmail(false);}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors disabled:opacity-40">Email — from an unknown sender</button>
-              <button onClick={()=>{setSimOpen(false);simInboundSms();}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS reply — existing thread</button>
+              <button onClick={()=>{setSimOpen(false);simInboundSms();}} className="w-full text-left px-3 py-2 text-[12.5px] text-white/75 hover:bg-white/[0.05] hover:text-white transition-colors">SMS — routed to sender by number</button>
             </div>}
           </div>}
           {(tab==='email'||tab==='all')&&mailSynced&&effCanCreateAny()&&<button onClick={()=>setComposeOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Edit size={13} stroke={2.4}/>Compose</button>}
