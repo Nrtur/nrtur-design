@@ -12205,6 +12205,10 @@ const EMAIL_SENDER={name:'Alex Morgan',email:'alex@nrtur.com',avatar:'AM',color:
 function fillVars(str,data){return (str||'').replace(/\{\{(\w+)\}\}/g,(m,k)=>(data||EMAIL_SAMPLE)[k]!=null?(data||EMAIL_SAMPLE)[k]:m);}
 let _emailTplSeed=null;const setEmailTplSeed=(s)=>{_emailTplSeed=s;};
 let _emailTplReturn='email-templates';const setEmailTplReturn=(p)=>{_emailTplReturn=p;};
+// Sequence-builder ↔ email-builder round-trip: stash the whole in-progress sequence so designing an
+// email no longer wipes the draft; _seqDesignedTplId carries the just-saved template back to the step.
+let _seqStash=null;const setSeqStash=(s)=>{_seqStash=s;};
+let _seqDesignedTplId=null;
 let EMAIL_TEMPLATES=[
   {id:1,name:'Follow-up',category:'follow-up',favorite:true,uses:142,openRate:48,replyRate:12,updated:'2d ago',subject:'Following up on our conversation',body:'Hi {{first_name}},\n\nJust wanted to follow up on our last conversation. Do you have any questions I can help with?\n\nBest,\n{{my_name}}'},
   {id:4,name:'Welcome / onboarding',category:'onboarding',favorite:true,uses:37,openRate:71,replyRate:9,updated:'3d ago',subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nWelcome aboard! Here are three things that take under 5 minutes and make {{company}} feel at home:\n\n1.  Import your contacts\n2.  Connect your inbox\n3.  Set up your first sequence\n\nReply to this email any time — a real person reads it.\n\nBest,\n{{my_name}}'},
@@ -12383,7 +12387,7 @@ function EmailBuilderPage({goTo}){
   const move=(id,dir)=>setBlocks(bs=>{const i=bs.findIndex(b=>b.id===id);if(i<0||bs[i].locked)return bs;const j=i+dir;if(j<0||j>=bs.length||bs[j].locked)return bs;const c=[...bs];[c[i],c[j]]=[c[j],c[i]];return c;});
   const dup=(id)=>setBlocks(bs=>{const i=bs.findIndex(b=>b.id===id);if(i<0||bs[i].locked)return bs;const c={...bs[i],id:ebid()};return[...bs.slice(0,i+1),c,...bs.slice(i+1)];});
   const del=(id)=>{const b=blocks.find(x=>x.id===id);if(b&&b.locked){setToast(LOCK_MSG);return;}setBlocks(bs=>bs.filter(x=>x.id!==id));if(sel===id)setSel(null);};
-  const save=()=>{const design={meta,blocks};const plain=blocks.filter(b=>b.type==='text').map(b=>fillVars(b.text)).join('\n\n');const head=blocks.find(b=>b.type==='heading');const rec={name:name.trim()||'Untitled template',category,subject:subject.trim()||(head?head.text:'')||name,body:plain||seed?.body||'',design};const idx=seed&&seed.id?EMAIL_TEMPLATES.findIndex(t=>t.id===seed.id):-1;if(idx>=0)EMAIL_TEMPLATES[idx]={...EMAIL_TEMPLATES[idx],...rec,updated:'just now'};else{const id=Math.max(0,...EMAIL_TEMPLATES.map(t=>t.id||0))+1;EMAIL_TEMPLATES.unshift({id,favorite:false,uses:0,openRate:0,replyRate:0,updated:'just now',...rec});}setToast('Template saved');setTimeout(()=>goTo(back),650);};
+  const save=()=>{const design={meta,blocks};const plain=blocks.filter(b=>b.type==='text').map(b=>fillVars(b.text)).join('\n\n');const head=blocks.find(b=>b.type==='heading');const rec={name:name.trim()||'Untitled template',category,subject:subject.trim()||(head?head.text:'')||name,body:plain||seed?.body||'',design};const idx=seed&&seed.id?EMAIL_TEMPLATES.findIndex(t=>t.id===seed.id):-1;let _sid;if(idx>=0){EMAIL_TEMPLATES[idx]={...EMAIL_TEMPLATES[idx],...rec,updated:'just now'};_sid=EMAIL_TEMPLATES[idx].id;}else{const id=Math.max(0,...EMAIL_TEMPLATES.map(t=>t.id||0))+1;EMAIL_TEMPLATES.unshift({id,favorite:false,uses:0,openRate:0,replyRate:0,updated:'just now',...rec});_sid=id;}_seqDesignedTplId=_sid;setToast('Template saved');setTimeout(()=>goTo(back),650);};
   const PALETTE=[{t:'heading',l:'Heading',Icon:I.Hash},{t:'text',l:'Text',Icon:I.Note},{t:'image',l:'Image',Icon:I.Image},{t:'button',l:'Button',Icon:I.ExternalLink},{t:'columns',l:'Columns',Icon:I.Grip},{t:'divider',l:'Divider',Icon:I.SliderH},{t:'spacer',l:'Spacer',Icon:I.ChevronDown},{t:'social',l:'Social',Icon:I.Globe},{t:'html',l:'HTML',glyph:'</>'}];
   const cw=device==='mobile'?Math.min(meta.width,360):meta.width;
   const ICOBTN={width:24,height:24,borderRadius:6,background:'rgba(15,23,42,0.92)',color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',border:'none',cursor:'pointer'};
@@ -19000,6 +19004,20 @@ function SequenceBuilderPage({goTo,channel,nav}){
     else{const _id='cs_'+Date.now();setSavedId(_id);crm.setCustomSeqs(a=>[{id:_id,enrolled:0,sent:0,opened:0,replied:0,clicked:0,atStep:[],lastRun:null,createdBy:CURRENT_USER.avatar,fromBuilder:true,...rec},...a]);}
     setDirty(false);showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);
   };
+  // Design an email in the full builder WITHOUT losing the sequence: stash the entire in-progress
+  // state (steps, config, the open step + its draft) before navigating; rehydrated on return below.
+  const designStep=(seed,stepId)=>{setSeqStash({channel,name,steps,trig,stopRules,activated,savedId,fromNumber,quietHours,bounceSuppress,linkTracking,freqCap,dirty,designStepId:stepId,draft:draft?{...draft}:null});setEmailTplSeed(seed);setEmailTplReturn('email-sequence-builder');goTo('email-builder');};
+  React.useEffect(()=>{
+    if(_seqStash&&_seqStash.channel===channel){const st=_seqStash;setSeqStash(null);
+      setName(st.name);setSteps(st.steps);setTrig(st.trig);setStopRules(st.stopRules);setActivated(st.activated);setSavedId(st.savedId);setFromNumber(st.fromNumber);setQuietHours(st.quietHours);setBounceSuppress(st.bounceSuppress);setLinkTracking(st.linkTracking);setFreqCap(st.freqCap);setDirty(true);
+      const tid=_seqDesignedTplId;_seqDesignedTplId=null;
+      if(st.designStepId!=null){
+        let updatedStep=st.draft?{...st.draft}:null;
+        if(tid!=null){const tpl=EMAIL_TEMPLATES.find(t=>t.id===tid);if(tpl){setSteps(ss=>ss.map(s=>s.id===st.designStepId?{...s,templateId:tid,subject:tpl.subject,body:tpl.body}:s));if(updatedStep)updatedStep={...updatedStep,templateId:tid,subject:tpl.subject,body:tpl.body};}}
+        setActiveNodeId(st.designStepId);if(updatedStep)setDraft(updatedStep);
+      }
+    }
+  },[]);
   const cancel=()=>{if(dirty)openConfirm({title:'Discard changes?',body:'Your unsaved changes to this sequence will be lost.',confirmLabel:'Discard',danger:true,onConfirm:()=>goTo('settings-sequences')});else goTo('settings-sequences');};
   const setStep=(id,patch)=>{setSteps(s=>s.map(x=>x.id===id?{...x,...patch}:x));mark();};
   const addStep=()=>{setSteps(s=>[...s,{id:Date.now(),...seqBlankFields(channel),delay:{n:2,unit:'days'}}]);mark();};
@@ -19338,7 +19356,7 @@ function SequenceBuilderPage({goTo,channel,nav}){
               <label className={DLBL}>Template</label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1"><select value={draft.templateId||''} onChange={e=>{const id=Number(e.target.value);const t=EMAIL_TEMPLATES.find(x=>x.id===id);dset(t?{templateId:id,subject:t.subject,body:t.body}:{templateId:''});}} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer"><option value="">Start from scratch</option>{EMAIL_TEMPLATES.map(t=>(<option key={t.id} value={t.id}>{t.name}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div>
-                <button onClick={()=>{const t=EMAIL_TEMPLATES.find(x=>x.id===draft.templateId);setEmailTplSeed(t||{name:name+' · Email '+(activeIdx+1),subject:draft.subject,body:draft.body,category:'follow-up'});setEmailTplReturn('email-sequence-builder');goTo('email-builder');}} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200 shrink-0"><I.Edit size={11}/>Design</button>
+                <button onClick={()=>{const t=EMAIL_TEMPLATES.find(x=>x.id===draft.templateId);designStep(t||{name:name+' · Email '+(activeIdx+1),subject:draft.subject,body:draft.body,category:'follow-up'},activeNodeId);}} className="inline-flex items-center gap-1.5 text-[12px] font-medium text-brand-300 hover:text-brand-200 shrink-0"><I.Edit size={11}/>Design</button>
               </div>
             </div>)}
             {!isSms&&activeIdx===0&&(<div className="mb-5"><label className={DLBL}>Send time</label><div className="relative"><select value={draft.sendTime||'9:00 AM'} onChange={e=>dset({sendTime:e.target.value})} style={SEL_DARK} className="w-full pl-3 pr-9 py-2.5 rounded-lg border border-white/[0.12] text-[13px] text-white/95 outline-none focus:border-brand-500/45 appearance-none cursor-pointer">{SEQ_TIMES.map(t=>(<option key={t}>{t}</option>))}</select><span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"><I.ChevronDown size={14}/></span></div></div>)}
@@ -19353,7 +19371,7 @@ function SequenceBuilderPage({goTo,channel,nav}){
               </div>);})()}
             {!isSms&&draft.templateId&&(()=>{const selTpl=EMAIL_TEMPLATES.find(t=>t.id===draft.templateId);if(!selTpl)return null;return(
               <div>
-                <div className="flex items-center justify-between mb-1.5"><label className={DLBL+' mb-0'}>Email design</label><button onClick={()=>{setEmailTplSeed(selTpl);setEmailTplReturn('email-sequence-builder');goTo('email-builder');}} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Edit size={11}/>Edit design</button></div>
+                <div className="flex items-center justify-between mb-1.5"><label className={DLBL+' mb-0'}>Email design</label><button onClick={()=>designStep(selTpl,activeNodeId)} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200 transition-colors"><I.Edit size={11}/>Edit design</button></div>
                 <div className="rounded-xl border border-white/[0.10] overflow-hidden bg-white"><TplPreview t={selTpl} height={340}/></div>
                 <p className="text-[11px] text-white/35 mt-1.5 inline-flex items-center gap-1"><I.Lock size={10}/>Content comes from the template — edit it in the builder.</p>
               </div>);})()}
