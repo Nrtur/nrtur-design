@@ -2711,6 +2711,7 @@ function effCanManageBilling(){const p=effPerms();return !!(p&&p.billing);}
 function effCanBulkDelete(){const p=effPerms();return !!(p&&p.features&&p.features.bulkDelete);}
 function effCanManagePhone(){const p=effPerms();return !!(p&&p.features&&p.features.managePhone);} // Phase 4: buying numbers spends money — feature-gated
 function effCanExport(){const p=effPerms();return !!(p&&p.features&&p.features.export);}
+function effCanReport(act){const p=effPerms();const r=p&&p.report;if(Array.isArray(r))return r.indexOf(act)>=0;return act==='view';} // ONE source of truth for report capabilities (role model); missing = view-only
 function effScope(obj){const p=effPerms();return (p&&p.objects&&p.objects[obj]&&p.objects[obj].scope)||'All';}
 // The signed-in user (same person across previewed roles) — used for "Own" scope filtering.
 const CURRENT_USER_CODE='AM';
@@ -3210,7 +3211,10 @@ const IntegrationsContext=React.createContext({conns:{},connect:()=>{},disconnec
 function calCompanyOptions(){return COMPANIES_DATA.filter(c=>!c.archived&&!c.deleted).map(c=>c.name);}
 function calContactOptions(){return CONTACTS_DATA.filter(c=>!c.archived&&!c.deleted).map(c=>c.name);}
 function calLeadOptions(){return LEADS_DATA.filter(l=>!l.archived&&!l.converted&&!l.deleted).map(l=>l.name);}
-function calDealOptions(){return allDeals().map(d=>d.company+' · '+d.value);}
+function calDealOptions(){return allDeals().map(d=>({id:d.id,label:(d.name||d.company)+' · '+d.value}));}
+function calDealById(id){if(id==null||id==='')return null;return allDeals().find(d=>String(d.id)===String(id))||null;}
+// Legacy tasks carry only the display string — resolve it back to an id once so edits upgrade them.
+function calDealIdFromLabel(s){if(!s)return '';const d=allDeals().find(d=>((d.name||d.company)+' · '+d.value)===s||((d.company||'')+' · '+d.value)===s);return d?String(d.id):'';}
 const calLinkPage=(t)=>t==='lead'?'lead-detail':t==='company'?'company-detail':t==='deal'?'deal-detail':'contact-detail';
 function AppTopbar({goTo,title,subtitle,rightSlot,noSearch,tabs}){
   const __bc=React.useContext(BillingContext);
@@ -4720,8 +4724,8 @@ function DashActivityFeed({def,cfg,goTo}){
   const name=cfg.name||def.name;const limit=parseInt(cfg.rows||'8',10);
   let feed;try{feed=dashBuildFeed(cfg,meetings);}catch(e){feed=[];}
   if(!feed.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="reports" label="No recent activity"/>);
-  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={(cfg.scope==='me'?'Your':'Team')+' activity'} action={<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/>
-    <div className="p-3 flex flex-col gap-1">{feed.slice(0,limit).map((it,i)=>(<button key={i} onClick={()=>it.contactId?goTo('contact-detail',it.contactId):it.person?dashGoToPerson(goTo,it.person):goTo('reports')} className="flex items-start gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors text-left">
+  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={(cfg.scope==='me'?'Your':'Team')+' activity'} action={window.__nrturPage!=='reports'?<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>:null}/>
+    <div className="p-3 flex flex-col gap-1">{feed.slice(0,limit).map((it,i)=>(<button key={i} onClick={()=>it.contactId?goTo('contact-detail',it.contactId):it.person?dashGoToPerson(goTo,it.person):(window.__nrturPage!=='reports'&&goTo('reports'))} className="flex items-start gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors text-left">
       <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ring-1" style={{background:it.tint+'1f',color:it.tint,boxShadow:'inset 0 0 0 1px '+it.tint+'33'}}><it.Icon size={12}/></div>
       <div className="min-w-0 flex-1"><p className="text-[12.5px] font-medium text-white leading-tight truncate">{it.title}</p><p className="text-[11px] text-white/45 truncate">{it.sub}</p></div>
       <span className="text-[10px] text-white/50 shrink-0 mt-0.5">{dashFeedTime(it)}</span>
@@ -4754,7 +4758,7 @@ function DashSequencePerf({def,cfg,goTo}){
   const lbl=metric==='enrolled'?'Enrolled':metric==='open'?'Delivery rate':'Reply rate';
   const fmtV=(v)=>metric==='enrolled'?v:v+'%';
   const sorted=rows.map(s=>({s,v:valOf(s)})).sort((a,b)=>b.v-a.v);const max=Math.max(1,...sorted.map(x=>x.v));
-  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={lbl+' · '+rows.length+' sequences'} action={<button onClick={()=>goTo('settings-sequences')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/>
+  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={lbl+' · '+rows.length+' sequences'} action={<div className="flex items-center gap-2"><span title="Illustrative data — not computed from your real activity yet" className="text-[9px] font-semibold uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Sample data</span><button onClick={()=>goTo('settings-sequences')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button></div>}/>
     <div className="p-5 flex-1">{view==='table'?(<table className="w-full text-[12px]"><thead><tr className="text-white/40 text-[10px] uppercase tracking-[0.12em]"><th className="text-left font-medium py-1.5">Sequence</th><th className="text-right font-medium py-1.5">Enrolled</th><th className="text-right font-medium py-1.5">{lbl}</th></tr></thead><tbody>{sorted.map(({s,v})=>(<tr key={s.id} onClick={()=>goTo('settings-sequences')} className="border-t border-white/[0.05] hover:bg-white/[0.03] cursor-pointer"><td className="py-1.5 text-white/80 truncate">{s.name}</td><td className="text-right py-1.5 text-white/60 tabular-nums">{s.enrolled}</td><td className="text-right py-1.5 text-white font-medium tabular-nums">{fmtV(v)}</td></tr>))}</tbody></table>):(<div className="flex flex-col gap-2.5">{sorted.map(({s,v},i)=>(<button key={s.id} onClick={()=>goTo('settings-sequences')} className="text-left group/bar"><div className="flex items-center justify-between mb-1"><span className="text-[12px] font-medium text-white/70 group-hover/bar:text-white truncate">{s.name}</span><span className="text-[12px] font-semibold text-white tabular-nums shrink-0">{fmtV(v)}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(v/max*100)+'%',background:['#818cf8','#34d399','#fbbf24','#f472b6'][i%4]}}/></div></button>))}</div>)}</div></div>);
 }
 // 5 — Call Stats
@@ -4768,7 +4772,7 @@ function DashCallStats({def,cfg,goTo}){
   const talk=Math.floor(secs/60)+'m';
   const go=()=>goTo('inbox',{channel:'calls'});
   const Stat=({label,value,Icon,tint})=>(<button onClick={go} className="flex-1 flex flex-col items-start gap-1 px-3 py-2.5 rounded-xl bg-white/[0.025] border border-white/[0.05] hover:border-brand-500/30 hover:bg-brand-500/[0.05] transition-all text-left"><div className="w-7 h-7 rounded-lg flex items-center justify-center ring-1" style={{background:tint+'1a',color:tint,boxShadow:'inset 0 0 0 1px '+tint+'33'}}><Icon size={13}/></div><p className="text-white text-[20px] font-bold leading-none tabular-nums mt-1">{value}</p><p className="text-[10.5px] text-white/45">{label}</p></button>);
-  return(<div onClick={go} className="p-4 h-full flex flex-col cursor-pointer"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em]">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-blue-500/10 ring-blue-500/20 text-blue-300"><I.Phone size={14}/></div></div>
+  return(<div onClick={go} className="p-4 h-full flex flex-col cursor-pointer"><div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2 min-w-0"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em]">{name}</p><span title="Illustrative data — not computed from your real calls yet" className="text-[9px] font-semibold uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Sample data</span></div><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-blue-500/10 ring-blue-500/20 text-blue-300"><I.Phone size={14}/></div></div>
     <div className="flex gap-2" onClick={e=>e.stopPropagation()}><Stat label={range==='today'?'calls today':'calls'} value={calls.length} Icon={I.Phone} tint="#60a5fa"/><Stat label="talk time" value={talk} Icon={I.Clock} tint="#a78bfa"/><Stat label="connect rate" value={connect+'%'} Icon={I.TrendUp} tint="#34d399"/></div></div>);
 }
 // 8 — Stale Deals / At-Risk
@@ -4790,9 +4794,9 @@ function DashStaleDeals({def,cfg,goTo}){
 // Win / Loss Analysis (P1-2) — aggregates deal.outcome (captured by the close modal on every
 // Won/Lost path) into per-reason breakdowns with counts + value. Deals closed before outcome
 // capture existed group under "No reason recorded" — honest, not hidden.
-function DashWinLoss({def,cfg,goTo}){
+function DashWinLoss({def,cfg,goTo,data}){
   const name=cfg.name||def.name;const view=cfg.wlView||'both';const limit=parseInt(cfg.rows||'4',10);
-  let deals;try{deals=effScopeRows('Deals',allDeals(),d=>d.owner);}catch(e){deals=[];}
+  let deals;try{deals=dashObjRows('deal',data);}catch(e){deals=[];} // honors the page date range + role scope like every generic widget
   const amt=(d)=>(typeof d.amount==='number'?d.amount:parseMoney(d.value))||0;
   const won=deals.filter(d=>d.stageKey==='won'),lost=deals.filter(d=>d.stageKey==='lost');
   if(!won.length&&!lost.length)return(<DashEmptyBody def={{name,Icon:def.Icon}} goTo={goTo} nav="pipeline" label="No closed deals yet"/>);
@@ -4824,18 +4828,18 @@ function dashStageIntervals(deals,stageKeys,pipeId){
   deals.forEach(d=>{const h=pipeId!=null?dealHistoryForPipe(d,pipeId):(d.stageHistory||[]);const seen={};h.forEach((e,i)=>{if(reach[e.stageKey]==null)return;if(!seen[e.stageKey]){reach[e.stageKey]++;seen[e.stageKey]=1;}const nxt=h[i+1];dur[e.stageKey].push(Math.max(0,(nxt?nxt.at:Date.now())-e.at));});});
   return{reach,dur};
 }
-function dashPipeDeals(pipeName){
+function dashPipeDeals(pipeName,data){
   const pipes=livePipelines().filter(p=>realStagesOf(p).length);
   const pipe=pipes.find(p=>p.name===pipeName)||pipes[0];
   // include ENROLLED deals (a placement on this pipeline), not just deals whose primary is this pipeline
-  let deals;try{deals=effScopeRows('Deals',allDeals(),d=>d.owner).filter(d=>((d.stagePlacements||[]).some(p=>p.pipelineId===pipe.id))||((d.pipeline||(pipes[0]||{}).name)===pipe.name));}catch(e){deals=[];}
+  let deals;try{deals=dashObjRows('deal',data).filter(d=>((d.stagePlacements||[]).some(p=>p.pipelineId===pipe.id))||((d.pipeline||(pipes[0]||{}).name)===pipe.name));}catch(e){deals=[];}
   return{pipe,deals};
 }
 // Deal Funnel (P2) — stage-to-stage conversion computed from stage HISTORY (a deal counts for a
 // stage only if it actually entered it), Won as the last rung, lost deals dropping off where they died.
-function DashDealFunnel({def,cfg,goTo}){
+function DashDealFunnel({def,cfg,goTo,data}){
   const name=cfg.name||def.name;
-  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline');
+  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline',data);
   const stages=realStagesOf(pipe).filter(s=>dealTerminalKind(s)!=='lost');
   const keys=stages.map(s=>s.key);
   const {reach}=dashStageIntervals(deals,keys,pipe.id);
@@ -4857,9 +4861,9 @@ function DashDealFunnel({def,cfg,goTo}){
 }
 // Time in Stage (P2) — average/max days per open stage from real history intervals (incl. the
 // current, still-running dwell), the metric behind "where do deals get stuck".
-function DashTimeInStage({def,cfg,goTo}){
+function DashTimeInStage({def,cfg,goTo,data}){
   const name=cfg.name||def.name;
-  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline');
+  const {pipe,deals}=dashPipeDeals(cfg.pipe||'Sales Pipeline',data);
   const stages=realStagesOf(pipe).filter(s=>!dealTerminalKind(s));
   const {dur}=dashStageIntervals(deals,stages.map(s=>s.key),pipe.id);
   const fmtD=(ms)=>{const dd=ms/864e5;return dd<1?'<1d':Math.round(dd)+'d';};
@@ -4881,7 +4885,7 @@ function DashEngagement({def,cfg,goTo}){
   const pick=cfg.engMetrics||'all';const shown=series.filter(s=>pick==='all'||pick===s.key);
   const data=shown.map(s=>({...s,vals:Array.from({length:weeks},(_,i)=>Math.round(s.base+Math.sin(i/1.6)*s.amp*0.5+i*s.amp/weeks))}));
   const W=320,H=130,pad=8,max=Math.max(1,...data.flatMap(s=>s.vals));const xAt=(i)=>weeks<=1?W/2:pad+i*((W-2*pad)/(weeks-1));const yAt=(v)=>H-pad-(v/max)*(H-2*pad);
-  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={'Last '+weeks+' weeks'} action={<div className="flex items-center gap-2"><span title="Illustrative data — not computed from your real emails/SMS yet" className="text-[9px] font-semibold uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Sample data</span><button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">Report<I.ArrowRight size={11} stroke={2.4}/></button></div>}/>
+  return(<div className="flex flex-col h-full"><DashHdr name={name} sub={'Last '+weeks+' weeks'} action={<div className="flex items-center gap-2"><span title="Illustrative data — not computed from your real emails/SMS yet" className="text-[9px] font-semibold uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Sample data</span>{window.__nrturPage!=='reports'?<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">Report<I.ArrowRight size={11} stroke={2.4}/></button>:null}</div>}/>
     <div className="p-5 flex-1 flex flex-col"><svg viewBox={'0 0 '+W+' '+H} className="w-full" style={{height:H}} preserveAspectRatio="none">{data.map(s=>{const pts=s.vals.map((v,i)=>xAt(i)+','+yAt(v)).join(' ');return(<g key={s.key}>{area&&<polygon points={pad+','+(H-pad)+' '+pts+' '+xAt(weeks-1)+','+(H-pad)} fill={s.color} opacity="0.13"/>}<polyline points={pts} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/></g>);})}</svg>
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">{data.map(s=>(<span key={s.key} className="inline-flex items-center gap-1.5 text-[11px] text-white/55"><span className="w-2.5 h-2.5 rounded-sm" style={{background:s.color}}/>{s.label}</span>))}</div></div></div>);
 }
@@ -4889,7 +4893,7 @@ function DashEngagement({def,cfg,goTo}){
 function DashConversionFunnel({def,cfg,goTo,data}){
   const name=cfg.name||def.name;const view=cfg.funnelView||'funnel';
   const D=data||{};const leads=(D.leads||LEADS_DATA).filter(l=>!l.archived);
-  let won=0;try{won=allDeals().filter(d=>d.stageKey==='won').length;}catch(e){won=0;}
+  let won=0;try{won=dashObjRows('deal',data).filter(d=>d.stageKey==='won').length;}catch(e){won=0;} // same population as the lead rungs — no >100% funnels
   const qualified=leads.filter(l=>l.status==='Sales-Ready').length;
   const stages=[
     {name:'All leads',count:leads.length,color:'#60a5fa',go:()=>goTo('leads')},
@@ -4935,13 +4939,13 @@ function DashRecentlyViewed({def,cfg,goTo,data}){
 function DashGoalProgress({def,cfg,goTo,data}){
   const name=cfg.name||def.name;const metric=cfg.goalMetric||'revenue';const period=cfg.goalPeriod||'month';
   let current=0,prefix='',suffix='';
-  try{if(metric==='revenue'){current=Math.round(allDeals().filter(d=>d.stageKey==='won').reduce((a,d)=>a+parseMoney(d.value),0)/1000);prefix='$';suffix='k';}
-    else if(metric==='deals'){current=allDeals().filter(d=>d.stageKey==='won').length;}
+  try{const _gd=dashObjRows('deal',data);if(metric==='revenue'){current=Math.round(_gd.filter(d=>d.stageKey==='won').reduce((a,d)=>a+parseMoney(d.value),0)/1000);prefix='$';suffix='k';}
+    else if(metric==='deals'){current=_gd.filter(d=>d.stageKey==='won').length;}
     else if(metric==='calls'){current=(CALLS_DATA||[]).length;}}catch(e){current=0;}
   const target=cfg.target?parseFloat(cfg.target):(metric==='revenue'?200:metric==='deals'?20:50);
   const pct=Math.min(100,Math.round(current/(target||1)*100));
   const C=2*Math.PI*40;const dash=C*pct/100;
-  return(<div onClick={()=>goTo('reports')} className="p-5 h-full flex flex-col cursor-pointer"><div className="flex items-center justify-between mb-3"><p className="text-white font-medium text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><I.Target size={14}/></div></div>
+  return(<div onClick={()=>{if(window.__nrturPage!=='reports')goTo('reports');}} className={'p-5 h-full flex flex-col'+(window.__nrturPage!=='reports'?' cursor-pointer':'')}><div className="flex items-center justify-between mb-3"><p className="text-white font-medium text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><I.Target size={14}/></div></div>
     <div className="flex items-center gap-4 flex-1"><div className="relative shrink-0"><svg viewBox="0 0 100 100" className="w-[88px] h-[88px]" style={{transform:'rotate(-90deg)'}}><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="9"/><circle cx="50" cy="50" r="40" fill="none" stroke="#818cf8" strokeWidth="9" strokeLinecap="round" strokeDasharray={dash+' '+(C-dash)} style={{filter:'drop-shadow(0 0 6px rgba(129,140,248,0.5))'}}/></svg><div className="absolute inset-0 flex items-center justify-center"><span className="text-[18px] font-bold text-white tabular-nums">{pct}%</span></div></div>
       <div className="min-w-0"><p className="text-[22px] font-bold text-white tabular-nums leading-none">{prefix}{current}{suffix}</p><p className="text-[12px] text-white/45 mt-1">of {prefix}{target}{suffix} target</p><p className="text-[11px] text-white/50 mt-1.5 capitalize">{metric} · this {period}</p></div></div></div>);
 }
@@ -5038,7 +5042,7 @@ function renderWidgetBody(def,cfg,goTo,data,id){
   </div>);}
   if(t==='donut'){const total=dashStages().reduce((a,s)=>a+s.val,0);const C=2*Math.PI*34;let acc=0;return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By stage"/><div className="p-5 flex items-center justify-center"><svg viewBox="0 0 100 100" className="w-32 h-32" style={{transform:'rotate(-90deg)'}}>{dashStages().map(s=>{const dash=(s.val/total)*C;const el=<circle key={s.name} cx="50" cy="50" r="34" fill="none" stroke={s.color} strokeWidth="13" strokeDasharray={`${dash} ${C-dash}`} strokeDashoffset={-acc}/>;acc+=dash;return el;})}</svg></div></div>);}
   if(t==='line'){const pts=[42,51,58,72,88,104,118,138];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="+1,284 · last 12 mo" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5"><div className="flex items-end gap-1.5" style={{height:120}}>{pts.map((v,i)=>(<div key={i} className="flex-1 rounded-sm" style={{height:`${(v/138)*100}%`,background:`rgba(99,102,241,${0.35+i*0.07})`,minHeight:4}}/>))}</div></div></div>);}
-  if(t==='activity'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Last 24 hours" action={<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-4 flex flex-col gap-2.5">{def.d.map((a,i)=>(<div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition-colors"><div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 text-white/60">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-0.5"><span className={['inline-flex items-center text-[9px] font-semibold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chip].join(' ')}>{a.label}</span><span className="text-[10px] text-white/50">{a.time}</span></div><p className="text-[13px] font-medium text-white leading-tight truncate">{a.title}</p><p className="text-[11px] text-white/45 truncate">{a.sub}</p></div></div>))}</div></div>);}
+  if(t==='activity'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Last 24 hours" action={window.__nrturPage!=='reports'?<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>:null}/><div className="p-4 flex flex-col gap-2.5">{def.d.map((a,i)=>(<div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition-colors"><div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 text-white/60">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-0.5"><span className={['inline-flex items-center text-[9px] font-semibold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chip].join(' ')}>{a.label}</span><span className="text-[10px] text-white/50">{a.time}</span></div><p className="text-[13px] font-medium text-white leading-tight truncate">{a.title}</p><p className="text-[11px] text-white/45 truncate">{a.sub}</p></div></div>))}</div></div>);}
   if(t==='contacts'){const dc=D.contacts.filter(c=>!c.archived).sort((a,b)=>dealK(b)-dealK(a)).slice(0,4);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Most active this week" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{dc.map((c,i)=>(<button key={i} onClick={()=>goTo('contact-detail',c.id)} className={['w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left',i<dc.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white leading-tight truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.co}</p></div>{c.cstatus&&<span className="text-[10px] font-medium px-2 py-0.5 rounded-full ring-1 bg-white/[0.05] text-white/60 ring-white/[0.10]">{c.cstatus}</span>}<span className="text-[13px] font-semibold text-white tabular-nums">{c.deal}</span></button>))}</div></div>);}
   if(t==='goal'){const g=def.d;const _gl=dashGoalLive(id,D);const cur=(_gl!=null)?_gl:g.current;const target=cfg.target?parseFloat(cfg.target):g.target;const pct=Math.min(100,Math.round((cur/target)*100));return(<div onClick={nav} className="p-5 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-white font-medium text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><g.Icon size={14}/></div></div><div className="flex items-baseline gap-2 mb-2.5"><span className="text-[26px] font-bold text-white tabular-nums">{g.prefix||''}{cur}{g.suffix||''}</span><span className="text-[12px] text-white/45">/ {g.prefix||''}{target}{g.suffix||''}</span></div><div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#6366f1,#818cf8)',boxShadow:'0 0 12px rgba(99,102,241,0.5)'}}/></div><p className="text-[11px] text-white/40 mt-2">{g.period?(pct+'% of '+g.period+' target'):(pct+'% of target')}</p></div>);}
   if(t==='actions'){const QAK={'add-contact':'Contacts','add-company':'Companies','add-deal':'Deals','add-lead':'Leads'};return(<div className="p-4 h-full"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] mb-3">{name}</p><div className="grid grid-cols-2 gap-2">{def.d.filter(a=>!QAK[a.p]||effCanObject(QAK[a.p],'create')).map(a=>(<button key={a.l} onClick={()=>{const QA={'add-contact':'contact','add-company':'company','add-deal':'deal','add-lead':'lead'};if(QA[a.p]&&window.__nrturQuickAdd)window.__nrturQuickAdd(QA[a.p]);else goTo(a.p);}} className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/[0.06] text-white/70 hover:text-white transition-all"><a.Icon size={16}/><span className="text-[11px] font-medium text-center leading-tight">{a.l}</span></button>))}</div></div>);}
@@ -7676,7 +7680,7 @@ function buildActivityFeed(kind,rec,ctx){
       // Stitch a converted lead's history onto its contact strictly by the id back-link — never by email (a shared/typo'd email would attach the wrong lead's history).
       const lead=leads.find(L=>L&&L.convertedToContactId!=null&&L.convertedToContactId===rec.id);
       if(lead)feed=feed.concat(tagSrc(actLeadOwn(lead),{type:'lead',id:lead.id,label:'from lead · '+lead.name,color:'#34d399'})); // FULL originating lead history rolls up (was .slice(0,3) — a silent truncation; every benchmark CRM carries the whole set, and the timeline's own collapse UI handles volume)
-      (ctx.invoices||[]).filter(v=>v&&(v.contact===rec.name||(v.company&&rec.co&&v.company===rec.co))).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
+      (ctx.invoices||[]).filter(v=>v&&(v.contactId!=null?v.contactId===rec.id:(v.contact===rec.name||(v.company&&rec.co&&v.company===rec.co)))).forEach(v=>{feed=feed.concat(actInvoiceOwn(v));});
     } else if(kind==='company'&&rec){
       feed=actCompanyOwn(rec);
       contacts.filter(c=>!c.deleted&&((rec.id!=null&&c.companyId===rec.id)||c.co===rec.name)).slice(0,4).forEach(c=>{feed=feed.concat(tagSrc(actContactOwn(c).slice(0,4),{type:'contact',id:c.id,label:c.name,color:c.color||'#60a5fa'}));});
@@ -9767,7 +9771,7 @@ function DealDetailPage({goTo,nav}){
               <RelatedRecordsPanel crm={crm} targetType="deal" rec={d} goTo={goTo}/>
             </div>
             <div className="flex flex-col gap-5 min-w-0">
-              <RecordTasks recId={d.id} match={(t)=>(t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company} prefill={{company:d.company}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
+              <RecordTasks recId={d.id} match={(t)=>t.dealId!=null?t.dealId===d.id:((t.deal&&d.company&&t.deal.indexOf(d.company)>=0)||t.company===d.company)} prefill={{company:d.company,dealId:d.id}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:d.owner||'AM',title,body}),...x])}/>
               <ActivityTimeline kind="deal" rec={drec} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={effCanObject('Deals','edit')?addDealNote:undefined} onSchedule={effCanObject('Deals','edit')?()=>setSchedOpen(true):undefined} notePlaceholder="Add a deal note..."/>
             </div>
           </div>
@@ -14206,14 +14210,14 @@ function ReportsPage({goTo}){
             <button onClick={()=>{setEditMode(false);setConfigUid(null);}} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Check size={14} stroke={2.4}/>Done</button>
           </div>):(<>
             <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/[0.05] text-white/55 border border-white/[0.08]" title={isCustomized?'Your personal report layout':('Default report for the '+myRole+' role')}><I.BarChart size={11} className="text-brand-300"/>{isCustomized?'Custom report':myRole+' report'}</span>
-            <button onClick={()=>setEditMode(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all" style={{boxShadow:'0 0 18px rgba(99,102,241,0.15)'}}><I.SliderH size={13}/>Customize</button>
+            {effCanReport('edit')&&<button onClick={()=>setEditMode(true)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all" style={{boxShadow:'0 0 18px rgba(99,102,241,0.15)'}}><I.SliderH size={13}/>Customize</button>}
             <div ref={rangeRef} className="relative">
               <button onClick={()=>setRangeOpen(!rangeOpen)} className={['inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium transition-all border',rangeOpen?'border-brand-500/40 bg-white/[0.05] text-white shadow-[0_0_0_3px_rgba(99,102,241,0.12)]':'border-white/[0.08] bg-white/[0.04] text-white/70 hover:text-white hover:border-white/[0.18]'].join(' ')}>
                 <I.Calendar size={13}/>{range}<I.ChevronDown size={12} stroke={2.2} className={rangeOpen?'rotate-180':''}/>
               </button>
               {rangeOpen&&(<div className="absolute right-0 mt-2 w-52 z-20 rounded-xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden" style={{background:'var(--pop)',backdropFilter:'blur(16px)'}}><div className="p-1.5">{RANGES.map(r=>(<button key={r} onClick={()=>{setRange(r);setRangeOpen(false);}} className={['w-full text-left px-3 py-2 rounded-lg text-[13px] transition-colors flex items-center justify-between',r===range?'bg-brand-500/15 text-brand-200':'text-white/70 hover:bg-white/[0.05] hover:text-white'].join(' ')}>{r}{r===range&&<span className="w-1.5 h-1.5 rounded-full bg-brand-400"/>}</button>))}</div></div>)}
             </div>
-            {effCanExport()&&<button onClick={()=>{setShowExportToast(true);setTimeout(()=>setShowExportToast(false),3000);}} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export CSV</button>}
+            {effCanExport()&&<button onClick={()=>{try{const esc=(s)=>{s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};const L=['nrtur report export','Range,'+esc(range),'Role scope,'+esc(myRole),''];const dl=dashObjRows('deal',reportData);L.push('DEALS ('+dl.length+')','Name,Company,Stage,Value,Owner,Close date');dl.forEach(d=>L.push([d.name||d.company,d.company||'',d.stageName||d.stageKey||'',d.value||d.amount||'',d.owner||'',d.closeDate||''].map(esc).join(',')));L.push('');const cs=reportData.contacts||[];L.push('CONTACTS ('+cs.length+')','Name,Company,Email,Owner');cs.forEach(x=>L.push([x.name,x.co||'',x.email||'',x.owner||''].map(esc).join(',')));L.push('');const ls=reportData.leads||[];L.push('LEADS ('+ls.length+')','Name,Company,Status,Owner');ls.forEach(x=>L.push([x.name,x.company||'',x.status||'',x.owner||''].map(esc).join(',')));L.push('');const cos=reportData.companies||[];L.push('COMPANIES ('+cos.length+')','Name,Industry,Owner');cos.forEach(x=>L.push([x.name,x.industry||'',x.owner||''].map(esc).join(',')));const b=new Blob([L.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='nrtur-report-'+String(range).toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);}catch(e){}setShowExportToast(true);setTimeout(()=>setShowExportToast(false),3000);}} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Download size={13}/>Export CSV</button>}
           </>)}/>
         {showExportToast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>CSV downloaded</div>)}
         <div className="flex-1 overflow-y-auto scroll-area">
@@ -21240,7 +21244,7 @@ function CalEventDetailModal({event,onClose,onEdit,onDelete,onComplete,canEdit=t
           <Row Icon={I.Clock}>{dateLabel}</Row>
           {event.contact&&<Row Icon={I.Users}><button onClick={()=>{onClose();goTo(calLinkPage(event.linkType),event.linkType==='lead'?event.leadId:event.contactId);}} className="text-brand-300 hover:text-brand-200">{event.contact}{event.linkType==='lead'?<span className="text-white/50 text-[11px] ml-1">(lead)</span>:''}</button></Row>}
           {event.company&&<Row Icon={I.Building}><button onClick={()=>{onClose();goTo('company-detail',event.companyId);}} className="text-brand-300 hover:text-brand-200">{event.company}</button></Row>}
-          {event.deal&&<Row Icon={I.GitBranch}><button onClick={()=>{onClose();goTo('deal-detail',(allDeals().find(d=>(d.name||'')===event.deal||(d.company||'')===event.deal)||{}).id);}} className="text-brand-300 hover:text-brand-200">{event.deal}</button></Row>}
+          {event.deal&&<Row Icon={I.GitBranch}><button onClick={()=>{onClose();goTo('deal-detail',event.dealId!=null?event.dealId:(allDeals().find(d=>(d.name||'')===event.deal||(d.company||'')===event.deal)||{}).id);}} className="text-brand-300 hover:text-brand-200">{event.deal}</button></Row>}
           <Row Icon={I.Bell}>{rem}</Row>
           {event.notes&&<div className="flex items-start gap-3 text-[13px] text-white/70"><I.Note size={15} className="text-white/40 shrink-0 mt-0.5"/><p className="leading-relaxed">{event.notes}</p></div>}
         </div>
@@ -21290,7 +21294,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
   const initRelType=(ed.company&&!ed.contact)?'company':(ed.linkType==='lead'?'lead':'contact');
   const [relType,setRelType]=React.useState(initRelType);
   const [relRecord,setRelRecord]=React.useState(ed.company&&!ed.contact?ed.company:(ed.contact||''));
-  const [deal,setDeal]=React.useState(ed.deal||'');
+  const [deal,setDeal]=React.useState(ed.dealId!=null?String(ed.dealId):calDealIdFromLabel(ed.deal)); // holds the deal ID (string) — display label derived at save
   const [notes,setNotes]=React.useState(ed.notes||'');
   const [done,setDone]=React.useState(!!ed.done);
   const [subtasks,setSubtasks]=React.useState(()=>(ed.subtasks||[]).map(x=>({...x})));
@@ -21327,7 +21331,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
     const [Y,M,D]=date.split('-').map(Number);
     const mk=()=>{const [h,mi]=time.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
     const isCompany=relType==='company';
-    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,...calLinkIds(relType,relRecord),reminder,emailReminder:reminder?emailReminder:false,assignee,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
+    const ev={id:ed.id,type:'task',title:title.trim(),priority,allDay:!hasTime,date:hasTime?mk():new Date(Y,M-1,D,0,0),end:null,contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,...(function(){var _dl=calDealById(deal);return {deal:_dl?((_dl.name||_dl.company)+' · '+_dl.value):null,dealId:_dl?_dl.id:null};})(),...calLinkIds(relType,relRecord),reminder,emailReminder:reminder?emailReminder:false,assignee,repeat:ed.repeat||'Never',notes,done,subtasks:subtasks.filter(x=>x.title.trim()).map(x=>({id:x.id,title:x.title.trim(),done:x.done}))};
     onSave(ev);
   };
   const PRIOS=[
@@ -21382,7 +21386,7 @@ function TaskFormModal({initial,onClose,onSave,onDelete}){
               <div><label className={L}>Type</label><div className="relative"><select value={relType} onChange={e=>onRelType(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="lead">Lead</option><option value="contact">Contact</option><option value="company">Company</option></select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div></div>
               <div><label className={L}>{relType==='lead'?'Lead':relType==='company'?'Company':'Contact'}</label><TaskRecordPicker options={relOptions} value={relRecord} onChange={setRelRecord} placeholder={'Select a '+relType+'…'}/></div>
             </div>
-            <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
+            <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c.id} value={String(c.id)}>{c.label}</option>))}</select></div>
           </div>
         )}
         <div>
@@ -21422,7 +21426,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
   const initRelType=(ed.company&&!ed.contact)?'company':(ed.linkType==='lead'?'lead':'contact');
   const [relType,setRelType]=React.useState(initRelType);
   const [relRecord,setRelRecord]=React.useState(ed.company&&!ed.contact?ed.company:(ed.contact||''));
-  const [deal,setDeal]=React.useState(ed.deal||'');
+  const [deal,setDeal]=React.useState(ed.dealId!=null?String(ed.dealId):calDealIdFromLabel(ed.deal)); // holds the deal ID (string) — display label derived at save
   const REC_OPTS={company:calCompanyOptions(),contact:calContactOptions(),lead:calLeadOptions()};
   const relOptions=REC_OPTS[relType]||[];
   const onRelType=(tp)=>{setRelType(tp);setRelRecord('');};// switching type clears the previous selection
@@ -21446,7 +21450,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
     const [Y,M,D]=date.split('-').map(Number);
     const mk=(ts)=>{const [h,mi]=ts.split(':').map(Number);return new Date(Y,M-1,D,h||0,mi||0);};
     const isCompany=relType==='company';
-    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,deal:deal||null,...calLinkIds(relType,relRecord),reminder,repeat,notes,done:!!ed.done,priority};
+    const ev={id:ed.id,title:title.trim()||'Untitled event',type,allDay,date:allDay?new Date(Y,M-1,D,0,0):mk(startT),end:allDay?null:mk(endT),contact:isCompany?null:(relRecord||null),linkType:isCompany||!relRecord?null:relType,company:isCompany?(relRecord||null):null,...(function(){var _dl=calDealById(deal);return {deal:_dl?((_dl.name||_dl.company)+' · '+_dl.value):null,dealId:_dl?_dl.id:null};})(),...calLinkIds(relType,relRecord),reminder,repeat,notes,done:!!ed.done,priority};
     onSave(ev);
   };
   return(<div className="fixed inset-0 z-[160] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -21466,7 +21470,7 @@ function CalEventFormModal({initial,defaultDate,onClose,onSave}){
           <div><label className={L}>Related to</label><div className="relative"><select value={relType} onChange={e=>onRelType(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="company">Company</option><option value="contact">Contact</option><option value="lead">Lead</option></select><I.ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/></div></div>
           <div><label className={L}>{relType==='company'?'Company':relType==='lead'?'Lead':'Contact'}</label><TaskRecordPicker options={relOptions} value={relRecord} onChange={setRelRecord} placeholder={'Select a '+relType+'…'}/></div>
         </div>
-        <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c} value={c}>{c}</option>))}</select></div>
+        <div><label className={L}>Deal</label><select value={deal} onChange={e=>setDeal(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}><option value="">None</option>{calDealOptions().map(c=>(<option key={c.id} value={String(c.id)}>{c.label}</option>))}</select></div>
         <div className="grid grid-cols-2 gap-4">
           <div><label className={L}>Reminder</label><select value={reminder} onChange={e=>setReminder(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REMIND.map(r=>(<option key={r.l} value={r.v}>{r.l}</option>))}</select></div>
           <div><label className={L}>Repeat</label><select value={repeat} onChange={e=>setRepeat(e.target.value)} className={INP+' appearance-none'} style={{colorScheme:'dark',background:'var(--s850)'}}>{CAL_REPEAT.map(r=>(<option key={r} value={r}>{r}</option>))}</select></div>
@@ -22680,7 +22684,11 @@ function TasksPage({goTo,nav}){
   const _tCan=(a)=>effCanObject('Tasks',a); // R10 rule: every mutation surface carries the same gate as its neighbors
   const save=(ev)=>{if(!_tCan(ev.id?'edit':'create')){addToast('Your role can’t '+(ev.id?'edit':'create')+' tasks');return;}if(ev.id)updateItem(ev);else addItem(ev);setModal(null);addToast('Task saved');};
   const del=(t)=>{if(!_tCan('delete')){addToast('Your role can’t delete tasks');return;}openConfirm({title:'Delete task?',body:'"'+t.title+'" moves to the Recycle Bin. You can restore it within 30 days.',confirmLabel:'Delete',danger:true,onConfirm:()=>{updateItem({id:t.id,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});addToast('Task moved to Recycle Bin');}});};
-  const primaryLink=(t)=>{if(t.deal)return{label:t.deal,Icon:I.GitBranch,go:()=>goTo('pipeline')};if(t.contact)return{label:t.contact,Icon:t.linkType==='lead'?I.Target:I.Users,go:()=>{dashGoToRecord(goTo,t.contact)||goTo(t.linkType==='lead'?'leads':'contacts');}};if(t.company)return{label:t.company,Icon:I.Building,go:()=>{dashGoToRecord(goTo,t.company)||goTo('companies');}};return null;};
+  const primaryLink=(t)=>{ // id-first resolution against LIVE stores; name lookup is only the legacy fallback
+    if(t.dealId!=null||t.deal){const _d=t.dealId!=null?calDealById(t.dealId):null;const _d2=_d||(t.deal?(allDeals().find(x=>((x.name||x.company)+' · '+x.value)===t.deal||((x.company||'')+' · '+x.value)===t.deal)||null):null);if(_d2)return{label:(_d2.name||_d2.company),Icon:I.GitBranch,go:()=>goTo('deal-detail',_d2.id)};if(t.deal)return{label:t.deal,Icon:I.GitBranch,go:()=>goTo('pipeline')};}
+    if(t.contact){if(t.linkType==='lead'&&t.leadId!=null&&(_liveLeads||[]).some(x=>x.id===t.leadId&&!x.deleted))return{label:t.contact,Icon:I.Target,go:()=>goTo('lead-detail',t.leadId)};if(t.linkType!=='lead'&&t.contactId!=null&&(_liveContacts||[]).some(x=>x.id===t.contactId&&!x.deleted))return{label:t.contact,Icon:I.Users,go:()=>goTo('contact-detail',t.contactId)};return{label:t.contact,Icon:t.linkType==='lead'?I.Target:I.Users,go:()=>{dashGoToRecord(goTo,t.contact)||goTo(t.linkType==='lead'?'leads':'contacts');}};}
+    if(t.company){if(t.companyId!=null&&(_liveCompanies||[]).some(x=>x.id===t.companyId&&!x.deleted))return{label:t.company,Icon:I.Building,go:()=>goTo('company-detail',t.companyId)};return{label:t.company,Icon:I.Building,go:()=>{dashGoToRecord(goTo,t.company)||goTo('companies');}};}
+    return null;};
   const toggleSelect=(id)=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const clearSel=()=>setSelected(new Set());
   const selTasks=()=>tasks.filter(t=>selected.has(t.id));
@@ -22961,7 +22969,7 @@ function paySeedSubs(){
 // period from a subscription so MRR and invoice revenue reconcile. Tagged with subId + source.
 function paySubInvoice(sub){
   const seats=sub.seats||1;const per=seats?Math.round((sub.amount/seats)*100)/100:sub.amount;const lineTotal=Math.round(per*seats*100)/100;const now=payDateLabel(payDayShift(0));
-  return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',company:sub.customer||'',dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:lineTotal,subtotal:lineTotal,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
+  return {id:'inv_'+Date.now()+'_'+Math.floor(Math.random()*1e4),number:payNextInvoiceNo(),contact:sub.contact||'',contactId:sub.contactId!=null?sub.contactId:null,company:sub.company||'',companyId:sub.companyId!=null?sub.companyId:null,dealId:null,subId:sub.id,items:[{desc:sub.plan+(seats>1?(' ('+seats+' seats)'):''),qty:seats,price:per}],amount:lineTotal,subtotal:lineTotal,discount:0,taxRate:0,tax:0,status:'paid',owner:CURRENT_USER_CODE,notes:'Subscription renewal · '+sub.plan,link:payLinkUrl('inv_'+payRandToken()),issued:now,due:now,agoMin:0,paidDate:now,paidAgoMin:0,source:'Subscription'};
 }
 function paySeedQuotes(){
   return [
@@ -22984,6 +22992,7 @@ function actInvoiceOwn(v){
   out.push(mkAct('invoice',{ts:v.agoMin||0,by:v.owner||'AM',label:v.status==='draft'?'INVOICE · DRAFT':'INVOICE',title:'Invoice '+v.number+' · '+amt+(v.status==='draft'?' (draft)':' sent'),body:((v.items&&v.items[0]?v.items[0].desc:'Payment request')+(v.items&&v.items.length>1?(' +'+(v.items.length-1)+' more'):''))+(v.due?(' · due '+v.due):''),payload:{kind:'invoice',id:v.id}}));
   if(v.status==='paid'||v.status==='refunded')out.push(mkAct('payment',{ts:(v.paidAgoMin!=null?v.paidAgoMin:0),by:v.owner||'AM',title:'Payment received · '+amt,body:'Invoice '+v.number+' paid via Stripe.',payload:{kind:'payment',id:v.id}}));
   if(v.status==='refunded')out.push(mkAct('payment',{ts:(v.refundedAgoMin!=null?v.refundedAgoMin:0),by:v.owner||'AM',label:'REFUND',title:'Refund issued · '+amt,body:'Invoice '+v.number+' refunded via Stripe.',payload:{kind:'payment',id:v.id}}));
+  if(v.receiptSentDate)out.push(mkAct('invoice',{ts:0,by:v.owner||'AM',label:'RECEIPT',title:'Receipt sent · Invoice '+v.number,body:'Receipt emailed to '+(v.receiptSentTo||v.contact||'the customer')+' on '+v.receiptSentDate+'.',payload:{kind:'invoice',id:v.id}}));
   return out;
 }
 // ── Shared payments UI primitives ───────────────────────────────────────────
@@ -23122,13 +23131,13 @@ function PaySubModal({products,onClose:_close,onSave}){
   const seatsN=Math.max(1,parseInt(seats,10)||1);
   const amount=plan?plan.price*seatsN:0;
   const ok=customer.trim()&&plan;
-  const save=()=>{if(!ok)return;onSave({id:'sub_'+Date.now(),customer:customer.trim(),contact:customer.trim(),plan:plan.name,amount,interval:plan.interval||'month',status:'active',nextBill:payDateLabel(payDayShift(plan.interval==='year'?365:30)),nextBillTs:payDayShift(plan.interval==='year'?365:30).getTime(),seats:seatsN});};
+  const save=()=>{if(!ok)return;const _nm=customer.trim();const _ct=(_liveContacts||[]).find(c=>!c.deleted&&c.name===_nm)||null;const _co=!_ct?((_liveCompanies||[]).find(c=>!c.deleted&&c.name===_nm)||null):null;onSave({id:'sub_'+Date.now(),customer:_nm,contact:_ct?_ct.name:_nm,contactId:_ct?_ct.id:null,companyId:_co?_co.id:null,company:_co?_co.name:(_ct?(_ct.co||''):''),plan:plan.name,amount,interval:plan.interval||'month',status:'active',nextBill:payDateLabel(payDayShift(plan.interval==='year'?365:30)),nextBillTs:payDayShift(plan.interval==='year'?365:30).getTime(),seats:seatsN});};
   return(<div className="fixed inset-0 z-[200] flex items-end sm:items-stretch sm:justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
     <div role="dialog" aria-modal="true" className="w-full sm:w-[440px] sm:max-w-full max-h-[92vh] sm:max-h-none sm:h-full flex flex-col border-t sm:border-t-0 sm:border-l border-white/[0.10] rounded-t-2xl sm:rounded-none animate-[sheetUp_.24s_ease] sm:animate-[arIn_.22s_ease]" style={{background:'var(--pop)'}} onClick={e=>e.stopPropagation()}>
       <div className="flex-1 overflow-y-auto p-5">
       <div className="flex items-center justify-between mb-4"><p className="text-[15px] font-semibold text-white flex items-center gap-2"><I.History size={15} className="text-brand-300"/>New subscription</p><button onClick={onClose} className="text-white/40 hover:text-white"><I.X size={16}/></button></div>
       {recurring.length===0?(<p className="text-[12.5px] text-white/55 py-4">Add a recurring product first to start a subscription.</p>):(<div className="flex flex-col gap-3.5">
-        <div><label className={PAY_LBL}>Customer</label><input autoFocus value={customer} onChange={e=>setCustomer(e.target.value)} placeholder="Company or contact name" className={PAY_INP}/></div>
+        <div><label className={PAY_LBL}>Customer</label><ARLookup value={customer} onChange={setCustomer} options={[...(_liveContacts||[]).filter(c=>!c.deleted).map(c=>c.name),...(_liveCompanies||[]).filter(c=>!c.deleted).map(c=>c.name)]} placeholder="Search a contact or company…" Icon={I.Users}/>{customer.trim()&&!(_liveContacts||[]).some(c=>!c.deleted&&c.name===customer.trim())&&!(_liveCompanies||[]).some(c=>!c.deleted&&c.name===customer.trim())&&<p className="text-[11px] text-amber-300/90 mt-1.5 flex items-center gap-1.5"><I.AlertTriangle size={11}/>Not a saved contact or company — renewals won’t reach a record timeline.</p>}</div>
         <div><label className={PAY_LBL}>Plan</label><select value={planId} onChange={e=>setPlanId(e.target.value)} className={PAY_SEL} style={{colorScheme:'dark'}}>{recurring.map(p=>(<option key={p.id} value={p.id} style={{background:'var(--s900)'}}>{p.name} — {payMoney(p.price)}/{p.interval==='year'?'yr':'mo'}</option>))}</select></div>
         <div className="grid grid-cols-2 gap-3 items-end"><div><label className={PAY_LBL}>Seats</label><input value={seats} onChange={e=>setSeats(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" className={PAY_INP}/></div><div className="pb-2.5 text-right"><span className="text-[11px] text-white/45 block">Billed {plan&&plan.interval==='year'?'yearly':'monthly'}</span><span className="text-[16px] font-bold text-white tabular-nums">{payMoney(amount)}</span></div></div>
         <PayStripeNotice/>
@@ -23159,6 +23168,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const dealOpts=deals.map(d=>(d.name||(d.company+' · '+d.value)));
   React.useEffect(()=>{if(editInv){setItems((editInv.items||[]).map(it=>({desc:it.desc,qty:String(it.qty),price:String(it.price)})));setNotes(editInv.notes||'');}},[]);
   const matchDeal=()=>{const d=deals.find(x=>(x.name||(x.company+' · '+x.value))===dealLabel);return d?d.id:null;};
+  const matchContact=()=>{const c=contacts.find(c=>!c.deleted&&c.name===contact.trim());return c?c.id:null;}; // person linkage mirrors the dealId pattern — name stays as a display snapshot only
   const co=(contacts.find(c=>c.name===contact)||{}).co||(prefill&&prefill.company)||'';
   const amount=items.reduce((a,it)=>a+(parseFloat(it.qty)||0)*(parseFloat(it.price)||0),0);
   const discountVal=Math.min(parseFloat(discount)||0,amount);
@@ -23170,7 +23180,7 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
   const setItem=(i,patch)=>setItems(its=>its.map((x,j)=>j===i?{...x,...patch}:x));
   const rmItem=(i)=>setItems(its=>its.filter((_,j)=>j!==i));
   const dueDays=(PAY_DUE_PRESETS.find(p=>p[0]===duePreset)||[,,14])[2];
-  const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',currency:ccy,notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),dueTs:payDayShift(dueDays).getTime(),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes,currency:ccy}:_b;};
+  const build=(status)=>{const _it=items.map(it=>({desc:it.desc||'Item',qty:parseFloat(it.qty)||1,price:parseFloat(it.price)||0}));const _b={id:'inv_'+Date.now(),number:payNextInvoiceNo(),contact:contact.trim(),contactId:matchContact(),company:co,dealId:matchDeal(),items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,status,owner:'AM',currency:ccy,notes:notes.trim(),link:status==='draft'?null:payLinkUrl('inv_'+payRandToken()),issued:payDateLabel(payDayShift(0)),due:payDateLabel(payDayShift(dueDays)),dueTs:payDayShift(dueDays).getTime(),agoMin:0,paidDate:null,paidAgoMin:null};return editInv?{...editInv,contact:_b.contact,contactId:_b.contactId,company:_b.company,dealId:_b.dealId,items:_it,amount:total,subtotal:amount,discount:discountVal,taxRate:taxPct,tax:taxVal,notes:_b.notes,currency:ccy}:_b;};
   const canSave=contact.trim()&&items.length>0&&total>0;
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={attemptClose}/>
@@ -23222,14 +23232,15 @@ function PayInvoiceDrawer({crm,onClose,onCreate,toast,prefill,kind,editInv}){
 // ── Invoice detail drawer: view, mark paid / simulate payment, copy link, navigate ──
 function PayInvoiceDetail({inv,crm,goTo,onClose,onUpdate,onEdit,onDuplicate,toast}){
   useEscKey(onClose);
-  const contactRec=(crm.contacts||[]).find(c=>c.name===inv.contact);
+  const contactRec=(crm.contacts||[]).find(c=>inv.contactId!=null?c.id===inv.contactId:c.name===inv.contact);
   const {confirmNode,openConfirm}=useConfirm();
   const dealRec=inv.dealId!=null?allDeals().find(d=>d.id===inv.dealId):null;
   const markPaid=()=>{onUpdate(inv.id,{status:'paid',paidDate:payDateLabel(payDayShift(0)),paidAgoMin:0});toast('Payment received · '+payMoney(inv.amount,inv.currency)+' ✓');};
   const sendInv=()=>{onUpdate(inv.id,{status:'sent',link:inv.link||payLinkUrl('inv_'+payRandToken())});toast('Invoice '+inv.number+' sent ✓ · logged to timeline');};
   const voidInv=()=>openConfirm({title:'Void '+inv.number+'?',body:'This cancels the invoice. It stays on record but drops out of outstanding revenue and can no longer be paid.',confirmLabel:'Void invoice',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'void'});toast('Invoice '+inv.number+' voided');}});
   const refundInv=()=>openConfirm({title:'Refund '+payMoney(inv.amount,inv.currency)+'?',body:'This issues a full refund via Stripe and marks '+inv.number+' refunded. It no longer counts toward collected revenue.',confirmLabel:'Refund payment',danger:true,onConfirm:()=>{onUpdate(inv.id,{status:'refunded',refundedDate:payDateLabel(payDayShift(0)),refundedAgoMin:0});toast('Refunded '+payMoney(inv.amount,inv.currency)+' · '+inv.number+' ✓');}});
-  const sendReceipt=()=>toast('Receipt for '+inv.number+' sent to '+(inv.contact||'the customer')+' ✓');
+  // Honest receipt: stamps receiptSentDate on the invoice (visible state change + timeline via actInvoiceOwn), no toast-theater.
+  const sendReceipt=()=>{const _to=(contactRec&&contactRec.email)||inv.contact||'the customer';onUpdate&&onUpdate({...inv,receiptSentDate:payDateLabel(payDayShift(0)),receiptSentTo:_to});toast('Receipt for '+inv.number+' sent to '+_to+' ✓');};
   const downloadPdf=()=>{if(!inv)return;try{const html=payInvoiceDocHtml(inv);const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(inv.number||'invoice')+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},120);toast('Invoice '+inv.number+' downloaded ✓');}catch(e){toast('Could not generate the invoice document — please try again.');}};
   return(<React.Fragment>
     <div className="fixed inset-0 z-[185] bg-black/40" onClick={onClose}/>
@@ -25383,7 +25394,7 @@ function App(){
   const calDeleteItem=React.useCallback((id)=>setCalItems(a=>a.filter(x=>x.id!==id)),[]);
   const calToggleDone=React.useCallback((id)=>setCalItems(a=>a.map(x=>x.id===id?{...x,done:!x.done}:x)),[]);
   const calCtx=React.useMemo(()=>({items:calItems,addItem:calAddItem,updateItem:calUpdateItem,deleteItem:calDeleteItem,toggleDone:calToggleDone}),[calItems,calAddItem,calUpdateItem,calDeleteItem,calToggleDone]);
-  const goTo=React.useCallback((p,payload)=>{const r=ENGAGE_REDIRECT[p];if(r){payload=Object.assign({},r,(payload&&typeof payload==='object')?payload:null);p='engage';}if(p==='settings-booking'){payload=Object.assign({tab:'eventtypes'},(payload&&typeof payload==='object')?payload:null);p='calendar';}setPage(p);if(payload!==undefined)setNav(payload);window.scrollTo&&window.scrollTo(0,0);},[]);
+  const goTo=React.useCallback((p,payload)=>{const r=ENGAGE_REDIRECT[p];if(r){payload=Object.assign({},r,(payload&&typeof payload==='object')?payload:null);p='engage';}if(p==='settings-booking'){payload=Object.assign({tab:'eventtypes'},(payload&&typeof payload==='object')?payload:null);p='calendar';}try{window.__nrturPage=p;}catch(e){}setPage(p);if(payload!==undefined)setNav(payload);window.scrollTo&&window.scrollTo(0,0);},[]);
   const [addRecord,setAddRecord]=React.useState(null);
   const [appToast,setAppToast]=React.useState('');
   const appToastFn=React.useCallback((m,t)=>{if(window.__nrturToast){window.__nrturToast(m,t||'success');}else{setAppToast(m);setTimeout(()=>setAppToast(''),2200);}},[]);
