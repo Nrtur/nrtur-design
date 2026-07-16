@@ -2815,6 +2815,9 @@ function navClusterOf(it){return (it&&it.id!=null&&NAV_CLUSTER[it.id]!=null)?NAV
 const NAV_MAX_PINNED=12; // cap on how many items a user can pin to the rail (rest live in the More drawer)
 function navAllDestinations(){return [...NAV_CATALOG.filter(c=>c.id!=='payments'||effCanPay('view')).map(c=>({...c,type:'page'})),...NAV_VIEW_CATALOG,...(_liveCustomObjects||[]).filter(o=>coCanView(o)).map(o=>({id:'cob_'+o.id,type:'custom',objectId:o.id,label:o.plural,icon:o.icon,pinned:false}))];}
 function navPinnedList(cfg){return (cfg||[]).filter(i=>i&&i.pinned!==false);}
+// Persisted nav entries (pinned or not) must pass the SAME permission gates as fresh catalog entries —
+// a saved nav config is not pre-authorized.
+function navCanSee(it){if(!it)return false;if(it.id==='payments'||it.page==='payments')return effCanPay('view');if(it.type==='custom'||String(it.id||'').indexOf('cob_')===0){const o=(_liveCustomObjects||[]).find(x=>'cob_'+x.id===it.id||x.id===it.objectId);return o?coCanView(o):true;}return true;}
 function navMoreList(cfg){
   cfg=cfg||[];const inList=new Set(cfg.map(navKey));
   const unpinned=cfg.filter(i=>i&&i.pinned===false);
@@ -2908,7 +2911,7 @@ function navMoreSection(it){
 // "All destinations" flyout and the full-page Explore screen — never forked.
 function DestinationGrid({active,query,onGo}){
   const {resolved}=React.useContext(NavConfigContext);
-  const all=[...navPinnedList(resolved),...navMoreList(resolved)];
+  const all=[...navPinnedList(resolved),...navMoreList(resolved)].filter(navCanSee);
   const term=(query||'').trim().toLowerCase();
   const match=(it)=>{if(!term)return true;const m=navDestMeta(it);return (it.label||'').toLowerCase().includes(term)||(m.desc||'').toLowerCase().includes(term)||navMoreSection(it).toLowerCase().includes(term);};
   const groups={};all.filter(match).forEach(it=>{const s=navMoreSection(it);(groups[s]=groups[s]||[]).push(it);});
@@ -6127,7 +6130,7 @@ function omFieldSchema(object,props,rows){
   } else if(object==='task'){
     fields=[F('title','Title','text',null,r=>r.title),F('type','Type','select',['task','call','meeting','email','deadline'],r=>r.type),
       F('priority','Priority','select',['High','Medium','Low'],r=>r.priority),F('done','Completed','boolean',null,r=>!!r.done),
-      F('owner','Owner','owner',ownerOpts,r=>r.owner||r.ownerAvatar),F('date','Due date','date',null,r=>r.date||r.start||r.due)];
+      F('owner','Owner','owner',ownerOpts,r=>r.assignee||r.owner||r.ownerAvatar||'AM'),F('date','Due date','date',null,r=>r.date||r.start||r.due)];
   }
   const tab={contact:'Contacts',company:'Companies',deal:'Deals',lead:'Leads',task:'Tasks'}[object];
   const secs=props&&props[tab];
@@ -7222,16 +7225,6 @@ function ContactsPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='contact' close={()=>setImportModal(false)} onToast={showToast}/>}
-        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
-          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
-          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
-        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={smartMgr.canShare}/>}
         {smartMgr.builderNode}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
@@ -10185,16 +10178,6 @@ function CompaniesPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='company' close={()=>setImportModal(false)} onToast={showToast}/>}
-        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
-          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
-          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
-        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={smartMgr.canShare}/>}
         {smartMgr.builderNode}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
@@ -10769,6 +10752,7 @@ function LeadsPage({goTo,nav}){
   const [saveOpen,setSaveOpen]=React.useState(false);
   const [editView,setEditView]=React.useState(null);
   const [convertLead,setConvertLead]=React.useState(null);
+  const [disqTarget,setDisqTarget]=React.useState(null); // lead pending disqualification — modal captures the reason first (must sit above the loading return)
   const [toast,setToast]=React.useState('');
   const fields=React.useMemo(()=>omFieldSchema('lead',_propsCtx,rows),[_propsCtx,rows]);
   useDashNavFilter(nav,setActiveKey,setWorkFilter);
@@ -10781,7 +10765,9 @@ function LeadsPage({goTo,nav}){
     <div className="h-full flex" style={{background:'var(--s950)'}}><AppSidebar active="contacts" goTo={goTo}/><div className="flex-1 flex flex-col min-w-0"><AppTopbar goTo={goTo} title="Leads" noSearch/><div className="flex-1 flex min-h-0"><div className="w-[220px] shrink-0 border-r border-white/[0.05] p-4 flex flex-col gap-2" style={{background:'var(--s900)'}}>{[...Array(8)].map((_,i)=>(<Skel key={i} w={(120+(i%3)*20)+'px'} h="16px" r="6px"/>))}</div><div className="flex-1 overflow-y-auto scroll-area">{[...Array(8)].map((_,i)=>(<div key={i} className="flex items-center gap-4 px-7 py-4 border-b border-white/[0.03]"><Skel w="36px" h="36px" r="50%"/><div className="flex flex-col gap-1.5 flex-1"><Skel w={(110+i*7)+'px'} h="12px"/><Skel w="90px" h="10px"/></div><Skel w="60px" h="20px" r="9999px"/><Skel w="55px" h="11px"/></div>))}</div></div><AppFooter/></div></div>
   );
   const showToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2500);};
-  const setStatus=(id,st)=>{const _b=(_liveLeads||[]).find(l=>l.id===id);if(_b)fireRecordUpdate('lead',_b,{..._b,status:st});setRows(r=>r.map(l=>l.id===id?{...l,status:st}:l));showToast('Status updated to '+st);};
+  const applyStatus=(id,st,extra)=>{const _b=(_liveLeads||[]).find(l=>l.id===id);if(_b)fireRecordUpdate('lead',_b,{..._b,status:st,...(extra||{})});setRows(r=>r.map(l=>l.id===id?{...l,status:st,...(extra||{})}:l));showToast('Status updated to '+st);};
+  // → Disqualified is a gated transition everywhere (parity with the detail page): capture the reason first.
+  const setStatus=(id,st)=>{if(st==='Disqualified'){setDisqTarget(id);return;}applyStatus(id,st);};
   const setOwner=(id,m)=>{const _b=(_liveLeads||[]).find(l=>l.id===id);if(_b)fireRecordUpdate('lead',_b,{..._b,owner:m.avatar,ownerColor:m.color});setRows(r=>r.map(l=>l.id===id?{...l,owner:m.avatar,ownerColor:m.color}:l));showToast('Reassigned to '+m.name);};
   const doArchive=(l)=>openConfirm({title:'Archive '+l.name+'?',body:'Archived leads are hidden from your lists but kept for 30 days. You can restore them any time.',confirmLabel:'Archive',danger:false,onConfirm:()=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:true}:x));showToast(l.name+' archived');}});
   const doRestore=(l)=>{setRows(r=>r.map(x=>x.id===l.id?{...x,archived:false}:x));showToast(l.name+' restored');};
@@ -10878,19 +10864,10 @@ function LeadsPage({goTo,nav}){
           </div>
         </div>
         {importModal&&<BulkImportWizard object='lead' close={()=>setImportModal(false)} onToast={showToast}/>}
-        {selected.size>0&&(<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[120] flex items-center gap-1 px-2 py-1.5 rounded-2xl border border-white/[0.10] shadow-[0_12px_40px_rgba(0,0,0,0.55)] flex-wrap max-w-[calc(100%-2rem)]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>
-          <span className="inline-flex items-center gap-2 pl-2 pr-1 text-[12.5px] font-medium text-white"><span className="w-5 h-5 rounded-md bg-brand-500 text-white text-[11px] font-semibold flex items-center justify-center">{selected.size}</span>selected</span>
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          {effCanObject('Tasks','edit')&&<button onClick={bulkComplete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-emerald-300 hover:bg-emerald-500/10 transition-all"><I.Check size={13}/>Complete</button>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setReassignOpen(o=>!o);setRescheduleOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.UserCog size={13}/>Reassign<I.ChevronDown size={11}/></button>{reassignOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-52 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{TEAM_MEMBERS.map(m=>(<button key={m.avatar} onClick={()=>bulkReassign(m.avatar)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.05] transition-colors"><span className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:m.color}}>{m.avatar}</span><span className="text-[12.5px] text-white/85">{m.name}{m.avatar==='AM'?' (me)':''}</span></button>))}</div>}</div>}
-          {effCanObject('Tasks','edit')&&<div className="relative"><button onClick={()=>{setRescheduleOpen(o=>!o);setReassignOpen(false);}} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-white/75 hover:bg-white/[0.06] transition-all"><I.Calendar size={13}/>Reschedule<I.ChevronDown size={11}/></button>{rescheduleOpen&&<div className="absolute bottom-[calc(100%+6px)] left-0 w-40 rounded-xl border border-white/[0.08] py-1 z-50" style={{background:'var(--pop2)',backdropFilter:'blur(16px)'}}>{[['today','Today'],['tomorrow','Tomorrow'],['week','In a week']].map(o=>(<button key={o[0]} onClick={()=>bulkReschedule(o[0])} className="w-full text-left px-3 py-2 text-[12.5px] text-white/80 hover:bg-white/[0.05] transition-colors">{o[1]}</button>))}</div>}</div>}
-          {effCanObject('Tasks','delete')&&<button onClick={bulkDelete} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-red-300 hover:bg-red-500/10 transition-all"><I.Trash size={13}/>Delete</button>}
-          <div className="w-px h-5 bg-white/[0.10] mx-0.5"/>
-          <button onClick={clearSel} title="Clear selection" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-all"><I.X size={14}/></button>
-        </div>)}
         {saveOpen&&<OmSaveViewModal initialName={editView?editView.label:''} initialScope={editView?editView.scope:'private'} onSave={onSaveView} onClose={()=>{setSaveOpen(false);setEditView(null);}} canShare={smartMgr.canShare}/>}
         {smartMgr.builderNode}
         {convertLead&&<ConvertLeadModal lead={convertLead} close={()=>setConvertLead(null)} onConfirm={doConvert}/>}
+        {disqTarget!=null&&<DisqualifyLeadModal leadName={(rows.find(l=>l.id===disqTarget)||{}).name} onConfirm={(reason,note)=>{applyStatus(disqTarget,'Disqualified',{disqualifyReason:reason,disqualifyNote:note||''});setDisqTarget(null);}} onClose={()=>setDisqTarget(null)}/>}
         {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
         {confirmNode}
         <AppFooter note={activeLabel+' · '+list.length+' shown'}/>
@@ -19097,6 +19074,17 @@ function SequenceBuilderPage({goTo,channel,nav}){
   // Save updates in place. Seeds (no stepData / not in customSeqs) → _edit null → Save creates an editable copy.
   const _editId=(nav&&typeof nav==='object'&&nav.id!=null)?nav.id:null;
   const _edit=_editId!=null?(crm.customSeqs||[]).find(s=>s.id===_editId):null;
+  // Seed rows (SEQ_DATA/EMAIL_SEQ_DATA/...) carry no stepData and never live in customSeqs — hydrate
+  // name/step-count/active from the seed so Edit is honest, and stamp `supersedes` on save so the
+  // Sequences list swaps the seed for the editable copy instead of showing both.
+  const _chKey=isSms?'sms':isPush?'push':isInApp?'inapp':'email';
+  const _seedArr=isSms?SEQ_DATA:isPush?PUSH_SEQ_DATA:isInApp?INAPP_SEQ_DATA:EMAIL_SEQ_DATA;
+  const _seed=(!_edit&&_editId!=null)?(_seedArr.find(s=>s.id===_editId)||null):null;
+  // Template starters from the New-sequence drawer: goTo(builder,{starter:name}) — hydrate the promised steps.
+  const _starter=(!_edit&&!_seed&&nav&&typeof nav==='object'&&nav.starter)?(((typeof SEQ_STARTERS!=='undefined'&&SEQ_STARTERS[_chKey])||[]).find(t=>t.name===nav.starter)||null):null;
+  const _starterSteps=_starter?_starter.steps.map((s,i)=>{const m=/^Wait\s+(\d+)\s+(day|days|hour|hours)/i.exec(s.when||'');const delay=(i===0||!m)?null:{n:parseInt(m[1],10),unit:/hour/i.test(m[2])?'hours':'days'};return isSms?{id:i+1,body:s.text,delay}:{id:i+1,subject:s.text,body:'Hi {{first_name}},\n\n'+s.text+'\n\nBest,\nAlex',delay};}):null;
+  // "Use" on an SMS template: goTo('sms-sequence-builder',{tplBody,tplName}) — seed step 1 with the template.
+  const _tplSeed=(!_edit&&!_seed&&!_starter&&isSms&&nav&&typeof nav==='object'&&nav.tplBody)?{name:nav.tplName,body:nav.tplBody}:null;
   // A2P-aware: "connected" now means the workspace can actually send (number owned + campaign approved) — smsComplianceState().
   const [isConnected,setIsConnected]=React.useState(()=>{try{return smsComplianceState().ok;}catch(e){return true;}});
   // Sending number for SMS sequences (picker is only rendered when isSms) — real workspace numbers, demo list as fallback.
@@ -19106,16 +19094,21 @@ function SequenceBuilderPage({goTo,channel,nav}){
   const [activeNodeId,setActiveNodeId]=React.useState(null);
   const [draft,setDraft]=React.useState(null);
   const [tplEdit,setTplEdit]=React.useState(null); // template being edited from the node drawer (subject lives on the template)
-  const [name,setName]=React.useState(_edit?_edit.name:(isPush?'New Push Sequence':isInApp?'New In-app Sequence':isSms?'New SMS Sequence':'New Email Sequence'));
+  const [name,setName]=React.useState(_edit?_edit.name:_seed?_seed.name:_starter?_starter.name:_tplSeed&&_tplSeed.name?_tplSeed.name+' sequence':(isPush?'New Push Sequence':isInApp?'New In-app Sequence':isSms?'New SMS Sequence':'New Email Sequence'));
   const TRIGGER_ID='trigger';
   // Trigger (enrollment) config now lives in the same side drawer as step nodes — no inline fields.
   const [trig,setTrig]=React.useState(_edit&&_edit.trig?_edit.trig:{type:'tag-applied',tag:'lead',form:FORMS_DATA[0].name,fromStage:'Qualified',toStage:'Proposal Sent',dateField:'Renewal date',offset:'3 days before',reenroll:false,limitOn:false,limit:'1',conds:[]});
   const [steps,setSteps]=React.useState(()=>{
     if(_edit&&Array.isArray(_edit.stepData)&&_edit.stepData.length)return _edit.stepData;
+    if(_starterSteps&&_starterSteps.length)return _starterSteps;
+    if(_seed&&!isMsgX&&_seed.steps>0)return Array.from({length:_seed.steps},(_,i)=>isSms
+      ?{id:i+1,body:'Step '+(i+1)+' of “'+_seed.name+'” — placeholder copy; edit to replace.',delay:i===0?null:{n:2,unit:'days'}}
+      :{id:i+1,subject:_seed.name+' — step '+(i+1),body:'Hi {{first_name}},\n\nStep '+(i+1)+' of the original “'+_seed.name+'” sequence. Edit to replace this placeholder.',delay:i===0?null:{n:2,unit:'days'}});
+    if(_tplSeed)return[{id:1,body:_tplSeed.body,delay:null},{id:2,body:'Just floating this back up, {{first_name}}.',delay:{n:2,unit:'days'}}];
     return isMsgX?seqSeedSteps(channel):isSms
     ?[{id:1,body:'Hi {{first_name}}, thanks for connecting! Quick question — are you still looking at {{company}} options this quarter?',delay:null},{id:2,body:'Just floating this back up {{first_name}} — happy to share a 2-min overview whenever you have a sec. Grab a time here: nrtur.app/book/alex',delay:{n:2,unit:'days'}}]
     :[{id:1,subject:'Welcome to nrtur, {{first_name}}',body:'Hi {{first_name}},\n\nThanks for signing up! Here is how to get started in 3 quick steps.\n\nBest,\nAlex',delay:null},{id:2,subject:'A few tips to get the most out of nrtur',body:'Hi {{first_name}},\n\nNoticed you are exploring — here are the features teams love most.\n\nAlex',delay:{n:3,unit:'days'}}];});
-  const [activated,setActivated]=React.useState(_edit?!!_edit.active:false);
+  const [activated,setActivated]=React.useState(_edit?!!_edit.active:_seed?!!_seed.active:false);
   const [dirty,setDirty]=React.useState(false);
   const [testOpen,setTestOpen]=React.useState(false);
   // Exit conditions — list of cards + the inline builder draft (null when closed).
@@ -19138,7 +19131,7 @@ function SequenceBuilderPage({goTo,channel,nav}){
   const save=(msg,asDraft)=>{
     // Persist the built sequence into the shared customSeqs store (in-memory) so it shows up in the Sequences
     // list, the stage bulk-enroll picker, and survives navigation. Editing updates in place (savedId) — no dupe.
-    const rec={name:(name||'').trim()||'Untitled sequence',channel,steps:steps.length,stepData:steps,active:asDraft?false:activated,trig,stopRules};
+    const rec={name:(name||'').trim()||'Untitled sequence',channel,steps:steps.length,stepData:steps,active:asDraft?false:activated,trig,stopRules,...(_seed?{supersedes:_chKey+_seed.id}:{})};
     if(savedId!=null){crm.setCustomSeqs(a=>a.map(s=>s.id===savedId?{...s,...rec}:s));}
     else{const _id='cs_'+Date.now();setSavedId(_id);crm.setCustomSeqs(a=>[{id:_id,enrolled:0,sent:0,opened:0,replied:0,clicked:0,atStep:[],lastRun:null,createdBy:CURRENT_USER.avatar,fromBuilder:true,...rec},...a]);}
     setDirty(false);showToast(msg);setTimeout(()=>goTo('settings-sequences'),650);
@@ -20176,20 +20169,6 @@ function SettingsAutomationsPage({goTo}){
                   {isErr&&<div className="mt-3 pt-3 border-t border-red-500/15 flex items-center justify-between gap-3"><p className="text-[12px] text-red-300/90 flex items-center gap-1.5 min-w-0"><I.Ban size={11} className="shrink-0"/><span className="truncate">Last run failed — {a.errStep}</span></p><button onClick={()=>setLogModal(a)} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1 shrink-0">View log<I.ArrowRight size={11} stroke={2.4}/></button></div>}
                 </div>);}}/>
             </div>))}
-            {sub==='sms'&&(<div className="flex flex-col gap-4">
-              <div className="flex items-center justify-end gap-3 flex-wrap"><button onClick={()=>setNewSeq('sms')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New SMS sequence</button>
-              </div>
-              {subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{SEQ_DATA.map(s=>seqRow(s,'sms'))}</div>):(
-                <><div className="flex items-center justify-between -mt-1"><p className="text-[12px] text-white/45">Reusable SMS snippets. Edit them here, or use one to start a sequence.</p><button onClick={()=>setEditTpl({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/30 hover:bg-brand-500/20 transition-all"><I.Plus size={12} stroke={2.4}/>New template</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SMS_TEMPLATES.map(t=>{const cat=SMS_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category,color:'#818cf8'};return(<div key={t.id} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center justify-between mb-2"><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit" style={{background:cat.color+'18',color:cat.color,boxShadow:`0 0 0 1px ${cat.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>{cat.label}</span>{t.favorite&&<I.Star size={12} className="text-amber-300" fill="currentColor"/>}</div><p className="text-[13px] font-semibold text-white">{t.name}</p><p className="text-[12px] text-white/55 leading-relaxed mt-1 flex-1" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.05]"><span className="text-[11px] text-white/50">Used {t.uses}×</span><div className="flex items-center gap-3"><button onClick={()=>setEditTpl(t)} className="inline-flex items-center gap-1 text-[12px] font-medium text-white/55 hover:text-white"><I.Edit size={11}/>Edit</button><button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200">Use<I.ArrowRight size={11} stroke={2.4}/></button></div></div></div>);})}</div></>
-              )}
-            </div>)}
-            {sub==='email'&&(<div className="flex flex-col gap-4">
-              <div className="flex items-center justify-end gap-3 flex-wrap"><button onClick={()=>setNewSeq('email')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New email sequence</button>
-              </div>
-              {subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div>{EMAIL_SEQ_DATA.map(s=>seqRow(s,'email'))}</div>):(
-                <EmailTemplatesPanel goTo={goTo}/>
-              )}
-            </div>)}
             {sub==='logs'&&(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
               <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/[0.05] flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -21036,7 +21015,7 @@ function NewSequenceModal({channel,close,goTo}){
           <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em] mb-3">Start from a template</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {starters.map(t=>(
-              <button key={t.name} onClick={()=>{close();goTo(builder);}} className="group text-left rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-4 transition-all flex flex-col">
+              <button key={t.name} onClick={()=>{close();goTo(builder,{starter:t.name});}} className="group text-left rounded-2xl bg-white/[0.025] border border-white/[0.06] hover:border-brand-500/30 hover:bg-white/[0.04] p-4 transition-all flex flex-col">
                 <div className="flex items-start gap-3 mb-3"><span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{background:t.iconBg,color:t.iconFg}}><t.Icon size={17} stroke={2}/></span><div className="min-w-0"><p className="text-[14px] font-semibold text-white leading-tight">{t.name}</p><span className="text-[11px] text-white/40">{t.steps.length} steps - {chLabel}</span></div></div>
                 <p className="text-[12px] text-white/50 leading-relaxed mb-3">{t.desc}</p>
                 <div className="mt-auto flex flex-col gap-1.5 pt-3 border-t border-white/[0.05]">
@@ -21053,6 +21032,8 @@ function NewSequenceModal({channel,close,goTo}){
 }
 function SettingsSequencesPage({goTo}){
   const crm=React.useContext(CrmDataContext);
+  // Seeds that were edited in the builder are superseded by their editable copy — show one row, not both.
+  const _superseded=React.useMemo(()=>new Set((crm.customSeqs||[]).map(s=>s.supersedes).filter(Boolean)),[crm.customSeqs]);
   const [newSeq,setNewSeq]=React.useState(null);
   const [editTpl,setEditTpl]=React.useState(null);
   const [,forceTpl]=React.useReducer(x=>x+1,0);
@@ -21093,14 +21074,10 @@ function SettingsSequencesPage({goTo}){
             <fieldset disabled={readOnly} className="contents border-0 m-0 p-0 min-w-0">
 
             <div className="rounded-xl bg-brand-500/[0.06] border border-brand-500/15 px-4 py-2.5 flex items-center gap-2 -mt-1"><I.Zap size={13} className="text-brand-300 shrink-0"/><p className="text-[12px] text-white/60">Tip: trigger a sequence automatically from a workflow using the <span className="text-brand-200 font-medium">Enroll in sequence</span> action. <button onClick={()=>goTo('settings-automations')} className="text-brand-300 hover:text-brand-200 font-medium">Open Automations →</button></p></div>
-            {chan==='sms'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-sms" api={fldSms} items={[...SEQ_DATA,...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='sms')]} getId={s=>s.id} renderItem={s=>seqRow(s,'sms',fldSms)} itemsClass="flex flex-col gap-3" hint="Group SMS sequences — drag a card onto a folder, or use its folder menu."/></div>):(
-              <><div className="flex items-center justify-between -mt-1"><p className="text-[12px] text-white/45">Reusable SMS snippets. Edit them here, or use one to start a sequence.</p><button onClick={()=>setEditTpl({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/30 hover:bg-brand-500/20 transition-all"><I.Plus size={12} stroke={2.4}/>New template</button></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{SMS_TEMPLATES.map(t=>{const cat=SMS_TEMPLATE_CATS.find(c=>c.key===t.category)||{label:t.category,color:'#818cf8'};return(<div key={t.id} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 flex flex-col"><div className="flex items-center justify-between mb-2"><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 w-fit" style={{background:cat.color+'18',color:cat.color,boxShadow:`0 0 0 1px ${cat.color}40`}}><span className="w-1.5 h-1.5 rounded-full" style={{background:cat.color}}/>{cat.label}</span>{t.favorite&&<I.Star size={12} className="text-amber-300" fill="currentColor"/>}</div><p className="text-[13px] font-semibold text-white">{t.name}</p><p className="text-[12px] text-white/55 leading-relaxed mt-1 flex-1" style={{display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{t.body}</p><div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/[0.05]"><span className="text-[11px] text-white/50">Used {t.uses}×</span><div className="flex items-center gap-3"><button onClick={()=>setEditTpl(t)} className="inline-flex items-center gap-1 text-[12px] font-medium text-white/55 hover:text-white"><I.Edit size={11}/>Edit</button><button onClick={()=>goTo('sms-sequence-builder')} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-300 hover:text-brand-200">Use<I.ArrowRight size={11} stroke={2.4}/></button></div></div></div>);})}</div></>
-            ))}
-            {chan==='email'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-email" api={fldEmail} items={[...EMAIL_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='email')]} getId={s=>s.id} renderItem={s=>seqRow(s,'email',fldEmail)} itemsClass="flex flex-col gap-3" hint="Group email sequences — drag a card onto a folder, or use its folder menu."/></div>):(
-              <EmailTemplatesPanel goTo={goTo}/>
-            ))}
-            {chan==='push'&&<PushInAppSeqList channel="push" data={[...PUSH_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>s.channel==='push')]} seqRow={seqRow} goTo={goTo}/>}
-            {chan==='inapp'&&<PushInAppSeqList channel="inapp" data={[...INAPP_SEQ_DATA,...(crm.customSeqs||[]).filter(s=>s.channel==='inapp')]} seqRow={seqRow} goTo={goTo}/>}
+            {chan==='sms'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'3',Icon:I.Layers,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Messages sent',v:'774',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Reply rate',v:'9.6%',Icon:I.Reply,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-sms" api={fldSms} items={[...SEQ_DATA.filter(s=>!_superseded.has('sms'+s.id)),...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='sms')]} getId={s=>s.id} renderItem={s=>seqRow(s,'sms',fldSms)} itemsClass="flex flex-col gap-3" hint="Group SMS sequences — drag a card onto a folder, or use its folder menu."/></div>):null)}
+            {chan==='email'&&(subView==='list'?(<div className="flex flex-col gap-3"><div className="grid grid-cols-3 gap-4">{[{l:'Active sequences',v:'2',Icon:I.Mail,c:'bg-brand-500/10 ring-brand-500/20 text-brand-300'},{l:'Emails sent',v:'1,088',Icon:I.Send,c:'bg-violet-500/10 ring-violet-500/20 text-violet-300'},{l:'Open rate',v:'42%',Icon:I.Eye,c:'bg-emerald-500/10 ring-emerald-500/20 text-emerald-300'}].map(m=>(<div key={m.l} className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4 flex items-center gap-4"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',m.c].join(' ')}><m.Icon size={16}/></div><div><p className="text-white text-[22px] font-bold leading-none tabular-nums">{m.v}</p><p className="text-[11px] text-white/45 mt-1">{m.l}</p></div></div>))}</div><FolderedCards surface="seq-email" api={fldEmail} items={[...EMAIL_SEQ_DATA.filter(s=>!_superseded.has('email'+s.id)),...(crm.customSeqs||[]).filter(s=>(s.channel||'email')==='email')]} getId={s=>s.id} renderItem={s=>seqRow(s,'email',fldEmail)} itemsClass="flex flex-col gap-3" hint="Group email sequences — drag a card onto a folder, or use its folder menu."/></div>):null)}
+            {chan==='push'&&<PushInAppSeqList channel="push" data={[...PUSH_SEQ_DATA.filter(s=>!_superseded.has('push'+s.id)),...(crm.customSeqs||[]).filter(s=>s.channel==='push')]} seqRow={seqRow} goTo={goTo}/>}
+            {chan==='inapp'&&<PushInAppSeqList channel="inapp" data={[...INAPP_SEQ_DATA.filter(s=>!_superseded.has('inapp'+s.id)),...(crm.customSeqs||[]).filter(s=>s.channel==='inapp')]} seqRow={seqRow} goTo={goTo}/>}
             </fieldset>
           </div></div>
         </div>
@@ -22700,8 +22677,9 @@ function TasksPage({goTo,nav}){
   }).sort((a,b)=>(a.done-b.done)||(a.date-b.date)||((a.order??1e9)-(b.order??1e9)));
   const dueLabel=(t)=>{const s=CAL_DAYS[t.date.getDay()]+' '+t.date.getDate()+' '+CAL_MONTHS[t.date.getMonth()].slice(0,3);if(t.done)return{txt:s,c:null};if(calSameDay(t.date,now))return{txt:'Today',c:'#fbbf24'};if(t.date<startToday)return{txt:'Overdue · '+s,c:'#f87171'};return{txt:s,c:null};};
   const linkedTxt=(t)=>[t.contact,t.company,t.deal].filter(Boolean).join(' · ');
-  const save=(ev)=>{if(ev.id)updateItem(ev);else addItem(ev);setModal(null);addToast('Task saved');};
-  const del=(t)=>openConfirm({title:'Delete task?',body:'"'+t.title+'" moves to the Recycle Bin. You can restore it within 30 days.',confirmLabel:'Delete',danger:true,onConfirm:()=>{updateItem({id:t.id,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});addToast('Task moved to Recycle Bin');}});
+  const _tCan=(a)=>effCanObject('Tasks',a); // R10 rule: every mutation surface carries the same gate as its neighbors
+  const save=(ev)=>{if(!_tCan(ev.id?'edit':'create')){addToast('Your role can’t '+(ev.id?'edit':'create')+' tasks');return;}if(ev.id)updateItem(ev);else addItem(ev);setModal(null);addToast('Task saved');};
+  const del=(t)=>{if(!_tCan('delete')){addToast('Your role can’t delete tasks');return;}openConfirm({title:'Delete task?',body:'"'+t.title+'" moves to the Recycle Bin. You can restore it within 30 days.',confirmLabel:'Delete',danger:true,onConfirm:()=>{updateItem({id:t.id,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'});addToast('Task moved to Recycle Bin');}});};
   const primaryLink=(t)=>{if(t.deal)return{label:t.deal,Icon:I.GitBranch,go:()=>goTo('pipeline')};if(t.contact)return{label:t.contact,Icon:t.linkType==='lead'?I.Target:I.Users,go:()=>{dashGoToRecord(goTo,t.contact)||goTo(t.linkType==='lead'?'leads':'contacts');}};if(t.company)return{label:t.company,Icon:I.Building,go:()=>{dashGoToRecord(goTo,t.company)||goTo('companies');}};return null;};
   const toggleSelect=(id)=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const clearSel=()=>setSelected(new Set());
@@ -22721,17 +22699,17 @@ function TasksPage({goTo,nav}){
   const [overId,setOverId]=React.useState(null);
   const [overCol,setOverCol]=React.useState(null);
   const reorderWithin=(arr,fromId,toId)=>{if(fromId===toId)return;const ids=arr.map(t=>t.id);const from=ids.indexOf(fromId),to=ids.indexOf(toId);if(from<0||to<0)return;ids.splice(to,0,ids.splice(from,1)[0]);ids.forEach((id,i)=>updateItem({id,order:i}));};
-  const setPriorityOf=(id,pr)=>updateItem({id,priority:pr});
+  const setPriorityOf=(id,pr)=>{if(!_tCan('edit'))return;updateItem({id,priority:pr});};
   const [expanded,setExpanded]=React.useState(()=>new Set());
   const toggleExpand=(id)=>setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
-  const toggleSubtask=(taskId,subId)=>{const tk=tasks.find(x=>x.id===taskId);if(!tk)return;updateItem({id:taskId,subtasks:(tk.subtasks||[]).map(st=>st.id===subId?{...st,done:!st.done}:st)});};
-  const addSubtaskTo=(taskId,title)=>{const tk=tasks.find(x=>x.id===taskId);if(!tk||!title.trim())return;updateItem({id:taskId,subtasks:[...(tk.subtasks||[]),{id:'st'+Date.now()+Math.floor(Math.random()*1e4),title:title.trim(),done:false}]});};
+  const toggleSubtask=(taskId,subId)=>{if(!_tCan('edit'))return;const tk=tasks.find(x=>x.id===taskId);if(!tk)return;updateItem({id:taskId,subtasks:(tk.subtasks||[]).map(st=>st.id===subId?{...st,done:!st.done}:st)});};
+  const addSubtaskTo=(taskId,title)=>{if(!_tCan('edit'))return;const tk=tasks.find(x=>x.id===taskId);if(!tk||!title.trim())return;updateItem({id:taskId,subtasks:[...(tk.subtasks||[]),{id:'st'+Date.now()+Math.floor(Math.random()*1e4),title:title.trim(),done:false}]});};
   const SubAdder=({taskId})=>{const [v,setV]=React.useState('');return(<div className="flex items-center gap-2 pt-0.5"><span className="w-[16px] h-[16px] rounded border border-dashed border-white/20 flex items-center justify-center shrink-0"><I.Plus size={9} className="text-white/35"/></span><input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){addSubtaskTo(taskId,v);setV('');}}} placeholder="Add subtask…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/25"/></div>);};
   const Row=({t,last,arr})=>{const d=dueLabel(t);const lt=linkedTxt(t);const lk=primaryLink(t);const asgU=userByCode(taskAsg(t));const isSel=selected.has(t.id);const isDrag=dragId===t.id;const isOver=overId===t.id&&dragId&&dragId!==t.id;const sub=t.subtasks||[];const isExp=expanded.has(t.id);return(<React.Fragment>
     <div draggable onDragStart={(e)=>{setDragId(t.id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>{setDragId(null);setOverId(null);}} onDragOver={(e)=>{e.preventDefault();if(overId!==t.id)setOverId(t.id);}} onDrop={(e)=>{e.preventDefault();if(arr&&dragId)reorderWithin(arr,dragId,t.id);setDragId(null);setOverId(null);}} onClick={()=>toggleExpand(t.id)} role="button" aria-expanded={isExp} className={['crm-list-row relative w-full grid items-center gap-4 px-7 py-3 transition-colors group cursor-pointer active:cursor-grabbing',isOver?'bg-brand-500/[0.07]':isSel?'bg-brand-500/[0.05]':'hover:bg-white/[0.025]',isDrag?'opacity-40':'',!last?'border-b border-white/[0.03]':''].join(' ')} style={{gridTemplateColumns:COL}}>
       <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-white/25 opacity-0 group-hover:opacity-100 transition-opacity select-none pointer-events-none" style={{fontSize:'11px',letterSpacing:'-1px',lineHeight:1}}>⠿</span>
       <button onClick={(e)=>{e.stopPropagation();toggleSelect(t.id);}} title="Select" className={['w-[16px] h-[16px] rounded flex items-center justify-center border transition-all shrink-0',isSel?'bg-brand-500 border-brand-500':'bg-transparent border-white/20 hover:border-white/45 '+(selected.size?'opacity-100':'opacity-0 group-hover:opacity-100')].join(' ')}>{isSel&&<I.Check size={10} stroke={3} style={{color:'#fff'}}/>}</button>
-      <button onClick={(e)=>{e.stopPropagation();toggleDone(t.id);}} title={t.done?'Mark open':'Mark complete'} className={['w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
+      <button onClick={(e)=>{e.stopPropagation();if(!_tCan('edit')){addToast('Your role can’t edit tasks');return;}toggleDone(t.id);}} title={t.done?'Mark open':'Mark complete'} className={['w-[18px] h-[18px] rounded flex items-center justify-center border transition-all shrink-0',t.done?'bg-emerald-500 border-emerald-500':'bg-transparent border-white/25 hover:border-white/50'].join(' ')}>{t.done&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</button>
       <div className="flex items-center gap-2 min-w-0">
         <I.ChevronDown size={16} className="shrink-0 text-white/35 group-hover:text-white/70 transition-colors" style={{transform:isExp?'rotate(0deg)':'rotate(-90deg)',transition:'transform .15s'}}/>
         <div className="min-w-0 text-left">
@@ -22743,8 +22721,8 @@ function TasksPage({goTo,nav}){
       {t.priority?<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium w-fit" style={{background:(CAL_PRIORITY_C[t.priority]||'#64748b')+'1f',color:CAL_PRIORITY_C[t.priority]||'#94a3b8',boxShadow:'inset 0 0 0 1px '+(CAL_PRIORITY_C[t.priority]||'#64748b')+'40'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:CAL_PRIORITY_C[t.priority]||'#64748b'}}/>{t.priority}</span>:<span/>}
       <div className="flex items-center justify-center">{asgU?<span title={asgU.name} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:asgU.color}}>{taskAsg(t)}</span>:<span className="text-white/25 text-[11px]">—</span>}</div>
       <div className="flex items-center justify-end gap-1">
-        <button onClick={(e)=>{e.stopPropagation();setModal({task:t});}} title="Edit" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.Edit size={12}/></button>
-        <button onClick={(e)=>{e.stopPropagation();del(t);}} title="Delete" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={12}/></button>
+        {_tCan('edit')&&<button onClick={(e)=>{e.stopPropagation();setModal({task:t});}} title="Edit" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all"><I.Edit size={12}/></button>}
+        {_tCan('delete')&&<button onClick={(e)=>{e.stopPropagation();del(t);}} title="Delete" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 hover:text-red-300 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"><I.Trash size={12}/></button>}
       </div>
     </div>
     {isExp&&(()=>{
@@ -22791,7 +22769,7 @@ function TasksPage({goTo,nav}){
         <AppTopbar goTo={goTo} title="Tasks" subtitle={`${scoped.filter(t=>!t.done).length} open · ${counts.overdue} overdue`}
           rightSlot={<>
             <button onClick={()=>goTo('calendar')} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] hover:border-white/[0.18] transition-all"><I.Calendar size={13}/>Calendar</button>
-            <button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Task</button>
+            {_tCan('create')&&<button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Task</button>}
           </>}/>
         <div className="shrink-0 border-b border-white/[0.05] px-7 py-2.5 flex items-center gap-3 flex-wrap" style={{background:'var(--s900)'}}>
           <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 focus-within:border-brand-500/40 transition-all"><I.Search size={12} className="text-white/40"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tasks..." className="bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 w-40"/></div>
@@ -22813,7 +22791,7 @@ function TasksPage({goTo,nav}){
             </div>
           </div>}
           {tasks.length===0?(
-            <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.CheckSquare size={26}/></div><p className="text-[16px] font-semibold text-white">No tasks yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">Create a task to keep follow-ups on track. Tasks also show on your Calendar and dashboard.</p><button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add task</button></div></div>
+            <div className="flex items-center justify-center py-24"><div className="text-center max-w-sm"><div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4 text-white/30"><I.CheckSquare size={26}/></div><p className="text-[16px] font-semibold text-white">No tasks yet</p><p className="text-[13px] text-white/45 mt-1.5 mb-5 leading-relaxed">Create a task to keep follow-ups on track. Tasks also show on your Calendar and dashboard.</p>{_tCan('create')&&<button onClick={()=>setModal('new')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Add task</button>}</div></div>
           ):view==='list'?(
             <div>
               {effCanObject('Tasks','create')&&<div className="px-7 pt-3 pb-2">
@@ -22841,7 +22819,7 @@ function TasksPage({goTo,nav}){
               ):list.map((t,i)=>(<Row key={t.id} t={t} last={i===list.length-1} arr={list}/>))}
             </div>
           ):(
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">{['High','Medium','Low'].map(pr=>{const col=list.filter(t=>!t.done&&(t.priority||'Medium')===pr);return(
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">{['High','Medium','Low'].map(pr=>{const col=list.filter(t=>(filter==='done'?t.done:!t.done)&&(t.priority||'Medium')===pr);return(
               <div key={pr} onDragOver={(e)=>{e.preventDefault();if(overCol!==pr)setOverCol(pr);}} onDragLeave={()=>setOverCol(c=>c===pr?null:c)} onDrop={(e)=>{e.preventDefault();if(dragId)setPriorityOf(dragId,pr);setDragId(null);setOverCol(null);}} className={['flex flex-col rounded-2xl border overflow-hidden transition-colors',overCol===pr?'bg-brand-500/[0.06] border-brand-500/35':'bg-white/[0.018] border-white/[0.05]'].join(' ')}>
                 <div className="px-4 py-3 border-b border-white/[0.05] flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{background:CAL_PRIORITY_C[pr]}}/><span className="text-[13px] font-medium text-white">{pr}</span><span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/55 font-mono ml-auto">{col.length}</span></div>
                 <div className="p-3 flex flex-col gap-2.5 min-h-[120px]">{col.length===0?<p className="text-[11px] text-white/50 px-1 py-3">Nothing here.</p>:col.map(t=>(<BoardCard key={t.id} t={t}/>))}</div>
