@@ -7308,6 +7308,14 @@ function PField({f,record,onChange,goTo}){
   }
   return(<PRow label={f.label} required={f.required}>{ctrl}</PRow>);
 }
+// Shared section header: ONE consistent subtle tinted band behind a section title so every section
+// visibly announces its start (the plain faint labels blended into the fields — hard to tell sections apart).
+function SectionHead({title,className}){
+  return(<div className={"flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] "+(className||"")}>
+    <span className="w-1 h-3 rounded-full bg-brand-400/70 shrink-0"/>
+    <p className="text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em] truncate">{title}</p>
+  </div>);
+}
 function RecordProperties({record,primary,secondary,onChange,goTo,defaultOpen,readOnly}){
   const [open,setOpen]=React.useState(!!defaultOpen);
   const oc=readOnly?undefined:onChange; // strip the change handler so inline controls can't write
@@ -7435,7 +7443,7 @@ function RecordEditDrawer({title,Icon,groups,record,onSave,onClose,object}){
       </div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-5 flex flex-col gap-6">
         {groups.map((g,gi)=>(<div key={gi} className="flex flex-col gap-3">
-          <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{g.title}</p>
+          <SectionHead title={g.title}/>
           <div className="flex flex-col gap-3.5">{g.fields.map(f=><DrawerField key={f.key} f={f} value={draft[f.key]} onChange={(v)=>onFieldChange(f,v)}/>)}</div>
         </div>))}
       </div>
@@ -24435,7 +24443,7 @@ function CustomObjectEditor({initial,crm,onClose:_close,onSave}){
   const relsFull=rels.length>=CO_MAX_RELS;
   const valid=singular.trim()&&plural.trim()&&!nameClash;
   const save=()=>{if(!valid)return;onSave({id:initial?initial.id:'cob_'+Date.now(),singular:singular.trim(),plural:plural.trim(),icon,color,primaryLabel:primaryLabel.trim()||'Name',visibility,fields,relationships:rels,records:initial?(initial.records||[]):[]});};
-  const Section=({title,children})=>(<div className="flex flex-col gap-2"><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">{title}</p>{children}</div>);
+  const Section=({title,children})=>(<div className="flex flex-col gap-2"><SectionHead title={title}/>{children}</div>);
   return(<React.Fragment>
     <div className="fixed inset-0 z-[180] bg-black/40" onClick={onClose}/>
     <div role="dialog" aria-modal="true" className="fixed z-[181] flex flex-col border-white/[0.08] left-0 right-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t sm:left-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-[480px] sm:max-w-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l" style={{background:'var(--panel98)',backdropFilter:'blur(16px)',boxShadow:'-8px 0 40px rgba(0,0,0,0.5)',animation:'arIn .22s ease'}}>
