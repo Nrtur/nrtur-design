@@ -215,6 +215,12 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 .app-shell .text-\[40px\],body>div:not(#root) .text-\[40px\]{font-size:32px}
 .app-shell .text-\[60px\],body>div:not(#root) .text-\[60px\]{font-size:48px}
 </style>
+<style id="nrtur-radii">
+/* Radii ramp: collapse 7 radius values to 8/12/16/full. Value remap only; class names untouched (8 light rules key on these names and keep matching). */
+.app-shell .rounded-sm,.app-shell .rounded-md,.app-shell .rounded,.app-shell .rounded-lg,body>div:not(#root) .rounded-sm,body>div:not(#root) .rounded-md,body>div:not(#root) .rounded,body>div:not(#root) .rounded-lg{border-radius:8px}
+.app-shell .rounded-xl,body>div:not(#root) .rounded-xl{border-radius:12px}
+.app-shell .rounded-2xl,.app-shell .rounded-3xl,body>div:not(#root) .rounded-2xl,body>div:not(#root) .rounded-3xl{border-radius:16px}
+</style>
 <style id="nrtur-light">
 [data-theme="light"] .app-shell .bg-white\/\[0\.01\]{background-color:#ffffff !important}
 [data-theme="light"] .app-shell .bg-white\/\[0\.015\]{background-color:#ffffff !important}
