@@ -13304,9 +13304,23 @@ const Conn=()=>(<div className="flex items-center justify-center"><div className
 function FlowInserter({onInsert,variant,compact}){
   const [open,setOpen]=React.useState(false);
   const [q,setQ]=React.useState(''); // search filter so users don't scroll 32 nodes
-  const ref=React.useRef(null);
-  React.useEffect(()=>{const fn=e=>{if(ref.current&&!ref.current.contains(e.target)){setOpen(false);setQ('');}};document.addEventListener('mousedown',fn);return()=>document.removeEventListener('mousedown',fn);},[]);
-  const row=(s)=>(<button key={s.key} onClick={()=>{onInsert(makeNode(s));setOpen(false);setQ('');}} className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-white/[0.07] text-left transition-colors"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{background:s.bg,color:s.fg}}><s.Icon size={15}/></span><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-white leading-tight">{s.label}</span><span className="block text-[11px] text-white/45 leading-snug mt-0.5">{NODE_DESCS[s.key]||''}</span></span></button>);
+  const [pos,setPos]=React.useState(null); // fixed-position style computed from the trigger's rect
+  const btnRef=React.useRef(null);
+  const popRef=React.useRef(null);
+  const close=React.useCallback(()=>{setOpen(false);setQ('');},[]);
+  // Open the picker as a viewport PORTAL — never clipped by the canvas, and it flips ABOVE the button
+  // when there isn't room below (fixes the dropdown hiding off the bottom of the flow).
+  const toggle=()=>{
+    if(open){close();return;}
+    const r=btnRef.current&&btnRef.current.getBoundingClientRect();
+    if(r){const W=340,MAXH=460,gap=6;const below=window.innerHeight-r.bottom,above=r.top;const up=below<320&&above>below;
+      let left=r.left+r.width/2-W/2;left=Math.max(10,Math.min(left,window.innerWidth-W-10));
+      setPos(up?{position:'fixed',left,bottom:window.innerHeight-r.top+gap,width:W,maxHeight:Math.min(MAXH,above-16)}
+              :{position:'fixed',left,top:r.bottom+gap,width:W,maxHeight:Math.min(MAXH,below-16)});}
+    setOpen(true);setQ('');
+  };
+  React.useEffect(()=>{const fn=e=>{if((btnRef.current&&btnRef.current.contains(e.target))||(popRef.current&&popRef.current.contains(e.target)))return;close();};const esc=e=>{if(e.key==='Escape')close();};document.addEventListener('mousedown',fn);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('mousedown',fn);document.removeEventListener('keydown',esc);};},[close]);
+  const row=(s)=>(<button key={s.key} onClick={()=>{onInsert(makeNode(s));close();}} className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-brand-500/[0.12] text-left transition-colors"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{background:s.bg,color:s.fg}}><s.Icon size={15}/></span><span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-white leading-tight">{s.label}</span><span className="block text-[11px] text-white/45 leading-snug mt-0.5">{NODE_DESCS[s.key]||''}</span></span></button>);
   const grp=(title,arr)=>arr.length?(<React.Fragment key={title}><p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold text-white/55 uppercase tracking-[0.14em]">{title}</p>{arr.map(row)}</React.Fragment>):null;
   const _logic=Object.values(LOGIC_PRESETS_A).filter(x=>['condition','branch','mapFields'].indexOf(x.kind)>=0);
   const _timing=Object.values(LOGIC_PRESETS_A).filter(x=>['wait','waitUntil','goal'].indexOf(x.kind)>=0);
@@ -13314,26 +13328,30 @@ function FlowInserter({onInsert,variant,compact}){
   const _match=(s)=>!_ql||((s.label+' '+(NODE_DESCS[s.key]||'')).toLowerCase().indexOf(_ql)>=0);
   const _fAct=Object.values(STEP_PRESETS_A).filter(_match),_fLog=_logic.filter(_match),_fTim=_timing.filter(_match);
   const _none=!!_ql&&!_fAct.length&&!_fLog.length&&!_fTim.length;
-  const pop=(<div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[60] w-[320px] max-h-[440px] overflow-y-auto scroll-area rounded-xl border border-slate-400/30" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 20px 56px rgba(0,0,0,0.4)'}}>
-    <div className="sticky top-0 z-10 p-2 border-b border-slate-400/20" style={{background:'var(--pop2)'}}>
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-400/25" style={{background:'var(--s800)'}}><I.Search size={12} className="text-white/45 shrink-0"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search nodes…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/35"/></div>
-    </div>
-    {_ql
-      ? <div className="pb-2">{[..._fAct,..._fLog,..._fTim].map(row)}</div>
-      : <div className="pb-2">{grp('Actions',_fAct)}<div className="mx-3 my-1 border-t border-slate-400/15"/>{grp('Logic & flow',_fLog)}{grp('Timing',_fTim)}</div>}
-    {_none&&<p className="px-3 py-4 text-[12px] text-white/45 text-center">No nodes match "{q}"</p>}
-  </div>);
+  const pop=(open&&pos)?ReactDOM.createPortal(
+    <div ref={popRef} className="z-[210] flex flex-col overflow-hidden rounded-xl border border-slate-400/30" style={{...pos,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 24px 60px rgba(0,0,0,0.55)'}}>
+      <div className="shrink-0 p-2 border-b border-slate-400/20">
+        <p className="px-1 pb-1.5 text-[10px] font-semibold text-white/45 uppercase tracking-[0.14em]">Add a step</p>
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-400/25 focus-within:border-brand-500/50 transition-colors" style={{background:'var(--s800)'}}><I.Search size={12} className="text-white/45 shrink-0"/><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search actions…" className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/35"/></div>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area pb-2">
+        {_ql
+          ? [..._fAct,..._fLog,..._fTim].map(row)
+          : <React.Fragment>{grp('Actions',_fAct)}<div className="mx-3 my-1 border-t border-slate-400/15"/>{grp('Logic & flow',_fLog)}{grp('Timing',_fTim)}</React.Fragment>}
+        {_none&&<p className="px-3 py-4 text-[12px] text-white/45 text-center">No actions match “{q}”</p>}
+      </div>
+    </div>, document.body):null;
   if(variant==='first'){
-    return(<div ref={ref} className="relative flex items-center justify-center py-1">
-      <button onClick={()=>{setOpen(o=>!o);setQ('');}} className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all',open?'text-white bg-brand-500/15 border border-brand-500/40':'text-white/55 hover:text-white bg-white/[0.04] border border-dashed border-white/[0.18] hover:border-brand-500/40'].join(' ')}><I.Plus size={13} stroke={2.4}/>{compact?'Add step':'Add first step'}</button>
-      {open&&pop}
+    return(<div className="relative flex items-center justify-center py-1">
+      <button ref={btnRef} onClick={toggle} className={['inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium transition-all',open?'text-white bg-brand-500/15 border border-brand-500/40':'text-white/55 hover:text-white bg-white/[0.04] border border-dashed border-white/[0.18] hover:border-brand-500/40'].join(' ')}><I.Plus size={13} stroke={2.4}/>{compact?'Add step':'Add first step'}</button>
+      {pop}
     </div>);
   }
-  return(<div ref={ref} className="relative flex flex-col items-center group/ins">
+  return(<div className="relative flex flex-col items-center group/ins">
     <span className="w-[2px] bg-slate-400/60" style={{height:compact?8:12}}/>
-    <button onClick={()=>{setOpen(o=>!o);setQ('');}} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all w-6 h-6',open?'text-white bg-brand-500 border border-brand-500':'text-white/70 border border-slate-400/40 hover:text-white hover:border-brand-500/50'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s800)'}}><I.Plus size={13} stroke={2.6}/></button>
+    <button ref={btnRef} onClick={toggle} title="Insert step here" className={['rounded-full flex items-center justify-center transition-all w-6 h-6',open?'text-white bg-brand-500 border border-brand-500':'text-white/70 border border-slate-400/40 hover:text-white hover:border-brand-500/50'].join(' ')} style={open?{boxShadow:'0 0 0 1px rgba(99,102,241,0.4),0 2px 12px rgba(99,102,241,0.4)'}:{background:'var(--s800)'}}><I.Plus size={13} stroke={2.6}/></button>
     <span className="w-[2px] bg-slate-400/60" style={{height:compact?8:12}}/>
-    {open&&pop}
+    {pop}
   </div>);
 }
 // Deep-clone a flow node (and nested branch lanes) with fresh ids — for node duplication
