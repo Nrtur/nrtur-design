@@ -5671,7 +5671,7 @@ function BulkImportWizard({object='contact',close,onToast}){
             {analysis.total>10&&<div className="px-4 py-2 text-[11px] text-white/35 bg-white/[0.02] border-t border-white/[0.05]">Showing first 10 of {analysis.total} rows.</div>}
           </div>
           <div>
-            <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Duplicate handling{cfg.unique?' — matched by '+cfg.uniqueLabel:''}</p>
+            <SectionHead title={"Duplicate handling"+(cfg.unique?' — matched by '+cfg.uniqueLabel:'')} className="mb-2"/>
             {cfg.unique?(<div className="flex flex-col gap-2">{[['skip','Skip duplicates','Leave existing records untouched'],['update','Update existing record','Overwrite matched records with imported values'],['create','Create anyway','Always add as new records']].map(([k,l,d])=>(<button key={k} onClick={()=>setDupMode(k)} className={['flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all',dupMode===k?'border-brand-500/40 bg-brand-500/[0.08]':'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]'].join(' ')}><span className={['w-4 h-4 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center',dupMode===k?'border-brand-400':'border-white/25'].join(' ')}>{dupMode===k&&<span className="w-1.5 h-1.5 rounded-full bg-brand-400"/>}</span><span><span className="block text-[13px] font-medium text-white">{l}</span><span className="block text-[11.5px] text-white/45">{d}</span></span></button>))}</div>):(<p className="text-[12px] text-white/45">Deals have no unique key — every valid row is created as a new deal.</p>)}
           </div>
         </div>}
@@ -6483,7 +6483,7 @@ function MergeDrawer({object,group,activities,close,onMerge}){
         <button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
       </div>
       <div className="flex-1 overflow-y-auto scroll-area px-5 py-4" style={{background:'var(--s850)'}}>
-        <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Primary record</p>
+        <SectionHead title="Primary record" className="mb-2"/>
         <div className="flex flex-col gap-2 mb-5">
           {group.records.map(r=>{const a=primaryId===r.id;return(
             <button key={r.id} onClick={()=>pickPrimary(r.id)} className={['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',a?'bg-brand-500/10 border-brand-500/40 ring-1 ring-brand-500/25':'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.04]'].join(' ')}>
@@ -6493,7 +6493,7 @@ function MergeDrawer({object,group,activities,close,onMerge}){
               {a&&<span className="text-[10px] font-medium text-brand-200 px-2 py-0.5 rounded-full bg-brand-500/20 shrink-0">Primary</span>}
             </button>);})}
         </div>
-        <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Resolve fields</p>
+        <SectionHead title="Resolve fields" className="mb-2"/>
         <div className="flex flex-col gap-3">
           {fields.filter(f=>f.kind!=='tags').map(f=>{const conflict=dupFieldConflict(object,f,group.records);return(
             <div key={f.key} className={['rounded-xl border p-3',conflict?'border-amber-500/30 bg-amber-500/[0.04]':'border-white/[0.07] bg-white/[0.02]'].join(' ')}>
@@ -7310,11 +7310,13 @@ function PField({f,record,onChange,goTo}){
 }
 // Shared section header: ONE consistent subtle tinted band behind a section title so every section
 // visibly announces its start (the plain faint labels blended into the fields — hard to tell sections apart).
-function SectionHead({title,className}){
-  return(<div className={"flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] "+(className||"")}>
-    <span className="w-1 h-3 rounded-full bg-brand-400/70 shrink-0"/>
-    <p className="text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em] truncate">{title}</p>
-  </div>);
+function SectionHead({title,className,flush}){
+  // Consistent section header everywhere: a small brand accent bar + uppercase title. Default draws its own
+  // subtle tinted band (for bare section labels in forms/pages); `flush` omits the band for headers that
+  // already sit inside a bordered card row, so the accent-bar + title style stays consistent app-wide.
+  const inner=(<React.Fragment><span className="w-1 h-3 rounded-full bg-brand-400/80 shrink-0"/><p className="text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em] truncate">{title}</p></React.Fragment>);
+  if(flush)return(<div className={"flex items-center gap-2 min-w-0 "+(className||"")}>{inner}</div>);
+  return(<div className={"flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] "+(className||"")}>{inner}</div>);
 }
 function RecordProperties({record,primary,secondary,onChange,goTo,defaultOpen,readOnly}){
   const [open,setOpen]=React.useState(!!defaultOpen);
@@ -8934,11 +8936,11 @@ function StageBulkModal({mode,stage,deals,pipeName,onClose}){
       {pickStep?(
       <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
         <div>
-          <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Your sequences</p>
+          <SectionHead title="Your sequences" className="mb-2"/>
           <div className="flex flex-col gap-1.5">{seqList.map(s=>(<button key={s.id} data-seq-pick={s.name} onClick={()=>setSeq(s)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-brand-500/30 transition-all"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/25"><I.Send size={13}/></span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{s.name}</p><p className="text-[11px] text-white/40">{s.steps} steps · {(s.enrolled||0)+liveEnrolled(s.id)} enrolled</p></div><I.ArrowRight size={13} className="text-white/25 shrink-0"/></button>))}</div>
         </div>
         <div>
-          <p className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2">Start from a template</p>
+          <SectionHead title="Start from a template" className="mb-2"/>
           <div className="flex flex-col gap-1.5">{SEQ_TEMPLATES.map(t=>{const existing=(crm.customSeqs||[]).find(s=>s.fromTemplate===t.key);return(<button key={t.key} data-seq-tpl={t.key} onClick={()=>useTemplate(t)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left bg-white/[0.03] border border-dashed border-white/[0.10] hover:bg-white/[0.06] hover:border-violet-500/35 transition-all"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/25"><I.Sparkles size={13}/></span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{t.name}</p><p className="text-[11px] text-white/40">{t.desc}{existing?' · already created — will reuse':''}</p></div><span className="text-[11px] font-medium text-violet-300 shrink-0">{existing?'Use existing':'Create once & use'}</span></button>);})}</div>
           <p className="text-[10.5px] text-white/30 mt-2 leading-relaxed">Templates create the sequence once. Enrolling again later reuses the same sequence — you never end up with duplicate copies.</p>
         </div>
@@ -14354,7 +14356,7 @@ const PREF_LANDING=[['dashboard','Dashboard'],['leads','Leads'],['contacts','Con
 const PREF_DATEFMT=['MM/DD/YYYY','DD/MM/YYYY','YYYY-MM-DD','D MMM YYYY'];
 const PREF_LANGS=['English (US)','English (UK)','Español','Français','Deutsch','Português (BR)'];
 const PREF_CARD='rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5';
-const PREF_EYE='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] mb-2';
+const PREF_EYE='px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em] mb-2';
 const PREF_SEL='px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none min-w-[180px]';
 function PrefSeg({value,onChange,options}){
   return(<div className="inline-flex items-center p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
@@ -14620,7 +14622,7 @@ function SettingsDeleteWorkspacePage({goTo}){
 }
 // ── Customization group pages ───────────────────────────────────────────────
 const CUST_CARD='rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5';
-const CUST_EYE='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em]';
+const CUST_EYE='px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em]';
 const CUST_SAVE='inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all';
 const CUST_RESET='text-[12.5px] font-medium text-white/55 hover:text-white transition-colors';
 function custToast(m,t){try{window.__nrturToast&&window.__nrturToast(m,t||'success');}catch(e){}}
@@ -15051,7 +15053,7 @@ function SettingsWhiteLabelPage({goTo}){
 // make every batch traceable: each record carries the batch tag so it can be found,
 // audited, and undone. History persists in localStorage, seeded with demo rows.
 const IE_CARD='rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5';
-const IE_EYE='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em]';
+const IE_EYE='px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em]';
 const IE_BTN='inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all';
 const IE_SEL='w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 appearance-none';
 function ieLoad(key,seed){try{const v=JSON.parse(localStorage.getItem(key)||'null');if(Array.isArray(v))return v;}catch(e){}try{localStorage.setItem(key,JSON.stringify(seed));}catch(e){}return seed;}
@@ -15555,7 +15557,7 @@ function SettingsShell({active,goTo,children,subtitle,actions,tabs,tabsFirst}){
   );
 }
 // Billing page shared constants (were referenced but undefined — caused the billing page to crash to a blank screen).
-const BILLING_EYE='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em]';
+const BILLING_EYE='px-3 py-1.5 rounded-lg bg-white/[0.045] ring-1 ring-white/[0.06] text-[10.5px] font-semibold text-white/60 uppercase tracking-[0.15em]';
 const BILLING_CARD='rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5';
 const BILLING_SEATS=[
   {name:'Alex Morgan',role:'Admin',avatar:'AM',color:'#3b82f6'},
