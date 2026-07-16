@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18',850:'#0d0d1a'}},fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['ui-monospace','SFMono-Regular','Menlo','monospace']},boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 60px rgba(99,102,241,0.15)','brand-lg':'0 0 0 1px rgba(99,102,241,0.40), 0 8px 80px rgba(99,102,241,0.25)'},keyframes:{fadeUp:{'0%':{opacity:0,transform:'translateY(8px)'},'100%':{opacity:1,transform:'translateY(0)'}},glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},animation:{'fade-up':'fadeUp 400ms ease-out both','glow-pulse':'glowPulse 3s ease-in-out infinite'}}}}
+tailwind.config={theme:{extend:{colors:{brand:{50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81'},surface:{950:'#07070f',925:'#09091a',900:'#0b0b18',850:'#0d0d1a'}},fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['ui-monospace','SFMono-Regular','Menlo','monospace']},boxShadow:{'brand':'0 0 0 1px rgba(99,102,241,0.30), 0 2px 8px rgba(0,0,0,0.25)','brand-lg':'0 0 0 1px rgba(99,102,241,0.30), 0 4px 16px rgba(0,0,0,0.30)'},keyframes:{fadeUp:{'0%':{opacity:0,transform:'translateY(8px)'},'100%':{opacity:1,transform:'translateY(0)'}},glowPulse:{'0%,100%':{opacity:0.5},'50%':{opacity:1}}},animation:{'fade-up':'fadeUp 400ms ease-out both','glow-pulse':'glowPulse 3s ease-in-out infinite'}}}}
 </script>
 <style>
 html,body,#root{height:100%;margin:0}
@@ -220,6 +220,8 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 .app-shell .rounded-sm,.app-shell .rounded-md,.app-shell .rounded,.app-shell .rounded-lg,body>div:not(#root) .rounded-sm,body>div:not(#root) .rounded-md,body>div:not(#root) .rounded,body>div:not(#root) .rounded-lg{border-radius:8px}
 .app-shell .rounded-xl,body>div:not(#root) .rounded-xl{border-radius:12px}
 .app-shell .rounded-2xl,.app-shell .rounded-3xl,body>div:not(#root) .rounded-2xl,body>div:not(#root) .rounded-3xl{border-radius:16px}
+/* Glow diet: nav active-state bloom -> ring only (static chrome). Toggle/selected/today glows kept (state signals). */
+.app-shell [class*="shadow-[0_0_18px_rgba(99,102,241"]{box-shadow:0 0 0 1px rgba(99,102,241,0.30)!important}
 </style>
 <style id="nrtur-light">
 [data-theme="light"] .app-shell .bg-white\/\[0\.01\]{background-color:#ffffff !important}
@@ -615,11 +617,11 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 /* —— Refined component pass: dimensional indigo, crisper press, softer card hover —— */
 .app-shell .bg-brand-500{background-image:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0) 62%);background-repeat:no-repeat}
 .app-shell .bg-brand-400{background-image:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0) 62%);background-repeat:no-repeat}
-.app-shell .shadow-brand{box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 0 0 1px rgba(99,102,241,0.32),0 6px 22px rgba(99,102,241,0.26)!important}
+.app-shell .shadow-brand{box-shadow:0 0 0 1px rgba(99,102,241,0.32),0 1px 2px rgba(0,0,0,0.35)!important}
 .app-shell button.shadow-brand{transition:transform .12s ease,box-shadow .15s ease,background-color .15s ease}
 .app-shell button.shadow-brand:active{transform:translateY(0.5px)}
 .app-shell .rounded-2xl.border{transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-[data-theme="light"] .app-shell .shadow-brand{box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 0 0 1px rgba(79,70,229,0.30),0 6px 22px rgba(79,70,229,0.22)!important}
+[data-theme="light"] .app-shell .shadow-brand{box-shadow:0 0 0 1px rgba(79,70,229,0.30),0 1px 2px rgba(16,24,40,0.10)!important}
 /* —— Native <select> dropdown options: force dark surface so option text is visible —— */
 .app-shell select{color-scheme:dark}
 .app-shell select option,
@@ -1075,11 +1077,11 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 /* —— Refined component pass: dimensional indigo, crisper press, softer card hover —— */
 body>div:not(#root) .bg-brand-500{background-image:linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0) 62%);background-repeat:no-repeat}
 body>div:not(#root) .bg-brand-400{background-image:linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0) 62%);background-repeat:no-repeat}
-body>div:not(#root) .shadow-brand{box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 0 0 1px rgba(99,102,241,0.32),0 6px 22px rgba(99,102,241,0.26)!important}
+body>div:not(#root) .shadow-brand{box-shadow:0 0 0 1px rgba(99,102,241,0.32),0 1px 2px rgba(0,0,0,0.35)!important}
 body>div:not(#root) button.shadow-brand{transition:transform .12s ease,box-shadow .15s ease,background-color .15s ease}
 body>div:not(#root) button.shadow-brand:active{transform:translateY(0.5px)}
 body>div:not(#root) .rounded-2xl.border{transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-[data-theme="light"] body>div:not(#root) .shadow-brand{box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 0 0 1px rgba(79,70,229,0.30),0 6px 22px rgba(79,70,229,0.22)!important}
+[data-theme="light"] body>div:not(#root) .shadow-brand{box-shadow:0 0 0 1px rgba(79,70,229,0.30),0 1px 2px rgba(16,24,40,0.10)!important}
 /* —— Native <select> dropdown options: force dark surface so option text is visible —— */
 body>div:not(#root) select{color-scheme:dark}
 body>div:not(#root) select option,
@@ -25556,10 +25558,10 @@ function _twAccentCSS(hex){
   css+='.app-shell .hover\\:text-brand-300\\/70:hover{color:'+_twMix(hex,0.18)+'!important}';
   for(const suf in A){css+='.app-shell .border-brand-500'+suf+'{border-color:rgba('+rgb+','+A[suf]+')!important}';}
   for(const suf in A){css+='.app-shell .ring-brand-500'+suf+'{--tw-ring-color:rgba('+rgb+','+A[suf]+')!important}';}
-  css+='.app-shell .shadow-brand{box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 0 0 1px rgba('+rgb+',0.32),0 6px 22px rgba('+rgb+',0.30)!important}';
-  css+='.app-shell .shadow-brand-lg{box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 0 0 1px rgba('+rgb+',0.40),0 12px 36px rgba('+rgb+',0.40)!important}';
-  // active nav glow + brand gradients on marketing
-  css+='.app-shell [class*="shadow-[0_0_18px_rgba(99,102,241"]{box-shadow:0 0 18px rgba('+rgb+',0.35)!important}';
+  css+='.app-shell .shadow-brand{box-shadow:0 0 0 1px rgba('+rgb+',0.32),0 1px 2px rgba(0,0,0,0.35)!important}';
+  css+='.app-shell .shadow-brand-lg{box-shadow:0 0 0 1px rgba('+rgb+',0.30),0 4px 16px rgba(0,0,0,0.30)!important}';
+  // active nav accent ring (glow retired) — still tracks the custom accent color
+  css+='.app-shell [class*="shadow-[0_0_18px_rgba(99,102,241"]{box-shadow:0 0 0 1px rgba('+rgb+',0.30)!important}';
   return css;
 }
 // ── Tweaks primitives (inline; the external tweaks-panel.jsx was never shipped) ──
