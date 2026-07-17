@@ -15953,15 +15953,23 @@ function BillingCardVisual({failed}){
     {failed&&<div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-red-500/30 text-red-100 text-[10px] font-semibold ring-1 ring-red-400/50">Declined</div>}
   </div>);
 }
-function StripePayNotice(){
-  return(<div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 flex flex-col gap-3">
+// Card capture is Stripe-hosted: nrtur never renders card fields, so the security line below is a property of
+// the architecture rather than a promise. Previously this bundled three raw <input>s in our own DOM directly
+// under that same sentence — describing an integration the screen did not depict. The 'active' and 'cancelled'
+// states already modelled it correctly ("Card updates open Stripe's secure form"); this is now the one model.
+function StripePayNotice({note}){
+  return(<div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 flex flex-col gap-2.5">
     <div className="flex items-center gap-2 text-[12px] text-white/55"><I.ShieldCheck size={14} className="text-emerald-400 shrink-0"/>Payments are processed securely by Stripe — card details never touch our servers.</div>
-    <input placeholder="Card number" className={BILL_INP}/>
-    <div className="grid grid-cols-2 gap-2.5"><input placeholder="MM / YY" className={BILL_INP}/><input placeholder="CVC" className={BILL_INP}/></div>
+    <p className="text-[11.5px] text-white/40 leading-relaxed pl-[22px]">{note||'You’ll finish on Stripe’s secure checkout page, then land back here. Card, billing address and tax are collected there.'}</p>
   </div>);
 }
+// One plan table. The checkout buttons need the same prices the cards show, and a second copy is how the
+// caller-ID waterfall ended up re-implemented four times.
+const BILLING_PLANS=[{k:'starter',name:'Starter',mo:0,an:0,desc:'For trying things out',feats:['1 seat','500 contacts','Basic pipeline']},{k:'pro',name:'Pro',mo:59,an:49,desc:'For growing teams',feats:['Up to 5 seats','25,000 contacts','Advanced automations'],popular:true},{k:'business',name:'Business',mo:99,an:83,desc:'For scaling orgs',feats:['Unlimited seats','Unlimited contacts','SSO & priority support']}];
+function billingPlan(k){return BILLING_PLANS.find(p=>p.k===k)||BILLING_PLANS[1];}
+function billingPrice(k,cycle){const p=billingPlan(k);return cycle==='annual'?p.an:p.mo;}
 function BillingPlanCards({selected,onSelect,cycle}){
-  const PLANS=[{k:'starter',name:'Starter',mo:0,an:0,desc:'For trying things out',feats:['1 seat','500 contacts','Basic pipeline']},{k:'pro',name:'Pro',mo:59,an:49,desc:'For growing teams',feats:['Up to 5 seats','25,000 contacts','Advanced automations'],popular:true},{k:'business',name:'Business',mo:99,an:83,desc:'For scaling orgs',feats:['Unlimited seats','Unlimited contacts','SSO & priority support']}];
+  const PLANS=BILLING_PLANS;
   const price=(p)=>cycle==='annual'?p.an:p.mo;
   return(<div className="grid grid-cols-1 md:grid-cols-3 gap-3">{PLANS.map(p=>{const sel=selected===p.k;return(
     <button key={p.k} onClick={()=>onSelect&&onSelect(p.k)} className={['text-left rounded-2xl p-5 border transition-all',sel?'border-brand-500/50 bg-brand-500/[0.08] ring-1 ring-brand-500/30':'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.18]'].join(' ')}>
@@ -16145,6 +16153,10 @@ function SettingsBillingPage({goTo}){
   const {confirmNode,openConfirm}=useConfirm();
   const seatCount=seats.length;
   const seatPrice=cycle==='annual'?49:59;const seatTotal=seatPrice*seatCount;
+  // The plan picker used to be decorative: every button hardcoded Pro, so choosing Business still bought Pro.
+  const chosen=billingPlan(plan);const chosenPrice=billingPrice(plan,cycle);
+  // Card capture is Stripe-hosted, so 'checkout' is a redirect, not a form we submit. Simulated here.
+  const toStripe=(label,after)=>{window.__nrturToast&&window.__nrturToast('Opening Stripe checkout for '+label+' — hosted by Stripe, not simulated in this prototype.','success');setTimeout(()=>{after&&after();},900);};
   const toggleRenew=()=>{if(autoRenew){openConfirm({title:'Pause auto-renew?',body:'Your Pro plan stays active until June 1, 2026, then won’t renew. The workspace becomes read-only after that unless you resume. You can resume any time before the date.',confirmLabel:'Pause auto-renew',danger:false,onConfirm:()=>{setAutoRenew(false);window.__nrturToast&&window.__nrturToast('Auto-renew paused — plan ends June 1, 2026','warning');}});}else{setAutoRenew(true);window.__nrturToast&&window.__nrturToast('Auto-renew resumed');}};
   const STATES=[{k:'trial',l:'Trial'},{k:'trial-expired',l:'Trial expired'},{k:'cancelled',l:'Cancelled'},{k:'payment-failed',l:'Payment failed'},{k:'active',l:'Active'}];
   // Billing is Owner-only — guard direct navigation/search while previewing a lower role.
@@ -16267,7 +16279,7 @@ function SettingsBillingPage({goTo}){
         <div className={BILLING_CARD}>
           <p className={BILLING_EYE+' mb-1'}>Add a payment method</p><p className="text-white/45 text-[12px] mb-5">You won't be charged until your trial ends.</p>
           <StripePayNotice/>
-          <div className="mt-5 flex items-center justify-between gap-4 flex-wrap"><div><p className="text-[12px] text-white/45">No charge until <span className="text-white/80 font-medium">June 11, 2026</span></p></div><button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Welcome to Pro 🎉','success');}}>Start Pro — ${seatPrice}/mo<I.ArrowRight size={13} stroke={2.4}/></button></div>
+          <div className="mt-5 flex items-center justify-between gap-4 flex-wrap"><div><p className="text-[12px] text-white/45">No charge until <span className="text-white/80 font-medium">June 11, 2026</span></p></div><button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>toStripe(chosen.name,()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Welcome to '+chosen.name+' 🎉','success');})}>Continue to Stripe — {chosen.name} ${chosenPrice}/mo<I.ArrowRight size={13} stroke={2.4}/></button></div>
         </div>
       </>)}
 
@@ -16284,7 +16296,7 @@ function SettingsBillingPage({goTo}){
           <p className={BILLING_EYE+' mb-3'}>Payment details</p>
           <div className="flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 mb-5"><div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-300 flex items-center justify-center shrink-0"><I.CreditCard size={15}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-amber-100">No payment method on file</p><p className="text-[11.5px] text-amber-300/70">Add a card to lift the read-only lock and keep your data.</p></div></div>
           <StripePayNotice/>
-          <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Access restored — welcome back.','success');}}>Restore access — ${seatPrice}/mo<I.ArrowRight size={14} stroke={2.4}/></button>
+          <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>toStripe(chosen.name,()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Access restored — welcome back.','success');})}>Continue to Stripe — {chosen.name} ${chosenPrice}/mo<I.ArrowRight size={14} stroke={2.4}/></button>
         </div>
       </>)}
 
@@ -16299,7 +16311,7 @@ function SettingsBillingPage({goTo}){
             <div className="flex flex-col h-full">
               <div><p className={BILLING_EYE+' mb-1'}>Reactivate your plan</p><p className="text-white/45 text-[12px] mb-4">Pick up right where you left off on Pro.</p></div>
               <div className="rounded-xl bg-brand-500/[0.08] border border-brand-500/20 p-4 flex items-center justify-between mb-4"><div className="flex items-center gap-2"><I.Sparkles size={14} className="text-brand-300"/><span className="text-[14px] font-semibold text-white">Pro</span></div><span className="text-[13px] text-white/70 tabular-nums">${seatPrice}/seat/mo</span></div>
-              <button className="mt-auto w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>setBillingState('active')}>Reactivate Pro<I.ArrowRight size={14} stroke={2.4}/></button>
+              <button className="mt-auto w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>toStripe('Pro',()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Pro reactivated — welcome back.','success');})}>Reactivate Pro<I.ArrowRight size={14} stroke={2.4}/></button>
             </div>
           </div>
         </div>
@@ -16322,8 +16334,8 @@ function SettingsBillingPage({goTo}){
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-500/[0.06] border border-red-500/15 px-3 py-2"><I.Ban size={13} className="text-red-300 mt-0.5 shrink-0"/><p className="text-[11px] text-red-200/80 leading-relaxed">Your bank declined the charge (insufficient funds). Try another card or contact your bank.</p></div>
           </div>
           <div className={BILLING_CARD}>
-            <p className={BILLING_EYE+' mb-5'}>New payment method</p><StripePayNotice/>
-            <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>setBillingState('active')}>Update card and pay $177.00<I.ArrowRight size={14} stroke={2.4}/></button>
+            <p className={BILLING_EYE+' mb-5'}>New payment method</p><StripePayNotice note="You’ll update the card and settle the outstanding invoice on Stripe’s secure checkout page."/>
+            <button className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all" onClick={()=>toStripe('the outstanding $177.00 invoice',()=>{setBillingState('active');window.__nrturToast&&window.__nrturToast('Card updated · $177.00 paid — your plan is active again.','success');})}>Update card and pay $177.00 on Stripe<I.ArrowRight size={14} stroke={2.4}/></button>
             <p className="text-[12px] text-white/45 text-center mt-3">Having trouble? <button onClick={()=>window.__nrturToast&&window.__nrturToast('Reach our team at support@nrtur.io','success')} className="text-brand-300 hover:text-brand-200">Contact support</button></p>
           </div>
         </div>
