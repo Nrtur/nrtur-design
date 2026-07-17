@@ -5455,6 +5455,15 @@ function smsComplianceState(){
   }
   return{ok:false,code:'tollfree',reason:'Toll-free number unverified — SMS to US/CA is blocked until verification passes'};
 }
+// Voice gate — the call analog of canSendSms. Contact detail already blocks calling a DNC/suppressed
+// person (8463); the dialer must use the same store or the two surfaces contradict each other.
+function callBlockedFor(recipient){
+  if(!recipient)return null;
+  if(recipient.dnc)return 'This contact is marked Do Not Contact.';
+  if(supPhoneBlocked(recipient.phone,'calls'))return 'This number is on the suppression list.';
+  if(recipient.id!=null&&supChannelOff(recipient.id,'calls'))return 'This contact opted out of calls.';
+  return null;
+}
 function canSendSms(recipient){ // recipient-aware gate: workspace compliance first, then per-record consent
   const s=smsComplianceState();if(!s.ok)return s;
   // Spend-limit safety cap (replaces the old prepaid wallet): once this month's usage hits the limit, outbound texting pauses.
@@ -10165,6 +10174,7 @@ let _liveConns=null; // live integration connections (conns), set by App — let
 let _liveSeqEnrollments=null; // stage-bulk enroll: live sequence-membership records, set by App each render
 let _liveCompanies=null; // live companies array, set by App on each render; used by buildConvertRecords to dedupe by name
 let _liveLeads=null; // live leads array, set by App on each render; used to resolve calendar task/event links to lead ids
+let _liveCalls=null; // live calls array, mirrored by App each render so module-level readers (Inbox counts, dashboard call stats) see logged calls instead of the frozen CALLS_DATA seed
 // ── Unified suppression store — the SINGLE source of truth. Previously THREE frozen hardcoded copies of the same
 // seed (contactEmailSuppressed(), the contact-page `suppressed` object, and SettingsSuppressionPage useState), so
 // nothing a user blocked/unblocked in the UI ever reached the send paths. Now one store, mirrored for the non-React
@@ -11981,7 +11991,8 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
   </div>);
 }
 function CallsWorkspace({goTo,onToast,preload,apiRef}){
-  const {contacts}=React.useContext(CrmDataContext);
+  const {contacts,calls,setCalls}=React.useContext(CrmDataContext);
+  const _canCall=effCanObject('Contacts','edit'); // placing/logging a call mutates a contact timeline — gate it like every neighbour
   const integ=React.useContext(IntegrationsContext);
   const conns=integ.conns||{};
   const LBL='text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5';
@@ -12005,38 +12016,42 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
   const [postNotes,setPostNotes]=React.useState('');
   const [detail,setDetail]=React.useState(null);
   const [overlay,setOverlay]=React.useState(null);
-  const [histories,setHistories]=React.useState({});
   const timerRef=React.useRef(null);
-  const histFor=(name)=>histories[name]||buildCallHistory(name);
-  const ensureHistory=(name)=>setHistories(h=>h[name]?h:{...h,[name]:buildCallHistory(name)});
-  const addCall=(name,entry)=>setHistories(h=>{const cur=h[name]||buildCallHistory(name);return{...h,[name]:[entry,...cur]};});
-  const updateCall=(name,id,patch)=>setHistories(h=>{const cur=h[name]||buildCallHistory(name);return{...h,[name]:cur.map(e=>e.id===id?{...e,...patch}:e)};});
+  // The clicked contact's REAL calls out of the store (was: a shared template sliced by a char-code hash
+  // of the name, which made the detail pane contradict the row you clicked).
+  const histFor=(name,id)=>{const mine=_allCalls.filter(c=>id!=null&&c.contactId!=null?c.contactId===id:c.contact===name);
+    return mine.map(c=>({id:'ch-'+c.id,dir:c.direction==='in'?'in':'out',date:c.date,dur:c.duration&&c.duration!=='0:00'?c.duration:null,rec:!!(c.duration&&c.duration!=='0:00'),recLen:c.duration&&c.duration!=='0:00'?c.duration:null,outcome:c.outcome||null,reason:null,notes:c.notes||null}));};
+  // Append a real call to the shared store so the list, the filter counts and every reader move.
+  const addCall=(name,entry,cid)=>{const ct=(cid!=null?contacts.find(x=>x.id===cid):null)||contacts.find(x=>x.name===name);
+    setCalls&&setCalls(a=>[{id:'call_'+Date.now(),contact:name,contactId:ct?ct.id:null,company:ct?(ct.co||''):'',avatar:ct?ct.avatar:((name||'?').slice(0,2).toUpperCase()),color:ct?ct.color:'#64748b',direction:entry.dir==='in'?'in':'out',duration:entry.dur||'0:00',date:'Today '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),outcome:entry.outcome||'Connected',notes:entry.notes||'',owner:CURRENT_USER_CODE},...a]);};
   const applyEnrichment=(d)=>{ if(!d)return; if(d.status){setTimeout(()=>onToast&&onToast('Status noted: '+d.status,'success'),400);} if(d.decision&&d.decision!=='None'){setTimeout(()=>onToast&&onToast(decisionToast(d.decision),'success'),700);} };
   const openDialer=()=>{ setDialContact(null); setDigits(''); setContactQuery(''); setDetail(null); setView('dialer'); };
   React.useEffect(()=>{ if(apiRef){apiRef.current={openDialer};} return()=>{ if(apiRef)apiRef.current=null; }; },[apiRef]);
-  React.useEffect(()=>{ if(preload){ if(preload.callId!=null){ const c=CALLS_DATA.find(x=>x.id===preload.callId); if(c)openDetail(c); return; } setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setDetail(null); setView('dialer'); setDigits(''); } },[preload]);
+  React.useEffect(()=>{ if(preload){ if(preload.callId!=null){ const c=(calls||[]).find(x=>x.id===preload.callId); if(c)openDetail(c); return; } const _pc=(preload.contactId!=null?contacts.find(x=>x.id===preload.contactId):null)||contacts.find(x=>x.name===preload.name); setDialContact({id:_pc?_pc.id:null,name:preload.name,phone:preload.phone||(_pc?_pc.phone:''),avatar:preload.avatar,color:preload.color,dnc:_pc?_pc.dnc:false}); setDetail(null); setView('dialer'); setDigits(''); } },[preload]);
   React.useEffect(()=>{ if(view==='active'&&!hold){ timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000); return ()=>clearInterval(timerRef.current); } },[view,hold]);
   const PROV=[{k:'builtin',l:'Built-in',connected:true},{k:'twilio',l:'Twilio',connected:!!conns.twilio},{k:'googlevoice',l:'Google Voice',connected:!!conns.googlevoice}];
   const fmtTimer=(s)=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  const isMissed=(c)=>/no answer|missed/i.test(c.outcome||'');
+  const isMissed=(c)=>c.direction==='in'&&(c.duration==='0:00'||/no answer|missed/i.test(c.outcome||'')); // inbound-only: an outbound no-answer is not someone waiting on a callback
   const isVm=(c)=>/voicemail/i.test(c.outcome||'');
   const isToday=(c)=>/^today/i.test(c.date||'');
-  const counts={missed:CALLS_DATA.filter(isMissed).length,vm:CALLS_DATA.filter(isVm).length,today:CALLS_DATA.filter(isToday).length};
-  let rows=CALLS_DATA.slice();
+  const _allCalls=(function(){try{return effScopeRows('Contacts',calls||[],r=>r.owner);}catch(e){return calls||[];}})(); // scoped like Contacts/Leads/Deals
+  const counts={missed:_allCalls.filter(isMissed).length,vm:_allCalls.filter(isVm).length,today:_allCalls.filter(isToday).length};
+  let rows=_allCalls.slice();
   if(filter==='missed')rows=rows.filter(isMissed); else if(filter==='voicemail')rows=rows.filter(isVm); else if(filter==='today')rows=rows.filter(isToday);
   if(search.trim()){const q=search.toLowerCase();rows=rows.filter(c=>(c.contact||'').toLowerCase().includes(q)||(c.company||'').toLowerCase().includes(q));}
-  const loadIntoDialer=(c)=>{ const ct=contacts.find(x=>x.name===c.contact); setDialContact({name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color}); setView('dialer'); setDigits(''); };
-  const openDetail=(c)=>{ const ct=contacts.find(x=>x.name===c.contact); const info={name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color}; ensureHistory(info.name); setDetail(info); setView('detail'); };
+  const loadIntoDialer=(c)=>{ const ct=(c.contactId!=null?contacts.find(x=>x.id===c.contactId):null)||contacts.find(x=>x.name===c.contact); setDialContact({id:ct?ct.id:null,name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color,dnc:ct?ct.dnc:false}); setView('dialer'); setDigits(''); };
+  const openDetail=(c)=>{ const ct=(c.contactId!=null?contacts.find(x=>x.id===c.contactId):null)||contacts.find(x=>x.name===c.contact); const info={id:ct?ct.id:null,name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color,dnc:ct?ct.dnc:false}; setDetail(info); setView('detail'); }; // history is derived from the real store below — never fabricated
   const startCall=()=>{ setSeconds(0);setMute(false);setHold(false);setKeypad(false);setView('active'); };
   const endCall=()=>{ clearInterval(timerRef.current); setView('postcall'); onToast&&onToast('Call ended','success'); };
   const newCallEntry=(d)=>({id:'ch-new-'+Date.now(),dir:'out',date:'Just now',dur:seconds?fmtDur(seconds):null,rec:seconds>0,recLen:seconds?fmtDur(seconds):null,outcome:d?d.outcome:'Connected',reason:d?d.reason:null,notes:d?d.notes:null});
   const _persistCallActivity=(name,d,dir)=>{if(!effCanObject('Contacts','edit'))return false; /* R10-25: logging a call mutates a contact timeline + fires automations — gate like contact-detail does */ const _ct=name?(_liveContacts||[]).find(c=>c.name===name&&!c.deleted):null;if(_ct&&_autoRt&&_autoRt.addActivity){_autoRt.addActivity('contact',_ct.id,mkAct('call',{ts:0,by:(typeof CURRENT_USER!=='undefined'?CURRENT_USER.avatar:'AM'),title:(dir==='in'?'Inbound':'Outbound')+' call'+(d&&d.outcome?' — '+d.outcome:''),body:(d&&d.notes)||((d&&d.duration)?('Duration '+d.duration):'Logged from the dialer.'),payload:liveCallPayload(_ct.name,{dir:dir||'out',outcome:d&&d.outcome,reason:d&&d.reason,notes:d&&d.notes,recLen:d&&d.duration,decision:d&&d.decision})}));setTimeout(()=>{try{fireEntityAutomationEvents('contact',_ct,['Call logged']);}catch(e){}},0);return true;}return false;}; // persist dialer logs onto the contact's real timeline (was inbox-local only) + fire the 'Call logged' trigger
-  const onSaveCallLog=(d)=>{ if(dialContact)addCall(dialContact.name,newCallEntry(d)); const _p=dialContact&&_persistCallActivity(dialContact.name,d,'out'); onToast&&onToast(_p?('Call logged to '+dialContact.name+' ✓'):'Call logged ✓','success'); applyEnrichment(d); resetDialer(); };
-  const onSkipCallLog=()=>{ if(dialContact)addCall(dialContact.name,newCallEntry(null)); resetDialer(); };
+  const onSaveCallLog=(d)=>{ if(!_canCall){onToast&&onToast('Your role can’t log calls','error');resetDialer();return;} if(dialContact)addCall(dialContact.name,newCallEntry(d),dialContact.id); const _p=dialContact&&_persistCallActivity(dialContact.name,d,'out'); onToast&&onToast(_p?('Call logged to '+dialContact.name+' ✓'):'Call logged ✓','success'); applyEnrichment(d); resetDialer(); };
+  const onSkipCallLog=()=>{ if(_canCall&&dialContact)addCall(dialContact.name,newCallEntry(null),dialContact.id); resetDialer(); };
   const saveLog=()=>{ onToast&&onToast('Call logged ✓','success'); resetDialer(); };
   const resetDialer=()=>{ setView('empty');setSeconds(0);setCallNote('');setPostNotes('');setOutcome('Answered');setNextAction('None'); };
-  const matches=contactQuery.trim()?contacts.filter(c=>!c.archived&&!c.deleted&&(c.name.toLowerCase().includes(contactQuery.toLowerCase())||(c.phone||'').includes(contactQuery))).slice(0,5):[];
-  const canCall=!!dialContact||digits.length>0;
+  const matches=contactQuery.trim()?contacts.filter(c=>!c.archived&&!c.deleted&&(c.name.toLowerCase().includes(contactQuery.toLowerCase())||(c.phone||'').includes(contactQuery))).map(c=>({...c,_blocked:callBlockedFor(c)})).slice(0,5):[];
+  const _blockedWhy=callBlockedFor(dialContact);
+  const canCall=_canCall&&!_blockedWhy&&(!!dialContact||digits.length>0); // capability + consent, mirroring contact detail and the SMS gate
   const DIGITS=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
   const ini=(o)=>o.avatar||((o.name||'?').slice(0,2).toUpperCase());
   return(<div className="flex-1 flex min-h-0 crm-split">
@@ -12102,11 +12117,12 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
           {dialContact?(<div className="relative rounded-2xl bg-white/[0.03] border border-white/[0.07] p-4 flex items-center gap-3">
             <button onClick={()=>setDialContact(null)} className="absolute top-2 right-2 text-white/35 hover:text-white"><I.X size={14}/></button>
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-[15px] font-semibold text-white shrink-0" style={{background:dialContact.color||'#6366f1'}}>{ini(dialContact)}</div>
-            <div className="min-w-0"><p className="text-[16px] font-semibold text-white truncate">{dialContact.name}</p><p className="text-[13px] text-white/55">{dialContact.phone||'No number on file'}</p></div>
+            <div className="min-w-0"><p className="text-[16px] font-semibold text-white truncate">{dialContact.name}</p><p className="text-[13px] text-white/55">{dialContact.phone||'No number on file'}</p>
+              {_blockedWhy&&(<p className="text-[11.5px] text-amber-300/90 mt-1 flex items-center gap-1"><I.Ban size={11}/>{_blockedWhy}</p>)}</div>
           </div>):(<div className="relative">
             <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.10] rounded-xl px-3 py-2.5 focus-within:border-brand-500/40 transition-all"><I.Search size={13} className="text-white/40"/><input value={contactQuery} onChange={e=>setContactQuery(e.target.value)} placeholder="Search contacts or type a number..." className="bg-transparent outline-none text-[13px] text-white placeholder:text-white/30 w-full"/></div>
             {matches.length>0&&(<div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 rounded-xl border border-white/[0.08] py-1 overflow-hidden" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
-              {matches.map(c=>(<button key={c.id} onClick={()=>{setDialContact({name:c.name,phone:c.phone,avatar:c.avatar,color:c.color});setContactQuery('');}} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] text-left transition-colors"><div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><p className="text-[12.5px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.phone}</p></div></button>))}
+              {matches.map(c=>(<button key={c.id} onClick={()=>{setDialContact({id:c.id,name:c.name,phone:c.phone,avatar:c.avatar,color:c.color,dnc:c.dnc});setContactQuery('');}} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] text-left transition-colors"><div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><p className="text-[12.5px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.phone}</p></div>{c._blocked&&(<span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9.5px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-500/12 border border-amber-500/25">Blocked</span>)}</button>))}
             </div>)}
           </div>)}
           <div className="flex items-center gap-2">
@@ -12141,10 +12157,10 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
           <CallEnrichmentForm duration={seconds?fmtTimer(seconds):'—'} statusOptions={LEAD_STATUSES} onSave={onSaveCallLog} onSkip={onSkipCallLog}/>
         </div>
       </div>)}
-      {view==='detail'&&detail&&(<CallDetailView contact={detail} history={histFor(detail.name)} onBack={()=>{setView('dialer');setDetail(null);}} onCall={()=>{setDialContact(detail);setDigits('');setView('dialer');}} onViewHistory={()=>setOverlay(detail)} onSaveNotes={(id,d)=>{updateCall(detail.name,id,{outcome:d.outcome,reason:d.reason,notes:d.notes});onToast&&onToast('Call logged ✓','success');applyEnrichment(d);}}/>)}
+      {view==='detail'&&detail&&(<CallDetailView contact={detail} history={histFor(detail.name,detail.id)} onBack={()=>{setView('dialer');setDetail(null);}} onCall={()=>{setDialContact(detail);setDigits('');setView('dialer');}} onViewHistory={()=>setOverlay(detail)} onSaveNotes={(id,d)=>{ if(!_canCall){onToast&&onToast('Your role can’t edit calls','error');return;} const rid=String(id).replace(/^ch-/,''); setCalls&&setCalls(a=>a.map(x=>String(x.id)===rid?{...x,outcome:d.outcome||x.outcome,notes:d.notes||x.notes}:x)); onToast&&onToast('Call updated ✓','success'); applyEnrichment(d); }}/>)}
     </div>
-    {overlay&&<CallHistoryOverlay contact={overlay} history={histFor(overlay.name)} onClose={()=>setOverlay(null)}/>}
-    {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',date:'Just now',dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:null,notes:cd.notes||null}); const _p=cd.contact&&_persistCallActivity(cd.contact,cd,cd.direction==='in'?'in':'out'); onToast&&onToast(_p?('Call logged to '+cd.contact+' ✓'):'Call logged ✓','success'); }}/>}
+    {overlay&&<CallHistoryOverlay contact={overlay} history={histFor(overlay.name,overlay.id)} onClose={()=>setOverlay(null)}/>}
+    {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',date:'Just now',dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:null,notes:cd.notes||null},cd.contactId); const _p=cd.contact&&_persistCallActivity(cd.contact,cd,cd.direction==='in'?'in':'out'); onToast&&onToast(_p?('Call logged to '+cd.contact+' ✓'):'Call logged ✓','success'); }}/>}
   </div>);
 }
 // ?? MMS (media-first messaging) ???????????????????????????????????????????????
@@ -25567,10 +25583,12 @@ function App(){
   const [payQuotes,setPayQuotes]=React.useState(paySeedQuotes);
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
   const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
+  const [calls,setCalls]=React.useState(()=>CALLS_DATA.map(c=>({...c,contactId:(CONTACTS_DATA.find(x=>x.name===c.contact)||{}).id!=null?(CONTACTS_DATA.find(x=>x.name===c.contact)||{}).id:null,owner:c.owner||CURRENT_USER_CODE}))); // calls are a real store: the dialer appends to it, so the list/counts move
   const [leadScoringRules,setLeadScoringRules]=React.useState(LEAD_SCORING_DEFAULTS); // backend LeadScoringRules v1 (GET/PUT /api/v1/lead-scoring-rules)
-  // Mirror the rule set for the module-level engine. This MUST sit after the useState above: Babel's env
-  // preset rewrites const->var (hoisted, no TDZ), so reading it earlier silently mirrors `undefined` and the
-  // engine falls back to defaults forever instead of throwing.
+  // Mirror these for the module-level readers. Both MUST sit after their useState above: Babel's env preset
+  // rewrites const->var (hoisted, no TDZ), so reading one earlier silently mirrors `undefined` and the reader
+  // falls back to the seed forever instead of throwing.
+  _liveCalls=calls;
   _liveScoring=leadScoringRules;
   const [leadScoringMeta,setLeadScoringMeta]=React.useState({is_default:true,updated_by:null,updated_at:null}); // mirrors LeadScoringRulesResponse
   const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
@@ -25631,7 +25649,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
-    routingRules,setRoutingRules,leadScoringRules,setLeadScoringRules,leadScoringMeta,setLeadScoringMeta,validationRules,setValidationRules,slaRules,setSlaRules,
+    routingRules,setRoutingRules,calls,setCalls,leadScoringRules,setLeadScoringRules,leadScoringMeta,setLeadScoringMeta,validationRules,setValidationRules,slaRules,setSlaRules,
     payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     rolePerms,setRolePerms, // R9-L3: persisted permission matrix
@@ -25675,7 +25693,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,leadScoringRules,leadScoringMeta,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,calAccounts,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op. calAccounts added: the My-calendar page's read-set/destination toggles mutate only it, so it MUST be a dep too.
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,calls,leadScoringRules,leadScoringMeta,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,calAccounts,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op. calAccounts added: the My-calendar page's read-set/destination toggles mutate only it, so it MUST be a dep too.
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
