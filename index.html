@@ -2521,14 +2521,14 @@ function arBuildRecord(object,vals,fields){
   const owner=g(/owner/)||'AM';const id=Date.now()+Math.floor(Math.random()*1000);
   if(object==='company'){const name=g(/^name|company name/)||'Untitled';return{id,name,domain:g(/domain/),industry:g(/industry/)||INDUSTRIES[0],type:g(/company type|^type$/)||'Prospect',owner,ownerColor:arOwnerColor(owner),avatar:arInitials(name),color:arPick(),size:arNum(g(/employees|size/)),annualRevenue:arNum(g(/revenue/)),loc:g(/location|hq/),website:g(/website/),linkedin:g(/linkedin/),desc:g(/description/),tags:g(/tags/)||[],days:0,last:'Just now',createdBy:owner,createdAt:'Just now',archived:false};}
   if(object==='deal'){const name=g(/^name|deal name/)||'Untitled deal';const company=g(/company/);const amt=arNum(g(/amount/));const stageName=g(/stage/)||'Prospecting';const keyMap={Prospecting:'prospecting',Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};const sk=keyMap[stageName]||'prospecting';return{id,name,company:company||name,value:amt!=null?('$'+amt.toLocaleString('en-US')):'$0',amount:amt,stageKey:sk,dStage:stageName,...dealStageStamp(sk,owner),pipeline:g(/pipeline/),closeDate:g(/close/),primaryContact:g(/contact/),nextAction:g(/next action/),source:g(/source/),amountType:g(/amount type/)||'One-time',tags:g(/tags/)||[],owner,ownerColor:arOwnerColor(owner),tag:'New',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',createdBy:owner,createdAt:'Just now'};}
-  if(object==='lead'){const name=g(/^name/)||'Untitled';let status=g(/^status$/)||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';const num=arNum(g(/estimated value|value/));return{id,name,company:g(/company name|^company$/),companyDomain:g(/domain/),email:g(/email/),phone:fmtPhone(g(/phone/)),avatar:arInitials(name),color:arPick(),source:g(/source/)||(typeof LEAD_SOURCES!=='undefined'?LEAD_SOURCES[0]:'Web form'),status,score:(function(){try{return recomputeScore('lead',{title:g(/job title|^title$/)||'',source:g(/source/)||LEAD_SOURCES[0],company:g(/company name|^company$/),estValueNum:num});}catch(e){return SCORE_BASE;}})(),owner,ownerColor:arOwnerColor(owner),estValue:num!=null?('$'+num.toLocaleString('en-US')):'—',estValueNum:num,title:g(/job title|^title$/)||'',industry:g(/industry/)||'',employeesSize:arNum(g(/employee/)),loc:'',tags:g(/tags/)||[],emails:[],phones:[],days:0,created:'Just now',createdBy:owner,createdAt:'Just now',converted:false,archived:false};}
+  if(object==='lead'){const name=g(/^name/)||'Untitled';let status=g(/^status$/)||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';const num=arNum(g(/estimated value|value/));return{id,name,company:g(/company name|^company$/),companyDomain:g(/domain/),email:g(/email/),phone:fmtPhone(g(/phone/)),avatar:arInitials(name),color:arPick(),source:g(/source/)||(typeof LEAD_SOURCES!=='undefined'?LEAD_SOURCES[0]:'Web form'),status,score:(function(){try{return recomputeScore('lead',{title:g(/job title|^title$/)||'',source:g(/source/)||LEAD_SOURCES[0],company:g(/company name|^company$/),estValueNum:num});}catch(e){return 0;}})(),owner,ownerColor:arOwnerColor(owner),estValue:num!=null?('$'+num.toLocaleString('en-US')):'—',estValueNum:num,title:g(/job title|^title$/)||'',industry:g(/industry/)||'',employeesSize:arNum(g(/employee/)),loc:'',tags:g(/tags/)||[],emails:[],phones:[],days:0,created:'Just now',createdBy:owner,createdAt:'Just now',converted:false,archived:false};}
   const first=g(/first/)||'';const last=g(/last/)||'';const name=(first+' '+last).trim()||'Unnamed';const _cst=g(/^status$/);return{id,name,first,last,co:g(/company/),email:g(/email/),phone:fmtPhone(g(/phone/)),title:g(/job title|^title$/),avatar:arInitials(name),color:arPick(),status:'Active',cstatus:(typeof CONTACT_STATUSES!=='undefined'&&CONTACT_STATUSES.includes(_cst))?_cst:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,source:g(/source/),salutation:g(/salutation/),address:g(/mailing|address/),tags:g(/tags/)||[],archived:false};
 }
 function arBuildFromSheet(object,row){
   const owner='AM';const id=Date.now()+Math.floor(Math.random()*100000);
   if(object==='company')return{id,name:row.name,domain:row.domain,industry:row.industry||INDUSTRIES[0],type:row.ctype||'Prospect',owner,ownerColor:arOwnerColor(owner),avatar:arInitials(row.name),color:arPick(),size:arNum(row.size),annualRevenue:null,loc:'',tags:[],days:0,last:'Just now',archived:false};
   if(object==='deal'){const amt=arNum(row.value);const stageName=row.stage||'Prospecting';const keyMap={Prospecting:'prospecting',Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};return{id,name:row.name,company:row.company||row.name,value:amt!=null?('$'+amt.toLocaleString('en-US')):'$0',amount:amt,stageKey:keyMap[stageName]||'prospecting',dStage:stageName,...dealStageStamp(keyMap[stageName]||'prospecting',owner),closeDate:row.date,owner,ownerColor:arOwnerColor(owner),tag:'New',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:[],createdAt:'Just now'};}
-  if(object==='lead'){let status=row.status||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';return{id,name:row.name,company:row.company,email:row.email,phone:row.phone,avatar:arInitials(row.name),color:arPick(),source:row.source||LEAD_SOURCES[0],status,score:(function(){try{return recomputeScore('lead',{title:'',source:row.source||LEAD_SOURCES[0],company:row.company,estValueNum:null});}catch(e){return SCORE_BASE;}})(),owner,ownerColor:arOwnerColor(owner),estValue:'—',estValueNum:null,title:'',loc:'',tags:[],days:0,created:'Just now',converted:false,archived:false};}
+  if(object==='lead'){let status=row.status||'New';if(typeof LEAD_STATUSES!=='undefined'&&!LEAD_STATUSES.includes(status))status='New';return{id,name:row.name,company:row.company,email:row.email,phone:row.phone,avatar:arInitials(row.name),color:arPick(),source:row.source||LEAD_SOURCES[0],status,score:(function(){try{return recomputeScore('lead',{title:'',source:row.source||LEAD_SOURCES[0],company:row.company,estValueNum:null});}catch(e){return 0;}})(),owner,ownerColor:arOwnerColor(owner),estValue:'—',estValueNum:null,title:'',loc:'',tags:[],days:0,created:'Just now',converted:false,archived:false};}
   const name=((row.first||'')+' '+(row.last||'')).trim()||'Unnamed';return{id,name,first:row.first,last:row.last,co:row.company,email:row.email,phone:row.phone,title:row.title,avatar:arInitials(name),color:arPick(),status:'Active',cstatus:CONTACT_STATUSES.includes(row.status)?row.status:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,tags:[],archived:false};
 }
 function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
@@ -2590,7 +2590,7 @@ function AddRecordDrawer({object,close,onToast,goTo,initialMode,prefill}){
     persist(rec);
     // Fire the "<Entity> created" trigger for every object type (deferred so the record is in state first) — multi-entity event bus.
     if(object==='deal')setTimeout(()=>runDealCreatedAutomations(rec),0);
-    else{const _ct={contact:'Contact created',lead:'Lead created',company:'Company created'}[object];if(_ct)setTimeout(()=>fireEntityAutomationEvents(object,rec,[_ct]),0);if(object==='lead'&&(rec.score||0)>=SCORE_HOT)setTimeout(()=>fireEntityAutomationEvents('lead',rec,['Lead score reached']),0);} // P3: a new lead already hot fires the score trigger
+    else{const _ct={contact:'Contact created',lead:'Lead created',company:'Company created'}[object];if(_ct)setTimeout(()=>fireEntityAutomationEvents(object,rec,[_ct]),0);if(object==='lead'&&(rec.score||0)>=scoreHotMin())setTimeout(()=>fireEntityAutomationEvents('lead',rec,['Lead score reached']),0);} // P3: a new lead already hot fires the score trigger
     onToast&&onToast((rec.name||cfg.label)+' created');
     if(another){setVals(buildInitial());setSubmitted(false);setRecError('');setCreateOpen(false);}
     else close();
@@ -5589,7 +5589,7 @@ function importBuildRecord(object,m){
   const custom={};Object.keys(m).forEach(k=>{if(k.indexOf('custom_')===0&&m[k])custom[k]=m[k];});
   if(object==='company'){const name=(m.name||'').trim()||'Untitled';return{id,name,domain:m.domain||'',industry:m.industry||INDUSTRIES[0],type:COMPANY_TYPES.includes(m.type)?m.type:'Prospect',owner,ownerColor:arOwnerColor(owner),avatar:arInitials(name),color:arPick(),size:arNum(m.size),annualRevenue:arNum(m.annualRevenue),loc:m.loc||'',website:m.website||'',tags:impTags(m.tags),days:0,last:'Just now',createdAt:'Just now',archived:false,custom};}
   if(object==='deal'){const name=(m.name||'').trim()||'Untitled deal';const amt=arNum(m.amount);const stage=['Prospecting','Qualified','Proposal','Negotiation','Won','Lost'].includes(m.dStage)?m.dStage:'Prospecting';const keyMap={Prospecting:'prospecting',Qualified:'qualified',Proposal:'proposal',Negotiation:'negotiation',Won:'won',Lost:'lost'};return{id,name,company:m.company||name,value:amt!=null?('$'+amt.toLocaleString('en-US')):'$0',amount:amt,stageKey:keyMap[stage]||'prospecting',dStage:stage,...dealStageStamp(keyMap[stage]||'prospecting',owner),pipeline:m.pipeline||'Sales Pipeline',closeDate:m.closeDate||'',primaryContact:m.primaryContact||'',nextAction:m.nextAction||'',source:m.source||'',owner,ownerColor:arOwnerColor(owner),tag:'Imported',tagBg:'bg-emerald-500/15',tagFg:'text-emerald-300',age:'0d',score:'warm',tags:[],createdAt:'Just now',custom};}
-  if(object==='lead'){const name=(m.name||'').trim()||(m.email||'').trim()||'Untitled';let status=LEAD_STATUSES.includes(m.status)?m.status:'New';return{id,name,company:m.company||'',email:m.email||'',phone:m.phone||'',avatar:arInitials(name),color:arPick(),source:LEAD_SOURCES.includes(m.source)?m.source:(typeof LEAD_SOURCES!=='undefined'?LEAD_SOURCES[0]:'Web form'),status,score:(function(){try{return recomputeScore('lead',{title:'',source:(LEAD_SOURCES.includes(m.source)?m.source:LEAD_SOURCES[0]),company:m.company||'',estValueNum:arNum(m.estValueNum)});}catch(e){return SCORE_BASE;}})(),owner,ownerColor:arOwnerColor(owner),estValue:arNum(m.estValueNum)!=null?('$'+arNum(m.estValueNum).toLocaleString('en-US')):'—',estValueNum:arNum(m.estValueNum),title:'',loc:'',tags:impTags(m.tags),days:0,created:'Just now',converted:false,archived:false,custom};}
+  if(object==='lead'){const name=(m.name||'').trim()||(m.email||'').trim()||'Untitled';let status=LEAD_STATUSES.includes(m.status)?m.status:'New';return{id,name,company:m.company||'',email:m.email||'',phone:m.phone||'',avatar:arInitials(name),color:arPick(),source:LEAD_SOURCES.includes(m.source)?m.source:(typeof LEAD_SOURCES!=='undefined'?LEAD_SOURCES[0]:'Web form'),status,score:(function(){try{return recomputeScore('lead',{title:'',source:(LEAD_SOURCES.includes(m.source)?m.source:LEAD_SOURCES[0]),company:m.company||'',estValueNum:arNum(m.estValueNum)});}catch(e){return 0;}})(),owner,ownerColor:arOwnerColor(owner),estValue:arNum(m.estValueNum)!=null?('$'+arNum(m.estValueNum).toLocaleString('en-US')):'—',estValueNum:arNum(m.estValueNum),title:'',loc:'',tags:impTags(m.tags),days:0,created:'Just now',converted:false,archived:false,custom};}
   const first=(m.first||'').trim();const last=(m.last||'').trim();const name=(first+' '+last).trim()||(m.email||'').trim()||'Unnamed';return{id,name,first,last,co:m.co||'',email:m.email||'',phone:m.phone||'',title:m.title||'',avatar:arInitials(name),color:arPick(),status:'Active',cstatus:CONTACT_STATUSES.includes(m.cstatus)?m.cstatus:'Prospect',owner,ownerColor:arOwnerColor(owner),last:'Just now',deal:'—',days:0,source:m.source||'',tags:impTags(m.tags),archived:false,custom};
 }
 function sampleCSV(object,fields){
@@ -6896,59 +6896,189 @@ function SettingsValidationPage({goTo}){
 // P3: Lead Scoring — READ-ONLY explainer. Scoring is owned + computed by the backend (activity + fit + decay).
 // This page documents what moves the score; it does not configure it. The prototype's client-side recomputeScore
 // is a SIMULATION stand-in so the Hot/Warm/Cold badge works with no backend — not a second production engine.
-function ScoreSignalRow({label,detail,points,muted}){
-  const pts=parseInt(points,10)||0;
-  return(<div className={['flex items-center gap-3 rounded-xl border px-3.5 py-2.5',muted?'border-white/[0.055] bg-white/[0.015]':'border-white/[0.08] bg-white/[0.025]'].join(' ')}>
-    <span className={['w-11 h-7 rounded-lg text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums',pts>=0?'bg-emerald-500/12 text-emerald-300':'bg-red-500/12 text-red-300'].join(' ')}>{pts>=0?'+':''}{pts}</span>
-    <div className="min-w-0"><p className="text-[13px] font-medium text-white/90 truncate">{label}</p>{detail&&<p className="text-[11.5px] text-white/45 truncate">{detail}</p>}</div>
+// ── Lead scoring editor ───────────────────────────────────────────────────
+// Mirrors the backend contract 1:1 (LeadScoringRules v1 — GET/PUT /api/v1/lead-scoring-rules):
+// four groups (profile_fit / engagement / behavior / bands), every point + cap an integer 0-100,
+// no base and no decay (the API has neither). Editing is owner/admin/manager only — a member gets
+// the read-only view (the API answers them 403 NOT_AUTHORIZED). Saving replaces the whole rule set
+// (full PUT) and re-scores every lead, mirroring the backend's enqueued workspace-wide re-score.
+// This prototype persists to CrmDataContext — it never calls the API.
+const SCORE_NUM='w-16 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[13px] text-white text-center tabular-nums outline-none focus:border-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed';
+function ScoreNum({value,onChange,disabled,max}){
+  return(<input type="number" min={0} max={max==null?100:max} value={value} disabled={disabled}
+    onChange={e=>{const v=e.target.value;if(v==='')return onChange('');const n=Math.max(0,Math.min(max==null?100:max,parseInt(v,10)||0));onChange(n);}}
+    className={SCORE_NUM}/>);
+}
+// points + cap pair — the API models every engagement/behavior signal as count*points capped.
+function ScoreSignalEdit({label,detail,points,cap,onPoints,onCap,disabled,contributes}){
+  return(<div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 py-2.5">
+    <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90 truncate">{label}</p><p className="text-[11.5px] text-white/50 truncate">{detail}</p></div>
+    <div className="flex items-center gap-2 shrink-0">
+      <label className="flex items-center gap-1.5"><span className="text-[11px] text-white/50">points</span><ScoreNum value={points} onChange={onPoints} disabled={disabled}/></label>
+      {cap!=null&&<label className="flex items-center gap-1.5"><span className="text-[11px] text-white/50">cap</span><ScoreNum value={cap} onChange={onCap} disabled={disabled}/></label>}
+      <span title="What this signal contributes to the previewed lead" className="w-12 text-right text-[12px] font-semibold tabular-nums text-brand-300">+{contributes}</span>
+    </div>
   </div>);
 }
-const SCORE_ACTIVITY_EG=[ // example engagement weights — the backend team sets the real values
-  {label:'Booked a meeting',detail:'Highest-intent signal',points:20},
-  {label:'Replied to an email',detail:'Two-way engagement',points:15},
-  {label:'Visited pricing / demo page',detail:'Buying intent',points:10},
-  {label:'Clicked a tracked link',detail:'Active interest',points:8},
-  {label:'Opened an email',detail:'Light touch',points:3},
-];
+// Free-text keyword/industry chips (preferred_industries[], senior_title_keywords[]).
+function ScoreChips({items,onChange,disabled,placeholder}){
+  const [v,setV]=React.useState('');
+  const add=()=>{const t=v.trim();if(!t)return;if(!items.some(x=>x.toLowerCase()===t.toLowerCase()))onChange([...items,t]);setV('');};
+  return(<div className="flex items-center gap-1.5 flex-wrap">
+    {items.map(x=>(<span key={x} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11.5px] text-brand-200 bg-brand-500/12 border border-brand-500/25">{x}
+      {!disabled&&<button onClick={()=>onChange(items.filter(y=>y!==x))} title={'Remove '+x} className="text-brand-300/70 hover:text-white transition-colors"><I.X size={9}/></button>}</span>))}
+    {!disabled&&<input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}} onBlur={add} placeholder={placeholder}
+      className="min-w-[120px] flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/30 px-1 py-0.5"/>}
+    {items.length===0&&disabled&&<span className="text-[12px] text-white/40">None</span>}
+  </div>);
+}
 function SettingsScoringPage({goTo}){
   const crm=React.useContext(CrmDataContext);
-  const fit=(crm.scoreRules||[]).filter(r=>r.object==='lead'&&r.enabled!==false);
-  const base=typeof SCORE_BASE!=='undefined'?SCORE_BASE:25;
-  const hot=typeof SCORE_HOT!=='undefined'?SCORE_HOT:70;
-  const eg=(<span className="ml-2 px-1.5 py-0.5 rounded-full bg-white/[0.05] text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/40 align-middle">example</span>);
-  const SEC="text-[11px] font-semibold text-white/45 uppercase tracking-[0.14em]";
-  return(<SettingsShell active="settings-scoring" goTo={goTo} subtitle="How a lead's score is calculated. Scoring is computed by your backend — this is a read-only view of the signals that move it.">
+  // owner/admin/manager may PUT; a member is read-only (backend: 403 NOT_AUTHORIZED)
+  const canEdit=settingsIsAdmin();
+  const saved=crm.leadScoringRules||LEAD_SCORING_DEFAULTS;
+  const meta=crm.leadScoringMeta||{is_default:true};
+  const [d,setD]=React.useState(()=>JSON.parse(JSON.stringify(saved)));
+  React.useEffect(()=>{setD(JSON.parse(JSON.stringify(saved)));},[saved]);
+  const dirty=JSON.stringify(d)!==JSON.stringify(saved);
+  const set=(path,val)=>setD(p=>{const n=JSON.parse(JSON.stringify(p));let o=n;for(let i=0;i<path.length-1;i++)o=o[path[i]];o[path[path.length-1]]=val;return n;});
+  const pf=d.profile_fit||{},en=d.engagement||{},bh=d.behavior||{},bands=d.bands||{};
+  const num=(x)=>parseInt(x,10)||0;
+  // ScoreBands invariant from the spec: 0 <= warm_min <= hot_min <= 100 — enforced here, not just validated.
+  const setWarm=(v)=>setD(p=>({...p,bands:{...p.bands,warm_min:Math.min(num(v),num(p.bands.hot_min))}}));
+  const setHot=(v)=>setD(p=>({...p,bands:{...p.bands,hot_min:Math.max(num(v),num(p.bands.warm_min))}}));
+  // Live preview against a real lead so every weight change is visible immediately.
+  const leads=(crm.leads||[]).filter(l=>!l.deleted&&!l.converted);
+  const [pvId,setPvId]=React.useState(null);
+  // default to a lead that actually exercises engagement/behavior, so the preview shows the whole model
+  const pv=leads.find(l=>l.id===pvId)||leads.find(l=>{const s=l.signals||{};return (s.email_opened||0)+(s.link_clicked||0)+(s.page_visit||0)+(s.demo_request||0)>0;})||leads[0]||null;
+  const pvScore=pv?(function(){const _s=_liveScoring;_liveScoring=d;try{return recomputeScore('lead',pv);}finally{_liveScoring=_s;}})():0;
+  const pvBand=(function(){const h=num(bands.hot_min),w=num(bands.warm_min);if(pvScore>=h)return{l:'Hot',c:'#f87171'};if(pvScore>=w)return{l:'Warm',c:'#fbbf24'};return{l:'Cold',c:'#60a5fa'};})();
+  const part=(fn)=>{if(!pv)return 0;const _s=_liveScoring;_liveScoring=d;try{return fn();}finally{_liveScoring=_s;}};
+  const pvFit=part(()=>scoreProfileFit(pv,pf));
+  const sig=(k,p,c)=>part(()=>scoreCapped(pv,k,p,c));
+  const [toast,setToast]=React.useState('');
+  const showScoreToast=(m)=>{setToast(m);setTimeout(()=>setToast(''),2600);};
+  const save=()=>{
+    if(!canEdit){showScoreToast('Your role can’t edit scoring rules');return;}
+    crm.setLeadScoringRules(d);
+    crm.setLeadScoringMeta({is_default:false,updated_by:CURRENT_USER.avatar,updated_at:'Just now'});
+    // The API enqueues a workspace-wide re-score on success — do the same here so scores never drift from the rules.
+    let n=0;const _s=_liveScoring;_liveScoring=d;
+    try{crm.setLeads(a=>a.map(l=>{if(l.deleted)return l;const sc=recomputeScore('lead',l);if(sc!==l.score)n++;return {...l,score:sc};}));}finally{_liveScoring=_s;}
+    showScoreToast('Scoring rules saved · re-scoring all leads');
+  };
+  const reset=()=>{if(!canEdit)return;setD(JSON.parse(JSON.stringify(LEAD_SCORING_DEFAULTS)));};
+  const tiers=pf.company_size_tiers||[];
+  const setTier=(i,k,v)=>set(['profile_fit','company_size_tiers'],tiers.map((t,j)=>j===i?{...t,[k]:Math.max(0,parseInt(v,10)||0)}:t));
+  return(<SettingsShell active="settings-scoring" goTo={goTo}
+    subtitle="Tune how a lead's 0–100 score is calculated. Saving replaces the whole rule set and re-scores every lead."
+    actions={canEdit?(<div className="flex items-center gap-2.5">
+      <button onClick={reset} className={CUST_RESET}>Reset to defaults</button>
+      <button onClick={save} disabled={!dirty} className={dirty?CUST_SAVE:'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold text-white/30 bg-white/[0.06] cursor-not-allowed'}><I.Check size={14} stroke={2.4}/>Save rules</button>
+    </div>):null}>
     <div className="max-w-3xl flex flex-col gap-5">
-      <div className="rounded-2xl border border-brand-500/20 bg-brand-500/[0.06] px-4 py-3 flex items-start gap-2.5">
-        <I.Lock size={14} className="text-brand-300 shrink-0 mt-0.5"/>
-        <p className="text-[12.5px] text-white/70 leading-relaxed"><span className="font-semibold text-white/90">Scoring runs on the backend.</span> Your team owns the weights and decay logic — they aren't edited here. Each lead's score surfaces as the <span className="text-white/80 font-medium">Hot / Warm / Cold</span> badge, and crossing <span className="text-white/80 font-medium">≥ {hot}</span> can trigger routing or alerts.</p>
+      {!canEdit&&<div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 flex items-start gap-2.5">
+        <I.Lock size={14} className="text-white/45 shrink-0 mt-0.5"/>
+        <p className="text-[12.5px] text-white/70 leading-relaxed"><span className="font-semibold text-white/90">View only.</span> Your role can see the weights but can’t change them — only an owner, admin, or manager can edit scoring rules.</p>
+      </div>}
+      <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3 flex-wrap">
+        <span className={['inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium',meta.is_default?'bg-white/[0.06] text-white/55':'bg-emerald-500/12 text-emerald-300'].join(' ')}>
+          <span className={['w-1.5 h-1.5 rounded-full',meta.is_default?'bg-white/30':'bg-emerald-400'].join(' ')}/>{meta.is_default?'Using seeded defaults':'Customized'}</span>
+        {!meta.is_default&&meta.updated_at&&<span className="text-[11.5px] text-white/45">Updated {meta.updated_at} by {meta.updated_by}</span>}
+        <p className="text-[11.5px] text-white/45 leading-relaxed ml-auto">Every weight is 0–100; the engine clamps the final score to 0–100.</p>
       </div>
-      <div className="flex items-center gap-4 rounded-xl bg-white/[0.03] border border-white/[0.07] px-4 py-3">
-        <div><p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.14em]">Base</p><p className="text-[18px] font-bold text-white/90 tabular-nums">{base}</p></div>
-        <div className="w-px h-8 bg-white/[0.08]"/>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sky-500/12 text-sky-300 text-[11px] font-medium">Cold &lt; 45</span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/12 text-amber-300 text-[11px] font-medium">Warm 45–{hot-1}</span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/12 text-red-300 text-[11px] font-medium">Hot ≥ {hot}</span>
+
+      <SectionHead title="Score bands · what counts as hot"/>
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-3.5 flex flex-col gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sky-500/12 text-sky-300 text-[11px] font-medium">Cold &lt; {num(bands.warm_min)}</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/12 text-amber-300 text-[11px] font-medium">Warm {num(bands.warm_min)}–{Math.max(num(bands.warm_min),num(bands.hot_min)-1)}</span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/12 text-red-300 text-[11px] font-medium">Hot ≥ {num(bands.hot_min)}</span>
+          <span className="text-[11px] text-white/40 ml-auto">These cutoffs drive the health bar everywhere and the “score reached hot” automation.</span>
         </div>
-        <p className="text-[11.5px] text-white/45 leading-relaxed ml-auto max-w-[190px]">The score is a live 0–100 blend of the three signal groups below.</p>
+        <div className="flex items-center gap-5 flex-wrap">
+          <label className="flex items-center gap-2"><span className="text-[12px] text-white/60">Warm at</span><ScoreNum value={bands.warm_min} onChange={setWarm} disabled={!canEdit}/></label>
+          <label className="flex items-center gap-2"><span className="text-[12px] text-white/60">Hot at</span><ScoreNum value={bands.hot_min} onChange={setHot} disabled={!canEdit}/></label>
+          <span className="text-[11.5px] text-white/40">Warm can never exceed hot.</span>
+        </div>
       </div>
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 mb-0.5"><I.Target size={13} className="text-brand-300"/><span className={SEC}>Fit signals · who the lead is</span></div>
-        {fit.length?fit.map(r=>(<ScoreSignalRow key={r.id} label={r.name} points={r.points}/>)):<p className="text-[12.5px] text-white/40">No fit signals configured.</p>}
-      </section>
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 mb-0.5"><I.Zap size={13} className="text-brand-300"/><span className={SEC}>Engagement signals · what the lead does</span>{eg}</div>
-        {SCORE_ACTIVITY_EG.map(a=>(<ScoreSignalRow key={a.label} label={a.label} detail={a.detail} points={a.points} muted/>))}
-      </section>
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 mb-0.5"><I.Clock size={13} className="text-brand-300"/><span className={SEC}>Score decay</span>{eg}</div>
-        <div className="flex items-center gap-3 rounded-xl border border-white/[0.055] bg-white/[0.015] px-3.5 py-2.5">
-          <span className="w-11 h-7 rounded-lg bg-red-500/12 text-red-300 text-[12px] font-bold flex items-center justify-center shrink-0 tabular-nums">−5</span>
-          <div className="min-w-0"><p className="text-[13px] font-medium text-white/90">Every 14 days with no engagement</p><p className="text-[11.5px] text-white/45">Eases a quiet lead back toward base so it can't stay Hot forever.</p></div>
+
+      <SectionHead title="Profile fit · who the lead is"/>
+      <div className="flex flex-col gap-2">
+        <ScoreSignalEdit label="Has a company" detail="Lead record has a company name" points={pf.has_company_points} onPoints={v=>set(['profile_fit','has_company_points'],v)} disabled={!canEdit}
+          contributes={pv&&String(pv.company||'').trim()?num(pf.has_company_points):0}/>
+        <ScoreSignalEdit label="Has a phone number" detail="Reachable by phone" points={pf.has_phone_points} onPoints={v=>set(['profile_fit','has_phone_points'],v)} disabled={!canEdit}
+          contributes={pv&&String(pv.phone||'').trim()?num(pf.has_phone_points):0}/>
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 py-3 flex flex-col gap-2.5">
+          <div className="flex items-center gap-3"><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90">Senior title</p><p className="text-[11.5px] text-white/50">Awarded when the job title contains any keyword</p></div>
+            <label className="flex items-center gap-1.5 shrink-0"><span className="text-[11px] text-white/50">points</span><ScoreNum value={pf.senior_title_points} onChange={v=>set(['profile_fit','senior_title_points'],v)} disabled={!canEdit}/></label></div>
+          <ScoreChips items={pf.senior_title_keywords||[]} onChange={v=>set(['profile_fit','senior_title_keywords'],v)} disabled={!canEdit} placeholder="Add a keyword…"/>
         </div>
-      </section>
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 py-3 flex flex-col gap-2.5">
+          <div className="flex items-center gap-3"><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white/90">Preferred industry</p><p className="text-[11.5px] text-white/50">Awarded when the lead’s industry matches one of these</p></div>
+            <label className="flex items-center gap-1.5 shrink-0"><span className="text-[11px] text-white/50">points</span><ScoreNum value={pf.industry_match_points} onChange={v=>set(['profile_fit','industry_match_points'],v)} disabled={!canEdit}/></label></div>
+          <ScoreChips items={pf.preferred_industries||[]} onChange={v=>set(['profile_fit','preferred_industries'],v)} disabled={!canEdit} placeholder="Add an industry…"/>
+        </div>
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-3.5 py-3 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[13px] font-medium text-white/90">Company size tiers</p><p className="text-[11.5px] text-white/50">First matching tier wins · an upper bound of 0 means “no limit”</p></div>
+            {canEdit&&<button onClick={()=>set(['profile_fit','company_size_tiers'],[...tiers,{min_employees:0,max_employees:0,points:0}])} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11.5px] font-medium text-brand-200 bg-brand-500/12 border border-brand-500/25 hover:bg-brand-500/20 transition-all shrink-0"><I.Plus size={11} stroke={2.4}/>Add tier</button>}</div>
+          <div className="flex flex-col gap-1.5">
+            {tiers.map((t,i)=>(<div key={i} className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-white/50">from</span><ScoreNum value={t.min_employees} onChange={v=>setTier(i,'min_employees',v)} disabled={!canEdit} max={100000}/>
+              <span className="text-[11px] text-white/50">to</span><ScoreNum value={t.max_employees} onChange={v=>setTier(i,'max_employees',v)} disabled={!canEdit} max={100000}/>
+              <span className="text-[11px] text-white/50">employees →</span><ScoreNum value={t.points} onChange={v=>setTier(i,'points',v)} disabled={!canEdit}/>
+              <span className="text-[11px] text-white/40">pts</span>
+              {canEdit&&<button onClick={()=>set(['profile_fit','company_size_tiers'],tiers.filter((_,j)=>j!==i))} title="Remove tier" className="ml-auto text-white/35 hover:text-red-300 transition-colors"><I.Trash size={12}/></button>}
+            </div>))}
+            {tiers.length===0&&<p className="text-[12px] text-white/40">No tiers — company size adds nothing.</p>}
+          </div>
+        </div>
+      </div>
+
+      <SectionHead title="Engagement · marketing touches"/>
+      <div className="flex flex-col gap-2">
+        <ScoreSignalEdit label="Opened an email" detail="Counted per open, then capped" points={en.email_opened_points} cap={en.email_opened_cap}
+          onPoints={v=>set(['engagement','email_opened_points'],v)} onCap={v=>set(['engagement','email_opened_cap'],v)} disabled={!canEdit}
+          contributes={sig('email_opened',en.email_opened_points,en.email_opened_cap)}/>
+        <ScoreSignalEdit label="Clicked a tracked link" detail="Counted per click, then capped" points={en.link_clicked_points} cap={en.link_clicked_cap}
+          onPoints={v=>set(['engagement','link_clicked_points'],v)} onCap={v=>set(['engagement','link_clicked_cap'],v)} disabled={!canEdit}
+          contributes={sig('link_clicked',en.link_clicked_points,en.link_clicked_cap)}/>
+      </div>
+
+      <SectionHead title="Behavior · buying intent"/>
+      <div className="flex flex-col gap-2">
+        <ScoreSignalEdit label="Visited a page" detail="Pricing / product page visits, then capped" points={bh.page_visit_points} cap={bh.page_visit_cap}
+          onPoints={v=>set(['behavior','page_visit_points'],v)} onCap={v=>set(['behavior','page_visit_cap'],v)} disabled={!canEdit}
+          contributes={sig('page_visit',bh.page_visit_points,bh.page_visit_cap)}/>
+        <ScoreSignalEdit label="Requested a demo" detail="Highest-intent signal, then capped" points={bh.demo_request_points} cap={bh.demo_request_cap}
+          onPoints={v=>set(['behavior','demo_request_points'],v)} onCap={v=>set(['behavior','demo_request_cap'],v)} disabled={!canEdit}
+          contributes={sig('demo_request',bh.demo_request_points,bh.demo_request_cap)}/>
+      </div>
+
+      <SectionHead title="Live preview"/>
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-3.5 flex flex-col gap-3">
+        {pv?(<React.Fragment>
+          <div className="flex items-center gap-3 flex-wrap">
+            <select value={pv.id} onChange={e=>setPvId(parseInt(e.target.value,10))} className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-[12.5px] text-white outline-none focus:border-brand-500/40 appearance-none" style={{colorScheme:'dark',background:'var(--s850)'}}>
+              {leads.slice(0,40).map(l=>(<option key={l.id} value={l.id}>{l.name}{l.company?' · '+l.company:''}</option>))}
+            </select>
+            <span className="text-[11.5px] text-white/45">scores</span>
+            <span className="text-[22px] font-bold text-white tabular-nums leading-none">{pvScore}</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold" style={{background:pvBand.c+'1f',color:pvBand.c}}><span className="w-1.5 h-1.5 rounded-full" style={{background:pvBand.c}}/>{pvBand.l}</span>
+            {dirty&&<span className="text-[11px] text-amber-300 ml-auto">Unsaved — preview reflects your edits</span>}
+          </div>
+          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full transition-all" style={{width:pvScore+'%',background:pvBand.c}}/></div>
+          <div className="flex items-center gap-4 flex-wrap text-[11.5px] text-white/50">
+            <span>Profile fit <span className="text-white/80 font-semibold tabular-nums">+{pvFit}</span></span>
+            <span>Engagement <span className="text-white/80 font-semibold tabular-nums">+{sig('email_opened',en.email_opened_points,en.email_opened_cap)+sig('link_clicked',en.link_clicked_points,en.link_clicked_cap)}</span></span>
+            <span>Behavior <span className="text-white/80 font-semibold tabular-nums">+{sig('page_visit',bh.page_visit_points,bh.page_visit_cap)+sig('demo_request',bh.demo_request_points,bh.demo_request_cap)}</span></span>
+          </div>
+        </React.Fragment>):<p className="text-[12.5px] text-white/45">No leads to preview.</p>}
+      </div>
+      <p className="text-[11.5px] text-white/40 leading-relaxed">Engagement and behavior are counted from each lead’s activity signals. Leads without those signals score on profile fit alone.</p>
     </div>
+    {toast&&<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25"><I.Check size={14} stroke={2.4}/>{toast}</div>}
   </SettingsShell>);
 }
 // P2: Assignment / Routing Rules console — author per-object rules that set a new record's owner on create.
@@ -10340,21 +10470,21 @@ const LEAD_STATUSES=['New','Contacted','Nurturing','Sales-Ready','Disqualified']
 const LEAD_STATUS_CHIP={New:'bg-blue-500/12 text-blue-300 ring-blue-500/25',Contacted:'bg-amber-500/12 text-amber-300 ring-amber-500/25',Nurturing:'bg-violet-500/12 text-violet-300 ring-violet-500/25','Sales-Ready':'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25','Disqualified':'bg-white/[0.06] text-white/50 ring-white/[0.10]'};
 const LEAD_STATUS_DOT={New:'#60a5fa',Contacted:'#fbbf24',Nurturing:'#a78bfa','Sales-Ready':'#34d399','Disqualified':'#94a3b8'};
 const LEAD_SOURCES=['Web form','Referral','Cold outreach','Event','Ad','LinkedIn','Import'];
-function leadScoreBucket(score){if(score>=70)return{k:'hot',c:'#f87171',l:'Hot'};if(score>=40)return{k:'warm',c:'#fbbf24',l:'Warm'};return{k:'cold',c:'#60a5fa',l:'Cold'};}
+function leadScoreBucket(score){const b=(typeof leadScoringRulesLive==='function'?leadScoringRulesLive().bands:null)||{warm_min:40,hot_min:70};if(score>=(b.hot_min!=null?b.hot_min:70))return{k:'hot',c:'#f87171',l:'Hot'};if(score>=(b.warm_min!=null?b.warm_min:40))return{k:'warm',c:'#fbbf24',l:'Warm'};return{k:'cold',c:'#60a5fa',l:'Cold'};} // cutoffs come from the workspace rules (score_band), never hardcoded
 const LEADS_DATA=[
-  {id:120,name:'Greg Mason',avatar:'GM',color:'#f59e0b',email:'greg@northpeak.io',phone:'+1 555-770-3321',company:'Northpeak Co',title:'Operations Lead',source:'Cold outreach',status:'Disqualified',score:28,estValue:'$4k',owner:'AM',ownerColor:'#3b82f6',created:'4 weeks ago',days:26,loc:'Boise, ID',tags:['cold'],archived:false,converted:false,deleted:true,deletedAt:Date.now()-26*864e5,deletedBy:'Alex Morgan',estValueNum:4000},
-  {id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'Sales-Ready',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound','qualified'],archived:false,converted:true,convertedAt:'2h ago',convertedToContactId:207,convertedToCompanyId:9,convertedToDealId:208,convContact:'Olivia Bennett',convCompany:'Brightwave Studio',convDeal:'Brightwave Studio · $18,000',estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Pipeline + automations for a 40-person team'}],event:'Product Demo',rep:'Sarah Chen'}},
-  {id:2,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'daniel@lumen.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Head of Growth',source:'Referral',status:'Contacted',score:74,estValue:'$32k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Austin, TX',tags:['referral'],archived:false,converted:false,estValueNum:32000,emails:[],phones:['+1 555-441-0000'],createdBy:'JK',createdAt:'1d ago',companyDomain:'lumen.io',industry:'Software',employeesSize:60},
-  {id:3,name:'Sofia Marchetti',avatar:'SM',color:'#ec4899',email:'sofia@craftly.co',phone:'+1 555-228-6610',company:'Craftly',title:'Founder',source:'Event',status:'Nurturing',score:58,estValue:'$9k',owner:'SC',ownerColor:'#ec4899',created:'2d ago',days:2,loc:'New York, NY',tags:['saastr'],archived:false,converted:true,convertedAt:'2d ago',convertedToContactId:205,convertedToCompanyId:12,convertedToDealId:206,convContact:'Sofia Marchetti',convCompany:'Craftly',convDeal:'Craftly · $9,000',estValueNum:9000,emails:['sofia@craftly.co'],phones:[],createdBy:'SC',createdAt:'2d ago',companyDomain:'craftly.co',industry:'Retail',employeesSize:8},
-  {id:4,name:'Marcus Webb',avatar:'MW',color:'#10b981',email:'marcus@northpeak.com',phone:'+1 555-770-4521',company:'Northpeak',title:'VP Sales',source:'Cold outreach',status:'New',score:41,estValue:'$15k',owner:'RL',ownerColor:'#10b981',created:'3d ago',days:3,loc:'Seattle, WA',tags:['outbound'],archived:false,converted:false},
-  {id:5,name:'Aisha Rahman',avatar:'AR',color:'#f59e0b',email:'aisha@vellum.io',phone:'+1 555-883-2290',company:'Vellum',title:'COO',source:'LinkedIn',status:'Sales-Ready',score:88,estValue:'$45k',owner:'AM',ownerColor:'#3b82f6',created:'4d ago',days:4,loc:'Boston, MA',tags:['enterprise'],archived:false,converted:false,companyDomain:'vellum.io',industry:'Finance',employeesSize:140,estValueNum:45000,emails:[],phones:[]},
-  {id:6,name:'Leo Fontaine',avatar:'LF',color:'#6366f1',email:'leo@pixelforge.co',phone:'+1 555-512-7740',company:'Pixelforge',title:'Creative Lead',source:'Ad',status:'Nurturing',score:36,estValue:'$6k',owner:'JK',ownerColor:'#8b5cf6',created:'1w ago',days:7,loc:'Miami, FL',tags:[],archived:false,converted:false},
-  {id:7,name:'Hannah Cole',avatar:'HC',color:'#a855f7',email:'hannah@switchgrid.com',phone:'+1 555-664-1180',company:'Switchgrid',title:'Operations Manager',source:'Web form',status:'Sales-Ready',score:79,estValue:'$28k',owner:'SC',ownerColor:'#ec4899',created:'1w ago',days:9,loc:'Chicago, IL',tags:['inbound'],archived:false,converted:false,companyDomain:'switchgrid.com',industry:'Manufacturing',employeesSize:75,estValueNum:28000,emails:[],phones:[]},
-  {id:8,name:'Raj Patel',avatar:'RP',color:'#0ea5e9',email:'raj@cobaltworks.io',phone:'+1 555-901-3345',company:'Cobalt Works',title:'CTO',source:'Referral',status:'Contacted',score:63,estValue:'$22k',owner:'RL',ownerColor:'#10b981',created:'2w ago',days:14,loc:'Los Angeles, CA',tags:['referral'],archived:false,converted:false},
-  {id:9,name:'Emma Lindqvist',avatar:'EL',color:'#14b8a6',email:'emma@fika.design',phone:'+1 555-330-7798',company:'Fika Design',title:'Principal',source:'Event',status:'Nurturing',score:48,estValue:'$11k',owner:'AM',ownerColor:'#3b82f6',created:'3w ago',days:21,loc:'Portland, OR',tags:['saastr'],archived:false,converted:false},
-  {id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Disqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
-  {id:101,name:'Olivia Bennett',avatar:'OB',color:'#6366f1',email:'Olivia@Brightwave.io',phone:'+1 (555) 610-2210',company:'Brightwave Studio',title:'Head of Marketing',source:'Referral',status:'Contacted',score:78,estValue:'$18k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Denver, CO',tags:['inbound','duplicate-import'],archived:false,converted:false,estValueNum:18000,createdBy:'JK',createdAt:'1d ago',companyDomain:'brightwave.io'},
-  {id:102,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'d.okonkwo@lumenlabs.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Growth Lead',source:'Event',status:'New',score:70,estValue:'$30k',owner:'AM',ownerColor:'#3b82f6',created:'2d ago',days:2,loc:'Austin, TX',tags:['event'],archived:false,converted:false,estValueNum:30000,createdBy:'AM',createdAt:'2d ago',companyDomain:'lumenlabs.io'},
+  {signals:{email_opened:6,link_clicked:3,page_visit:2,demo_request:1},industry:'SaaS',employees_size:120,id:120,name:'Greg Mason',avatar:'GM',color:'#f59e0b',email:'greg@northpeak.io',phone:'+1 555-770-3321',company:'Northpeak Co',title:'Operations Lead',source:'Cold outreach',status:'Disqualified',score:28,estValue:'$4k',owner:'AM',ownerColor:'#3b82f6',created:'4 weeks ago',days:26,loc:'Boise, ID',tags:['cold'],archived:false,converted:false,deleted:true,deletedAt:Date.now()-26*864e5,deletedBy:'Alex Morgan',estValueNum:4000},
+  {signals:{email_opened:3,link_clicked:1,page_visit:0,demo_request:0},employees_size:35,id:1,name:'Olivia Bennett',avatar:'OB',color:'#3b82f6',email:'olivia@brightwave.io',phone:'+1 555-610-2210',company:'Brightwave Studio',title:'Marketing Director',source:'Web form',status:'Sales-Ready',score:82,estValue:'$18k',owner:'AM',ownerColor:'#3b82f6',created:'2h ago',days:0,loc:'Denver, CO',tags:['inbound','qualified'],archived:false,converted:true,convertedAt:'2h ago',convertedToContactId:207,convertedToCompanyId:9,convertedToDealId:208,convContact:'Olivia Bennett',convCompany:'Brightwave Studio',convDeal:'Brightwave Studio · $18,000',estValueNum:18000,emails:['olivia.b@brightwave.io'],phones:[],createdBy:'AM',createdAt:'2h ago',companyDomain:'brightwave.io',industry:'Software',employeesSize:24,qual:{formName:'Request a Demo',status:'qualified',answers:[{q:'Company size',a:'51-200'},{q:'What would you like to see?',a:'Pipeline + automations for a 40-person team'}],event:'Product Demo',rep:'Sarah Chen'}},
+  {signals:{email_opened:0,link_clicked:0,page_visit:0,demo_request:0},employees_size:8,id:2,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'daniel@lumen.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Head of Growth',source:'Referral',status:'Contacted',score:74,estValue:'$32k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Austin, TX',tags:['referral'],archived:false,converted:false,estValueNum:32000,emails:[],phones:['+1 555-441-0000'],createdBy:'JK',createdAt:'1d ago',companyDomain:'lumen.io',industry:'Software',employeesSize:60},
+  {signals:{email_opened:9,link_clicked:4,page_visit:3,demo_request:1},employees_size:600,id:3,name:'Sofia Marchetti',avatar:'SM',color:'#ec4899',email:'sofia@craftly.co',phone:'+1 555-228-6610',company:'Craftly',title:'Founder',source:'Event',status:'Nurturing',score:58,estValue:'$9k',owner:'SC',ownerColor:'#ec4899',created:'2d ago',days:2,loc:'New York, NY',tags:['saastr'],archived:false,converted:true,convertedAt:'2d ago',convertedToContactId:205,convertedToCompanyId:12,convertedToDealId:206,convContact:'Sofia Marchetti',convCompany:'Craftly',convDeal:'Craftly · $9,000',estValueNum:9000,emails:['sofia@craftly.co'],phones:[],createdBy:'SC',createdAt:'2d ago',companyDomain:'craftly.co',industry:'Retail',employeesSize:8},
+  {signals:{email_opened:2,link_clicked:0,page_visit:1,demo_request:0},industry:'Retail',employees_size:15,id:4,name:'Marcus Webb',avatar:'MW',color:'#10b981',email:'marcus@northpeak.com',phone:'+1 555-770-4521',company:'Northpeak',title:'VP Sales',source:'Cold outreach',status:'New',score:41,estValue:'$15k',owner:'RL',ownerColor:'#10b981',created:'3d ago',days:3,loc:'Seattle, WA',tags:['outbound'],archived:false,converted:false},
+  {signals:{email_opened:5,link_clicked:2,page_visit:1,demo_request:0},employees_size:45,id:5,name:'Aisha Rahman',avatar:'AR',color:'#f59e0b',email:'aisha@vellum.io',phone:'+1 555-883-2290',company:'Vellum',title:'COO',source:'LinkedIn',status:'Sales-Ready',score:88,estValue:'$45k',owner:'AM',ownerColor:'#3b82f6',created:'4d ago',days:4,loc:'Boston, MA',tags:['enterprise'],archived:false,converted:false,companyDomain:'vellum.io',industry:'Finance',employeesSize:140,estValueNum:45000,emails:[],phones:[]},
+  {signals:{email_opened:1,link_clicked:1,page_visit:0,demo_request:0},industry:'Manufacturing',employees_size:220,id:6,name:'Leo Fontaine',avatar:'LF',color:'#6366f1',email:'leo@pixelforge.co',phone:'+1 555-512-7740',company:'Pixelforge',title:'Creative Lead',source:'Ad',status:'Nurturing',score:36,estValue:'$6k',owner:'JK',ownerColor:'#8b5cf6',created:'1w ago',days:7,loc:'Miami, FL',tags:[],archived:false,converted:false},
+  {signals:{email_opened:0,link_clicked:0,page_visit:0,demo_request:0},employees_size:5,id:7,name:'Hannah Cole',avatar:'HC',color:'#a855f7',email:'hannah@switchgrid.com',phone:'+1 555-664-1180',company:'Switchgrid',title:'Operations Manager',source:'Web form',status:'Sales-Ready',score:79,estValue:'$28k',owner:'SC',ownerColor:'#ec4899',created:'1w ago',days:9,loc:'Chicago, IL',tags:['inbound'],archived:false,converted:false,companyDomain:'switchgrid.com',industry:'Manufacturing',employeesSize:75,estValueNum:28000,emails:[],phones:[]},
+  {signals:{email_opened:4,link_clicked:2,page_visit:2,demo_request:1},industry:'Consulting',employees_size:90,id:8,name:'Raj Patel',avatar:'RP',color:'#0ea5e9',email:'raj@cobaltworks.io',phone:'+1 555-901-3345',company:'Cobalt Works',title:'CTO',source:'Referral',status:'Contacted',score:63,estValue:'$22k',owner:'RL',ownerColor:'#10b981',created:'2w ago',days:14,loc:'Los Angeles, CA',tags:['referral'],archived:false,converted:false},
+  {signals:{email_opened:7,link_clicked:3,page_visit:4,demo_request:1},industry:'Fintech',employees_size:300,id:9,name:'Emma Lindqvist',avatar:'EL',color:'#14b8a6',email:'emma@fika.design',phone:'+1 555-330-7798',company:'Fika Design',title:'Principal',source:'Event',status:'Nurturing',score:48,estValue:'$11k',owner:'AM',ownerColor:'#3b82f6',created:'3w ago',days:21,loc:'Portland, OR',tags:['saastr'],archived:false,converted:false},
+  {signals:{email_opened:6,link_clicked:3,page_visit:2,demo_request:1},industry:'SaaS',employees_size:120,id:10,name:'Victor Nunez',avatar:'VN',color:'#64748b',email:'victor@orbital.co',phone:'+1 555-220-4412',company:'Orbital Co',title:'Director',source:'Cold outreach',status:'Disqualified',score:18,estValue:'-',owner:'JK',ownerColor:'#8b5cf6',created:'5w ago',days:35,loc:'Denver, CO',tags:['cold'],archived:true,converted:false},
+  {signals:{email_opened:3,link_clicked:1,page_visit:0,demo_request:0},industry:'Agency',employees_size:35,id:101,name:'Olivia Bennett',avatar:'OB',color:'#6366f1',email:'Olivia@Brightwave.io',phone:'+1 (555) 610-2210',company:'Brightwave Studio',title:'Head of Marketing',source:'Referral',status:'Contacted',score:78,estValue:'$18k',owner:'JK',ownerColor:'#8b5cf6',created:'1d ago',days:1,loc:'Denver, CO',tags:['inbound','duplicate-import'],archived:false,converted:false,estValueNum:18000,createdBy:'JK',createdAt:'1d ago',companyDomain:'brightwave.io'},
+  {signals:{email_opened:0,link_clicked:0,page_visit:0,demo_request:0},industry:'Consulting',employees_size:8,id:102,name:'Daniel Okonkwo',avatar:'DO',color:'#8b5cf6',email:'d.okonkwo@lumenlabs.io',phone:'+1 555-441-9087',company:'Lumen Labs',title:'Growth Lead',source:'Event',status:'New',score:70,estValue:'$30k',owner:'AM',ownerColor:'#3b82f6',created:'2d ago',days:2,loc:'Austin, TX',tags:['event'],archived:false,converted:false,estValueNum:30000,createdBy:'AM',createdAt:'2d ago',companyDomain:'lumenlabs.io'},
 ];
 // ?? Ad lead sources (Meta / Google) — workspace-level ad-platform lead capture ??????????????
 // Live ad-platform sync is SIMULATED/MOCK — no real Meta/Google API calls. The connect flow,
@@ -11009,7 +11139,7 @@ function AddLeadPage({goTo}){
     if(!f.name.trim()){window.__nrturToast&&window.__nrturToast('Enter the lead’s name first.','error');return;}
     const om=TEAM_MEMBERS.find(m=>m.name===f.owner)||TEAM_MEMBERS[0]||{avatar:'AM',color:'#3b82f6'};
     const parts=f.name.trim().split(' ');const estN=parseInt(String(f.est).replace(/[^0-9]/g,''),10)||0;const id=Date.now()+Math.floor(Math.random()*1000);
-    const lead={id,name:f.name.trim(),first:parts[0]||f.name.trim(),last:parts.slice(1).join(' '),company:f.company.trim(),email:f.email.trim(),phone:f.phone.trim(),avatar:arInitials(f.name.trim()),color:arPick(),status:f.status,owner:om.avatar,ownerColor:om.color,source:f.source,estValue:estN?('$'+estN.toLocaleString('en-US')):'—',estValueNum:estN,score:(function(){try{return recomputeScore('lead',{title:'',source:f.source,company:f.company.trim(),estValueNum:estN});}catch(e){return SCORE_BASE;}})(),days:0,tags:[],archived:false,converted:false,deleted:false,createdBy:CURRENT_USER_CODE,createdAt:'Just now',lastActivity:'Just now'};
+    const lead={id,name:f.name.trim(),first:parts[0]||f.name.trim(),last:parts.slice(1).join(' '),company:f.company.trim(),email:f.email.trim(),phone:f.phone.trim(),avatar:arInitials(f.name.trim()),color:arPick(),status:f.status,owner:om.avatar,ownerColor:om.color,source:f.source,estValue:estN?('$'+estN.toLocaleString('en-US')):'—',estValueNum:estN,score:(function(){try{return recomputeScore('lead',{title:'',source:f.source,company:f.company.trim(),estValueNum:estN});}catch(e){return 0;}})(),days:0,tags:[],archived:false,converted:false,deleted:false,createdBy:CURRENT_USER_CODE,createdAt:'Just now',lastActivity:'Just now'};
     crm.setLeads(a=>[lead,...a]);window.__nrturToast&&window.__nrturToast('Lead '+lead.name+' created ✓','success');goTo('lead-detail',id);
   };
   return(
@@ -13060,14 +13190,22 @@ const ASSIGN_RULES_SEED=[
   {id:'ar_lead_hot',object:'lead',name:'Hot leads (score > 70) → least busy rep',enabled:true,conds:{match:'AND',conds:[{id:'c1',fieldKey:'score',op:'>',value:'70',value2:''}]},thenType:'leastBusy',pool:[]},
   {id:'ar_deal_ent',object:'deal',name:'Enterprise deals (> $25k) → Sarah Chen',enabled:true,conds:{match:'AND',conds:[{id:'c1',fieldKey:'amount',op:'>',value:'25000',value2:''}]},thenType:'rep',rep:'SC'},
 ];
-// P3: Scoring Rules — a scorecard that computes a real lead score (base + points per matching condition), replacing the random seed.
-const SCORE_BASE=25, SCORE_HOT=70; // base points + the "hot" threshold (matches leadScoreBucket)
-const SCORE_RULES_SEED=[
-  {id:'sc_title',object:'lead',name:'Senior title (VP / Director / Head / Chief)',enabled:true,points:20,when:{match:'OR',conds:[{id:'c1',fieldKey:'title',op:'contains',value:'VP'},{id:'c2',fieldKey:'title',op:'contains',value:'Director'},{id:'c3',fieldKey:'title',op:'contains',value:'Head'},{id:'c4',fieldKey:'title',op:'contains',value:'Chief'}]}},
-  {id:'sc_src',object:'lead',name:'Referral or Event source',enabled:true,points:15,when:{match:'AND',conds:[{id:'c1',fieldKey:'source',op:'is any of',value:['Referral','Event']}]}},
-  {id:'sc_co',object:'lead',name:'Has a company',enabled:true,points:10,when:{match:'AND',conds:[{id:'c1',fieldKey:'company',op:'is not empty',value:''}]}},
-  {id:'sc_val',object:'lead',name:'High estimated value (> $15k)',enabled:true,points:25,when:{match:'AND',conds:[{id:'c1',fieldKey:'estValueNum',op:'>',value:'15000',value2:''}]}},
-];
+// Lead scoring — mirrors the backend contract (GET/PUT /api/v1/lead-scoring-rules, LeadScoringRules v1).
+// Four tunable groups; NO base and NO decay (the API has neither). The engine clamps the final score to 0-100.
+const LEAD_SCORING_DEFAULTS={version:1,
+  profile_fit:{has_company_points:10,has_phone_points:5,
+    preferred_industries:['SaaS','Agency','Consulting'],industry_match_points:10,
+    senior_title_keywords:['VP','Director','Head','Chief','Founder'],senior_title_points:20,
+    company_size_tiers:[{min_employees:1,max_employees:10,points:2},{min_employees:11,max_employees:50,points:6},{min_employees:51,max_employees:0,points:12}]},
+  engagement:{email_opened_points:2,email_opened_cap:10,link_clicked_points:4,link_clicked_cap:16},
+  behavior:{page_visit_points:5,page_visit_cap:20,demo_request_points:15,demo_request_cap:30},
+  bands:{warm_min:40,hot_min:70}};
+let _liveScoring=null; // live rule set, mirrored by App each render so the module-level engine can read it
+function leadScoringRulesLive(){return _liveScoring||LEAD_SCORING_DEFAULTS;}
+function scoreHotMin(){const b=leadScoringRulesLive().bands||{};return b.hot_min!=null?b.hot_min:70;}
+// Counts the backend scores engagement/behavior from (it reads the lead's activity timeline; the
+// prototype carries the same four counters on the lead record instead — see lead.signals).
+function leadSignal(rec,k){const s=(rec&&rec.signals)||{};return Math.max(0,parseInt(s[k],10)||0);}
 // P4: Validation Rules — a per-object rule list; if a rule's AND/OR condition matches on save, the save is BLOCKED with its message.
 const VALIDATION_RULES_SEED=[
   {id:'vr_deal_won',object:'deal',name:'Won deals need an amount',enabled:true,when:{match:'AND',conds:[{id:'c1',fieldKey:'stageName',op:'is any of',value:['Won']},{id:'c2',fieldKey:'amount',op:'<',value:'1',value2:''}]},message:'A won deal needs an amount above $0.'},
@@ -19649,15 +19787,29 @@ function resolveAssignment(object,record){
   }
   return null;
 }
-// P3: compute a record's score = base + sum(points) for each enabled scoring rule whose AND/OR condition matches. Clamped 0..100.
+// Lead score = profile_fit + engagement + behavior, clamped 0-100 (backend LeadScoringRules v1 — no base, no decay).
+// Each engagement/behavior signal is count*points capped at its own cap, exactly as the API describes.
+function scoreProfileFit(rec,pf){if(!pf)return 0;let s=0;
+  if(String(rec.company||'').trim())s+=(parseInt(pf.has_company_points,10)||0);
+  if(String(rec.phone||'').trim())s+=(parseInt(pf.has_phone_points,10)||0);
+  const ind=String(rec.industry||'').trim().toLowerCase();
+  if(ind&&(pf.preferred_industries||[]).some(x=>String(x).trim().toLowerCase()===ind))s+=(parseInt(pf.industry_match_points,10)||0);
+  const title=String(rec.title||'').toLowerCase();
+  if(title&&(pf.senior_title_keywords||[]).some(k=>k&&title.indexOf(String(k).toLowerCase())>=0))s+=(parseInt(pf.senior_title_points,10)||0);
+  const emp=parseInt(rec.employees_size,10);
+  if(!isNaN(emp)&&emp>0){const t=(pf.company_size_tiers||[]).find(t=>{const mn=parseInt(t.min_employees,10)||0;const mx=parseInt(t.max_employees,10)||0;return emp>=mn&&(mx===0||emp<=mx);}); // max=0 = no upper bound; first match wins
+    if(t)s+=(parseInt(t.points,10)||0);}
+  return s;}
+function scoreCapped(rec,key,points,cap){const n=leadSignal(rec,key);const p=parseInt(points,10)||0;const cp=parseInt(cap,10)||0;return Math.min(n*p,cp);}
 function recomputeScore(object,record){
-  if(!record)return SCORE_BASE;
-  const rules=((_autoRt&&_autoRt.scoreRules)||[]).filter(r=>r&&r.enabled!==false&&r.object===object);
-  let s=SCORE_BASE;
-  for(let i=0;i<rules.length;i++){const r=rules[i];let match=true;
-    if(r.when&&r.when.conds&&r.when.conds.length){try{match=omApplyFilter([record],r.when,autoFieldsFor(object)).length>0;}catch(e){match=false;}}
-    if(match)s+=(parseInt(r.points,10)||0);
-  }
+  if(!record)return 0;
+  if(object!=='lead')return 0; // only leads are scored (backend: lead_score on LeadResponse)
+  const R=leadScoringRulesLive();const en=R.engagement||{},bh=R.behavior||{};
+  let s=scoreProfileFit(record,R.profile_fit);
+  s+=scoreCapped(record,'email_opened',en.email_opened_points,en.email_opened_cap);
+  s+=scoreCapped(record,'link_clicked',en.link_clicked_points,en.link_clicked_cap);
+  s+=scoreCapped(record,'page_visit',bh.page_visit_points,bh.page_visit_cap);
+  s+=scoreCapped(record,'demo_request',bh.demo_request_points,bh.demo_request_cap);
   return Math.max(0,Math.min(100,s));
 }
 // P4: run the object's validation rules against a record — returns the first matching rule's error message (blocks the save), or null.
@@ -19721,7 +19873,7 @@ function autoRunNodes(nodes,record,ctx,out,top){
     if(k==='assign'){const nw=autoResolveOwner(n.assignTo,record);const mem=TM.find(m=>m.avatar===nw)||{};if(nw&&nw!==record.owner)_patch(()=>({owner:nw,ownerColor:mem.color||record.ownerColor}));out.effects.push('👤 Assigned to '+(mem.name||nw));continue;}
     if(k==='addTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:Array.from(new Set([...(r[ctx.tagField]||[]),tg]))}));out.effects.push("🏷 Tagged '"+tg+"'");continue;}
     if(k==='removeTag'){const tg=n.tag;if(tg)_patch(r=>({[ctx.tagField]:(r[ctx.tagField]||[]).filter(x=>x!==tg)}));out.effects.push("🏷 Removed tag '"+tg+"'");continue;}
-    if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else if(n.setField==='Lead score'){const cur=record.score||0;const sv=String(n.setValue||'');const nv=/reset/i.test(sv)?0:Math.max(0,Math.min(100,cur+(parseInt(sv.replace(/[^0-9-]/g,''),10)||0)));_patch(()=>({score:nv}));record.score=nv;/* keep the running score so a 2nd score action in the same flow accumulates + the crossing fires once */if(ctx.ent==='lead'&&cur<SCORE_HOT&&nv>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{...record,score:nv},['Lead score reached']);}catch(e){}},0);out.effects.push('✎ Lead score '+(/reset/i.test(sv)?'reset → 0':(sv+' → '+nv)));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
+    if(k==='updateField'){if(n.setField==='Owner'){const mem=TM.find(m=>m.name===n.setValue||m.avatar===n.setValue)||{};if(mem.avatar)_patch(()=>({owner:mem.avatar,ownerColor:mem.color||record.ownerColor}));out.effects.push('✎ Owner → '+(n.setValue||''));}else if(n.setField==='Status'){_patch(()=>ctx.ent==='contact'?{cstatus:n.setValue}:{status:n.setValue});out.effects.push('✎ Status → '+(n.setValue||''));}else if(n.setField==='Priority'){_patch(()=>({priority:n.setValue}));out.effects.push('✎ Priority → '+(n.setValue||''));}else if(n.setField==='Lead score'){const cur=record.score||0;const sv=String(n.setValue||'');const nv=/reset/i.test(sv)?0:Math.max(0,Math.min(100,cur+(parseInt(sv.replace(/[^0-9-]/g,''),10)||0)));_patch(()=>({score:nv}));record.score=nv;/* keep the running score so a 2nd score action in the same flow accumulates + the crossing fires once */if(ctx.ent==='lead'&&cur<scoreHotMin()&&nv>=scoreHotMin())setTimeout(()=>{try{fireEntityAutomationEvents('lead',{...record,score:nv},['Lead score reached']);}catch(e){}},0);out.effects.push('✎ Lead score '+(/reset/i.test(sv)?'reset → 0':(sv+' → '+nv)));}else{out.effects.push('✎ '+(n.setField||'Field')+' → '+(n.setValue||''));}continue;}
     if(k==='welcome'||k==='proposal'||k==='reengage'){const _tc=(_cid!=null)?(_liveContacts||[]).find(c=>c&&c.id===_cid):null;if((record&&record.dnc)||(_tc&&(_tc.dnc||contactEmailSuppressed(_tc.email)||supChannelOff(_tc.id,'marketing')))){out.effects.push('✉ Email skipped — suppressed'+(_tc?(' ('+(_tc.name||'contact')+')'):''));continue;}out.effects.push('✉ Email sent · '+(n.template||'template'));continue;} /* honors the unified suppression store — the Suppression page promises "auto-skipped in every sequence & automation" */
     if(k==='sms'){const _g=canSendSms(record);if(!_g.ok){out.effects.push('💬 SMS skipped — '+_g.reason);continue;}if(_autoRt&&_autoRt.meterSms)_autoRt.meterSms('sms',1,'Automation SMS'+(n.template?(' · '+n.template):''));out.effects.push('💬 SMS sent'+(n.template?(' · '+n.template):''));continue;} /* A2P gate: unregistered/DNC sends are skipped with the reason, like a real carrier block; approved sends meter usage onto the monthly invoice */
     if(k==='slack'||k==='celebrate'){const _slk=(typeof _liveConns!=='undefined'&&_liveConns&&_liveConns.slack);out.effects.push('🔔 '+(n.channel||'#sales')+(_slk?' notified':' skipped — Slack not connected'));continue;}
@@ -19731,7 +19883,7 @@ function autoRunNodes(nodes,record,ctx,out,top){
     if(k==='webhook'){out.effects.push('🔗 '+(n.method||'POST')+' webhook');continue;}
     // R9-L1: create-record actions are now real, id-linked inserts (were no-op labels). Records are born linked to the triggering record.
     if(k==='createLead'){
-      if(_autoRt&&_autoRt.setLeads){const _co=record.company||record.co||'';const _nm=n.leadName||record.name||((_co||'New')+' lead');const _l={id:Date.now()+Math.floor(Math.random()*1e6),name:_nm,first:(_nm.split(' ')[0]||_nm),last:_nm.split(' ').slice(1).join(' '),email:record.email||'',phone:record.phone||'',company:_co,title:record.title||'',avatar:arInitials(_nm),color:arPick(),status:'New',owner:record.owner||'AM',ownerColor:record.ownerColor||arOwnerColor(record.owner||'AM'),source:'Automation',score:null,estValue:'—',estValueNum:0,days:0,archived:false,converted:false,tags:[],createdBy:'nrtur',createdAt:'Just now',created:'Just now',lastActivity:'Just now'};try{_l.score=recomputeScore('lead',_l);}catch(e){_l.score=(typeof SCORE_BASE!=='undefined'?SCORE_BASE:25);}_autoRt.setLeads(a=>[_l,...a]);out.effects.push('＋ Created lead '+_nm);}else out.effects.push('＋ Create lead');
+      if(_autoRt&&_autoRt.setLeads){const _co=record.company||record.co||'';const _nm=n.leadName||record.name||((_co||'New')+' lead');const _l={id:Date.now()+Math.floor(Math.random()*1e6),name:_nm,first:(_nm.split(' ')[0]||_nm),last:_nm.split(' ').slice(1).join(' '),email:record.email||'',phone:record.phone||'',company:_co,title:record.title||'',avatar:arInitials(_nm),color:arPick(),status:'New',owner:record.owner||'AM',ownerColor:record.ownerColor||arOwnerColor(record.owner||'AM'),source:'Automation',score:null,estValue:'—',estValueNum:0,days:0,archived:false,converted:false,tags:[],createdBy:'nrtur',createdAt:'Just now',created:'Just now',lastActivity:'Just now'};try{_l.score=recomputeScore('lead',_l);}catch(e){_l.score=0;}_autoRt.setLeads(a=>[_l,...a]);out.effects.push('＋ Created lead '+_nm);}else out.effects.push('＋ Create lead');
       continue;
     }
     if(k==='createCompany'){
@@ -22144,7 +22296,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
       // New, unknown invitee → enters the CRM as a LEAD; qualification sets the status
       leadId=Date.now();recordKind='lead';recordId=leadId;recordCreated=true;
       const newLead={id:leadId,name:nm,avatar,color,email:form.email.trim(),phone:'',company:'',title:'',source:'Booking',status:qEval.status==='qualified'?'Sales-Ready':qEval.status==='disqualified'?'Disqualified':'New',score:qualScore!=null?qualScore:null,estValue:'—',estValueNum:0,owner:rep.avatar,ownerColor:rep.color,days:0,loc:'',tags:['booking',...qualTags],archived:false,converted:false,createdBy:rep.avatar,createdAt:'Just now',qual:qualRec};
-      try{if(newLead.score==null)newLead.score=recomputeScore('lead',newLead);}catch(e){if(newLead.score==null)newLead.score=(typeof SCORE_BASE!=='undefined'?SCORE_BASE:25);} // R9-L5: compute score when the booking didn't set a qual score
+      try{if(newLead.score==null)newLead.score=recomputeScore('lead',newLead);}catch(e){if(newLead.score==null)newLead.score=0;} // R9-L5: compute score when the booking didn't set a qual score
       crm.setLeads(arr=>[newLead,...arr]);
       addToast(qEval.status==='disqualified'?'Lead captured — flagged for review':'New lead captured from booking ✓');
     }
@@ -23770,7 +23922,7 @@ function runFunnelSubmit(opts){
   }else{
     created=true;personKind='lead';
     const lid=Date.now()+Math.floor(Math.random()*1e6);personId=lid;
-    crm.setLeads(a=>{const _nl={id:lid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,company:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'New',owner:'AM',ownerColor:'#6366f1',source:'Funnel',utm:utm,score:null,estValue:'—',estValueNum:0,days:0,loc:'',archived:false,converted:false,tags:tags,createdBy:'AM',createdAt:'Just now',created:'Just now',lastActivity:'Just now',qual:qual};try{_nl.score=recomputeScore('lead',_nl);}catch(e){_nl.score=(typeof SCORE_BASE!=='undefined'?SCORE_BASE:25);}return [_nl,...a];}); // R9-L5: compute lead score (was null)
+    crm.setLeads(a=>{const _nl={id:lid,name:nm,first:(nm.split(' ')[0]||nm),last:nm.split(' ').slice(1).join(' '),email:rec.email,phone:rec.phone,company:rec.company,title:rec.title,avatar:arInitials(nm),color:arPick(),status:'New',owner:'AM',ownerColor:'#6366f1',source:'Funnel',utm:utm,score:null,estValue:'—',estValueNum:0,days:0,loc:'',archived:false,converted:false,tags:tags,createdBy:'AM',createdAt:'Just now',created:'Just now',lastActivity:'Just now',qual:qual};try{_nl.score=recomputeScore('lead',_nl);}catch(e){_nl.score=0;}return [_nl,...a];}); // R9-L5: compute lead score (was null)
   }
   // 3a. optional DEAL (stage + pipeline)
   let dealMade=false;
@@ -25246,6 +25398,7 @@ function App(){
   _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
+  _liveScoring=leadScoringRules; // mirror the rule set so recomputeScore()/leadScoreBucket() read live cutoffs
   _livePerms=rolePerms; // R9-L3: mirror the persisted permission matrix so rolePermsOf/effCanObject/effCanCustom read live edits
   _livePhoneNumbers=phoneNumbers;_liveSmsBrand=smsBrand;_liveSmsCampaigns=smsCampaigns;_liveRegBundles=regBundles;_liveTrustProfile=trustProfile;_liveCnam=cnam;_liveUsageBill=usageBill; // telephony mirrors → smsComplianceState()/canSendSms()
   const [pipelines,setPipelines]=React.useState(defaultPipelinesSeed); // P1-1: pipelines are SHARED state — config persists across navigation
@@ -25274,7 +25427,8 @@ function App(){
   const [payQuotes,setPayQuotes]=React.useState(paySeedQuotes);
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
   const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
-  const [scoreRules,setScoreRules]=React.useState(SCORE_RULES_SEED); // P3: scorecard rule table
+  const [leadScoringRules,setLeadScoringRules]=React.useState(LEAD_SCORING_DEFAULTS); // backend LeadScoringRules v1 (GET/PUT /api/v1/lead-scoring-rules)
+  const [leadScoringMeta,setLeadScoringMeta]=React.useState({is_default:true,updated_by:null,updated_at:null}); // mirrors LeadScoringRulesResponse
   const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
   const [slaRules,setSlaRules]=React.useState(SLA_RULES_SEED); // P5: SLA/escalation rule table
   const [approvalRules,setApprovalRules]=React.useState(APPROVAL_RULES_SEED); // P6: approval rule table
@@ -25333,7 +25487,7 @@ function App(){
   const crm=React.useMemo(()=>({
     contacts,leads,companies,deals,setContacts,setLeads,setCompanies,setDeals,
     tagDefs,setTagDefs,statusDefs,setStatusDefs,
-    routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,
+    routingRules,setRoutingRules,leadScoringRules,setLeadScoringRules,leadScoringMeta,setLeadScoringMeta,validationRules,setValidationRules,slaRules,setSlaRules,
     payProducts,setPayProducts,payInvoices,setPayInvoices,paySubs,setPaySubs,payLinks,setPayLinks,payQuotes,setPayQuotes,
     customObjects,setCustomObjects,
     rolePerms,setRolePerms, // R9-L3: persisted permission matrix
@@ -25345,7 +25499,7 @@ function App(){
     updateCustomRecord:(objId,recId,patch)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:(o.records||[]).map(r=>r.id===recId?{...r,...patch}:r)}:o)),
     addCustomRecord:(objId,rec)=>setCustomObjects(a=>a.map(o=>o.id===objId?{...o,records:[rec,...(o.records||[])]}:o)),
     updateContact:(id,patch)=>{const _bef=(_liveContacts||[]).find(c=>c.id===id);if(_bef)fireRecordUpdate('contact',_bef,{..._bef,...patch});setContacts(a=>a.map(c=>c.id===id?{...c,...patch}:c));if(patch&&patch.name!=null){const _o=(_liveContacts||[]).find(c=>c.id===id);const oldName=_o&&_o.name;setDeals(a=>a.map(d=>{let nd=d.primaryContactId===id?{...d,primaryContact:patch.name}:d;if(oldName&&Array.isArray(nd.additionalContacts)&&nd.additionalContacts.some(ac=>ac&&ac.contact===oldName))nd={...nd,additionalContacts:nd.additionalContacts.map(ac=>ac&&ac.contact===oldName?{...ac,contact:patch.name}:ac)};return nd;}));}},
-    updateLead:(id,patch)=>{const _bef=(_liveLeads||[]).find(l=>l.id===id);const _after=_bef?{..._bef,...patch}:null;if(_bef)fireRecordUpdate('lead',_bef,_after);let _sc=null;try{if(_after&&patch&&!('score'in patch))_sc=recomputeScore('lead',_after);}catch(e){}setLeads(a=>a.map(l=>l.id===id?{...l,...patch,...(_sc!=null?{score:_sc}:{})}:l));if(_sc!=null&&_bef&&(_bef.score||0)<SCORE_HOT&&_sc>=SCORE_HOT)setTimeout(()=>{try{fireEntityAutomationEvents('lead',{..._after,score:_sc},['Lead score reached']);}catch(e){}},0);}, // P3: recompute score on edit + fire on crossing
+    updateLead:(id,patch)=>{const _bef=(_liveLeads||[]).find(l=>l.id===id);const _after=_bef?{..._bef,...patch}:null;if(_bef)fireRecordUpdate('lead',_bef,_after);let _sc=null;try{if(_after&&patch&&!('score'in patch))_sc=recomputeScore('lead',_after);}catch(e){}setLeads(a=>a.map(l=>l.id===id?{...l,...patch,...(_sc!=null?{score:_sc}:{})}:l));if(_sc!=null&&_bef&&(_bef.score||0)<scoreHotMin()&&_sc>=scoreHotMin())setTimeout(()=>{try{fireEntityAutomationEvents('lead',{..._after,score:_sc},['Lead score reached']);}catch(e){}},0);}, // P3: recompute score on edit + fire on crossing
     updateCompany:(id,patch)=>{const _befC=(_liveCompanies||[]).find(c=>c.id===id);if(_befC)fireRecordUpdate('company',_befC,{..._befC,...patch});setCompanies(a=>{const prev=a.find(c=>c.id===id);const next=a.map(c=>c.id===id?{...c,...patch}:c);if(prev&&patch&&patch.name!=null&&patch.name!==prev.name){const oldName=prev.name,newName=patch.name;setContacts(cs=>cs.map(ct=>((ct.companyId===id)||(ct.companyId==null&&ct.co===oldName))?{...ct,companyId:id,co:newName}:ct));setDeals(ds=>ds.map(d=>((d.companyId===id)||(d.companyId==null&&d.company===oldName))?{...d,companyId:id,company:newName}:d));}return next;});},
     updateDeal:(id,patch)=>setDeals(a=>a.map(d=>d.id===id?{...d,...patch}:d)),
     approvalRules,setApprovalRules,approvals,setApprovals, // P6: approval rules + inbox
@@ -25377,7 +25531,7 @@ function App(){
     pipelines,setPipelines,
     dealReasons,setDealReasons,
     seqEnrollments,setSeqEnrollments,customSeqs,setCustomSeqs,
-  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,scoreRules,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,calAccounts,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op. calAccounts added: the My-calendar page's read-set/destination toggles mutate only it, so it MUST be a dep too.
+  }),[contacts,leads,companies,deals,tagDefs,statusDefs,routingRules,leadScoringRules,leadScoringMeta,validationRules,slaRules,approvalRules,approvals,payProducts,payInvoices,paySubs,payLinks,payQuotes,customObjects,rolePerms,phoneNumbers,smsBrand,smsCampaigns,usageBill,smsUsage,regBundles,trustProfile,cnam,activities,teamInvites,members,suppression,personalConns,calAccounts,automations,autoLogs,pipelines,dealReasons,seqEnrollments,customSeqs]); // members added: setRole/removeMember mutate only members, so it MUST be a dep or the memo returns a stale context and those edits silently no-op. calAccounts added: the My-calendar page's read-set/destination toggles mutate only it, so it MUST be a dep too.
   const [schedEventTypes,setSchedEventTypes]=React.useState(SCHED_DEFAULT_EVENT_TYPES);
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
@@ -25393,7 +25547,7 @@ function App(){
   const [calItems,setCalItems]=React.useState(calSeedEvents);
   const calAddItem=React.useCallback((ev)=>{const id=ev.id||('ev'+Date.now()+Math.floor(Math.random()*1e4));setCalItems(a=>[...a,{...ev,id}]);return id;},[]);
   // P0-1: register the automation runtime hooks (mirrors the _liveDeals pattern) so stage changes can execute automations with real effects
-  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,scoreRules,setScoreRules,validationRules,setValidationRules,slaRules,setSlaRules,approvalRules,setApprovalRules,approvals,setApprovals,autoLogs,setSmsBrand,setSmsCampaigns,setPhoneNumbers,setRegBundles,setTrustProfile,setCnam,usageAccrue,meterSms,
+  _autoRt={automations,setAutomations,setDeals,setContacts,setLeads,setCompanies,setSeqEnrollments,deals,calItems,payInvoices,routingRules,setRoutingRules,leadScoringRules,setLeadScoringRules,validationRules,setValidationRules,slaRules,setSlaRules,approvalRules,setApprovalRules,approvals,setApprovals,autoLogs,setSmsBrand,setSmsCampaigns,setPhoneNumbers,setRegBundles,setTrustProfile,setCnam,usageAccrue,meterSms,
     addAutoLog:(l)=>setAutoLogs(a=>[l,...a]),
     addActivity:(kind,recId,act)=>setActivities(a=>[{...act,at:act.at!=null?act.at:Date.now(),subjectType:kind,subjectId:recId},...a]), // `at` = absolute wall-clock stamp: stable sort key + honest link-later rendering (ts is a frozen relative label)
     addTask:(o)=>calAddItem({title:o.title,type:'task',allDay:true,date:new Date(),priority:'High',company:(o.deal&&o.deal.company)||'',deal:(o.deal&&o.deal.company)?(o.deal.company+' · '+(o.deal.value||'')):null,contact:(o.deal&&o.deal.primaryContact)||null,linkType:(o.deal&&o.deal.primaryContactId!=null)?'contact':null,contactId:(o.deal&&o.deal.primaryContactId!=null)?o.deal.primaryContactId:null,assignee:(o.deal&&o.deal.owner)||'AM',done:false,subtasks:[],notes:'Created by automation "'+o.auto.name+'"',repeat:'Never'})};
