@@ -12013,18 +12013,16 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold text-white shrink-0" style={{background:contact.color||'#6366f1'}}>{ini}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white truncate">{contact.name}</p><p className="text-[11px] text-white/50 truncate">{contact.phone||'No number'}</p></div></div>
       <button onClick={onClose} className="text-white/40 hover:text-white shrink-0 transition-colors"><I.X size={15}/></button>
     </div>
-    {voiceFrom&&(_voxNums.length>1?(
-      <div className="-mt-2 mb-2.5 flex items-center gap-1.5">
-        <I.Phone size={10} className="text-white/50 shrink-0"/><span className="text-[10.5px] text-white/50 shrink-0">Calling from</span>
-        <div className="relative min-w-0">
-          <select value={voiceFrom} onChange={e=>setVoiceFrom(e.target.value)} title="Call from this number" className="pl-1.5 pr-5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/70 outline-none appearance-none cursor-pointer max-w-full" style={{colorScheme:'dark',background:'var(--s850)'}}>
-            {_voxNums.map(n=>(<option key={n.id} value={n.number}>{n.number}</option>))}
-          </select>
-          <I.ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/>
-        </div>
-      </div>
-    ):(<p className="text-[10.5px] text-white/50 -mt-2 mb-2.5 flex items-center gap-1.5"><I.Phone size={10} className="shrink-0"/>Calling from {voiceFrom} · workspace line</p>))}
     {mode==='dial'&&<React.Fragment>
+      {_voxNums.length>0&&<div className="mb-3">
+        <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em] mb-1.5">Calling from</p>
+        <div className="relative">
+          <select value={voiceFrom} onChange={e=>setVoiceFrom(e.target.value)} title="Call from this number" className="w-full pl-3 pr-8 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[12.5px] font-mono text-white/80 outline-none appearance-none cursor-pointer focus:border-brand-500/40 transition-all" style={{colorScheme:'dark',background:'var(--s850)'}}>
+            {_voxNums.map(n=>(<option key={n.id} value={n.number}>{n.number}{n.label?(' · '+n.label):''}</option>))}
+          </select>
+          <I.ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"/>
+        </div>
+      </div>}
       {numbers.length>1&&<div className="flex flex-col gap-1.5 mb-3">
         <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em]">Call which number</p>
         {numbers.map((n,i)=>{const sel=dialTarget===n;return(
@@ -12039,7 +12037,7 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
     {mode==='active'&&<div className="flex flex-col items-center gap-3 py-2">
       <div className="w-14 h-14 rounded-full flex items-center justify-center text-[16px] font-semibold text-white ring-4 ring-brand-500/40" style={{background:contact.color||'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{ini}</div>
       <p className="text-emerald-400 text-[12px]">Connected</p>
-      <p className="text-[11px] text-white/45 -mt-2">{dialTarget}{adHoc?' · not this contact’s number on file':''}</p>
+      <p className="text-[11px] text-white/45 -mt-2">{dialTarget}{voiceFrom?(' · from '+voiceFrom):''}</p>
       <p className="font-mono text-[26px] font-semibold text-white tabular-nums">{fmtDur(seconds)}</p>
       <div className="flex items-center gap-3">
         <button onClick={()=>setMute(m=>!m)} title="Mute" className={['w-11 h-11 rounded-full flex items-center justify-center text-white transition-all',mute?'bg-white/20 ring-1 ring-white/30':'bg-white/[0.08] hover:bg-white/[0.13]'].join(' ')}>{mute?<I.MicOff size={17}/>:<I.Mic size={17}/>}</button>
