@@ -25537,7 +25537,6 @@ function App(){
   _liveContacts=contacts; // Wave 3: mirror live contacts so contactsForCompany() reads live state (parallels _liveDeals)
   _liveCompanies=companies; // mirror live companies so buildConvertRecords() can reuse an existing company instead of minting a duplicate
   _liveLeads=leads; // mirror live leads so calLinkIds() can resolve calendar task/event links to lead ids
-  _liveScoring=leadScoringRules; // mirror the rule set so recomputeScore()/leadScoreBucket() read live cutoffs
   _livePerms=rolePerms; // R9-L3: mirror the persisted permission matrix so rolePermsOf/effCanObject/effCanCustom read live edits
   _livePhoneNumbers=phoneNumbers;_liveSmsBrand=smsBrand;_liveSmsCampaigns=smsCampaigns;_liveRegBundles=regBundles;_liveTrustProfile=trustProfile;_liveCnam=cnam;_liveUsageBill=usageBill; // telephony mirrors → smsComplianceState()/canSendSms()
   const [pipelines,setPipelines]=React.useState(defaultPipelinesSeed); // P1-1: pipelines are SHARED state — config persists across navigation
@@ -25567,6 +25566,10 @@ function App(){
   const [customObjects,setCustomObjects]=React.useState(coSeedObjects);
   const [routingRules,setRoutingRules]=React.useState(ASSIGN_RULES_SEED); // P2: assignment/routing rule table
   const [leadScoringRules,setLeadScoringRules]=React.useState(LEAD_SCORING_DEFAULTS); // backend LeadScoringRules v1 (GET/PUT /api/v1/lead-scoring-rules)
+  // Mirror the rule set for the module-level engine. This MUST sit after the useState above: Babel's env
+  // preset rewrites const->var (hoisted, no TDZ), so reading it earlier silently mirrors `undefined` and the
+  // engine falls back to defaults forever instead of throwing.
+  _liveScoring=leadScoringRules;
   const [leadScoringMeta,setLeadScoringMeta]=React.useState({is_default:true,updated_by:null,updated_at:null}); // mirrors LeadScoringRulesResponse
   const [validationRules,setValidationRules]=React.useState(VALIDATION_RULES_SEED); // P4: validation rule table
   const [slaRules,setSlaRules]=React.useState(SLA_RULES_SEED); // P5: SLA/escalation rule table
