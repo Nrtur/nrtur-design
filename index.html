@@ -11736,7 +11736,7 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
   const applyEnrichment=(d)=>{ if(!d)return; if(d.status){setTimeout(()=>onToast&&onToast('Status noted: '+d.status,'success'),400);} if(d.decision&&d.decision!=='None'){setTimeout(()=>onToast&&onToast(decisionToast(d.decision),'success'),700);} };
   const openDialer=()=>{ setDialContact(null); setDigits(''); setContactQuery(''); setDetail(null); setView('dialer'); };
   React.useEffect(()=>{ if(apiRef){apiRef.current={openDialer};} return()=>{ if(apiRef)apiRef.current=null; }; },[apiRef]);
-  React.useEffect(()=>{ if(preload){ setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setDetail(null); setView('dialer'); setDigits(''); } },[preload]);
+  React.useEffect(()=>{ if(preload){ if(preload.callId!=null){ const c=CALLS_DATA.find(x=>x.id===preload.callId); if(c)openDetail(c); return; } setDialContact({name:preload.name,phone:preload.phone,avatar:preload.avatar,color:preload.color}); setDetail(null); setView('dialer'); setDigits(''); } },[preload]);
   React.useEffect(()=>{ if(view==='active'&&!hold){ timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000); return ()=>clearInterval(timerRef.current); } },[view,hold]);
   const PROV=[{k:'builtin',l:'Built-in',connected:true},{k:'twilio',l:'Twilio',connected:!!conns.twilio},{k:'googlevoice',l:'Google Voice',connected:!!conns.googlevoice}];
   const fmtTimer=(s)=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -12169,15 +12169,13 @@ function InboxPage({goTo,nav}){
   const disconnectAll=()=>{ma.accounts.forEach(a=>ma.disconnect(a.addr));};
   const inboxConnect=(<ConnectEmptyState Icon={I.Inbox} accent="#6366f1" eyebrow="Inbox" title="Sync your inbox" desc="Connect Gmail or Outlook to send, receive, and track email right inside nrtur — every message auto-logs to the right contact and deal, and your replies sync back instantly." providers={[{name:'Connect Gmail',c:'#ea4335',Icon:I.Mail,onClick:()=>connectMailbox('gmail')},{name:'Connect Outlook',c:'#0078d4',Icon:I.Mail,onClick:()=>connectMailbox('outlook')}]} benefits={[{Icon:I.History,l:'Live two-way sync'},{Icon:I.UserPlus,l:'Auto-log to contacts'},{Icon:I.Layers,l:'Templates & sequences'}]} footnote="Manage connected mailboxes in Settings → Connections."/>);
   const TABS=[{k:'all',l:'All',Icon:I.Inbox},{k:'email',l:'Email',Icon:I.Mail},{k:'sms',l:'Messages',Icon:I.Hash},{k:'push',l:'Push',Icon:I.Bell},{k:'inapp',l:'In-app',Icon:I.MessageSquare},{k:'calls',l:'Calls',Icon:I.Phone}];
+  // LIVE unified list — derived from the three real stores; clicking an item opens THAT item in its channel.
+  const _allRank=(s)=>{s=String(s||'');if(/just now/i.test(s))return 0;let m=/(\d+)\s*m(?:in)?s?\s*ago/i.exec(s);if(m)return +m[1];m=/(\d+)\s*h(?:ours?)?\s*ago/i.exec(s);if(m)return +m[1]*60;if(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}/i.test(s)&&!/today/i.test(s))return 7*24*60;const tm=/(\d+):(\d+)\s*(AM|PM)/i.exec(s);const mins=tm?((((+tm[1])%12)+(/pm/i.test(tm[3])?12:0))*60+(+tm[2])):null;if(/yesterday/i.test(s))return 24*60+(mins!=null?(24*60-mins):0);if(mins!=null)return Math.max(1,24*60-mins);return 7*24*60;};
   const ALL_ITEMS=[
-    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'Sarah Chen',snip:'Re: Proposal for Q3 engagement',time:'11:42 AM',unread:true,tab:'email'},
-    {ch:'sms',Icon:I.Hash,cc:'#34d399',name:'Sarah Chen',snip:'Can we confirm Thursday 2pm PT?',time:'1:02 PM',unread:true,tab:'sms'},
-    {ch:'call',Icon:I.Phone,cc:'#f87171',name:'Marcus Rios',snip:'Missed call',time:'11:20 AM',unread:false,tab:'calls'},
-    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'James Rivera',snip:'Summit Digital contract renewal',time:'9:12 AM',unread:true,tab:'email'},
-    {ch:'sms',Icon:I.Hash,cc:'#34d399',name:'James Rivera',snip:'Signed contract attached',time:'2h ago',unread:false,tab:'sms'},
-    {ch:'call',Icon:I.Phone,cc:'#f87171',name:'Sarah Chen',snip:'Missed call · voicemail',time:'2:14 PM',unread:false,tab:'calls'},
-    {ch:'email',Icon:I.Mail,cc:'#818cf8',name:'Marcus Rodriguez',snip:'Pivot Studio — proposal v2',time:'8:04 AM',unread:false,tab:'email'},
-  ];
+    ...emails.filter(e=>emailInFolder(e,'inbox')).map(e=>({key:'em'+e.id,ch:'email',Icon:I.Mail,cc:'#818cf8',name:e.from,snip:e.subject,time:e.time,unread:!!e.unread,rank:_allRank(e.time),open:()=>{setFolder('inbox');setSelectedId(e.id);setEmails(es=>es.map(x=>x.id===e.id?{...x,unread:false}:x));setTab('email');}})),
+    ...smsConvos.map(c=>({key:'sm'+c.id,ch:'sms',Icon:I.Hash,cc:'#34d399',name:c.contact,snip:c.preview,time:c.time,unread:!!c.unread,rank:_allRank(c.time),open:()=>{setSmsSel(c);if(c.unread)setSmsConvos(cs=>cs.map(x=>x.id===c.id?{...x,unread:false}:x));setTab('sms');}})),
+    ...CALLS_DATA.map(cl=>({key:'cl'+cl.id,ch:'call',Icon:I.Phone,cc:'#f87171',name:cl.contact,snip:((cl.direction==='in'?(cl.duration==='0:00'?'Missed call':'Inbound call'):'Outbound call')+(cl.outcome?(' · '+cl.outcome):'')),time:cl.date,unread:false,rank:_allRank(cl.date),open:()=>{setCallPreload({callId:cl.id,_t:Date.now()});setTab('calls');}}))
+  ].sort((a,b)=>a.rank-b.rank).slice(0,30);
   return(
     <div className="h-full flex" style={{background:'var(--s950)'}}>
       <AppSidebar active="inbox" goTo={goTo}/>
@@ -12242,7 +12240,7 @@ function InboxPage({goTo,nav}){
         </div>)}
         {tab==='calls'&&<CallsWorkspace goTo={goTo} onToast={(m,t)=>{showToast(m);if(window.__nrturToast)window.__nrturToast(m,t||'success');}} preload={callPreload} apiRef={callsApi}/>}
         {tab==='all'&&(mailSynced?(<div className="flex-1 overflow-y-auto scroll-area">
-          {ALL_ITEMS.map((it,i)=>(<button key={i} onClick={()=>setTab(it.tab)} className={['w-full flex items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors text-left',i<ALL_ITEMS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
+          {ALL_ITEMS.map((it,i)=>(<button key={it.key} onClick={()=>it.open()} className={['w-full flex items-center gap-4 px-7 py-3.5 hover:bg-white/[0.025] transition-colors text-left',i<ALL_ITEMS.length-1?'border-b border-white/[0.03]':''].join(' ')}>
             <div className="relative shrink-0"><div className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.08] flex items-center justify-center" style={{color:it.cc}}><it.Icon size={14}/></div>{it.unread&&<span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-brand-400 ring-2 ring-[#09091a]"/>}</div>
             <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className={['text-[13px] truncate',it.unread?'font-semibold text-white':'font-medium text-white/80'].join(' ')}>{it.name}</p><span className="text-[9px] font-medium uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full" style={{background:it.cc+'22',color:it.cc}}>{it.ch}</span></div><p className="text-[12px] text-white/50 truncate mt-0.5">{it.snip}</p></div>
             <span className="text-[11px] text-white/50 shrink-0">{it.time}</span>
