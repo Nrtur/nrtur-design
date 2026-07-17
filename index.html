@@ -227,6 +227,15 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 .app-shell [style*="rgba(99, 102, 241, 0.15) 0px 0px 18px"]{box-shadow:none!important}
 .app-shell [style*="rgba(99, 102, 241, 0.5) 0px 0px 12px"]{box-shadow:none!important}
 </style>
+<style id="nrtur-elevation">
+/* Elevation Stage 1 (dark): respace the white-alpha ladder into semantic tiers - surface .03 / control .06 / ghost-hover .07 / active .12 / filled-hover .10. Light blocks override these classes with !important and keep winning. */
+.app-shell .bg-white\/\[0\.015\],body>div:not(#root) .bg-white\/\[0\.015\],.app-shell .bg-white\/\[0\.018\],body>div:not(#root) .bg-white\/\[0\.018\],.app-shell .bg-white\/\[0\.02\],body>div:not(#root) .bg-white\/\[0\.02\],.app-shell .bg-white\/\[0\.025\],body>div:not(#root) .bg-white\/\[0\.025\],.app-shell .bg-white\/\[0\.035\],body>div:not(#root) .bg-white\/\[0\.035\]{background-color:rgba(255,255,255,0.03)}
+.app-shell .bg-white\/\[0\.04\],body>div:not(#root) .bg-white\/\[0\.04\],.app-shell .bg-white\/\[0\.045\],body>div:not(#root) .bg-white\/\[0\.045\],.app-shell .bg-white\/\[0\.05\],body>div:not(#root) .bg-white\/\[0\.05\]{background-color:rgba(255,255,255,0.06)}
+.app-shell .bg-white\/\[0\.07\],body>div:not(#root) .bg-white\/\[0\.07\]{background-color:rgba(255,255,255,0.08)}
+.app-shell .bg-white\/\[0\.08\],body>div:not(#root) .bg-white\/\[0\.08\]{background-color:rgba(255,255,255,0.12)}
+.app-shell .hover\:bg-white\/\[0\.025\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.025\]:hover,.app-shell .hover\:bg-white\/\[0\.03\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.03\]:hover,.app-shell .hover\:bg-white\/\[0\.04\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.04\]:hover,.app-shell .hover\:bg-white\/\[0\.05\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.05\]:hover,.app-shell .hover\:bg-white\/\[0\.06\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.06\]:hover{background-color:rgba(255,255,255,0.07)}
+.app-shell .hover\:bg-white\/\[0\.07\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.07\]:hover,.app-shell .hover\:bg-white\/\[0\.08\]:hover,body>div:not(#root) .hover\:bg-white\/\[0\.08\]:hover{background-color:rgba(255,255,255,0.10)}
+</style>
 <style id="nrtur-light">
 [data-theme="light"] .app-shell .bg-white\/\[0\.01\]{background-color:#ffffff !important}
 [data-theme="light"] .app-shell .bg-white\/\[0\.015\]{background-color:#ffffff !important}
@@ -3619,7 +3628,7 @@ function SignUpPage({goTo}){
             <div className="w-8 h-8 rounded-lg overflow-hidden shadow-brand shrink-0"><NrturMark size={32}/></div>
             <span className="brand-wordmark text-white text-[20px]">nrtur</span>
           </button>
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 text-[11px] font-medium ring-1 ring-brand-500/25 mb-4"><span className="w-1.5 h-1.5 rounded-full bg-brand-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/>Trusted by 1,200+ teams</span>
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 text-[11px] font-medium ring-1 ring-brand-500/25 mb-4"><span className="w-1.5 h-1.5 rounded-full bg-brand-400"/>Trusted by 1,200+ teams</span>
           <h2 className="text-white text-[24px] xl:text-[30px] font-bold leading-tight tracking-tight mb-3">The CRM small teams actually want.</h2>
           <p className="text-white/55 text-[13px] xl:text-[14px] leading-relaxed max-w-md">Everything you need to manage contacts, close deals, and automate follow-ups - without the complexity.</p>
           <div className="grid grid-cols-3 gap-3 mt-6">
@@ -4071,7 +4080,7 @@ function OnboardingPage({step,goTo}){
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,42%)]">
               <div className="p-6 sm:p-9">
                 <div className="max-w-[440px]">
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 mb-5"><span className="w-1.5 h-1.5 rounded-full bg-brand-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] font-medium text-brand-300 uppercase tracking-[0.14em]">Step {step} · {meta.eyebrow}</span></span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 mb-5"><span className="w-1.5 h-1.5 rounded-full bg-brand-400"/><span className="text-[11px] font-medium text-brand-300 uppercase tracking-[0.14em]">Step {step} · {meta.eyebrow}</span></span>
                   <h1 className="text-[32px] sm:text-[36px] font-bold tracking-tight leading-[1.1] text-white">{meta.title[0]}<br/>{meta.title[1]}</h1>
                   <p className="mt-3 text-[14px] text-white/50 leading-relaxed">{meta.desc}</p>
                   <div className="mt-8">
@@ -4118,7 +4127,7 @@ function OnboardingPage({step,goTo}){
                       <div className="flex items-center justify-center gap-2 mb-2"><I.Sparkles size={14} stroke={2.2} className="text-brand-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] font-medium uppercase tracking-[0.14em] text-brand-300">Configuring</span></div>
                       <p className="text-[14px] font-medium text-white leading-tight">Your workspace is being set up…</p>
                       <p className="text-[12px] text-white/50 mt-1.5 leading-relaxed">We’ll tailor it as you complete each step.</p>
-                      <div className="mt-4 flex flex-col gap-2 text-left">{['Workspace details','Default pipeline','Integrations','Import contacts','Team invites'].map((row,i)=>{const idx=i+1,done=idx<step,now=idx===step;return(<div key={i} className="flex items-center gap-2 text-[11px]">{done?<span className="w-3.5 h-3.5 rounded-full bg-brand-500/25 text-brand-300 flex items-center justify-center"><I.Check size={9} stroke={3}/></span>:now?<span className="w-2 h-2 rounded-full bg-brand-400 ml-[3px] mr-[3px]" style={{animation:'glowPulse 3s ease-in-out infinite'}}/>:<span className="w-2 h-2 rounded-full bg-white/15 ml-[3px] mr-[3px]"/>}<span className={done?'text-white/70':now?'text-white/85 font-medium':'text-white/50'}>{row}</span></div>);})}</div>
+                      <div className="mt-4 flex flex-col gap-2 text-left">{['Workspace details','Default pipeline','Integrations','Import contacts','Team invites'].map((row,i)=>{const idx=i+1,done=idx<step,now=idx===step;return(<div key={i} className="flex items-center gap-2 text-[11px]">{done?<span className="w-3.5 h-3.5 rounded-full bg-brand-500/25 text-brand-300 flex items-center justify-center"><I.Check size={9} stroke={3}/></span>:now?<span className="w-2 h-2 rounded-full bg-brand-400 ml-[3px] mr-[3px]"/>:<span className="w-2 h-2 rounded-full bg-white/15 ml-[3px] mr-[3px]"/>}<span className={done?'text-white/70':now?'text-white/85 font-medium':'text-white/50'}>{row}</span></div>);})}</div>
                     </div>
                   </div>
                 </div>
@@ -9231,10 +9240,10 @@ function PipelinePage({goTo,nav}){
   const _lostCountable=_lostBd.filter(d=>lostReasonCountsForRate(d.outcome&&d.outcome.reason)).length; // junk losses (excluded reasons) don't drag win rate
   const _winRate=(_wonBd.length+_lostCountable)?Math.round(_wonBd.length*100/(_wonBd.length+_lostCountable)):null;
   const METRICS=[
-    {label:'Pipeline',value:fmtK(_openVal),delta:_openBd.length+' open',up:null,Icon:I.GitBranch,colors:'bg-brand-500/10 border-brand-500/20 text-brand-300'},
+    {label:'Pipeline',value:fmtK(_openVal),delta:_openBd.length+' open',up:null,Icon:I.GitBranch,colors:'bg-white/[0.05] border-white/[0.08] text-white/60'},
     {label:'Won',value:fmtK(_wonVal),delta:_wonBd.length+' won',up:true,Icon:I.TrendUp,colors:'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'},
-    {label:'Avg deal',value:_openBd.length?fmtK(_openVal/_openBd.length):'—',delta:'open avg',up:null,Icon:I.BarChart,colors:'bg-violet-500/10 border-violet-500/20 text-violet-300'},
-    {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostCountable+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:'bg-amber-500/10 border-amber-500/20 text-amber-300'},
+    {label:'Avg deal',value:_openBd.length?fmtK(_openVal/_openBd.length):'—',delta:'open avg',up:null,Icon:I.BarChart,colors:'bg-white/[0.05] border-white/[0.08] text-white/60'},
+    {label:'Win rate',value:_winRate==null?'—':_winRate+'%',delta:_wonBd.length+'W · '+_lostCountable+'L',up:_winRate==null?null:_winRate>=50,Icon:I.Target,colors:_winRate!=null&&_winRate<50?'bg-red-500/10 border-red-500/20 text-red-300':'bg-white/[0.05] border-white/[0.08] text-white/60'},
   ];
   // Stage rollups shared by the List + Forecast views and the topbar weighted total.
   const fc_stageRows=active.stages.map(s=>{const sd=dealsFor(s);const val=sd.reduce((a,d)=>a+parseMoney(d.value),0);return{stage:s,deals:sd,val,weighted:val*((s.prob||0)/100)};});
@@ -12247,7 +12256,7 @@ function InboxPage({goTo,nav}){
           </button>))}
         </div>):inboxConnect)}
         <div className="app-footer shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{background:'var(--s950)'}}>
-          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] text-white/40">{(()=>{const _dn=((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).find(n=>n.isDefault)||( _livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms)[0]);const _lbl=_dn?_dn.number:'no number';return tab==='sms'?('Sending as '+(smsFrom||_lbl)+' · SMS & MMS'):tab==='calls'?'7 missed · 2 voicemails':mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
+          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/><span className="text-[11px] text-white/40">{(()=>{const _dn=((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).find(n=>n.isDefault)||( _livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms)[0]);const _lbl=_dn?_dn.number:'no number';return tab==='sms'?('Sending as '+(smsFrom||_lbl)+' · SMS & MMS'):tab==='calls'?'7 missed · 2 voicemails':mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
           <div className="flex items-center gap-3"><span className="text-[11px] text-white/50">Unified inbox · Email · Messages · Calls</span></div>
         </div>
       </div>
