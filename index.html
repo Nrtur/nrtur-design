@@ -5467,6 +5467,20 @@ function smsComplianceState(){
   }
   return{ok:false,code:'tollfree',reason:'Toll-free number unverified — SMS to US/CA is blocked until verification passes'};
 }
+// Format a logged-call timestamp the way the seed already speaks: Today / Yesterday / 'May 29, 3:00 PM'.
+// isToday() matches /^today/i and the Inbox ranker parses these, so a raw ISO string here would silently
+// break both.
+function callDateLabel(when){
+  const d=when?new Date(when):new Date();
+  if(isNaN(d.getTime()))return 'Today '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  const t=d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  const now=new Date();
+  const sameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  if(sameDay(d,now))return 'Today '+t;
+  const y=new Date(now.getTime()-86400000);
+  if(sameDay(d,y))return 'Yesterday '+t;
+  return d.toLocaleDateString([],{month:'short',day:'numeric'})+', '+t;
+}
 // Build a calls-store row from a contact record + a LogCallModal payload. Logging from a record
 // timeline has to land in the same store the Calls page reads, or the call exists on the contact
 // and nowhere else while the UI still says "Call logged".
@@ -5478,8 +5492,9 @@ function callRowFrom(rec,cd){
     avatar:rec.avatar||((rec.name||'?').slice(0,2).toUpperCase()),color:rec.color||'#64748b',
     direction:cd.direction==='in'?'in':'out',duration:cd.duration||'', // blank = unknown, NOT '0:00' (that sentinel means never-connected and drives isMissed)
     reason:cd.reason||null,rec:false, // we don't record calls in this prototype: say so rather than derive it
-    number:cd.number||rec.phone||'',from:_ob?_ob.number:null,
-    date:'Today '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),
+    // cd.from first: the dialer may offer a picker, and a picked line must beat the default waterfall.
+    number:cd.number||rec.phone||'',from:cd.from||(_ob?_ob.number:null),
+    date:callDateLabel(cd.when), // a hand-logged call already happened: honour the time the rep gave us
     outcome:cd.outcome||null,notes:cd.notes||'',owner:(typeof CURRENT_USER_CODE!=='undefined'?CURRENT_USER_CODE:'AM')};
 }
 // Voice gate — the call analog of canSendSms. Contact detail already blocks calling a DNC/suppressed
@@ -8515,12 +8530,12 @@ function ContactDetailPage({goTo,nav}){
   const {confirmNode,openConfirm}=useConfirm();
   const doDelete=()=>openConfirm({title:`Delete ${c.name}?`,body:`This moves ${c.name} to the Recycle Bin. You can restore it within 30 days.`,confirmLabel:'Delete contact',danger:true,requireText:c.name,onConfirm:()=>{crm.setContacts(a=>a.map(x=>x.id===c.id?{...x,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'}:x));window.__nrturToast&&window.__nrturToast(`${c.name} moved to Recycle Bin`,'success');goTo('contacts');}});
   const onLogCall=(cd)=>{crm.setCalls&&crm.setCalls(a=>[callRowFrom(c,cd),...a]); setExtra(x=>[{...mkAct('call',{ts:0,by:'AM',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),payload:liveCallPayload(c.name,{dir:cd.direction==='in'?'in':'out',outcome:cd.outcome,reason:cd.reason,notes:cd.notes,recLen:cd.duration})}),..._commDeal()},...x]);setTimeout(()=>{try{fireEntityAutomationEvents('contact',c,['Call logged']);}catch(e){}},0);};
-  const onPopoverCall=(data,seconds,dialled)=>{
+  const onPopoverCall=(data,seconds,dialled,fromLine)=>{
     const dur=fmtDur(seconds||0);
     // Same store as onLogCall above. Missed in Wave H: this path toasted "Call logged" and wrote only the
     // timeline, so a call placed from the dialer never reached Inbox > Calls or any call metric, while the
     // "Log manually" button two lines away did.
-    crm.setCalls&&crm.setCalls(a=>[callRowFrom(c,{direction:'out',duration:dur,outcome:(data&&data.outcome)||null,notes:(data&&data.notes)||'',reason:data&&data.reason,number:dialled}),...a]);
+    crm.setCalls&&crm.setCalls(a=>[callRowFrom(c,{direction:'out',duration:dur,outcome:(data&&data.outcome)||null,notes:(data&&data.notes)||'',reason:data&&data.reason,number:dialled,from:fromLine}),...a]);
     setExtra(x=>[{...mkAct('call',{ts:0,by:'AM',title:'Outbound call'+(data&&data.outcome?' — '+data.outcome:''),body:(data&&data.notes)||('Duration '+dur),payload:liveCallPayload(c.name,{dir:'out',outcome:data&&data.outcome,reason:data&&data.reason,notes:data&&data.notes,recLen:dur,decision:data&&data.decision})}),..._commDeal()},...x]);
     setTimeout(()=>{try{fireEntityAutomationEvents('contact',c,['Call logged']);}catch(e){}},0);
     setDialerOpen(false);
@@ -8624,7 +8639,7 @@ function ContactDetailPage({goTo,nav}){
                 {effCanObject('Contacts','edit')&&<button onClick={()=>setCallModal(true)} className="block mx-auto mt-2 text-[11px] text-white/50 hover:text-white/60 transition-colors">Log manually</button>}
               </div>
               </div>
-              {dialerOpen&&!callBlockedFor(c)&&<ContactDialerPopover contact={{id:c.id,name:c.name,phone:c.phone,avatar:c.avatar,color:c.color,dnc:c.dnc}} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
+              {dialerOpen&&!callBlockedFor(c)&&<ContactDialerPopover contact={{id:c.id,name:c.name,phone:c.phone,phones:c.phones,avatar:c.avatar,color:c.color,dnc:c.dnc}} onClose={()=>setDialerOpen(false)} onLogged={onPopoverCall}/>}
               </div>
               <RecordProperties record={crec} primary={_ctLay.primary} secondary={_ctLay.secondary} onChange={onFieldChange} goTo={goTo} readOnly={!effCanObject('Contacts','edit')}/>
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] px-5 py-4">
@@ -11980,13 +11995,17 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
   const [mute,setMute]=React.useState(false);
   const timerRef=React.useRef(null);
   React.useEffect(()=>{if(mode==='active'){timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000);return()=>clearInterval(timerRef.current);}},[mode]);
-  const PAD=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
   const ini=contact.avatar||((contact.name||'?').slice(0,2).toUpperCase());
-  // We already know this person's number, so the keypad answers a question the screen has answered. Open it
-  // only when there is nothing to dial, or when the rep explicitly asks for a different number.
-  const [padOpen,setPadOpen]=React.useState(!contact.phone);
-  const dialTarget=padOpen?digits:(contact.phone||'');
-  const adHoc=padOpen&&!!digits;
+  // No keypad on a record. The number is already known here, so calling is a CHOICE among this person's
+  // numbers - never re-typing one the CRM already holds. (Checked against Salesforce/HubSpot/Pipedrive/Zoho/
+  // GHL: none of the five puts a dialpad on a contact record; free-dial lives in a global dialer, which for
+  // us is Inbox > Calls.) The only keypad that belongs on a record is the in-call DTMF pad for IVR menus.
+  const numbers=[contact.phone,...(Array.isArray(contact.phones)?contact.phones:[])].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+  const [dialTarget,setDialTarget]=React.useState(numbers[0]||'');
+  // Which line we call FROM. A control only when there is a real choice - Aircall states the rule outright:
+  // the picker appears only if you are assigned to more than one number. One number = a plain label.
+  const _voxNums=((typeof _livePhoneNumbers!=='undefined'&&_livePhoneNumbers)||[]).filter(n=>n&&!n.released&&n.status==='active'&&n.caps&&n.caps.voice);
+  const [voiceFrom,setVoiceFrom]=React.useState(()=>{const _o=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'voice'):null;return _o?_o.number:((_voxNums[0]||{}).number||'');});
   const start=()=>{if(!dialTarget)return;setSeconds(0);setMute(false);setMode('active');};
   const end=()=>{clearInterval(timerRef.current);setMode('enrich');};
   return(<div onClick={e=>e.stopPropagation()} className="absolute z-[120] left-1/2 -translate-x-1/2 top-[calc(100%+8px)] w-[300px] rounded-2xl border border-white/[0.10] p-4 max-h-[440px] overflow-y-auto scroll-area" style={{background:'var(--pop2)',backdropFilter:'blur(12px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
@@ -11994,19 +12013,28 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
       <div className="flex items-center gap-2.5 min-w-0"><div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold text-white shrink-0" style={{background:contact.color||'#6366f1'}}>{ini}</div><div className="min-w-0"><p className="text-[13px] font-semibold text-white truncate">{contact.name}</p><p className="text-[11px] text-white/50 truncate">{contact.phone||'No number'}</p></div></div>
       <button onClick={onClose} className="text-white/40 hover:text-white shrink-0 transition-colors"><I.X size={15}/></button>
     </div>
-    {(()=>{const _on=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'voice'):null;return _on?(<p className="text-[10.5px] text-white/50 -mt-2 mb-2.5 flex items-center gap-1.5"><I.Phone size={10} className="shrink-0"/>Calling from {_on.number}{_on.assignedTo?'':' · workspace line'}</p>):null;})()}
+    {voiceFrom&&(_voxNums.length>1?(
+      <div className="-mt-2 mb-2.5 flex items-center gap-1.5">
+        <I.Phone size={10} className="text-white/50 shrink-0"/><span className="text-[10.5px] text-white/50 shrink-0">Calling from</span>
+        <div className="relative min-w-0">
+          <select value={voiceFrom} onChange={e=>setVoiceFrom(e.target.value)} title="Call from this number" className="pl-1.5 pr-5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[10.5px] font-mono text-white/70 outline-none appearance-none cursor-pointer max-w-full" style={{colorScheme:'dark',background:'var(--s850)'}}>
+            {_voxNums.map(n=>(<option key={n.id} value={n.number}>{n.number}</option>))}
+          </select>
+          <I.ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"/>
+        </div>
+      </div>
+    ):(<p className="text-[10.5px] text-white/50 -mt-2 mb-2.5 flex items-center gap-1.5"><I.Phone size={10} className="shrink-0"/>Calling from {voiceFrom} · workspace line</p>))}
     {mode==='dial'&&<React.Fragment>
-      {padOpen&&<React.Fragment>
-        <div className="flex items-center gap-1.5 mb-2.5 bg-white/[0.04] border border-white/[0.10] rounded-xl px-3 h-11">
-          <input readOnly value={digits} placeholder="Enter a number" className="flex-1 min-w-0 bg-transparent outline-none text-[17px] font-mono text-white tracking-wider placeholder:text-white/25 placeholder:text-[12px] placeholder:tracking-normal"/>
-          {digits&&<button onClick={()=>setDigits(x=>x.slice(0,-1))} title="Backspace" className="shrink-0 text-white/40 hover:text-white transition-colors"><I.X size={13}/></button>}
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-3.5">
-          {PAD.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[17px] font-medium transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[8px] text-white/30 mt-0.5 tracking-wider">{sub}</span>}</button>))}
-        </div>
-      </React.Fragment>}
-      <button onClick={start} disabled={!dialTarget} className={['w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold transition-all',dialTarget?'text-white bg-emerald-500 hover:bg-emerald-400':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')} style={dialTarget?{boxShadow:'0 0 24px rgba(16,185,129,0.35)'}:undefined}><I.Phone size={15}/>{padOpen?(digits?('Call '+digits):'Enter a number'):('Call '+((contact.name||'').split(' ')[0]||'contact'))}</button>
-      {contact.phone&&<button onClick={()=>{setPadOpen(o=>!o);setDigits('');}} className="w-full mt-2 text-[11px] text-white/45 hover:text-white/70 transition-colors">{padOpen?('Call '+contact.phone+' instead'):'Dial a different number'}</button>}
+      {numbers.length>1&&<div className="flex flex-col gap-1.5 mb-3">
+        <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.12em]">Call which number</p>
+        {numbers.map((n,i)=>{const sel=dialTarget===n;return(
+          <button key={n} onClick={()=>setDialTarget(n)} className={['w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-all',sel?'bg-brand-500/[0.10] border-brand-500/40':'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06]'].join(' ')}>
+            <span className="text-[12.5px] font-mono text-white truncate">{n}</span>
+            <span className="text-[10px] text-white/40 shrink-0">{i===0?'Primary':'Additional'}</span>
+          </button>);})}
+      </div>}
+      {numbers.length===0&&<p className="text-[11.5px] text-amber-300/90 mb-3 flex items-start gap-1.5"><I.Ban size={11} className="mt-0.5 shrink-0"/>No number on this record. Add one to call, or use the dialer in Inbox &rsaquo; Calls for a one-off number.</p>}
+      <button onClick={start} disabled={!dialTarget} className={['w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold transition-all',dialTarget?'text-white bg-emerald-500 hover:bg-emerald-400':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')} style={dialTarget?{boxShadow:'0 0 24px rgba(16,185,129,0.35)'}:undefined}><I.Phone size={15}/>{dialTarget?('Call '+((contact.name||'').split(' ')[0]||'contact')):'No number to call'}</button>
     </React.Fragment>}
     {mode==='active'&&<div className="flex flex-col items-center gap-3 py-2">
       <div className="w-14 h-14 rounded-full flex items-center justify-center text-[16px] font-semibold text-white ring-4 ring-brand-500/40" style={{background:contact.color||'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{ini}</div>
@@ -12018,7 +12046,7 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
         <button onClick={end} title="End call" className="w-11 h-11 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-all" style={{boxShadow:'0 0 20px rgba(239,68,68,0.4)'}}><I.PhoneOff size={17}/></button>
       </div>
     </div>}
-    {mode==='enrich'&&<CallEnrichmentForm compact duration={fmtDur(seconds)} statusOptions={statusOptions} currentStatus={currentStatus} onSave={(d)=>onLogged(d,seconds,dialTarget)} onSkip={()=>onLogged(null,seconds,dialTarget)}/>}
+    {mode==='enrich'&&<CallEnrichmentForm compact duration={fmtDur(seconds)} statusOptions={statusOptions} currentStatus={currentStatus} onSave={(d)=>onLogged(d,seconds,dialTarget,voiceFrom)} onSkip={()=>onLogged(null,seconds,dialTarget,voiceFrom)}/>}
   </div>);
 }
 function CallsWorkspace({goTo,onToast,preload,apiRef}){
@@ -12057,7 +12085,7 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
   // Append a real call to the shared store so the list, the filter counts and every reader move.
   // duration '' = unknown (NOT the '0:00' never-connected sentinel that drives isMissed); rec is stored, never derived.
   const addCall=(name,entry,cid)=>{const ct=(cid!=null?contacts.find(x=>x.id===cid):null)||contacts.find(x=>x.name===name);
-    setCalls&&setCalls(a=>[{id:'call_'+Date.now(),contact:name,contactId:ct?ct.id:null,company:ct?(ct.co||''):'',avatar:ct?ct.avatar:((name||'?').slice(0,2).toUpperCase()),color:ct?ct.color:'#64748b',direction:entry.dir==='in'?'in':'out',duration:entry.dur||'',reason:entry.reason||null,rec:!!entry.rec,date:'Today '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),outcome:entry.outcome||null,notes:entry.notes||'',owner:CURRENT_USER_CODE},...a]);};
+    setCalls&&setCalls(a=>[{id:'call_'+Date.now(),contact:name,contactId:ct?ct.id:null,company:ct?(ct.co||''):'',avatar:ct?ct.avatar:((name||'?').slice(0,2).toUpperCase()),color:ct?ct.color:'#64748b',direction:entry.dir==='in'?'in':'out',duration:entry.dur||'',reason:entry.reason||null,rec:!!entry.rec,date:callDateLabel(entry.when),outcome:entry.outcome||null,notes:entry.notes||'',owner:CURRENT_USER_CODE},...a]);};
   const applyEnrichment=(d)=>{ if(!d)return; if(d.status){setTimeout(()=>onToast&&onToast('Status noted: '+d.status,'success'),400);} if(d.decision&&d.decision!=='None'){setTimeout(()=>onToast&&onToast(decisionToast(d.decision),'success'),700);} };
   const openDialer=()=>{ setDialContact(null); setDigits(''); setContactQuery(''); setDetail(null); setView('dialer'); };
   React.useEffect(()=>{ if(apiRef){apiRef.current={openDialer};} return()=>{ if(apiRef)apiRef.current=null; }; },[apiRef]);
@@ -12077,7 +12105,7 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
   const openDetail=(c)=>{ const ct=(c.contactId!=null?contacts.find(x=>x.id===c.contactId):null)||contacts.find(x=>x.name===c.contact); const info={id:ct?ct.id:null,name:c.contact||c.number,phone:ct?ct.phone:(c.number||''),avatar:c.avatar,color:c.color,dnc:ct?ct.dnc:false}; setDetail(info); setView('detail'); }; // history is derived from the real store below — never fabricated
   const startCall=()=>{ setSeconds(0);setMute(false);setHold(false);setKeypad(false);setView('active'); };
   const endCall=()=>{ clearInterval(timerRef.current); setView('postcall'); onToast&&onToast('Call ended','success'); };
-  const newCallEntry=(d)=>({id:'ch-new-'+Date.now(),dir:'out',date:'Just now',dur:seconds?fmtDur(seconds):null,rec:seconds>0,recLen:seconds?fmtDur(seconds):null,outcome:d?d.outcome:'Connected',reason:d?d.reason:null,notes:d?d.notes:null});
+  const newCallEntry=(d)=>({id:'ch-new-'+Date.now(),dir:'out',dur:seconds?fmtDur(seconds):null,rec:seconds>0,recLen:seconds?fmtDur(seconds):null,outcome:d?d.outcome:'Connected',reason:d?d.reason:null,notes:d?d.notes:null});
   const _persistCallActivity=(name,d,dir,cid)=>{if(!effCanObject('Contacts','edit'))return false; /* R10-25: logging a call mutates a contact timeline + fires automations — gate like contact-detail does */ const _ct=(cid!=null?(_liveContacts||[]).find(c=>c.id===cid&&!c.deleted):null)||(name?(_liveContacts||[]).find(c=>c.name===name&&!c.deleted):null); /* id first: the row and the timeline must land on the SAME record, and callers already hold the id */if(_ct&&_autoRt&&_autoRt.addActivity){_autoRt.addActivity('contact',_ct.id,mkAct('call',{ts:0,by:(typeof CURRENT_USER!=='undefined'?CURRENT_USER.avatar:'AM'),title:(dir==='in'?'Inbound':'Outbound')+' call'+(d&&d.outcome?' — '+d.outcome:''),body:(d&&d.notes)||((d&&d.duration)?('Duration '+d.duration):'Logged from the dialer.'),payload:liveCallPayload(_ct.name,{dir:dir||'out',outcome:d&&d.outcome,reason:d&&d.reason,notes:d&&d.notes,recLen:d&&d.duration,decision:d&&d.decision})}));setTimeout(()=>{try{fireEntityAutomationEvents('contact',_ct,['Call logged']);}catch(e){}},0);return true;}return false;}; // persist dialer logs onto the contact's real timeline (was inbox-local only) + fire the 'Call logged' trigger
   const onSaveCallLog=(d)=>{ if(!_canCall){onToast&&onToast('Your role can’t log calls','error');resetDialer();return;} if(dialContact)addCall(dialContact.name,newCallEntry(d),dialContact.id); const _p=dialContact&&_persistCallActivity(dialContact.name,d,'out',dialContact.id); onToast&&onToast(_p?('Call logged to '+dialContact.name+' ✓'):'Call logged ✓','success'); applyEnrichment(d); resetDialer(); };
   const onSkipCallLog=()=>{ if(_canCall&&dialContact)addCall(dialContact.name,newCallEntry(null),dialContact.id); resetDialer(); };
@@ -12197,7 +12225,7 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
       {view==='detail'&&detail&&(<CallDetailView contact={detail} history={histFor(detail.name,detail.id)} onBack={()=>{setView('dialer');setDetail(null);}} onCall={()=>{setDialContact(detail);setDigits('');setView('dialer');}} onViewHistory={()=>setOverlay(detail)} onSaveNotes={(id,d)=>{ if(!_canCall){onToast&&onToast('Your role can’t edit calls','error');return;} const rid=String(id).replace(/^ch-/,''); setCalls&&setCalls(a=>a.map(x=>String(x.id)===rid?{...x,outcome:d.outcome||x.outcome,notes:d.notes||x.notes}:x)); onToast&&onToast('Call updated ✓','success'); applyEnrichment(d); }}/>)}
     </div>
     {overlay&&<CallHistoryOverlay contact={overlay} history={histFor(overlay.name,overlay.id)} onClose={()=>setOverlay(null)}/>}
-    {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(!_canCall){onToast&&onToast('Your role can’t log calls','error');return;} if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',date:'Just now',dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:cd.reason||null,notes:cd.notes||null},cd.contactId); const _p=cd.contact&&_persistCallActivity(cd.contact,cd,cd.direction==='in'?'in':'out',cd.contactId); onToast&&onToast(_p?('Call logged to '+cd.contact+' ✓'):'Call logged ✓','success'); }}/>}
+    {logOpen&&<LogCallModal close={()=>setLogOpen(false)} onSave={(cd)=>{ if(!_canCall){onToast&&onToast('Your role can’t log calls','error');return;} if(cd.contact)addCall(cd.contact,{id:'ch-man-'+Date.now(),dir:cd.direction==='in'?'in':'out',when:cd.when,dur:cd.duration||null,rec:false,recLen:null,outcome:cd.outcome||null,reason:cd.reason||null,notes:cd.notes||null},cd.contactId); const _p=cd.contact&&_persistCallActivity(cd.contact,cd,cd.direction==='in'?'in':'out',cd.contactId); onToast&&onToast(_p?('Call logged to '+cd.contact+' ✓'):'Call logged ✓','success'); }}/>}
   </div>);
 }
 // ?? MMS (media-first messaging) ???????????????????????????????????????????????
@@ -19303,18 +19331,24 @@ function LogCallModal({close,onSave,contactName,contactId:initialContactId}){
   const [duration,setDuration]=React.useState('');
   const [outcome,setOutcome]=React.useState('');
   const [notes,setNotes]=React.useState('');
+  // A call you are logging by hand already happened. Without a when, the row is stamped `now` and yesterday's
+  // call lands in Today — corrupting the Today count, "Last contacted", and anything recency-based.
+  const _pad2=(x)=>String(x).padStart(2,'0');
+  const _nowLocal=(()=>{const d=new Date();return d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate())+'T'+_pad2(d.getHours())+':'+_pad2(d.getMinutes());})();
+  const [when,setWhen]=React.useState(_nowLocal);
   const chosen=CONTACT_LIST.find(x=>String(x.id)===String(contactId))||null;
-  const save=()=>{onSave&&onSave({direction,contact:chosen?chosen.name:'',contactId:chosen?chosen.id:null,duration,outcome,notes});close();}; // name is a display snapshot; the id is the link
+  const save=()=>{onSave&&onSave({direction,contact:chosen?chosen.name:'',contactId:chosen?chosen.id:null,duration,outcome,notes,when});close();}; // name is a display snapshot; the id is the link
   useEscKey(close);
   const OUTCOMES=['Reached - positive','Reached - follow-up needed','Left voicemail','No answer','Wrong number','Demo call','Contract discussion','Renewal discussion'];
   return(
     <div className="fixed inset-0 z-[150] flex justify-end" style={{background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
       <div className="h-full flex flex-col border-l border-white/[0.10] animate-[arIn_.22s_ease]" style={{width:460,maxWidth:'100%',background:'var(--s900)'}} onClick={e=>e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Phone size={16}/></div><div><p className="text-white text-[15px] font-semibold">Log a call</p><p className="text-white/45 text-[12px]">Record call details for a contact.</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300"><I.Phone size={16}/></div><div><p className="text-white text-[15px] font-semibold">Log a call</p><p className="text-white/45 text-[12px]">For a call that already happened — on your mobile, a desk phone, or one you took while away.</p></div></div><button onClick={close} className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button></div>
         <div className="flex-1 overflow-y-auto scroll-area px-6 py-5">
           <div className="flex flex-col gap-4">
             <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Contact</label><select value={contactId} onChange={e=>setContactId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select a contact...</option>{CONTACT_LIST.map(c=>(<option key={c.id} value={c.id}>{c.name}</option>))}</select></div>
             <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Direction</label><div className="flex gap-2">{[{v:'out',l:'Outbound'},{v:'in',l:'Inbound'}].map(({v,l})=>(<button key={v} onClick={()=>setDirection(v)} className={['flex-1 py-2.5 rounded-xl text-[13px] font-medium border transition-all',direction===v?'bg-brand-500/15 text-brand-200 border-brand-500/30':'bg-white/[0.04] text-white/55 border-white/[0.08] hover:border-white/[0.18]'].join(' ')}>{l}</button>))}</div></div>
+            <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">When did it happen</label><input type="datetime-local" value={when} onChange={e=>setWhen(e.target.value)} max={_nowLocal} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40" style={{colorScheme:'dark'}}/><p className="text-[11px] text-white/35 mt-1">Defaults to now. Change it for a call you had earlier.</p></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Duration</label><input value={duration} onChange={e=>setDuration(e.target.value)} placeholder="e.g. 12:30" className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white outline-none focus:border-brand-500/40 font-mono placeholder:text-white/25"/></div>
               <div><label className="text-[11px] font-medium text-white/45 uppercase tracking-[0.14em] block mb-1.5">Outcome</label><select value={outcome} onChange={e=>setOutcome(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.10] text-[13px] text-white/80 outline-none focus:border-brand-500/40 appearance-none"><option value="">Select...</option>{OUTCOMES.map(o=>(<option key={o}>{o}</option>))}</select></div>
