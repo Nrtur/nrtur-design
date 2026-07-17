@@ -5459,9 +5459,13 @@ function smsComplianceState(){
 // timeline has to land in the same store the Calls page reads, or the call exists on the contact
 // and nowhere else while the UI still says "Call logged".
 function callRowFrom(rec,cd){
+  // Record which line it went out on. The dialer tells the rep their caller ID, so the log has to be able to
+  // answer "which number did this go out on?" — SMS already persists smsFrom this way.
+  const _ob=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'voice'):null;
   return {id:'call_'+Date.now(),contact:rec.name,contactId:rec.id!=null?rec.id:null,company:rec.co||rec.company||'',
     avatar:rec.avatar||((rec.name||'?').slice(0,2).toUpperCase()),color:rec.color||'#64748b',
     direction:cd.direction==='in'?'in':'out',duration:cd.duration||'0:00',
+    number:cd.number||rec.phone||'',from:_ob?_ob.number:null,
     date:'Today '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),
     outcome:cd.outcome||'Connected',notes:cd.notes||'',owner:(typeof CURRENT_USER_CODE!=='undefined'?CURRENT_USER_CODE:'AM')};
 }
@@ -8498,8 +8502,12 @@ function ContactDetailPage({goTo,nav}){
   const {confirmNode,openConfirm}=useConfirm();
   const doDelete=()=>openConfirm({title:`Delete ${c.name}?`,body:`This moves ${c.name} to the Recycle Bin. You can restore it within 30 days.`,confirmLabel:'Delete contact',danger:true,requireText:c.name,onConfirm:()=>{crm.setContacts(a=>a.map(x=>x.id===c.id?{...x,deleted:true,deletedAt:Date.now(),deletedBy:'Alex Morgan'}:x));window.__nrturToast&&window.__nrturToast(`${c.name} moved to Recycle Bin`,'success');goTo('contacts');}});
   const onLogCall=(cd)=>{crm.setCalls&&crm.setCalls(a=>[callRowFrom(c,cd),...a]); setExtra(x=>[{...mkAct('call',{ts:0,by:'AM',title:(cd.direction==='in'?'Inbound':'Outbound')+' call'+(cd.outcome?' — '+cd.outcome:''),body:cd.notes||(cd.duration?'Duration '+cd.duration:'Call logged.'),payload:liveCallPayload(c.name,{dir:cd.direction==='in'?'in':'out',outcome:cd.outcome,reason:cd.reason,notes:cd.notes,recLen:cd.duration})}),..._commDeal()},...x]);setTimeout(()=>{try{fireEntityAutomationEvents('contact',c,['Call logged']);}catch(e){}},0);};
-  const onPopoverCall=(data,seconds)=>{
+  const onPopoverCall=(data,seconds,dialled)=>{
     const dur=fmtDur(seconds||0);
+    // Same store as onLogCall above. Missed in Wave H: this path toasted "Call logged" and wrote only the
+    // timeline, so a call placed from the dialer never reached Inbox > Calls or any call metric, while the
+    // "Log manually" button two lines away did.
+    crm.setCalls&&crm.setCalls(a=>[callRowFrom(c,{direction:'out',duration:dur,outcome:(data&&data.outcome)||'Connected',notes:(data&&data.notes)||'',number:dialled}),...a]);
     setExtra(x=>[{...mkAct('call',{ts:0,by:'AM',title:'Outbound call'+(data&&data.outcome?' — '+data.outcome:''),body:(data&&data.notes)||('Duration '+dur),payload:liveCallPayload(c.name,{dir:'out',outcome:data&&data.outcome,reason:data&&data.reason,notes:data&&data.notes,recLen:dur,decision:data&&data.decision})}),..._commDeal()},...x]);
     setTimeout(()=>{try{fireEntityAutomationEvents('contact',c,['Call logged']);}catch(e){}},0);
     setDialerOpen(false);
@@ -11974,7 +11982,12 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
   React.useEffect(()=>{if(mode==='active'){timerRef.current=setInterval(()=>setSeconds(s=>s+1),1000);return()=>clearInterval(timerRef.current);}},[mode]);
   const PAD=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
   const ini=contact.avatar||((contact.name||'?').slice(0,2).toUpperCase());
-  const start=()=>{setSeconds(0);setMute(false);setMode('active');};
+  // We already know this person's number, so the keypad answers a question the screen has answered. Open it
+  // only when there is nothing to dial, or when the rep explicitly asks for a different number.
+  const [padOpen,setPadOpen]=React.useState(!contact.phone);
+  const dialTarget=padOpen?digits:(contact.phone||'');
+  const adHoc=padOpen&&!!digits;
+  const start=()=>{if(!dialTarget)return;setSeconds(0);setMute(false);setMode('active');};
   const end=()=>{clearInterval(timerRef.current);setMode('enrich');};
   return(<div onClick={e=>e.stopPropagation()} className="absolute z-[120] left-1/2 -translate-x-1/2 top-[calc(100%+8px)] w-[300px] rounded-2xl border border-white/[0.10] p-4 max-h-[440px] overflow-y-auto scroll-area" style={{background:'var(--pop2)',backdropFilter:'blur(12px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
     <div className="flex items-center justify-between mb-3 gap-2">
@@ -11983,21 +11996,29 @@ function ContactDialerPopover({contact,statusOptions,currentStatus,onClose,onLog
     </div>
     {(()=>{const _on=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'voice'):null;return _on?(<p className="text-[10.5px] text-white/50 -mt-2 mb-2.5 flex items-center gap-1.5"><I.Phone size={10} className="shrink-0"/>Calling from {_on.number}{_on.assignedTo?'':' · workspace line'}</p>):null;})()}
     {mode==='dial'&&<React.Fragment>
-      <div className="grid grid-cols-3 gap-2 mb-3.5">
-        {PAD.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[17px] font-medium transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[8px] text-white/30 mt-0.5 tracking-wider">{sub}</span>}</button>))}
-      </div>
-      <button onClick={start} className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold text-white bg-emerald-500 hover:bg-emerald-400 transition-all" style={{boxShadow:'0 0 24px rgba(16,185,129,0.35)'}}><I.Phone size={15}/>Call</button>
+      {padOpen&&<React.Fragment>
+        <div className="flex items-center gap-1.5 mb-2.5 bg-white/[0.04] border border-white/[0.10] rounded-xl px-3 h-11">
+          <input readOnly value={digits} placeholder="Enter a number" className="flex-1 min-w-0 bg-transparent outline-none text-[17px] font-mono text-white tracking-wider placeholder:text-white/25 placeholder:text-[12px] placeholder:tracking-normal"/>
+          {digits&&<button onClick={()=>setDigits(x=>x.slice(0,-1))} title="Backspace" className="shrink-0 text-white/40 hover:text-white transition-colors"><I.X size={13}/></button>}
+        </div>
+        <div className="grid grid-cols-3 gap-2 mb-3.5">
+          {PAD.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[17px] font-medium transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[8px] text-white/30 mt-0.5 tracking-wider">{sub}</span>}</button>))}
+        </div>
+      </React.Fragment>}
+      <button onClick={start} disabled={!dialTarget} className={['w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold transition-all',dialTarget?'text-white bg-emerald-500 hover:bg-emerald-400':'text-white/30 bg-white/[0.06] cursor-not-allowed'].join(' ')} style={dialTarget?{boxShadow:'0 0 24px rgba(16,185,129,0.35)'}:undefined}><I.Phone size={15}/>{adHoc?('Call '+digits):(contact.phone?('Call '+(contact.name||'').split(' ')[0]):'Enter a number')}</button>
+      {contact.phone&&<button onClick={()=>{setPadOpen(o=>!o);setDigits('');}} className="w-full mt-2 text-[11px] text-white/45 hover:text-white/70 transition-colors">{padOpen?('Call '+contact.phone+' instead'):'Dial a different number'}</button>}
     </React.Fragment>}
     {mode==='active'&&<div className="flex flex-col items-center gap-3 py-2">
       <div className="w-14 h-14 rounded-full flex items-center justify-center text-[16px] font-semibold text-white ring-4 ring-brand-500/40" style={{background:contact.color||'#6366f1',animation:'glowPulse 2s ease-in-out infinite'}}>{ini}</div>
       <p className="text-emerald-400 text-[12px]">Connected</p>
+      <p className="text-[11px] text-white/45 -mt-2">{dialTarget}{adHoc?' · not this contact’s number on file':''}</p>
       <p className="font-mono text-[26px] font-semibold text-white tabular-nums">{fmtDur(seconds)}</p>
       <div className="flex items-center gap-3">
         <button onClick={()=>setMute(m=>!m)} title="Mute" className={['w-11 h-11 rounded-full flex items-center justify-center text-white transition-all',mute?'bg-white/20 ring-1 ring-white/30':'bg-white/[0.08] hover:bg-white/[0.13]'].join(' ')}>{mute?<I.MicOff size={17}/>:<I.Mic size={17}/>}</button>
         <button onClick={end} title="End call" className="w-11 h-11 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-all" style={{boxShadow:'0 0 20px rgba(239,68,68,0.4)'}}><I.PhoneOff size={17}/></button>
       </div>
     </div>}
-    {mode==='enrich'&&<CallEnrichmentForm compact duration={fmtDur(seconds)} statusOptions={statusOptions} currentStatus={currentStatus} onSave={(d)=>onLogged(d,seconds)} onSkip={()=>onLogged(null,seconds)}/>}
+    {mode==='enrich'&&<CallEnrichmentForm compact duration={fmtDur(seconds)} statusOptions={statusOptions} currentStatus={currentStatus} onSave={(d)=>onLogged(d,seconds,dialTarget)} onSkip={()=>onLogged(null,seconds,dialTarget)}/>}
   </div>);
 }
 function CallsWorkspace({goTo,onToast,preload,apiRef}){
@@ -12134,6 +12155,10 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
               {matches.map(c=>(<button key={c.id} onClick={()=>{setDialContact({id:c.id,name:c.name,phone:c.phone,avatar:c.avatar,color:c.color,dnc:c.dnc});setContactQuery('');}} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.05] text-left transition-colors"><div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0"><p className="text-[12.5px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.phone}</p></div>{c._blocked&&(<span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9.5px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-500/12 border border-amber-500/25">Blocked</span>)}</button>))}
             </div>)}
           </div>)}
+          {/* The number is only unknown when no contact is resolved. With one loaded, the readout + pad asked
+              the rep to type a number the CRM already holds — and typing was discarded anyway, since startCall
+              never read `digits`. Show the pad only when it can actually change who gets called. */}
+          {!dialContact&&<React.Fragment>
           <div className="flex items-center gap-2">
             <input readOnly value={digits} placeholder="Enter a number" className="flex-1 text-[26px] font-mono text-white text-center tracking-[0.18em] h-14 bg-transparent outline-none placeholder:text-white/20 placeholder:text-[15px] placeholder:tracking-normal"/>
             {digits&&<button onClick={()=>setDigits(d=>d.slice(0,-1))} title="Backspace" className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.06] transition-all">⌫</button>}
@@ -12141,8 +12166,8 @@ function CallsWorkspace({goTo,onToast,preload,apiRef}){
           <div className="grid grid-cols-3 gap-3 justify-items-center">
             {DIGITS.map(([d,sub])=>(<button key={d} onClick={()=>setDigits(x=>x+d)} className="w-16 h-16 rounded-full bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] active:bg-white/[0.13] text-white text-[20px] font-medium transition-all flex flex-col items-center justify-center leading-none">{d}{sub&&<span className="text-[9px] text-white/30 mt-1 tracking-wider">{sub}</span>}</button>))}
           </div>
+          </React.Fragment>}
           <button disabled={!canCall} onClick={startCall} className={['w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all bg-emerald-500 hover:bg-emerald-400',!canCall?'opacity-40 cursor-not-allowed':''].join(' ')} style={canCall?{boxShadow:'0 0 32px rgba(16,185,129,0.4)'}:undefined}><I.Phone size={26} className="text-white"/></button>
-          <p className="text-[11px] text-white/50 text-center inline-flex items-center justify-center gap-1">Calling from: +1 415-555-0100 <I.ChevronDown size={11}/></p>
         </div>
         </div>
       </div>)}
@@ -12435,9 +12460,11 @@ function InboxPage({goTo,nav}){
   },[nav]);
   const [draft,setDraft]=React.useState('');
   // Sending identity for the SMS composer: real workspace numbers (assigned/default first).
-  const _smsNumsAll=(_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms);
+  // status==='active' matters: a number still porting has caps.sms and is not released, so without this it
+  // was selectable as a sending identity while the port was still in flight. Matches outboundNumberFor.
+  const _smsNumsAll=(_livePhoneNumbers||[]).filter(n=>!n.released&&n.status==='active'&&n.caps&&n.caps.sms);
   const _smsFromOpts=_smsNumsAll.map(n=>n.number);
-  const [smsFrom,setSmsFrom]=React.useState(()=>((_smsNumsAll.find(n=>n.isDefault)||_smsNumsAll[0])||{}).number||'');
+  const [smsFrom,setSmsFrom]=React.useState(()=>{const _o=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'sms'):null;return _o?_o.number:(((_smsNumsAll.find(n=>n.isDefault)||_smsNumsAll[0])||{}).number||'');}); // same waterfall as voice: assigned -> default -> first active
   const draftRef=React.useRef(null);
   const seg=SmsSegments(draft.length);
   const insertVar=(tok)=>{const ta=draftRef.current;if(!ta){setDraft(d=>d+tok);return;}const s=ta.selectionStart,e=ta.selectionEnd;setDraft(d=>d.slice(0,s)+tok+d.slice(e));setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=s+tok.length;},0);};
@@ -12549,7 +12576,7 @@ function InboxPage({goTo,nav}){
           </button>))}
         </div>):inboxConnect)}
         <div className="app-footer shrink-0 border-t border-white/[0.05] px-7 py-2 flex items-center justify-between" style={{background:'var(--s950)'}}>
-          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/><span className="text-[11px] text-white/40">{(()=>{const _dn=((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).find(n=>n.isDefault)||( _livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms)[0]);const _lbl=_dn?_dn.number:'no number';const _cs=(_liveCalls||[]);const _cm=_cs.filter(x=>x.direction==='in'&&(x.duration==='0:00'||/no answer|missed/i.test(x.outcome||''))).length;const _cv=_cs.filter(x=>/voicemail/i.test(x.outcome||'')).length;return tab==='sms'?('Sending as '+(smsFrom||_lbl)+' · SMS & MMS'):tab==='calls'?(_cm+' missed · '+_cv+' voicemail'+(_cv===1?'':'s')):mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
+          <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/><span className="text-[11px] text-white/40">{(()=>{const _dn=(typeof outboundNumberFor==='function')?outboundNumberFor((typeof CURRENT_USER!=='undefined'&&CURRENT_USER.avatar)||null,'sms'):null;const _lbl=_dn?_dn.number:'no number';const _cs=(_liveCalls||[]);const _cm=_cs.filter(x=>x.direction==='in'&&(x.duration==='0:00'||/no answer|missed/i.test(x.outcome||''))).length;const _cv=_cs.filter(x=>/voicemail/i.test(x.outcome||'')).length;return tab==='sms'?('Sending as '+(smsFrom||_lbl)+' · SMS & MMS'):tab==='calls'?(_cm+' missed · '+_cv+' voicemail'+(_cv===1?'':'s')):mailShort+' synced 12s ago · '+ma.accounts.length+' account'+(ma.accounts.length===1?'':'s');})()}</span></div>
           <div className="flex items-center gap-3"><span className="text-[11px] text-white/50">Unified inbox · Email · Messages · Calls</span></div>
         </div>
       </div>
@@ -13842,7 +13869,7 @@ function ActionConfig({node,onChange,goTo}){
   </React.Fragment>);
   if(k==='sms')return(<React.Fragment>
     <ActionField label="Message template"><ATxt value={node.template} onChange={v=>onChange({template:v})} ph="e.g. Speed-to-lead text"/></ActionField>
-    <ActionField label="From number" hint="Which workspace number this text sends from."><ASel value={node.fromNumber||'Workspace default'} opts={['Workspace default',...((_livePhoneNumbers||[]).filter(n=>!n.released&&n.caps&&n.caps.sms).map(n=>n.number))]} onChange={v=>onChange({fromNumber:v})}/></ActionField>
+    <ActionField label="From number" hint="Which workspace number this text sends from."><ASel value={node.fromNumber||'Workspace default'} opts={['Workspace default',...((_livePhoneNumbers||[]).filter(n=>!n.released&&n.status==='active'&&n.caps&&n.caps.sms).map(n=>n.number))]} onChange={v=>onChange({fromNumber:v})}/></ActionField>
     {(()=>{try{const _g=smsComplianceState();return !_g.ok?(<p className="text-[11px] text-amber-300/90 leading-relaxed flex items-start gap-1.5 mt-1"><I.Ban size={11} className="shrink-0 mt-px"/><span>{_g.reason} — this step will be skipped until messaging is approved.</span></p>):null;}catch(e){return null;}})()}
   </React.Fragment>);
   if(k==='task')return(<React.Fragment>
