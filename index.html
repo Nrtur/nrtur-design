@@ -228,9 +228,16 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
 
 :root[data-theme="light"]{
   --paper:#F4F3EF; --surface:#FFFFFF; --surface-2:#FBFAF7; --surface-3:#F1F0EB;
-  --ink:#1B1A17; --ink-2:#57544C; --ink-3:#8E8A80; --ink-4:#B7B3A8;
+  /* --ink-3 DEVIATES from the source's #8E8A80, which is only 3.10:1 on --paper
+     and 3.44:1 on --surface — under AA 4.5 for the muted body text that uses it.
+     #6F6C63 gives 4.73 / 5.25 and still sits a clear step above --ink-2 (6.81). */
+  --ink:#1B1A17; --ink-2:#57544C; --ink-3:#6F6C63; --ink-4:#B7B3A8;
   --line:rgba(27,26,23,.09); --line-2:rgba(27,26,23,.055); --line-3:rgba(27,26,23,.14);
-  --accent:#1E7F55; --accent-ink:#155F3E; --accent-soft:#E7F1EA; --accent-line:rgba(30,127,85,.22);
+  /* --accent DEVIATES from the source's #1E7F55 by two shades: as eyebrow/label
+     text on --paper that value lands at 4.48:1, just under AA. #1D7C53 gives
+     4.66:1 and is visually indistinguishable. Solid fills are unaffected — they
+     use --accent-solid, which stays #1E7F55. */
+  --accent:#1D7C53; --accent-ink:#155F3E; --accent-soft:#E7F1EA; --accent-line:rgba(30,127,85,.22);
   --pos:#1E7F55;  --pos-soft:#E7F1EA;  --pos-ink:#155F3E;
   --warn:#B07A18; --warn-soft:#F6EEDB; --warn-ink:#8A5E12;
   --neg:#BC4A32;  --neg-soft:#F7E7E1;  --neg-ink:#9A3A25;
@@ -257,6 +264,12 @@ html.tw-compact .app-footer{padding-top:5px !important;padding-bottom:5px !impor
      the light branch — otherwise the active pill resolves to a white fill with
      a white icon. Theme-independent, same idea as the avatar hues above. */
   --chrome-accent:#2FA877; --chrome-accent-ink:#54CD95;
+  /* Solid accent fill that carries white text. Deliberately deeper than
+     --accent, because white on --accent is only 3.01:1 in dark. Theme-
+     independent so a primary button reads identically in both themes.
+     Both values are the source's own light --accent / --accent-ink.
+     white on --accent-solid = 4.97:1, on --accent-solid-hover = 7.67:1. */
+  --accent-solid:#1E7F55; --accent-solid-hover:#155F3E;
   --auth-bg:#0C0C0A;
   --icon-muted:#6B7280;
 }
@@ -1620,12 +1633,6 @@ html .deal-card:hover{transform:none}
 html .bg-brand-500\/20,html .bg-brand-500\/10,html .bg-brand-500\/12,
 html .bg-brand-500\/15,html .bg-brand-500\/25{background-image:none !important}
 </style>
-<script>(function(){try{var t=localStorage.getItem('nrtur-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
-<style>@keyframes arIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}@keyframes taskExpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes drawerInL{from{transform:translateX(-100%)}to{transform:translateX(0)}}</style>
 <style id="nrtur-light-universal">
 /* Same declarations as #nrtur-light, rescoped from `.app-shell` to the
    document root so the marketing/auth screens inside #root are covered.
@@ -2003,6 +2010,37 @@ html .bg-brand-500\/15,html .bg-brand-500\/25{background-image:none !important}
 :root[data-theme="light"] .app-sidebar .text-white{color:var(--surface) !important}
 :root[data-theme="light"] [class*="bg-gradient"] .text-white{color:var(--surface) !important}
 </style>
+<style id="nrtur-contrast">
+/* WCAG AA for solid brand fills — see STEP M. --accent stays bright for
+   text; only the fills that carry white text are deepened. */
+:root[data-theme] .bg-brand-500,:root[data-theme] .app-shell .bg-brand-500,:root[data-theme] .bg-brand-600,:root[data-theme] .app-shell .bg-brand-600,:root[data-theme] .bg-brand-700,:root[data-theme] .app-shell .bg-brand-700{background-color:var(--accent-solid) !important;background-image:none !important}
+:root[data-theme] .bg-brand-400,:root[data-theme] .app-shell .bg-brand-400,:root[data-theme] .hover\:bg-brand-400:hover,:root[data-theme] .app-shell .hover\:bg-brand-400:hover,:root[data-theme] .hover\:bg-brand-500:hover,:root[data-theme] .app-shell .hover\:bg-brand-500:hover{background-color:var(--accent-solid-hover) !important;background-image:none !important}
+:root[data-theme] .bg-brand-500.text-white,:root[data-theme] .bg-brand-500 .text-white,:root[data-theme] .app-shell .bg-brand-500.text-white,:root[data-theme] .app-shell .bg-brand-500 .text-white,:root[data-theme] .bg-brand-500.text-white\/90,:root[data-theme] .bg-brand-500 .text-white\/90,:root[data-theme] .app-shell .bg-brand-500.text-white\/90,:root[data-theme] .app-shell .bg-brand-500 .text-white\/90,:root[data-theme] .bg-brand-500.text-white\/80,:root[data-theme] .bg-brand-500 .text-white\/80,:root[data-theme] .app-shell .bg-brand-500.text-white\/80,:root[data-theme] .app-shell .bg-brand-500 .text-white\/80,:root[data-theme] .bg-brand-500.text-white\/75,:root[data-theme] .bg-brand-500 .text-white\/75,:root[data-theme] .app-shell .bg-brand-500.text-white\/75,:root[data-theme] .app-shell .bg-brand-500 .text-white\/75,:root[data-theme] .bg-brand-600.text-white,:root[data-theme] .bg-brand-600 .text-white,:root[data-theme] .app-shell .bg-brand-600.text-white,:root[data-theme] .app-shell .bg-brand-600 .text-white,:root[data-theme] .bg-brand-600.text-white\/90,:root[data-theme] .bg-brand-600 .text-white\/90,:root[data-theme] .app-shell .bg-brand-600.text-white\/90,:root[data-theme] .app-shell .bg-brand-600 .text-white\/90,:root[data-theme] .bg-brand-600.text-white\/80,:root[data-theme] .bg-brand-600 .text-white\/80,:root[data-theme] .app-shell .bg-brand-600.text-white\/80,:root[data-theme] .app-shell .bg-brand-600 .text-white\/80,:root[data-theme] .bg-brand-600.text-white\/75,:root[data-theme] .bg-brand-600 .text-white\/75,:root[data-theme] .app-shell .bg-brand-600.text-white\/75,:root[data-theme] .app-shell .bg-brand-600 .text-white\/75,:root[data-theme] .bg-brand-700.text-white,:root[data-theme] .bg-brand-700 .text-white,:root[data-theme] .app-shell .bg-brand-700.text-white,:root[data-theme] .app-shell .bg-brand-700 .text-white,:root[data-theme] .bg-brand-700.text-white\/90,:root[data-theme] .bg-brand-700 .text-white\/90,:root[data-theme] .app-shell .bg-brand-700.text-white\/90,:root[data-theme] .app-shell .bg-brand-700 .text-white\/90,:root[data-theme] .bg-brand-700.text-white\/80,:root[data-theme] .bg-brand-700 .text-white\/80,:root[data-theme] .app-shell .bg-brand-700.text-white\/80,:root[data-theme] .app-shell .bg-brand-700 .text-white\/80,:root[data-theme] .bg-brand-700.text-white\/75,:root[data-theme] .bg-brand-700 .text-white\/75,:root[data-theme] .app-shell .bg-brand-700.text-white\/75,:root[data-theme] .app-shell .bg-brand-700 .text-white\/75,:root[data-theme] .bg-brand-400.text-white,:root[data-theme] .bg-brand-400 .text-white,:root[data-theme] .app-shell .bg-brand-400.text-white,:root[data-theme] .app-shell .bg-brand-400 .text-white,:root[data-theme] .bg-brand-400.text-white\/90,:root[data-theme] .bg-brand-400 .text-white\/90,:root[data-theme] .app-shell .bg-brand-400.text-white\/90,:root[data-theme] .app-shell .bg-brand-400 .text-white\/90,:root[data-theme] .bg-brand-400.text-white\/80,:root[data-theme] .bg-brand-400 .text-white\/80,:root[data-theme] .app-shell .bg-brand-400.text-white\/80,:root[data-theme] .app-shell .bg-brand-400 .text-white\/80,:root[data-theme] .bg-brand-400.text-white\/75,:root[data-theme] .bg-brand-400 .text-white\/75,:root[data-theme] .app-shell .bg-brand-400.text-white\/75,:root[data-theme] .app-shell .bg-brand-400 .text-white\/75{color:var(--on-solid) !important}
+:root[data-theme="light"] [style*="color: rgb(95, 208, 155)"]{color:var(--pos-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(84, 205, 149)"]{color:var(--accent-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(233, 185, 104)"]{color:var(--warn-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(240, 148, 127)"]{color:var(--neg-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(143, 180, 234)"]{color:var(--info-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(182, 158, 234)"]{color:var(--violet-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(143, 224, 184)"]{color:var(--accent-ink) !important}
+:root[data-theme="light"] [style*="color: rgb(47, 168, 119)"]{color:var(--accent) !important}
+:root[data-theme="light"] [style*="color: rgb(216, 155, 62)"]{color:var(--warn) !important}
+:root[data-theme="light"] [style*="color: rgb(227, 107, 80)"]{color:var(--neg) !important}
+:root[data-theme="light"] [style*="color: rgb(94, 146, 216)"]{color:var(--info) !important}
+:root[data-theme="light"] [style*="color: rgb(155, 123, 222)"]{color:var(--violet) !important}
+:root[data-theme="light"] [style*="color: rgb(176, 172, 162)"]{color:var(--ink-2) !important}
+:root[data-theme="light"] [style*="color: rgb(135, 131, 122)"]{color:var(--ink-3) !important}
+:root[data-theme="light"] [style*="color: rgb(115, 111, 101)"]{color:var(--ink-4) !important}
+:root[data-theme="dark"] .text-white\/40{color:rgba(255,255,255,0.58) !important}
+:root[data-theme="dark"] .text-white\/45{color:rgba(255,255,255,0.58) !important}
+:root[data-theme="dark"] .text-white\/35{color:rgba(255,255,255,0.58) !important}
+</style>
+<script>(function(){try{var t=localStorage.getItem('nrtur-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
+<style>@keyframes arIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}@keyframes taskExpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes drawerInL{from{transform:translateX(-100%)}to{transform:translateX(0)}}</style>
 </head>
 <body>
 <div id="root"></div>
