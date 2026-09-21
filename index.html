@@ -10116,6 +10116,18 @@ function ContactDetailPage({goTo,nav}){
   const _newDeal=()=>window.__nrturQuickAdd?window.__nrturQuickAdd('deal','single',{contact:c.name,contactId:c.id,company:c.co,companyId:c.companyId}):goTo('add-deal');
   const nba=(()=>{
     if(dnc)return{title:'Outreach is paused',body:_first+' is marked Do Not Contact — email, SMS, and calls are disabled. Update the toggle below if that has changed.'};
+    // Sequences first: the recommendation has to agree with what the scheduler is about to do.
+    const _me=(typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.avatar)||'AM';
+    const _seqRows=(crm.seqEnrollments||[]).filter(e=>e.contactId===c.id&&!SEQ_TERMINAL.includes(e.status));
+    const _seqErr=_seqRows.find(e=>e.status==='error');
+    if(_seqErr)return{title:'A sequence can’t reach '+_first,body:'“'+_seqErr.seqName+'” stopped at step '+((_seqErr.stepIdx||0)+1)+': '+((_seqErr.error&&_seqErr.error.message)||'needs attention')+'. Fix the record, then retry — nothing else goes out until you do.',primary:{label:'Retry send',Icon:I.Play,fn:()=>seqRetry(_seqErr.id,_me)},secondary:{label:'Remove from sequence',fn:()=>seqExit([_seqErr.id],'removed_manual',_me,'other')}};
+    const _seqHeld=_seqRows.find(e=>e.status==='held');
+    if(_seqHeld){const hr=(_seqHeld.held&&_seqHeld.held.reason)||'';const go=hr==='cap_reached'?'settings-billing':'settings-phone-numbers';return{title:'Waiting on the workspace, not on '+_first,body:'“'+_seqHeld.seqName+'” is on hold — '+((_seqHeld.held&&_seqHeld.held.text)||'messaging is not available yet')+'. It resumes by itself the moment that clears; no manual message needed.',primary:{label:hr==='cap_reached'?'Review limits':'Open Trust center',Icon:I.ArrowRight,fn:()=>goTo(go)},secondary:{label:'Pause sequence',fn:()=>seqPause([_seqHeld.id],_me)}};}
+    const _seqNext=_seqRows.filter(e=>(e.status==='active'||e.status==='scheduled')&&e.nextAt).sort((a,b)=>a.nextAt-b.nextAt)[0];
+    if(_seqNext&&_seqNext.nextAt-seqNow()<=5*864e5){const d=_openDeals[0];const ch=_seqNext.channel==='sms'?'SMS':'email';
+      return{title:'Follow-up is already scheduled',body:'“'+_seqNext.seqName+'” sends the next '+ch+' '+seqFmtWhen(_seqNext.nextAt,_seqNext.tz)+' ('+seqRel(_seqNext.nextAt)+') — no need to write one by hand.'+(d?(' Meanwhile, the deal’s next step is '+(d.nextAction?d.nextAction.toLowerCase():'to log the next step')+' on '+(d.name||d.company||'the deal')+'.'):''),primary:d?{label:'Open deal',Icon:I.ArrowRight,fn:()=>goTo('deal-detail',d.id)}:{label:'Log a call',Icon:I.Phone,fn:()=>setCallModal(true)},secondary:{label:'Pause sequence',fn:()=>seqPause([_seqNext.id],_me)}};}
+    const _seqPausedRow=_seqRows.find(e=>e.status==='paused');
+    if(_seqPausedRow&&!_seqNext)return{title:'Sequence paused for '+_first,body:'“'+_seqPausedRow.seqName+'” is paused with '+Math.round((_seqPausedRow.remainingMs||0)/36e5)+'h left on the clock. Resume it, or take the next step yourself.',primary:{label:'Resume sequence',Icon:I.Play,fn:()=>seqResume([_seqPausedRow.id],_me)},secondary:{label:'Send follow-up',fn:()=>setComposeOpen(true)}};
     if(_openDeals.length){const d=_openDeals[0];const more=_openDeals.length>1?(' · +'+(_openDeals.length-1)+' more open'):'';
       const base={primary:{label:'Send follow-up',fn:()=>setComposeOpen(true)},secondary:{label:'Open deal',fn:()=>goTo('deal-detail',d.id)}};
       return d.nextAction
@@ -10228,10 +10240,11 @@ function ContactDetailPage({goTo,nav}){
                   <p className="text-[10px] font-medium text-amber-300 uppercase tracking-[0.14em]">Recommended next action</p>
                   <p className="text-[14px] font-medium text-white mt-1">{nba.title}</p>
                   <p className="text-[12px] text-white/55 mt-1 leading-relaxed">{nba.body}</p>
-                  <div className="flex items-center gap-2 mt-3">{nba.primary&&<button disabled={dnc} onClick={()=>!dnc&&nba.primary.fn()} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',dnc?'bg-white/[0.04] text-white/30 cursor-not-allowed':'bg-amber-500/90 hover:bg-amber-400 text-[#232220] shadow-[0_4px_20px_rgba(216,155,62,0.3)]'].join(' ')}><I.Send size={12}/>{nba.primary.label}</button>}{nba.secondary&&<button onClick={nba.secondary.fn} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">{nba.secondary.label}</button>}<button onClick={()=>setNbaDismissed(true)} className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>
+                  <div className="flex items-center gap-2 mt-3">{nba.primary&&<button disabled={dnc} onClick={()=>!dnc&&nba.primary.fn()} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',dnc?'bg-white/[0.04] text-white/30 cursor-not-allowed':'bg-amber-500/90 hover:bg-amber-400 text-[#232220] shadow-[0_4px_20px_rgba(216,155,62,0.3)]'].join(' ')}>{(()=>{const PI=nba.primary.Icon||I.Send;return <PI size={12}/>;})()}{nba.primary.label}</button>}{nba.secondary&&<button onClick={nba.secondary.fn} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/70 hover:text-white bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all">{nba.secondary.label}</button>}<button onClick={()=>setNbaDismissed(true)} className="text-[12px] text-white/40 hover:text-white/70 ml-1 transition-colors">Dismiss</button></div>
                 </div>
               </div>
             </div>}
+            <SequenceEnrollmentBanner kind="contact" id={c.id} goTo={goTo}/>
             <RecordTasks recId={c.id} match={(t)=>t.contactId!=null?t.contactId===c.id:(t.contact===c.name&&t.linkType!=='lead')} prefill={{contact:c.name,linkType:'contact',company:c.co||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
             <ActivityTimeline kind="contact" rec={c} ctx={actCtx} goTo={goTo} extra={extra} dealLink={(effCanObject('Contacts','edit')&&effCanObject('Deals','edit'))?{options:dealsForPerson(c.id).map(d=>({id:d.id,name:d.name||d.company})),onLink:(aid,did)=>{crm.updateActivity(aid,{dealId:did});window.__nrturToast&&window.__nrturToast('Linked to deal — it now shows on that deal’s timeline at its original time','success');}}:undefined} onAddNote={effCanObject('Contacts','edit')?addNote:undefined} onEmail={effCanObject('Contacts','edit')?()=>{if(!dnc)setComposeOpen(true);}:undefined} onLogCall={effCanObject('Contacts','edit')?()=>{if(!dnc)setCallModal(true);}:undefined} onSchedule={effCanObject('Contacts','edit')?()=>setSchedOpen(true):undefined} noteId="cd-note" notePlaceholder={'Add a note about '+(c.first||(c.name||'').split(' ')[0]||'this contact')+'...'}/>
             </div>
@@ -10849,27 +10862,13 @@ function StageBulkModal({mode,stage,deals,pipeName,onClose}){
       });
       window.__nrturToast&&window.__nrturToast('Email sent to '+n+' contact'+(n===1?'':'s')+(skipped.length?' · '+skipped.length+' skipped':''),'success');
     }else{
-      const at=Date.now();
-      const isSched = startTiming==='scheduled' || startTiming==='relative' || (startTiming==='sequence' && seq && seq.entryTimer && (seq.entryTimer.timing==='delay' || seq.entryTimer.timing==='wait'));
-      const recs=recipients.map(r=>({
-        id:'se'+at+'_'+r.contact.id,
-        seqId:seq.id,
-        seqName:seq.name,
-        channel:seq.channel||'email',
-        contactId:r.contact.id,
-        contactName:r.contact.name,
-        dealId:r.deals[0].id,
-        dealName:r.deals[0].name||r.deals[0].company,
-        stage:stage.name,
-        pipeline:pipeName,
-        startTiming,
-        startStep,
-        scheduledFor:schedSummary,
-        status:isSched?'scheduled':'active',
-        at,
-        by:CURRENT_USER.avatar
+      const _schedAt=(()=>{try{const d=new Date(schedDate+' '+schedTime);return isNaN(d.getTime())?null:d.getTime();}catch(e){return null;}})();
+      const recs=recipients.filter(r=>!seqActiveFor({contactId:r.contact.id},seqIdOf(seq))).map(r=>seqEnrollRecord({
+        seq,recipient:{...r.contact,type:'contact'},dealId:r.deals[0].id,dealName:r.deals[0].name||r.deals[0].company,stage:stage.name,pipeline:pipeName,
+        timing:startTiming,scheduledAt:_schedAt,delay:{n:delayN,unit:delayUnit},bizDays:bizDaysOnly,useContactTz,startStep,scheduledFor:schedSummary,via:'stage'
       }));
       crm.setSeqEnrollments(a=>[...recs,...a]);
+      setTimeout(()=>{try{seqTick(seqNow());}catch(e){}},80);
       recipients.forEach(r=>{
         crm.addActivity('contact',r.contact.id,mkAct('sequence',{
           ts:0,
@@ -11248,6 +11247,173 @@ function SequenceScheduleFields({
 }
 
 // Full Pre-Flight Sequence Enrollment Modal — 4-Step Enterprise Wizard
+// ── Sequence engine ── ONE enrollment record shape, ONE scheduler, ONE exit path.
+// Spec: docs/reference/sequences-scheduling-cancel-trace.md §5. Decisions taken (owner: "go with your
+// recommendations"): destination snapshot at enrollment + re-resolve at send (logged as address_changed);
+// sender = enroller's connected mailbox / workspace default number, pinned; one Remove verb with a reason;
+// sequence Pause is global and freezes countdowns; one active enrollment per contact per sequence, other
+// sequences warn-and-allow; STOP/unsubscribe exits the enrollment (sequences are single-channel);
+// edits to a sequence apply to new enrollments only (steps are read live, delays snapshot per step at send).
+let _liveCustomSeqs=null;   // mirrored by App each render — sequence lookups by id from module scope
+let _liveMailAccounts=null; // mirrored by App each render — the "from" mailbox for email enrollments
+let _seqPaused={};          // seqId → true while a whole sequence is paused (survives navigation; not a server)
+const SEQ_TERMINAL=['finished','exited'];
+const SEQ_EXIT_LABEL={replied:'Replied',meeting_booked:'Meeting booked',deal_won:'Deal won',opted_out:'Opted out (STOP)',unsubscribed:'Unsubscribed',bounced:'Bounced',removed_manual:'Removed',removed_bulk:'Removed',removed_automation:'Removed by automation',sequence_stopped:'Sequence stopped',sequence_deleted:'Sequence deleted',contact_merged:'Contact merged',completed:'Completed'};
+const SEQ_REMOVE_DETAILS=[['replied_elsewhere','Replied elsewhere'],['not_interested','Not interested'],['wrong_contact','Wrong contact'],['other','Other']];
+const SEQ_STATUS_META={scheduled:{l:'Scheduled',sev:'info'},active:{l:'Active',sev:'success'},paused:{l:'Paused',sev:'warning'},held:{l:'Held',sev:'warning'},finished:{l:'Finished',sev:'info'},exited:{l:'Exited',sev:'neutral'},error:{l:'Needs attention',sev:'critical'}};
+// Canonical, channel-qualified id: seeds reuse 1..4 across channels, so 'sms:1' and 'email:1' must differ.
+function seqIdOf(seq){if(!seq)return null;const id=String(seq.id);if(id.startsWith('cs_'))return id;const raw=seq.rawId!=null?String(seq.rawId):id.replace(/^(email|sms|push|inapp)[_:]?/,'');return (seq.channel||'email')+':'+raw;}
+function seqAllDefs(){const seeds=[...SEQ_DATA.map(s=>({...s,channel:'sms'})),...EMAIL_SEQ_DATA.map(s=>({...s,channel:'email'})),...(typeof PUSH_SEQ_DATA!=='undefined'?PUSH_SEQ_DATA.map(s=>({...s,channel:'push'})):[]),...(typeof INAPP_SEQ_DATA!=='undefined'?INAPP_SEQ_DATA.map(s=>({...s,channel:'inapp'})):[])];return [...(_liveCustomSeqs||[]),...seeds];}
+function seqFind(seqId){const id=String(seqId||'');return seqAllDefs().find(s=>seqIdOf(s)===id)||null;}
+// Steps as the scheduler sees them: builder sequences carry stepData with per-step delays; seeds only have a count.
+function seqStepsOf(seq){const sd=seq&&(seq.stepData||(Array.isArray(seq.steps)?seq.steps:null));if(Array.isArray(sd)&&sd.length)return sd.map((s,i)=>({idx:i,delay:i===0?null:(s.delay||{n:2,unit:'days'}),label:s.subject||s.title||((s.body||'').replace(/\s+/g,' ').slice(0,48))||('Step '+(i+1))}));const n=(seq&&typeof seq.steps==='number'&&seq.steps>0)?seq.steps:3;return Array.from({length:n},(_,i)=>({idx:i,delay:i===0?null:{n:2,unit:'days'},label:'Step '+(i+1)}));}
+function seqDelayMs(d){if(!d)return 0;const n=Number(d.n)||0;const u=String(d.unit||'days').toLowerCase();return n*(u.startsWith('min')?6e4:u.startsWith('hour')?36e5:u.startsWith('week')?6048e5:864e5);}
+function seqNow(){try{return Math.max(Date.now(),typeof _autoNow==='number'?_autoNow:0);}catch(e){return Date.now();}}
+function seqWorkspaceTz(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}}
+// Local wall-clock parts of an epoch in a timezone (DST-safe enough for a prototype).
+function seqLocalParts(t,tz){try{const p=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,weekday:'short',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(t));const g=k=>(p.find(x=>x.type===k)||{}).value;return{dow:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(g('weekday')),h:(+g('hour'))%24,m:+g('minute')};}catch(e){const d=new Date(t);return{dow:d.getDay(),h:d.getHours(),m:d.getMinutes()};}}
+// snap(t): business days + send window in the contact's (or workspace) timezone, plus 0–15 min jitter.
+function seqSnap(t,settings,tz){
+  settings=settings||{};tz=tz||seqWorkspaceTz();
+  const win=settings.sendWindow||{from:'08:00',to:'19:00'};const [fh,fm]=String(win.from||'08:00').split(':').map(Number);const [th,tm]=String(win.to||'19:00').split(':').map(Number);
+  let x=t;
+  for(let guard=0;guard<14;guard++){
+    const p=seqLocalParts(x,tz);const mins=p.h*60+p.m;const fromM=fh*60+(fm||0),toM=th*60+(tm||0);
+    if(settings.businessDaysOnly&&(p.dow===0||p.dow===6)){x+=(mins<fromM?0:0)+ (24*60-mins+fromM)*6e4;continue;}
+    if(mins<fromM){x+=(fromM-mins)*6e4;break;}
+    if(mins>=toM){x+=(24*60-mins+fromM)*6e4;continue;}
+    break;
+  }
+  return x+Math.floor(Math.random()*15)*6e4;
+}
+function seqTzFor(recipient,settings){if(settings&&settings.useContactTz){return (recipient&&(recipient.timezone||suggestTzFromPhone(recipient.phone)))||seqWorkspaceTz();}return seqWorkspaceTz();}
+function seqFromFor(channel){
+  if(channel==='sms'){const n=(_livePhoneNumbers||[]).find(p=>p&&!p.released&&p.status==='active'&&p.caps&&p.caps.sms&&p.isDefault)||(_livePhoneNumbers||[]).find(p=>p&&!p.released&&p.status==='active'&&p.caps&&p.caps.sms);return n?{numberId:n.id,label:n.number}:{numberId:null,label:'No SMS number'};}
+  if(channel==='email'){const me=(typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.avatar)||'AM';const mine=(_liveMailAccounts||[]).find(a=>a.initials===me)||(_liveMailAccounts||[])[0];return mine?{mailboxId:mine.addr,label:mine.addr}:{mailboxId:null,label:'No connected mailbox'};}
+  return {label:channel==='push'?'Push service':'In-app'};
+}
+function seqToFor(channel,r){if(channel==='sms')return{phone:(r&&r.phone)||'',snapshotAt:seqNow()};if(channel==='email')return{email:(r&&r.email)||'',snapshotAt:seqNow()};return{token:'device',snapshotAt:seqNow()};}
+function seqToLabel(row){const t=row.to||{};return t.phone||t.email||(row.channel==='push'?'device':'in-app')||'—';}
+function seqRecordName(row){if(row.contactName)return row.contactName;const c=row.contactId!=null?(_liveContacts||[]).find(x=>x.id===row.contactId):null;if(c)return c.name;const l=row.leadId!=null?(_liveLeads||[]).find(x=>x.id===row.leadId):null;return l?l.name:'Contact';}
+function seqEnrollmentsFor(seq){const id=seqIdOf(seq);return (_liveSeqEnrollments||[]).filter(e=>e.seqId===id||(seq&&seq.name&&e.seqName===seq.name&&!e.seqId));}
+function seqActiveFor(who,seqId){return (_liveSeqEnrollments||[]).find(e=>e.seqId===seqId&&!SEQ_TERMINAL.includes(e.status)&&((who.contactId!=null&&e.contactId===who.contactId)||(who.leadId!=null&&e.leadId===who.leadId)))||null;}
+function seqOtherActive(who){return (_liveSeqEnrollments||[]).filter(e=>!SEQ_TERMINAL.includes(e.status)&&((who.contactId!=null&&e.contactId===who.contactId)||(who.leadId!=null&&e.leadId===who.leadId)));}
+// Build one enrollment record. `timing`: immediate | sequence (entry timer) | relative {n,unit} | scheduled (epoch).
+function seqEnrollRecord(o){
+  const now=seqNow();const seq=o.seq;const channel=seq.channel||'email';const r=o.recipient||{};
+  const settings={businessDaysOnly:o.bizDays!==false,useContactTz:!!o.useContactTz,sendWindow:(seq.whenRuns&&seq.whenRuns.from)?{from:seq.whenRuns.from,to:seq.whenRuns.to}:{from:'08:00',to:'19:00'},quietHours:o.quietHours!==false};
+  const tz=seqTzFor(r,settings);
+  let nextAt=now;
+  if(o.timing==='scheduled'&&o.scheduledAt)nextAt=o.scheduledAt;
+  else if(o.timing==='relative')nextAt=seqSnap(now+seqDelayMs(o.delay),settings,tz);
+  else if(o.timing==='sequence'&&seq.entryTimer&&(seq.entryTimer.timing==='delay'||seq.entryTimer.timing==='wait'))nextAt=seqSnap(now+seqDelayMs({n:seq.entryTimer.n||seq.entryTimer.delay||1,unit:seq.entryTimer.unit||'days'}),settings,tz);
+  const steps=seqStepsOf(seq);const startStep=Math.max(1,Math.min(o.startStep||1,steps.length));
+  const by=o.by||((typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.avatar)||'AM');
+  return {
+    id:'se'+now+'_'+(r.id!=null?r.id:'x')+'_'+Math.floor(Math.random()*1e4),
+    seqId:seqIdOf(seq),seqName:seq.name,channel,
+    contactId:o.contactId!=null?o.contactId:(r.type==='contact'?r.id:(r.convertedToContactId!=null?r.convertedToContactId:null)),
+    leadId:o.leadId!=null?o.leadId:(r.type==='lead'?r.id:null),
+    contactName:r.name||o.contactName||'',
+    dealId:o.dealId||null,dealName:o.dealName||null,stage:o.stage||null,pipeline:o.pipeline||null,
+    to:seqToFor(channel,r),from:seqFromFor(channel),tz,
+    stepIdx:startStep-1,stepsCount:steps.length,startStep,
+    status:nextAt<=now+6e4?'active':'scheduled',nextAt,
+    startTiming:o.timing||'immediate',scheduledFor:o.scheduledFor||'',
+    unenrollTriggers:o.unenrollTriggers||{onReply:true,onMeeting:true,onDealWon:true,onOptOut:true},
+    overrides:o.overrides||{},settings,
+    enrolledAt:now,enrolledBy:by,enrolledVia:o.via||'manual',at:now,by,
+    history:[{at:now,type:'enrolled',by,via:o.via||'manual',stepIdx:startStep-1}],
+  };
+}
+function seqSet(fn){if(_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(fn);}
+function seqAct(row,title,body,by){try{if(!_autoRt||!_autoRt.addActivity)return;const act=mkAct('sequence',{ts:0,by:by||'nrtur',title,body});if(row.contactId!=null)_autoRt.addActivity('contact',row.contactId,act);else if(row.leadId!=null)_autoRt.addActivity('lead',row.leadId,act);if(row.dealId!=null)_autoRt.addActivity('deal',row.dealId,mkAct('sequence',{ts:0,by:by||'nrtur',title:title.replace(/^/,seqRecordName(row)+': '),body}));}catch(e){}}
+function seqFmtWhen(t,tz){if(!t)return '—';try{return new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:tz||undefined});}catch(e){return new Date(t).toLocaleString();}}
+function seqRel(t){const d=t-seqNow();const a=Math.abs(d);if(a<6e4)return 'just now';const u=a<36e5?Math.round(a/6e4)+'m':a<864e5?Math.round(a/36e5)+'h':Math.round(a/864e5)+'d';return d>=0?('in '+u):(u+' ago');}
+// Exit (the one way an enrollment ends). Keeps the row and its history; never deletes.
+function seqExit(ids,reason,by,detail){
+  const now=seqNow();const set=new Set(ids);const hit=(_liveSeqEnrollments||[]).filter(r=>set.has(r.id)&&!SEQ_TERMINAL.includes(r.status));
+  if(!hit.length)return 0;
+  seqSet(a=>a.map(r=>set.has(r.id)&&!SEQ_TERMINAL.includes(r.status)?{...r,status:'exited',nextAt:null,held:null,exit:{reason,detail:detail||null,by:by||'nrtur',at:now},history:[...(r.history||[]),{at:now,type:'exited',reason,detail:detail||null,by:by||'nrtur'}]}:r));
+  hit.forEach(r=>seqAct(r,'Exited “'+r.seqName+'”',(SEQ_EXIT_LABEL[reason]||reason)+(detail?' · '+(SEQ_REMOVE_DETAILS.find(d=>d[0]===detail)||[,detail])[1]:'')+(by&&by!=='nrtur'?' · by '+by:''),by));
+  return hit.length;
+}
+function seqPause(ids,by,bySequence){
+  const now=seqNow();const set=new Set(ids);
+  seqSet(a=>a.map(r=>set.has(r.id)&&(r.status==='active'||r.status==='scheduled'||r.status==='held')?{...r,status:'paused',pausedAt:now,remainingMs:Math.max(0,(r.nextAt||now)-now),nextAt:null,pausedBySequence:!!bySequence,history:[...(r.history||[]),{at:now,type:'paused',by:by||'nrtur',reason:bySequence?'sequence_paused':null}]}:r));
+  (_liveSeqEnrollments||[]).filter(r=>set.has(r.id)&&(r.status==='active'||r.status==='scheduled'||r.status==='held')).forEach(r=>seqAct(r,'Paused “'+r.seqName+'”',(bySequence?'Whole sequence paused':'Paused')+' · countdown frozen at '+Math.round((r.remainingMs!=null?r.remainingMs:((r.nextAt||now)-now))/36e5)+'h'+(by?' · by '+by:''),by));
+}
+function seqResume(ids,by,onlySequencePaused){
+  const now=seqNow();const set=new Set(ids);
+  seqSet(a=>a.map(r=>{if(!set.has(r.id)||r.status!=='paused')return r;if(onlySequencePaused&&!r.pausedBySequence)return r;const nextAt=seqSnap(now+(r.remainingMs||0),r.settings,r.tz);return {...r,status:nextAt<=now+6e4?'active':'scheduled',nextAt,pausedAt:null,remainingMs:null,pausedBySequence:false,history:[...(r.history||[]),{at:now,type:'resumed',by:by||'nrtur'}]};}));
+}
+function seqMoveStep(id,stepIdx,by){const now=seqNow();seqSet(a=>a.map(r=>r.id===id?{...r,stepIdx,status:'active',nextAt:now,held:null,error:null,history:[...(r.history||[]),{at:now,type:'step_moved',stepIdx,by:by||'nrtur'}]}:r));}
+function seqRetry(id,by){const now=seqNow();seqSet(a=>a.map(r=>r.id===id?{...r,status:'active',nextAt:now,error:null,held:null,history:[...(r.history||[]),{at:now,type:'retried',by:by||'nrtur'}]}:r));}
+// Whole-sequence controls (global, one small team).
+function seqPauseSequence(seqId,by){_seqPaused={..._seqPaused,[seqId]:true};seqPause((_liveSeqEnrollments||[]).filter(r=>r.seqId===seqId).map(r=>r.id),by,true);}
+function seqResumeSequence(seqId,by){const n={..._seqPaused};delete n[seqId];_seqPaused=n;seqResume((_liveSeqEnrollments||[]).filter(r=>r.seqId===seqId&&r.status==='paused').map(r=>r.id),by,true);}
+function seqStopSequence(seqId,by){const n={..._seqPaused};delete n[seqId];_seqPaused=n;return seqExit((_liveSeqEnrollments||[]).filter(r=>r.seqId===seqId).map(r=>r.id),'sequence_stopped',by);}
+function seqLiveCount(seqId){return (_liveSeqEnrollments||[]).filter(r=>r.seqId===seqId&&!SEQ_TERMINAL.includes(r.status)).length;}
+// Automatic exits, honouring the per-enrollment switches (STOP/unsubscribe always exit — non-editable).
+function seqAutoExit(who,reason,channel,by){
+  const rows=(_liveSeqEnrollments||[]).filter(e=>!SEQ_TERMINAL.includes(e.status)&&((who.contactId!=null&&e.contactId===who.contactId)||(who.leadId!=null&&e.leadId===who.leadId))&&(!channel||e.channel===channel)).filter(e=>{const t=e.unenrollTriggers||{};if(reason==='replied')return t.onReply!==false;if(reason==='meeting_booked')return t.onMeeting!==false;if(reason==='deal_won')return t.onDealWon!==false;return true;});
+  if(!rows.length)return [];
+  seqExit(rows.map(r=>r.id),reason,by||'nrtur');
+  return rows;
+}
+// Gate: what blocks a send right now. permanent → exit; transient → held (retried next tick); identity → error.
+function seqGate(row){
+  const c=row.contactId!=null?(_liveContacts||[]).find(x=>x.id===row.contactId):null;const l=(!c&&row.leadId!=null)?(_liveLeads||[]).find(x=>x.id===row.leadId):null;const rec=c||l||null;
+  if(row.channel==='sms'){
+    const phone=(rec&&rec.phone)||(row.to&&row.to.phone)||'';
+    if(!phone)return{ok:false,kind:'error',reason:'missing_identity',text:'No phone number on the record'};
+    if(!row.from||!row.from.numberId)return{ok:false,kind:'error',reason:'missing_sender',text:'No SMS number to send from'};
+    try{if(supPhoneBlocked(phone,'sms'))return{ok:false,kind:'exit',reason:'opted_out',text:'Number is suppressed'};}catch(e){}
+    try{const g=canSendSms(rec||{phone});if(!g.ok)return g.code==='dnc'?{ok:false,kind:'exit',reason:'opted_out',text:g.reason}:{ok:false,kind:'held',reason:g.code==='spend'?'cap_reached':'a2p_pending',text:g.reason};}catch(e){}
+    return{ok:true,to:phone};
+  }
+  if(row.channel==='email'){
+    const email=(rec&&rec.email)||(row.to&&row.to.email)||'';
+    if(!email)return{ok:false,kind:'error',reason:'missing_identity',text:'No email address on the record'};
+    if(!row.from||!row.from.mailboxId)return{ok:false,kind:'error',reason:'missing_sender',text:'No connected mailbox to send from'};
+    if(rec&&rec.dnc)return{ok:false,kind:'exit',reason:'opted_out',text:'Marked Do Not Contact'};
+    try{if(supEmailBlocked(email,'marketing'))return{ok:false,kind:'exit',reason:'unsubscribed',text:'Email is suppressed'};}catch(e){}
+    return{ok:true,to:email};
+  }
+  return{ok:true,to:seqToLabel(row)};
+}
+// The tick: advance every due enrollment. Driven by the real clock (30s) AND the simulated one (_autoAdvance).
+function seqTick(now){
+  now=now||seqNow();const rows=_liveSeqEnrollments||[];
+  const due=rows.filter(r=>(r.status==='active'||r.status==='scheduled'||r.status==='held')&&r.nextAt!=null&&r.nextAt<=now&&!_seqPaused[r.seqId]);
+  if(!due.length)return 0;
+  const patch={};const exits=[];const acts=[];
+  due.forEach(r=>{
+    const seq=seqFind(r.seqId);const steps=seq?seqStepsOf(seq):Array.from({length:r.stepsCount||3},(_,i)=>({idx:i,delay:i?{n:2,unit:'days'}:null,label:'Step '+(i+1)}));
+    const g=seqGate(r);
+    if(!g.ok){
+      if(g.kind==='exit'){exits.push({id:r.id,reason:g.reason});return;}
+      if(g.kind==='error'){patch[r.id]={status:'error',nextAt:null,error:{code:g.reason,message:g.text,at:now},history:[...(r.history||[]),{at:now,type:'error',reason:g.reason,detail:g.text}]};acts.push([r,'Needs attention — “'+r.seqName+'”',g.text]);return;}
+      const already=r.status==='held'&&r.held&&r.held.reason===g.reason;
+      patch[r.id]={status:'held',nextAt:now+36e5,held:{reason:g.reason,text:g.text,since:(r.held&&r.held.since)||now},history:already?r.history:[...(r.history||[]),{at:now,type:'held',reason:g.reason,detail:g.text}]};
+      if(!already)acts.push([r,'Held — “'+r.seqName+'”',g.text+' · retrying hourly']);
+      return;
+    }
+    const cur=steps[r.stepIdx]||steps[steps.length-1];const stepNo=r.stepIdx+1;
+    const toNow=g.to;const toSnap=(r.to&&(r.to.phone||r.to.email))||'';const changed=toSnap&&toNow&&toSnap!==toNow;
+    const hist=[...(r.history||[])];if(changed)hist.push({at:now,type:'address_changed',from:toSnap,to:toNow});
+    hist.push({at:now,type:'sent',stepIdx:r.stepIdx,to:toNow,from:r.from&&r.from.label});
+    const next=r.stepIdx+1;const to=changed?{...r.to,[r.channel==='sms'?'phone':'email']:toNow,snapshotAt:now}:r.to;
+    if(next>=steps.length){patch[r.id]={status:'finished',nextAt:null,held:null,to,stepIdx:r.stepIdx,lastSentAt:now,history:[...hist,{at:now,type:'finished'}]};acts.push([r,'Step '+stepNo+' of '+steps.length+' sent → '+toNow,(cur.label||'')+' · from '+((r.from&&r.from.label)||'—')+' · sequence finished']);}
+    else{const nextAt=seqSnap(now+seqDelayMs(steps[next].delay),r.settings,r.tz);patch[r.id]={status:'active',stepIdx:next,nextAt,held:null,to,lastSentAt:now,history:hist};acts.push([r,'Step '+stepNo+' of '+steps.length+' sent → '+toNow,(cur.label||'')+' · from '+((r.from&&r.from.label)||'—')+' · next step '+seqRel(nextAt)+(changed?' · address changed since enrollment':'')]);}
+  });
+  if(Object.keys(patch).length)seqSet(a=>a.map(r=>patch[r.id]?{...r,...patch[r.id]}:r));
+  exits.forEach(x=>seqExit([x.id],x.reason,'nrtur'));
+  acts.forEach(([r,t,b])=>seqAct(r,t,b,'nrtur'));
+  return due.length;
+}
+try{window.__nrturSeqTick=()=>seqTick(seqNow());}catch(e){}
+
 function SequenceEnrollModal({
   initialSeqId,
   recipients = [],
@@ -11368,12 +11534,10 @@ function SequenceEnrollModal({
         }
       }
 
-      const isEnrolled = activeEnrollments.some(e => {
-        const sidMatch = String(e.seqId) === String(seq.id) || (seq.rawId != null && String(e.seqId) === String(seq.rawId));
-        const idMatch = (e.contactId === r.id || e.leadId === r.id);
-        const isActive = e.status === 'active' || e.status === 'scheduled';
-        return sidMatch && idMatch && isActive;
-      });
+      if (_seqPaused[seqIdOf(seq)]) {
+        return { recipient: r, tz, locTime, eligible: false, reason: 'Sequence is paused' };
+      }
+      const isEnrolled = !!seqActiveFor(r.type === 'lead' ? {leadId: r.id} : {contactId: r.id}, seqIdOf(seq));
 
       if (isEnrolled) {
         return { recipient: r, tz, locTime, eligible: false, reason: 'Already actively enrolled' };
@@ -11431,37 +11595,7 @@ function SequenceEnrollModal({
 
   const nSteps = (seq && seq.steps) || 3;
 
-  const getDefaultStepContent = (stepIdx, s) => {
-    const ch = (s && s.channel) || 'email';
-    if (ch === 'sms') {
-      if (stepIdx === 1) return { subject: '', body: 'Hi {{first_name}}, thanks for connecting with us at {{company}}! Do you have 5 mins for a quick call this week? Reply STOP to opt out.' };
-      if (stepIdx === 2) return { subject: '', body: 'Hey {{first_name}}, following up on our note regarding {{company}}. Would love to answer any quick questions you have!' };
-      return { subject: '', body: 'Hi {{first_name}}, checking in one last time to see if exploring {{company}}\'s setup is still on your radar. Grab a time anytime: {{meeting_link}}' };
-    }
-    if (ch === 'push') {
-      if (stepIdx === 1) return { subject: 'Welcome to Nrtur, {{first_name}}! 🚀', body: 'Your workspace for {{company}} is ready. Tap to take a 60-second guided tour.' };
-      return { subject: 'Quick update for {{company}}', body: 'Finish configuring your team settings to unlock outbound sequence automation.' };
-    }
-    if (ch === 'inapp') {
-      return { subject: 'Welcome Guide — Step ' + stepIdx, body: 'Hi {{first_name}}, let\'s get your team at {{company}} oriented with our sequence workspace.' };
-    }
-    if (stepIdx === 1) return {
-      subject: 'Welcome to Nrtur — quick question for {{company}}',
-      body: 'Hi {{first_name}},\n\nGreat connecting with you. I noticed your team at {{company}} is exploring modern ways to organize contacts and automate sequence outreach.\n\nDo you have 10–15 minutes this Thursday for a brief walkthrough?\n\nBest,\n{{sender_name}}\n{{meeting_link}}'
-    };
-    if (stepIdx === 2) return {
-      subject: 'Following up — thoughts on {{company}}?',
-      body: 'Hi {{first_name}},\n\nWanted to quickly follow up on my previous note. We recently helped a team similar to {{company}} cut follow-up response times by 65%.\n\nWould Thursday or Friday morning work best for a quick chat?\n\nBest,\n{{sender_name}}'
-    };
-    if (stepIdx === 3) return {
-      subject: 'Resource for {{company}}',
-      body: 'Hi {{first_name}},\n\nThought you might find this benchmark guide helpful as you look into scaling your pipeline at {{company}}.\n\nHappy to walk through how other teams set this up: {{meeting_link}}\n\nBest,\n{{sender_name}}'
-    };
-    return {
-      subject: 'Closing the loop for {{company}}',
-      body: 'Hi {{first_name}},\n\nI know timing is everything. If now isn\'t the best time for {{company}}, no worries at all! Feel free to reach back out whenever you\'re ready.\n\nBest,\n{{sender_name}}'
-    };
-  };
+  const getDefaultStepContent = (stepIdx, s) => seqDefaultStepContent(stepIdx, s);
 
   const currentStepData = stepOverrides[activeStepTab] || getDefaultStepContent(activeStepTab, seq);
 
@@ -11504,34 +11638,17 @@ function SequenceEnrollModal({
     const at = Date.now();
     const isSched = timing === 'scheduled' || timing === 'relative' || (timing === 'sequence' && seq && seq.entryTimer && (seq.entryTimer.timing === 'delay' || seq.entryTimer.timing === 'wait'));
 
-    const recs = eligibleList.map(({recipient: r}) => ({
-      id: 'se' + at + '_' + r.id + '_' + Math.floor(Math.random() * 1000),
-      seqId: seq.id,
-      seqName: seq.name,
-      channel: seq.channel || 'email',
-      contactId: r.type === 'contact' ? r.id : (r.convertedToContactId || null),
-      leadId: r.type === 'lead' ? r.id : null,
-      contactName: r.name,
-      dealId: r.dealId || null,
-      dealName: r.dealName || null,
-      stage: r.stage || null,
-      pipeline: r.pipeline || null,
-      startTiming: timing,
-      startStep,
-      scheduledFor: schedSummary,
-      status: isSched ? 'scheduled' : 'active',
-      unenrollTriggers: {
-        onReply: unenrollReply,
-        onMeeting: unenrollMeeting,
-        onDealWon: unenrollDealWon,
-        onOptOut: unenrollOptOut
-      },
-      overrides: stepOverrides,
-      at,
-      by: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && CURRENT_USER.avatar) || 'AM'
+    const _schedAt = (() => { try { const d = new Date(date + ' ' + time); return isNaN(d.getTime()) ? null : d.getTime(); } catch (e) { return null; } })();
+    const recs = eligibleList.map(({recipient: r}) => seqEnrollRecord({
+      seq, recipient: r, dealId: r.dealId || null, dealName: r.dealName || null, stage: r.stage || null, pipeline: r.pipeline || null,
+      timing, scheduledAt: _schedAt, delay: {n: delayN, unit: delayUnit}, bizDays, useContactTz, quietHours: respectQuietHours,
+      startStep, scheduledFor: schedSummary, via: recipients && recipients.length ? 'bulk' : 'manual',
+      unenrollTriggers: {onReply: unenrollReply, onMeeting: unenrollMeeting, onDealWon: unenrollDealWon, onOptOut: unenrollOptOut},
+      overrides: stepOverrides
     }));
 
     crm.setSeqEnrollments(prev => [...recs, ...(prev || [])]);
+    setTimeout(() => { try { seqTick(seqNow()); } catch (e) {} }, 80);
 
     eligibleList.forEach(({recipient: r}) => {
       const actObj = r.type === 'lead' ? 'lead' : 'contact';
@@ -14399,6 +14516,7 @@ function LeadDetailPage({goTo,nav}){
                   </div>
                 </div>
               </div>}
+              <SequenceEnrollmentBanner kind="lead" id={l.id} goTo={goTo}/>
               <RecordTasks recId={l.id} match={(t)=>t.leadId!=null?t.leadId===l.id:(t.contact===l.name&&t.linkType==='lead')} prefill={{contact:l.name,linkType:'lead',company:l.company||''}} canEdit={effCanObject('Tasks','create')} goTo={goTo} onLog={(title,body)=>setExtra(x=>[mkAct('task',{ts:0,by:'AM',title,body}),...x])}/>
               <ActivityTimeline kind="lead" rec={l} ctx={actCtx} goTo={goTo} extra={extra} onAddNote={canEditLead?addNote:undefined} onEmail={canEditLead?()=>setComposeOpen(true):undefined} onLogCall={canEditLead?()=>setCallModal(true):undefined} onSchedule={canEditLead?()=>setSchedOpen(true):undefined} notePlaceholder={'Add a note about '+l.name+'...'}/>
             </div>
@@ -15461,7 +15579,8 @@ function InboxPage({goTo,nav}){
   // a contact out of unrelated email sequences. R10-14: resolve the real sequence name for the log.
   const _seqNameOf=(r)=>r.seqName||(EMAIL_SEQ_DATA.find(s=>'email'+s.id===r.seqId)||{}).name||((_customSeqs||[]).find(s=>s.id===r.seqId)||{}).name||(r.seqId==='email'?'an email sequence':r.seqId==='sms'?'an SMS sequence':'the sequence');
   const _seqChannel=(r)=>/sms/i.test(String(r.seqId||''))||/sms|text/i.test(String(r.seqName||''))?'sms':'email';
-  const replyUnenroll=(cid,who,channel)=>{const rows=(_seqEnr||[]).filter(e=>e.contactId===cid&&(!channel||_seqChannel(e)===channel));if(!rows.length)return;_setSeqEnr(a=>a.filter(e=>!(e.contactId===cid&&(!channel||_seqChannel(e)===channel))));rows.forEach(r=>_addAct('contact',cid,mkAct('sequence',{ts:0,by:'nrtur',title:'Unenrolled from “'+_seqNameOf(r)+'”',body:'Replied — auto-removed from the sequence.'})));window.__nrturToast&&window.__nrturToast(who+' replied — unenrolled from '+rows.length+' sequence'+(rows.length>1?'s':''),'success');};
+  // Exits go through the engine: the row is kept with reason + history, the per-enrollment switches are honoured, STOP always exits.
+  const replyUnenroll=(cid,who,channel,opts)=>{const o=opts||{};const reason=o.reason||'replied';const rows=seqAutoExit(o.leadId!=null?{leadId:o.leadId}:{contactId:cid},reason,channel,'nrtur');if(!rows.length)return;window.__nrturToast&&window.__nrturToast(who+(reason==='opted_out'?' opted out':' replied')+' — exited '+rows.length+' sequence'+(rows.length>1?'s':''),'success');};
   const simInboundEmail=(known)=>{
     let row;
     if(known){
@@ -15515,6 +15634,7 @@ function InboxPage({goTo,nav}){
       const actTitle=isStop?'Inbound SMS — STOP (opted out of SMS)':isStart?'Inbound SMS — START (opted back in)':isHelp?'Inbound SMS — HELP (auto-replied)':'Inbound SMS';
       _addAct&&_addAct('lead',ld.id,mkAct('sms',{ts:0,by:(ld.name||'').split(' ')[0],title:actTitle,body,payload:{dir:'in'}}));
       _updLead&&_updLead(ld.id,{lastActivity:'Just now'});
+      if(isStop)replyUnenroll(null,(ld.name||'Lead').split(' ')[0],'sms',{leadId:ld.id,reason:'opted_out'});else if(!isStart&&!isHelp)replyUnenroll(null,(ld.name||'Lead').split(' ')[0],'sms',{leadId:ld.id});
       setTab('sms');
       nrturNotify({evt:'sms_received',type:'sms',text:isStop?(ld.name+' opted out of SMS'):isStart?(ld.name+' opted back in'):(ld.name+' texted you'),sub:body,avatar:ld.avatar,color:ld.color,page:'inbox',payload:{tab:'sms'},quietOn:['inbox']});
       const _tm=isStop?(ld.name+' (lead) opted out — SMS suppressed'):isStart?(ld.name+' (lead) opted back in — SMS re-enabled'):isHelp?('Auto-replied to HELP — '+ld.name+' (lead)'):('Inbound SMS — '+ld.name+' (lead)'+(created?' · new thread':''));
@@ -15570,7 +15690,7 @@ function InboxPage({goTo,nav}){
     const actTitle=isStop?'Inbound SMS — STOP (opted out of SMS)':isStart?'Inbound SMS — START (opted back in)':isHelp?'Inbound SMS — HELP (auto-replied)':'Inbound SMS';
     _addAct('contact',ct.id,{...mkAct('sms',{ts:0,by:ct.name.split(' ')[0],title:actTitle,body,payload:{dir:'in'}}),...(_inDeal!=null?{dealId:_inDeal}:{})});
     _updCt(ct.id,{last:'Just now',lastActivity:'Just now',days:0});
-    if(isStop)replyUnenroll(ct.id,ct.name.split(' ')[0],'sms'); // opting out ends any SMS sequences
+    if(isStop)replyUnenroll(ct.id,ct.name.split(' ')[0],'sms',{reason:'opted_out'}); // opting out ends any SMS sequences
     else if(!isStart&&!isHelp){replyUnenroll(ct.id,ct.name.split(' ')[0],'sms');setTimeout(()=>{try{fireEntityAutomationEvents('contact',ct,['SMS reply received']);}catch(e){}},0);}
     setTab('sms');
     const toastMsg=isStop?(ct.name+' opted out — SMS suppressed'):isStart?(ct.name+' opted back in — SMS re-enabled'):isHelp?('Auto-replied to HELP — '+ct.name):('Inbound SMS — '+ct.name+(fromPhone?(' ('+fromPhone+')'):'')+(created?' · new thread':''));
@@ -24748,9 +24868,26 @@ function autoRunNodes(nodes,record,ctx,out,top){
       out.effects.push('🔔 '+(n.channel||'#sales')+': “'+(_msg||'(no message)')+'”');continue;}
     if(k==='enrollEmail'||k==='enrollSms'){ /* suppression is enforced channel-aware by autoStepGate above *//* enroll into the sequence the step actually picked — the row used to record only the generic channel, so every enrollment read back as "an email sequence" */
       const _sname=n.seqName||'';const _sarr=(k==='enrollSms')?(typeof SEQ_DATA!=='undefined'?SEQ_DATA:[]):(typeof EMAIL_SEQ_DATA!=='undefined'?EMAIL_SEQ_DATA:[]);const _srec=_sarr.find(s=>s&&s.name===_sname);
-      const _sid=_srec?((k==='enrollSms'?'sms':'email')+_srec.id):(n.seq||k);
-      if(_cid!=null&&_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>a.some(e=>e.contactId===_cid&&e.seqId===_sid)?a:[{seqId:_sid,seqName:_sname||undefined,contactId:_cid,dealId:ctx.ent==='deal'?record.id:null,stage:record.dStage||'',at:Date.now(),by:'nrtur'},...a]);
-      out.effects.push('➜ Enrolled in '+(_sname||n.seq||'sequence'));continue;}
+      const _seqDef=_srec?{..._srec,channel:(k==='enrollSms'?'sms':'email')}:(seqAllDefs().find(x=>x.name===_sname)||null);
+      if(!_seqDef){out.effects.push('⚠ Sequence “'+(_sname||n.seq||'?')+'” not found — nobody enrolled');continue;}
+      const _leadId=(_cid==null&&ctx.ent==='lead')?record.id:null;
+      const _who=_cid!=null?{contactId:_cid}:(_leadId!=null?{leadId:_leadId}:null);
+      if(!_who){out.effects.push('⚠ No contact on this record — nobody enrolled');continue;}
+      if(seqActiveFor(_who,seqIdOf(_seqDef))){out.effects.push('↺ Already active in '+_seqDef.name);continue;}
+      const _person=_cid!=null?((_liveContacts||[]).find(c=>c.id===_cid)||{id:_cid,name:record.primaryContact||record.name||'Contact',type:'contact'}):{...record,type:'lead'};
+      const _rec=seqEnrollRecord({seq:_seqDef,recipient:{..._person,type:_cid!=null?'contact':'lead'},contactId:_cid,leadId:_leadId,dealId:ctx.ent==='deal'?record.id:null,dealName:ctx.ent==='deal'?(record.name||record.company):null,stage:record.dStage||null,timing:'sequence',via:'automation',by:(ctx&&ctx.autoName)||'automation'});
+      if(_autoRt&&_autoRt.setSeqEnrollments)_autoRt.setSeqEnrollments(a=>[_rec,...a]);
+      seqAct(_rec,'Enrolled in “'+_seqDef.name+'”','By automation “'+((ctx&&ctx.autoName)||'automation')+'” · first step '+seqRel(_rec.nextAt)+' → '+seqToLabel(_rec),(ctx&&ctx.autoName)||'automation');
+      setTimeout(()=>{try{seqTick(seqNow());}catch(e){}},80);
+      out.effects.push('➜ Enrolled in '+_seqDef.name+' (step 1 '+seqRel(_rec.nextAt)+')');continue;}
+    if(k==='unenrollSequence'){
+      const _leadId=(_cid==null&&ctx.ent==='lead')?record.id:null;const _who=_cid!=null?{contactId:_cid}:(_leadId!=null?{leadId:_leadId}:null);
+      if(!_who){out.effects.push('⚠ No contact on this record — nothing to remove');continue;}
+      const _all=!n.seqName||n.seqName==='All sequences';
+      const _rows=seqOtherActive(_who).filter(e=>_all||e.seqName===n.seqName);
+      if(!_rows.length){out.effects.push('↺ Not in '+(_all?'any sequence':n.seqName));continue;}
+      seqExit(_rows.map(e=>e.id),'removed_automation',(ctx&&ctx.autoName)||'automation');
+      out.effects.push('⏏ Removed from '+(_all?_rows.length+' sequence'+(_rows.length===1?'':'s'):n.seqName));continue;}
     if(k==='sendPush'){out.effects.push('📲 Push sent');continue;}
     if(k==='sendInApp'){out.effects.push('📲 In-app sent');continue;}
     if(k==='webhook'){out.effects.push('🔗 '+(n.method||'POST')+' webhook');continue;}
@@ -24914,6 +25051,7 @@ function scanBreaches(){
 // Advance the simulated clock, resume any due wait-node continuations, then rescan breaches.
 function _autoAdvance(ms){
   _autoNow+=(ms||864e5);
+  try{seqTick(_autoNow);}catch(e){}
   const due=_autoWaitQueue.filter(w=>w.resumeAt<=_autoNow);_autoWaitQueue=_autoWaitQueue.filter(w=>w.resumeAt>_autoNow);
   due.forEach(w=>{try{autoRunNodes(w.nodes,w.record,w.ctx,{effects:[],stop:false});}catch(e){}});
   // A2P simulated carrier review — mirrors real timelines: brands verify fast (≤1 day), campaigns take days of
@@ -25059,60 +25197,179 @@ const ENROLLEES=[
   {flow:'New Lead Welcome Sequence',contact:'Emily Tran',avatar:'ET',color:'#148478',step:2,stepLabel:'Send welcome email',status:'active',enteredAt:'30m ago',eng:{delivered:true,opened:true,clicked:false,replied:false}},
   {flow:'New Lead Welcome Sequence',contact:'Riley Voss',avatar:'RV',color:'#87837A',step:3,stepLabel:'Create task',status:'completed',enteredAt:'1d ago',eng:{delivered:true,opened:true,clicked:true,replied:false}},
 ];
-function enrolleesFor(flow){
-  if(!flow)return [];
-  const live = (_liveSeqEnrollments || []).filter(e => e.seqId === flow.id || e.seqName === flow.name || (flow.rawId != null && e.seqId === flow.rawId)).map(e => ({
-    flow: flow.name,
-    contact: e.contactName,
-    avatar: arInitials(e.contactName || 'Contact'),
-    color: '#3475CE',
-    step: e.startStep || 1,
-    stepLabel: 'Step ' + (e.startStep || 1) + (e.scheduledFor ? ' (' + e.scheduledFor + ')' : ''),
-    status: e.status || (e.startTiming === 'immediate' ? 'active' : 'scheduled'),
-    enteredAt: 'Just now',
-    eng: {delivered: e.status === 'active', opened: false, clicked: false, replied: false}
-  }));
-  const real=ENROLLEES.filter(e=>e.flow===flow.name);
-  if(real.length || live.length)return [...live, ...real];
-  const dist=flow.atStep||[];const out=[];let k=0;
-  dist.forEach((cnt,si)=>{const n=Math.min(cnt,4);for(let j=0;j<n;j++){const nm=LOG_SAMPLE_NAMES[k%LOG_SAMPLE_NAMES.length];const o=(k%3!==0),c=(k%4===0),r=(k%7===0);out.push({flow:flow.name,contact:nm[0],avatar:nm[1],color:nm[2],step:si+1,stepLabel:'Step '+(si+1),status:j===0?'waiting':'active',enteredAt:['2h ago','8h ago','1d ago','3d ago'][k%4],eng:{delivered:true,opened:o,clicked:c,replied:r}});k++;}});
-  return [...live, ...out];
-}
 const ENG_ICONS=[['delivered',I.Check,'#87837A','Delivered'],['opened',I.Eye,'#5FD09B','Opened'],['clicked',I.ExternalLink,'#8FB4EA','Clicked link'],['replied',I.Reply,'#54CD95','Replied'],['bounced',I.Ban,'#E9B968','Bounced'],['unsub',I.Ban,'#F0947F','Unsubscribed']];
 // Modal: live "who is at which step" view for a sequence or automation
-function EnrolledContactsModal({flow,close}){
-  const [filter,setFilter]=React.useState('All');
+// ── Enrolled view ── the trace surface for one sequence, LIVE rows only (no seed, no fabricated names).
+// Columns: contact · step x/N · next send · to · from · status · last event. Per-row Pause/Resume/Remove/
+// Move/Retry; checkbox bulk select → Pause/Resume/Remove selected; Remove always asks for a reason.
+function SeqReasonPicker({count,onPick,onCancel}){
+  const [detail,setDetail]=React.useState('replied_elsewhere');
+  return(<div className="rounded-xl border border-white/[0.10] p-3" style={{background:'var(--s900)'}}>
+    <p className="text-[12px] font-medium text-white mb-2">Remove {count>1?count+' contacts':'from sequence'} — why?</p>
+    <div className="flex flex-wrap gap-1.5 mb-3">{SEQ_REMOVE_DETAILS.map(([k,l])=>(<button key={k} onClick={()=>setDetail(k)} className={['px-2.5 py-1 rounded-lg text-[11.5px] font-medium border transition-all',detail===k?'border-white/40 text-white bg-white/[0.08]':'border-white/[0.08] text-white/55 hover:text-white'].join(' ')}>{l}</button>))}</div>
+    <p className="text-[11px] text-white/45 mb-3">Pending messages won’t be sent. History is kept on the record.</p>
+    <div className="flex items-center gap-2"><button onClick={()=>onPick(detail)} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-red-500 hover:bg-red-400 transition-all">Remove</button><button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/60 hover:text-white">Cancel</button></div>
+  </div>);
+}
+function SeqStatusChip({row}){const m=SEQ_STATUS_META[row.status]||SEQ_STATUS_META.active;const s=m.sev==='neutral'?null:sevStyle(m.sev);return(<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium shrink-0" style={s?{color:s.ink,background:'color-mix(in srgb,'+s.accent+' 14%,transparent)',boxShadow:'0 0 0 1px color-mix(in srgb,'+s.accent+' 30%,transparent)'}:{color:'var(--ink-3)',background:'rgba(255,255,255,0.05)',boxShadow:'0 0 0 1px rgba(255,255,255,0.08)'}}><span className="w-1.5 h-1.5 rounded-full" style={{background:s?s.accent:'var(--ink-4)'}}/>{m.l}{row.status==='exited'&&row.exit?(' · '+(SEQ_EXIT_LABEL[row.exit.reason]||row.exit.reason)):''}{row.status==='held'&&row.held?(' · '+(row.held.reason==='a2p_pending'?'messaging not approved':row.held.reason==='cap_reached'?'limit reached':row.held.reason)):''}</span>);}
+function seqLastEvent(row){const h=row.history||[];const e=h[h.length-1];if(!e)return '—';const map={enrolled:'Enrolled',sent:'Step '+((e.stepIdx||0)+1)+' sent',held:'Held',paused:'Paused',resumed:'Resumed',exited:(SEQ_EXIT_LABEL[e.reason]||'Exited'),finished:'Finished',error:'Error',step_moved:'Moved to step '+((e.stepIdx||0)+1),retried:'Retried',address_changed:'Address changed'};return (map[e.type]||e.type)+(e.by&&e.by!=='nrtur'?' · '+e.by:'')+' · '+seqRel(e.at);}
+function EnrolledContactsModal({flow,close,goTo}){
+  const crm=React.useContext(CrmDataContext);
   useEscKey(close);
-  const all=enrolleesFor(flow);
-  const nSteps=(flow&&flow.steps)||1;
+  const [filter,setFilter]=React.useState('All');
+  const [sel,setSel]=React.useState({});
+  const [ask,setAsk]=React.useState(null); // {ids:[...]} → reason picker
+  const [moveFor,setMoveFor]=React.useState(null);
+  const me=(typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.avatar)||'AM';
+  const seqId=seqIdOf(flow);const steps=seqStepsOf(flow);const nSteps=steps.length;
+  const all=(crm.seqEnrollments||[]).filter(e=>e.seqId===seqId||(flow&&flow.name&&e.seqName===flow.name&&!e.seqId)).slice().sort((a,b)=>(b.enrolledAt||b.at||0)-(a.enrolledAt||a.at||0));
+  const CHIPS=['All','Scheduled','Active','Paused','Held','Finished','Exited','Error'];
   const rows=all.filter(e=>filter==='All'||e.status===filter.toLowerCase());
   const cnt=(s)=>all.filter(e=>e.status===s).length;
-  const CHIPS=['All','Active','Scheduled','Waiting','Completed','Exited'];
+  const live=all.filter(e=>!SEQ_TERMINAL.includes(e.status)).length;
+  const selIds=Object.keys(sel).filter(k=>sel[k]);const selRows=all.filter(r=>selIds.includes(r.id));
+  const canPause=selRows.some(r=>r.status==='active'||r.status==='scheduled'||r.status==='held');const canResume=selRows.some(r=>r.status==='paused');const canRemove=selRows.some(r=>!SEQ_TERMINAL.includes(r.status));
+  const clearSel=()=>setSel({});
+  const doRemove=(detail)=>{const ids=ask.ids;const n=seqExit(ids,ids.length>1?'removed_bulk':'removed_manual',me,detail);setAsk(null);clearSel();window.__nrturToast&&window.__nrturToast(n+' removed from “'+flow.name+'”','success');};
+  const openRec=(r)=>{if(!goTo)return;close();if(r.contactId!=null)goTo('contact-detail',r.contactId);else if(r.leadId!=null)goTo('lead-detail',r.leadId);};
+  const BTN='px-2 py-1 rounded-md text-[11px] font-medium text-white/60 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-all';
+  const isPaused=!!_seqPaused[seqId];
   return(
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.72)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-      <div style={{width:600,maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-brand-500/10 ring-1 ring-brand-500/25 flex items-center justify-center text-brand-300 shrink-0"><I.Users size={16}/></div><div className="min-w-0"><p className="text-white text-[15px] font-semibold truncate">Enrolled contacts</p><p className="text-white/45 text-[12px] truncate">{flow?flow.name:''} · who is at which step right now</p></div></div><button onClick={close} className="text-white/40 hover:text-white shrink-0"><I.X size={16}/></button></div>
-        <div className="px-6 py-3 border-b border-white/[0.06] shrink-0 flex items-center gap-4 flex-wrap" style={{background:'var(--s850)'}}>
-          <div className="flex items-center gap-1.5 text-[12px] text-white/45"><I.Users size={11}/>Active <span className="text-white font-semibold tabular-nums">{all.filter(e=>e.status==='active'||e.status==='waiting'||e.status==='scheduled').length}</span></div>
-          {['scheduled','completed','exited'].map(s=>cnt(s)>0&&(<div key={s} className="flex items-center gap-1.5 text-[12px] text-white/45"><span className="w-1.5 h-1.5 rounded-full" style={{background:(ENR_ST[s]||{}).dot}}/>{(ENR_ST[s]||{}).l} <span className="text-white font-semibold tabular-nums">{cnt(s)}</span></div>))}
+      <div style={{width:1120,maxWidth:'100%',maxHeight:'88vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}>
+          <div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] text-white/70 flex items-center justify-center shrink-0"><I.Users size={17}/></div><div className="min-w-0"><p className="text-white text-[15px] font-semibold truncate">{flow.name} — enrolled</p><p className="text-[12px] text-white/45">{live} in flight · {nSteps} steps · {(flow.channel||'email').toUpperCase()}{isPaused?' · sequence paused':''}</p></div></div>
+          <button onClick={close} aria-label="Close" className="text-white/40 hover:text-white transition-colors"><I.X size={16}/></button>
         </div>
-        <div className="px-6 pt-3 shrink-0" style={{background:'var(--s850)'}}><div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] w-fit">{CHIPS.map(c=>(<button key={c} onClick={()=>setFilter(c)} className={['px-3 py-1 rounded-lg text-[12px] font-medium transition-all',filter===c?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}>{c}</button>))}</div></div>
-        <div className="flex-1 overflow-y-auto scroll-area px-6 py-4 flex flex-col gap-2" style={{background:'var(--s850)'}}>
-          {rows.length===0?(<div className="text-center py-10"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/25"><I.Users size={20}/></div><p className="text-[13px] font-medium text-white/55">{all.length===0?'No one is enrolled yet':'Nothing matches this filter'}</p><p className="text-[12px] text-white/50 mt-1">{all.length===0?'Contacts appear here once they enter this flow.':'Try a different status.'}</p></div>):rows.map((e,i)=>{const st=ENR_ST[e.status]||ENR_ST.active;return(
-            <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:e.color}}>{e.avatar}</span>
-                <div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{e.contact}</p><p className="text-[11px] text-white/45 flex items-center gap-1.5"><I.GitBranch size={10} className="text-white/35"/>{e.stepLabel} <span className="text-white/25">·</span> Step {e.step} of {nSteps} <span className="text-white/25">·</span> {e.enteredAt}</p></div>
-                <div className="flex items-center gap-1 shrink-0">{ENG_ICONS.filter(([k])=>e.eng&&e.eng[k]).map(([k,Ic,c,t])=>(<span key={k} title={t} className="w-5 h-5 rounded-md flex items-center justify-center" style={{background:c+'22',color:c}}><Ic size={11}/></span>))}</div>
-                <span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 shrink-0',st.c].join(' ')}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.dot}}/>{e.status==='exited'&&e.eng&&e.eng.unsub?'Unsubscribed':st.l}</span>
-              </div>
-            </div>
-          );})}
+        <div className="px-6 py-3 border-b border-white/[0.06] shrink-0 flex items-center gap-3 flex-wrap" style={{background:'var(--s850)'}}>
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{CHIPS.map(c=>{const n=c==='All'?all.length:cnt(c.toLowerCase());if(c!=='All'&&!n)return null;return(<button key={c} onClick={()=>setFilter(c)} className={['px-2.5 py-1 rounded-lg text-[11.5px] font-medium transition-all',filter===c?'bg-white/[0.10] text-white':'text-white/50 hover:text-white'].join(' ')}>{c} <span className="tabular-nums opacity-70">{n}</span></button>);})}</div>
+          {selIds.length>0&&<div className="ml-auto flex items-center gap-2"><span className="text-[12px] text-white/60">{selIds.length} selected</span>{canPause&&<button onClick={()=>{seqPause(selIds,me);clearSel();}} className={BTN}>Pause</button>}{canResume&&<button onClick={()=>{seqResume(selIds,me);clearSel();}} className={BTN}>Resume</button>}{canRemove&&<button onClick={()=>setAsk({ids:selRows.filter(r=>!SEQ_TERMINAL.includes(r.status)).map(r=>r.id)})} className="px-2 py-1 rounded-md text-[11px] font-medium text-red-200 bg-red-500/[0.10] border border-red-500/25 hover:bg-red-500/[0.18] transition-all">Remove…</button>}<button onClick={clearSel} className="text-[11px] text-white/45 hover:text-white">Clear</button></div>}
         </div>
-        <div className="px-6 py-4 border-t border-white/[0.07] shrink-0" style={{background:'var(--s850)'}}><button onClick={close} className="w-full py-2.5 rounded-xl text-[13px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button></div>
+        {ask&&<div className="px-6 pt-3 shrink-0" style={{background:'var(--s850)'}}><SeqReasonPicker count={ask.ids.length} onPick={doRemove} onCancel={()=>setAsk(null)}/></div>}
+        <div className="flex-1 overflow-y-auto scroll-area" style={{background:'var(--s850)'}}>
+          {rows.length===0?(<div className="text-center py-14"><div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/25"><I.Users size={20}/></div><p className="text-[13px] font-medium text-white/60">{all.length?'Nothing in this state.':'Nobody is enrolled yet.'}</p><p className="text-[11.5px] text-white/40 mt-1">{all.length?'':'Use Enroll on the sequence card, a pipeline stage, or an automation.'}</p></div>):(
+          <table className="w-full text-[12px]">
+            <thead><tr className="text-[10px] uppercase tracking-[0.12em] text-white/40 border-b border-white/[0.06]">
+              <th className="px-4 py-2 text-left w-8"><input type="checkbox" aria-label="Select all" checked={rows.length>0&&rows.every(r=>sel[r.id])} onChange={e=>{const n={...sel};rows.forEach(r=>{n[r.id]=e.target.checked;});setSel(n);}}/></th>
+              <th className="px-2 py-2 text-left">Contact</th><th className="px-2 py-2 text-left">Step</th><th className="px-2 py-2 text-left">Next send</th><th className="px-2 py-2 text-left">To</th><th className="px-2 py-2 text-left">From</th><th className="px-2 py-2 text-left">Status</th><th className="px-2 py-2 text-left">Last event</th><th className="px-2 py-2"></th>
+            </tr></thead>
+            <tbody>{rows.map(r=>{const name=seqRecordName(r);const canAct=!SEQ_TERMINAL.includes(r.status);return(
+              <tr key={r.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] align-top">
+                <td className="px-4 py-2.5"><input type="checkbox" aria-label={'Select '+name} checked={!!sel[r.id]} onChange={e=>setSel(s=>({...s,[r.id]:e.target.checked}))}/></td>
+                <td className="px-2 py-2.5"><button onClick={()=>openRec(r)} className="flex items-center gap-2 text-left group"><span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:'#3475CE'}}>{arInitials(name)}</span><span className="min-w-0"><span className="block text-white font-medium group-hover:underline truncate max-w-[160px]">{name}</span><span className="block text-[10.5px] text-white/40">{r.enrolledVia==='automation'?'via automation':r.enrolledVia==='stage'?'from '+(r.stage||'stage'):'by '+(r.enrolledBy||r.by||'—')} · {seqRel(r.enrolledAt||r.at)}</span></span></button></td>
+                <td className="px-2 py-2.5 whitespace-nowrap text-white/80 tabular-nums">{Math.min((r.stepIdx||0)+1,nSteps)} / {nSteps}<span className="block text-[10.5px] text-white/40 truncate max-w-[140px]">{(steps[Math.min(r.stepIdx||0,nSteps-1)]||{}).label}</span></td>
+                <td className="px-2 py-2.5 whitespace-nowrap text-white/80">{r.nextAt&&canAct?(<span>{seqFmtWhen(r.nextAt,r.tz)}<span className="block text-[10.5px] text-white/40">{seqRel(r.nextAt)}{r.tz?' · '+r.tz.split('/').pop().replace('_',' '):''}</span></span>):(r.status==='paused'?<span className="text-white/45">frozen · {Math.round((r.remainingMs||0)/36e5)}h left</span>:<span className="text-white/35">—</span>)}</td>
+                <td className="px-2 py-2.5 whitespace-nowrap text-white/70">{seqToLabel(r)}</td>
+                <td className="px-2 py-2.5 text-white/50"><span className="block truncate max-w-[130px]" title={(r.from&&r.from.label)||''}>{(r.from&&r.from.label)||'—'}</span></td>
+                <td className="px-2 py-2.5"><SeqStatusChip row={r}/>{r.status==='error'&&r.error&&<span className="block text-[10.5px] text-white/45 mt-1">{r.error.message}</span>}</td>
+                <td className="px-2 py-2.5 text-white/55 whitespace-nowrap">{seqLastEvent(r)}</td>
+                <td className="px-2 py-2.5 whitespace-nowrap"><div className="flex items-center gap-1 justify-end">
+                  {(r.status==='active'||r.status==='scheduled'||r.status==='held')&&<button onClick={()=>seqPause([r.id],me)} className={BTN}>Pause</button>}
+                  {r.status==='paused'&&<button onClick={()=>seqResume([r.id],me)} className={BTN}>Resume</button>}
+                  {r.status==='error'&&<button onClick={()=>seqRetry(r.id,me)} className={BTN}>Retry</button>}
+                  {canAct&&<button onClick={()=>setMoveFor(moveFor===r.id?null:r.id)} className={BTN} title="Move to step">Step</button>}
+                  {canAct&&<button onClick={()=>setAsk({ids:[r.id]})} className="px-2 py-1 rounded-md text-[11px] font-medium text-red-200/80 hover:text-red-100 hover:bg-red-500/[0.12] transition-all">Remove</button>}
+                </div>{moveFor===r.id&&<div className="flex items-center gap-1 justify-end mt-1.5">{steps.map(s=>(<button key={s.idx} onClick={()=>{seqMoveStep(r.id,s.idx,me);setMoveFor(null);}} className={['w-6 h-6 rounded-md text-[11px] font-medium border',s.idx===r.stepIdx?'border-white/40 text-white':'border-white/[0.08] text-white/50 hover:text-white'].join(' ')}>{s.idx+1}</button>))}</div>}</td>
+              </tr>);})}</tbody>
+          </table>)}
+        </div>
+        <div className="px-6 py-3 border-t border-white/[0.07] shrink-0 flex items-center justify-between gap-3" style={{background:'var(--s850)'}}>
+          <p className="text-[11px] text-white/40">Sends are simulated — the clock advances every 30s, or use “+1 day”. Every event is written to the contact’s timeline.</p>
+          <button onClick={close} className="px-4 py-2 rounded-xl text-[12.5px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button>
+        </div>
       </div>
     </div>
   );
+}
+// Default step copy, shared by the enroll wizard preview and the record-page "next message" card.
+function seqDefaultStepContent(stepNo, s){
+  const ch = (s && s.channel) || 'email';
+  if (ch === 'sms') {
+    if (stepNo === 1) return { subject: '', body: 'Hi {{first_name}}, thanks for connecting with us at {{company}}! Do you have 5 mins for a quick call this week? Reply STOP to opt out.' };
+    if (stepNo === 2) return { subject: '', body: 'Hey {{first_name}}, following up on our note regarding {{company}}. Would love to answer any quick questions you have!' };
+    return { subject: '', body: 'Hi {{first_name}}, checking in one last time to see if exploring {{company}}\'s setup is still on your radar. Grab a time anytime: {{meeting_link}}' };
+  }
+  if (ch === 'push') {
+    if (stepNo === 1) return { subject: 'Welcome to Nrtur, {{first_name}}! 🚀', body: 'Your workspace for {{company}} is ready. Tap to take a 60-second guided tour.' };
+    return { subject: 'Quick update for {{company}}', body: 'Finish configuring your team settings to unlock outbound sequence automation.' };
+  }
+  if (ch === 'inapp') {
+    return { subject: 'Welcome Guide — Step ' + stepNo, body: 'Hi {{first_name}}, let\'s get your team at {{company}} oriented with our sequence workspace.' };
+  }
+  if (stepNo === 1) return { subject: 'Welcome to Nrtur — quick question for {{company}}', body: 'Hi {{first_name}},\n\nGreat connecting with you. I noticed your team at {{company}} is exploring modern ways to organize contacts and automate sequence outreach.\n\nDo you have 10–15 minutes this Thursday for a quick intro?\n\nBest,\n{{sender_name}}' };
+  if (stepNo === 2) return { subject: 'Following up — thoughts on {{company}}?', body: 'Hi {{first_name}},\n\nWanted to quickly follow up on my previous note. We recently helped a team similar to {{company}} cut follow-up response times by 65%.\n\nWould Thursday or Friday morning work best for a short call?\n\nBest,\n{{sender_name}}' };
+  if (stepNo === 3) return { subject: 'Resource for {{company}}', body: 'Hi {{first_name}},\n\nThought you might find this benchmark guide helpful as you look into scaling your pipeline at {{company}}.\n\nHappy to walk through how other teams set this up: {{meeting_link}}\n\nBest,\n{{sender_name}}' };
+  return { subject: 'Closing the loop for {{company}}', body: 'Hi {{first_name}},\n\nI know timing is everything. If now isn\'t the best time for {{company}}, no worries at all! Feel free to reach back out whenever you\'re ready.\n\nBest,\n{{sender_name}}' };
+}
+// The message the scheduler will send next for one enrollment: builder copy → per-enrollment override → default.
+function seqNextMessage(row, rec){
+  const seq=seqFind(row.seqId);const stepNo=(row.stepIdx||0)+1;const ch=row.channel||'email';
+  const sd=seq&&Array.isArray(seq.stepData)?seq.stepData[row.stepIdx||0]:null;
+  const ov=row.overrides&&row.overrides[stepNo];
+  const base=ov&&(ov.subject||ov.body)?ov:(sd&&(sd.subject||sd.body||sd.title)?{subject:sd.subject||sd.title||'',body:sd.body||''}:seqDefaultStepContent(stepNo,{channel:ch}));
+  const name=(rec&&rec.name)||row.contactName||'there';const first=name.split(' ')[0];const co=(rec&&(rec.company||rec.co))||'your team';
+  const sender=(typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.name)||'Alex Morgan';
+  const fill=(t)=>String(t||'').replace(/\{\{\s*first_name\s*\}\}/g,first).replace(/\{\{\s*company\s*\}\}/g,co).replace(/\{\{\s*sender_name\s*\}\}/g,sender).replace(/\{\{\s*meeting_link\s*\}\}/g,'nrtur.me/meet/alex-morgan').replace(/\{\{[^}]+\}\}/g,'…');
+  return {subject:fill(base.subject),body:fill(base.body),stepNo,total:seq?seqStepsOf(seq).length:(row.stepsCount||3)};
+}
+// Record-page card. Scales to any number of enrollments: one compact row per sequence, and exactly ONE
+// message preview — the one that fires next ("Next up") — unless the user opens another row (accordion).
+// Finished/exited enrollments stay in the timeline; the card only shows what is still running.
+function SequenceEnrollmentBanner({kind,id,goTo}){
+  const crm=React.useContext(CrmDataContext);
+  const me=(typeof CURRENT_USER!=='undefined'&&CURRENT_USER&&CURRENT_USER.avatar)||'AM';
+  const [ask,setAsk]=React.useState(null);
+  const [openId,setOpenId]=React.useState(null);
+  const [showAll,setShowAll]=React.useState(false);
+  const mine=(crm.seqEnrollments||[]).filter(e=>(kind==='deal'?e.dealId===id:kind==='lead'?e.leadId===id:e.contactId===id));
+  const live=mine.filter(e=>!SEQ_TERMINAL.includes(e.status));
+  const done=mine.length-live.length;
+  if(!live.length)return null;
+  const rec=kind==='lead'?(crm.leads||[]).find(x=>x.id===id):(crm.contacts||[]).find(x=>x.id===id);
+  const rank={active:0,scheduled:0,held:1,error:2,paused:3};
+  const rows=live.slice().sort((a,b)=>(rank[a.status]||0)-(rank[b.status]||0)||((a.nextAt||Infinity)-(b.nextAt||Infinity)));
+  const nextUp=rows.find(r=>(r.status==='active'||r.status==='scheduled')&&r.nextAt)||null;
+  const open=openId&&rows.some(r=>r.id===openId)?openId:(nextUp?nextUp.id:null);
+  const MAX=4;const shown=showAll?rows:rows.slice(0,MAX);
+  const CH={email:{l:'Email',Icon:I.Mail},sms:{l:'SMS',Icon:I.MessageSquare},push:{l:'Push',Icon:I.Bell},inapp:{l:'In-app',Icon:I.MessageSquare}};
+  const ICO='w-7 h-7 rounded-md flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors';
+  const chip=(r)=>{const st=SEQ_STATUS_META[r.status]||SEQ_STATUS_META.active;const sv=st.sev==='neutral'?null:sevStyle(st.sev);return(<span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium shrink-0" style={sv?{color:sv.ink,background:'color-mix(in srgb,'+sv.accent+' 14%,transparent)'}:{color:'var(--ink-3)',background:'rgba(255,255,255,0.05)'}}><span className="w-1 h-1 rounded-full" style={{background:sv?sv.accent:'var(--ink-4)'}}/>{st.l}</span>);};
+  const when=(r)=>r.status==='paused'?('paused · '+Math.round((r.remainingMs||0)/36e5)+'h left'):r.status==='held'?'on hold':r.status==='error'?'needs attention':(r.nextAt?seqRel(r.nextAt):'—');
+  const preview=(r)=>{const ch=CH[r.channel]||CH.email;const msg=seqNextMessage(r,rec);const isNext=nextUp&&nextUp.id===r.id;return(
+    <div className="mx-3 mb-3 rounded-lg border border-white/[0.07] px-3.5 py-3" style={{background:'rgba(0,0,0,0.16)'}}>
+      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{isNext?'Next up · ':''}{ch.l}{r.channel==='sms'?' / MMS':''} · step {msg.stepNo} of {msg.total}</p>
+        <p className="text-[11.5px] text-white/60">{r.status==='paused'?('Paused · '+Math.round((r.remainingMs||0)/36e5)+'h left on the clock'):r.status==='held'?('On hold — '+((r.held&&r.held.text)||'waiting')):r.status==='error'?((r.error&&r.error.message)||'Needs attention'):(r.nextAt?(seqFmtWhen(r.nextAt,r.tz)+' · '+seqRel(r.nextAt)):'—')}</p>
+      </div>
+      {r.channel==='sms'?(<div className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-br-md px-3.5 py-2.5 text-[12.5px] leading-relaxed text-white/85" style={{background:'color-mix(in srgb, var(--accent) 22%, var(--surface-2))'}}>{msg.body}</div></div>)
+      :(<div>{msg.subject&&<p className="text-[12.5px] font-semibold text-white/90 truncate">{msg.subject}</p>}<p className="text-[12px] text-white/55 mt-1 leading-relaxed" style={{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(msg.body||'').replace(/\s*\n+\s*/g,' ')}</p></div>)}
+      <div className="flex items-center gap-3 mt-2.5 text-[11px] text-white/45 flex-wrap"><span>To <span className="text-white/70">{seqToLabel(r)}</span></span><span className="w-px h-3 bg-white/[0.1]"/><span>From <span className="text-white/70">{(r.from&&r.from.label)||'—'}</span></span>{r.tz&&<React.Fragment><span className="w-px h-3 bg-white/[0.1]"/><span>{r.tz.split('/').pop().replace('_',' ')} time</span></React.Fragment>}</div>
+    </div>);};
+  return(<div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+    <div className="flex items-center justify-between gap-3 mb-3"><SectionHead title="Sequences" flush/><span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-medium text-white/60 bg-white/[0.05] ring-1 ring-white/[0.07]"><span className="w-1.5 h-1.5 rounded-full" style={{background:'var(--accent)'}}/>{live.length} active{done?' · '+done+' done':''}</span></div>
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+      {shown.map((r,i)=>{const ch=CH[r.channel]||CH.email;const Ic=ch.Icon;const isOpen=open===r.id;const isNext=nextUp&&nextUp.id===r.id;const n=seqNextMessage(r,rec).total;const cur=Math.min((r.stepIdx||0)+1,n);return(
+        <div key={r.id} className={i>0?'border-t border-white/[0.05]':''}>
+          <div className={['flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors',isOpen?'bg-white/[0.03]':'hover:bg-white/[0.025]'].join(' ')} onClick={()=>setOpenId(isOpen?'__none':r.id)}>
+            <span className="w-7 h-7 rounded-md bg-white/[0.05] text-white/60 flex items-center justify-center shrink-0"><Ic size={13}/></span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0"><p className="text-[12.5px] font-medium text-white truncate">{r.seqName}</p>{chip(r)}{isNext&&!isOpen&&<span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-300 shrink-0">next up</span>}</div>
+              <p className="text-[11px] text-white/45 mt-0.5 truncate">{ch.l} · step {cur} of {n} · {when(r)}</p>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0" onClick={e=>e.stopPropagation()}>
+              {(r.status==='active'||r.status==='scheduled'||r.status==='held')&&<button onClick={()=>seqPause([r.id],me)} title="Pause" aria-label="Pause" className={ICO}><I.Pause size={13}/></button>}
+              {r.status==='paused'&&<button onClick={()=>seqResume([r.id],me)} title="Resume" aria-label="Resume" className={ICO}><I.Play size={13}/></button>}
+              {r.status==='error'&&<button onClick={()=>seqRetry(r.id,me)} title="Retry" aria-label="Retry" className={ICO}><I.Play size={13}/></button>}
+              <button onClick={()=>setAsk(ask===r.id?null:r.id)} title="Remove from sequence" aria-label="Remove from sequence" className={ICO+' hover:text-red-200'}><I.X size={13}/></button>
+              <span className="w-6 h-6 flex items-center justify-center text-white/30">{isOpen?<I.ChevronUp size={12}/>:<I.ChevronDown size={12}/>}</span>
+            </div>
+          </div>
+          {ask===r.id&&<div className="px-3 pb-3"><SeqReasonPicker count={1} onPick={(d)=>{seqExit([r.id],'removed_manual',me,d);setAsk(null);}} onCancel={()=>setAsk(null)}/></div>}
+          {isOpen&&preview(r)}
+        </div>);})}
+      {rows.length>MAX&&<button onClick={()=>setShowAll(v=>!v)} className="w-full text-left px-3 py-2 text-[11px] font-medium text-white/50 hover:text-white border-t border-white/[0.05] transition-colors">{showAll?'Show fewer':'+'+(rows.length-MAX)+' more'}</button>}
+    </div>
+  </div>);
 }
 const ENG_LINKS=[{label:'Book a demo',pct:0.46},{label:'Pricing page',pct:0.31},{label:'Docs / guide',pct:0.23}];
 const ENGAGEMENT_EVENTS=[
@@ -25313,7 +25570,7 @@ function SettingsAutomationsPage({goTo}){
       </div>
       {confirmNode}
       {logModal&&<AutomationLogModal auto={logModal} close={()=>setLogModal(null)}/>}
-      {enrModal&&<EnrolledContactsModal flow={enrModal} close={()=>setEnrModal(null)}/>}
+      {enrModal&&<EnrolledContactsModal flow={enrModal} close={()=>setEnrModal(null)} goTo={goTo}/>}
       {tplOpen&&<AutomationTemplatePanel close={()=>setTplOpen(false)} onUse={useTemplate}/>}
       {newSeq&&<NewSequenceModal channel={newSeq} close={()=>setNewSeq(null)} goTo={goTo}/>}
       {toast&&(<div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-500/12 text-emerald-200 border border-emerald-500/25 shadow-[0_8px_40px_rgba(0,0,0,0.5)]"><I.Check size={14} stroke={2.4}/>{toast}</div>)}
@@ -26174,13 +26431,21 @@ function SettingsSequencesPage({goTo}){
   const fldEmail=useFolders('seq-email',{folders:[{id:'es_onb',name:'Onboarding',color:'#5FD09B',scope:'team'},{id:'es_reeng',name:'Re-engagement',color:'#E9B968',scope:'personal'},{id:'es_sales',name:'Sales follow-up',color:'#54CD95',scope:'personal'}],members:{1:'es_onb',2:'es_sales'}});
   const EDIT='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] transition-all';
   const builderFor=()=>chan+'-sequence-builder';
-  const seqRow=(seq,channel,fld)=>{const key=channel+seq.id;const on=(key in seqMap)?seqMap[key]:!!seq.active;const active=(seq.atStep||[]).reduce((a,b)=>a+b,0);const maxStep=Math.max(...(seq.atStep||[0]),1);return(
+  const {confirmNode:seqConfirmNode,openConfirm:seqConfirm}=useConfirm();
+  const seqRow=(seq,channel,fld)=>{const key=channel+seq.id;const _sid=seqIdOf({...seq,channel});const on=_seqPaused[_sid]?false:((key in seqMap)?seqMap[key]:!!seq.active);
+    const liveRows=(crm.seqEnrollments||[]).filter(e=>e.seqId===_sid);const liveActive=liveRows.filter(e=>!SEQ_TERMINAL.includes(e.status));const nSteps=seqStepsOf({...seq,channel}).length;
+    const dist=Array.from({length:nSteps},(_,i)=>liveActive.filter(e=>Math.min(e.stepIdx||0,nSteps-1)===i).length);const active=liveActive.length;const maxStep=Math.max(...dist,1);
+    const liveSent=liveRows.reduce((n,e)=>n+((e.history||[]).filter(h=>h.type==='sent').length),0);const liveReplied=liveRows.filter(e=>e.exit&&e.exit.reason==='replied').length;
+    const me=CURRENT_USER.avatar;
+    const setOn=(v)=>{setSeqMap(m=>({...m,[key]:v}));if(v)seqResumeSequence(_sid,me);else{seqPauseSequence(_sid,me);if(active)window.__nrturToast&&window.__nrturToast('Paused — '+active+' enrollment'+(active===1?'':'s')+' frozen','warning');}};
+    const stopSeq=()=>seqConfirm({title:'Stop “'+seq.name+'”?',body:active+' contact'+(active===1?' is':'s are')+' in flight. Everyone exits now with reason “Sequence stopped” and pending messages will not be sent. History stays on each record.',confirmLabel:'Stop sequence',danger:true,onConfirm:()=>{const n=seqStopSequence(_sid,me);setSeqMap(m=>({...m,[key]:false}));window.__nrturToast&&window.__nrturToast(n+' exited — “'+seq.name+'” stopped','warning');}});
+    return(
     <div key={key} draggable onDragStart={()=>folderBeginItemDrag('seq-'+channel,seq.id)} onDragEnd={folderEndItemDrag} className={['rounded-2xl border p-5 transition-all',on?'bg-white/[0.035] border-white/[0.08] hover:border-white/[0.14]':'bg-white/[0.02] border-white/[0.05] opacity-80'].join(' ')}>
-      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span>{channel!=='sms'&&<span>Opened <span className="text-amber-300 font-semibold tabular-nums ml-1">{seq.opened}</span></span>}{(channel==='push'||channel==='inapp')&&<span>Clicked <span className="text-sky-300 font-semibold tabular-nums ml-1">{seq.clicked}</span></span>}<span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={v=>setSeqMap(m=>({...m,[key]:v}))}/>{fld&&<MoveToFolderButton api={fld} itemId={seq.id} sm/>}<button onClick={()=>goTo(channel+'-sequence-builder',{id:seq.id})} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
+      <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3 min-w-0"><div className={['w-10 h-10 rounded-xl flex items-center justify-center ring-1 shrink-0',on?'bg-brand-500/12 text-brand-300 ring-brand-500/25':'bg-white/[0.05] text-white/40 ring-white/[0.06]'].join(' ')}>{channel==='email'?<I.Mail size={16}/>:channel==='push'?<I.Bell size={16}/>:channel==='inapp'?<I.MessageSquare size={16}/>:<I.Layers size={16}/>}</div><div className="min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-white text-[15px] font-semibold leading-tight">{seq.name}</h3><span className={['inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1',on?'bg-emerald-500/12 text-emerald-300 ring-emerald-500/25':'bg-white/[0.05] text-white/45 ring-white/[0.08]'].join(' ')}><span className={['w-1.5 h-1.5 rounded-full',on?'bg-emerald-400':'bg-white/30'].join(' ')}/>{on?'Active':'Paused'}</span></div><p className="text-[12px] text-white/45 mt-1">{seq.steps} steps · {channel.toUpperCase()} · {seq.lastRun?`Last run ${seq.lastRun}`:'Never run'}</p></div></div><div className="flex items-center gap-4 shrink-0"><div className="hidden md:flex items-center gap-5 text-[12px] text-white/40"><span>Sent <span className="text-white font-semibold tabular-nums ml-1">{seq.sent}</span></span>{channel!=='sms'&&<span>Opened <span className="text-amber-300 font-semibold tabular-nums ml-1">{seq.opened}</span></span>}{(channel==='push'||channel==='inapp')&&<span>Clicked <span className="text-sky-300 font-semibold tabular-nums ml-1">{seq.clicked}</span></span>}<span>Replied <span className="text-emerald-300 font-semibold tabular-nums ml-1">{seq.replied}</span></span></div><Toggle on={on} onChange={setOn}/>{active>0&&<button onClick={stopSeq} title="Exit everyone and stop" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-red-200/80 hover:text-red-100 bg-red-500/[0.06] hover:bg-red-500/[0.12] border border-red-500/20 transition-all"><I.Ban size={12}/>Stop</button>}{fld&&<MoveToFolderButton api={fld} itemId={seq.id} sm/>}<button onClick={()=>goTo(channel+'-sequence-builder',{id:seq.id})} className={EDIT}><I.Edit size={12}/>Edit</button></div></div>
       <div className="mt-3 pt-3 border-t border-white/[0.05] flex items-end justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-white/45 mb-1.5"><span className="text-white font-semibold tabular-nums">{active}</span> active in flight · across {seq.steps} steps</p>
-          <div className="flex items-center gap-1">{(seq.atStep||[]).map((n,i)=>(<div key={i} className="flex-1 h-1.5 rounded-full" title={'Step '+(i+1)+': '+n+' contacts'} style={{background:n>0?'rgba(84,205,149,'+Math.min(0.3+(n/maxStep)*0.6,0.95)+')':'rgba(255,255,255,0.06)'}}/>))}</div>
+          <p className="text-[11px] text-white/45 mb-1.5"><span className="text-white font-semibold tabular-nums">{active}</span> in flight · across {nSteps} steps{liveSent?<span> · <span className="text-white/70 tabular-nums">{liveSent}</span> sent live</span>:null}{liveReplied?<span> · <span className="text-white/70 tabular-nums">{liveReplied}</span> replied</span>:null}</p>
+          <div className="flex items-center gap-1">{dist.map((n,i)=>(<div key={i} className="flex-1 h-1.5 rounded-full" title={'Step '+(i+1)+': '+n+' in flight'} style={{background:n>0?'color-mix(in srgb, var(--accent) '+Math.round(Math.min(0.3+(n/maxStep)*0.6,0.95)*100)+'%, transparent)':'rgba(255,255,255,0.06)'}}/>))}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0"><button onClick={()=>setEnrollSeq(seq)} className={EDIT}><I.Plus size={12}/>Enroll</button><button onClick={()=>setTrackFlow(seq)} className={EDIT}><I.Users size={12}/>Enrolled</button><button onClick={()=>setEngFlow(seq)} className={EDIT}><I.BarChart size={12}/>Engagement</button></div>
       </div>
@@ -26193,6 +26458,7 @@ function SettingsSequencesPage({goTo}){
       <div className="flex-1 flex flex-col min-w-0">
         <AppTopbar goTo={goTo} title="Sequences" subtitle="Automated SMS & email drip campaigns" rightSlot={<>
           <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.07]">{CHANS.map(t=>{const a=chan===t.k;return(<button key={t.k} onClick={()=>{setChan(t.k);setSubView('list');}} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all',a?'bg-white/[0.12] text-white shadow-sm ring-1 ring-white/[0.10]':'text-white/50 hover:text-white/85'].join(' ')}><t.Icon size={13}/>{({sms:'SMS',email:'Email',push:'Push',inapp:'In-app'})[t.k]||t.l}</button>);})}</div>
+          {!readOnly&&<button onClick={()=>{try{const n=_autoAdvance(864e5);}catch(e){}window.__nrturToast&&window.__nrturToast('Simulated +1 day — sequences advanced','success');}} title="Advance the simulated clock by one day (sends due steps)" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium text-white/70 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all"><I.Clock size={13}/>+1 day</button>}
           <button onClick={()=>setEnrollSeq({})} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium text-white/85 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Zap size={13} className="text-brand-300"/>Enroll Contacts</button>
           {!readOnly&&<button onClick={()=>setNewSeq(chan)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>{({sms:'New SMS sequence',email:'New email sequence',push:'New push sequence',inapp:'New in-app sequence'})[chan]||'New sequence'}</button>}
         </>}/>
@@ -26212,7 +26478,8 @@ function SettingsSequencesPage({goTo}){
         </div>
         <AppFooter note="Sequences run on your connected SMS & email accounts"/>
       </div>
-      {trackFlow&&<EnrolledContactsModal flow={trackFlow} close={()=>setTrackFlow(null)}/>}
+      {trackFlow&&<EnrolledContactsModal flow={trackFlow} close={()=>setTrackFlow(null)} goTo={goTo}/>}
+      {seqConfirmNode}
       {engFlow&&<EngagementModal flow={engFlow} close={()=>setEngFlow(null)}/>}
       {enrollSeq&&<SequenceEnrollModal initialSeqId={enrollSeq.id} onClose={()=>setEnrollSeq(null)}/>}
       {newSeq&&<NewSequenceModal channel={newSeq} close={()=>setNewSeq(null)} goTo={goTo}/>}
@@ -30400,7 +30667,8 @@ function App(){
   const [autoLogs,setAutoLogs]=React.useState([]); // live automation run log (prepended to the seeded AUTO_LOGS)
   const [seqEnrollments,setSeqEnrollments]=React.useState([]); // stage-bulk: REAL sequence membership — {seqId,contactId,dealId,stage,at,by}; dedupe + timeline read this
   _liveSeqEnrollments=seqEnrollments;
-  const [customSeqs,setCustomSeqs]=React.useState([]); // sequences created ONCE from a template via stage bulk enroll — later enrolls reuse them (never one-per-click)
+  const [customSeqs,setCustomSeqs]=React.useState([]);
+  _liveCustomSeqs=customSeqs; // mirror AFTER its useState (a hoisted assignment above it would read undefined) // sequences created ONCE from a template via stage bulk enroll — later enrolls reuse them (never one-per-click)
   const [dealReasons,setDealReasons]=React.useState(DEFAULT_DEAL_REASONS); // P1-2: workspace win/loss reason lists — edited in pipeline settings, read by the close modal + Win/Loss report
   _liveDealReasons=dealReasons; // mirror so DealOutcomeModal reads the live lists from any page
   const [tagDefs,setTagDefs]=React.useState(seedTagDefs);
@@ -30530,12 +30798,18 @@ function App(){
   const [schedAvailability,setSchedAvailability]=React.useState(SCHED_DEFAULT_AVAIL);
   const [schedAutomation,setSchedAutomation]=React.useState(SCHED_DEFAULT_AUTOMATION);
   const [schedMeetings,setSchedMeetings]=React.useState(schedSeedMeetings);
-  const schedAddMeeting=React.useCallback((m)=>{setSchedMeetings(ms=>[m,...ms]);try{const _d=m.date instanceof Date?m.date:null;nrturNotify({type:'meeting',text:'New booking — '+(m.contactName||'Someone')+' booked '+(m.name||'a meeting'),sub:_d?(_d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · '+_d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+(m.duration?' · '+m.duration+' min':'')):'See the Meetings tab',avatar:m.avatar||'⚡',color:m.contactColor||'#54CD95',page:'calendar',payload:{tab:'meetings'}});}catch(e){}},[]);
+  const schedAddMeeting=React.useCallback((m)=>{setSchedMeetings(ms=>[m,...ms]);try{if(m&&m.contactId!=null)seqAutoExit({contactId:m.contactId},'meeting_booked',null,'nrtur');}catch(e){}try{const _d=m.date instanceof Date?m.date:null;nrturNotify({type:'meeting',text:'New booking — '+(m.contactName||'Someone')+' booked '+(m.name||'a meeting'),sub:_d?(_d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · '+_d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+(m.duration?' · '+m.duration+' min':'')):'See the Meetings tab',avatar:m.avatar||'⚡',color:m.contactColor||'#54CD95',page:'calendar',payload:{tab:'meetings'}});}catch(e){}},[]);
   const schedCtx=React.useMemo(()=>({eventTypes:schedEventTypes,setEventTypes:setSchedEventTypes,availability:schedAvailability,setAvailability:setSchedAvailability,automation:schedAutomation,setAutomation:setSchedAutomation,meetings:schedMeetings,setMeetings:setSchedMeetings,addMeeting:schedAddMeeting}),[schedEventTypes,schedAvailability,schedAutomation,schedMeetings,schedAddMeeting]);
   const [billingState,setBillingState]=React.useState('active');
   const [previewRole,setPreviewRole]=React.useState(null); // "View as role" — App-level so a switch re-renders every page
   _previewRole=(NAV_ADMIN_ROLES.indexOf(CURRENT_USER_ROLE)>=0?previewRole:null); // sync module pointer BEFORE pages render this pass
   const [mailAccounts,setMailAccounts]=React.useState([{addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'},{addr:'alex@bloom.co',initials:'AM',color:'#0078d4',provider:'microsoft365'}]);
+  _liveMailAccounts=mailAccounts;
+  // Sequence scheduler: real clock every 30s (the simulated clock also ticks it from _autoAdvance).
+  React.useEffect(()=>{const t=setInterval(()=>{try{seqTick(seqNow());}catch(e){}},30000);return()=>clearInterval(t);},[]);
+  // Deal won → exit the deal's enrollments (per-enrollment switch honoured).
+  const _wonRef=React.useRef(null);
+  React.useEffect(()=>{const won=new Set((deals||[]).filter(d=>{try{return dealClosedKind(d)==='won';}catch(e){return d.stageKey==='won';}}).map(d=>d.id));if(_wonRef.current){won.forEach(id=>{if(!_wonRef.current.has(id)){const d=(deals||[]).find(x=>x.id===id);const rows=(_liveSeqEnrollments||[]).filter(e=>!SEQ_TERMINAL.includes(e.status)&&(e.dealId===id||(d&&d.primaryContactId!=null&&e.contactId===d.primaryContactId))&&(!e.unenrollTriggers||e.unenrollTriggers.onDealWon!==false));if(rows.length)seqExit(rows.map(r=>r.id),'deal_won','nrtur');}});}_wonRef.current=won;},[deals]);
   const connectMail=React.useCallback((acct)=>setMailAccounts(a=>a.find(x=>x.addr===acct.addr)?a:[...a,acct]),[]);
   const disconnectMail=React.useCallback((addr)=>setMailAccounts(a=>a.filter(x=>x.addr!==addr)),[]);
   const [calItems,setCalItems]=React.useState(calSeedEvents);
