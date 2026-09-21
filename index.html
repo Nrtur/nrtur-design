@@ -2113,8 +2113,8 @@ html .bg-brand-500\/15,html .bg-brand-500\/25{background-image:none !important}
    every modern rail uses: a SOFT accent wash, an accent left-bar, an accent icon and full-strength label —
    the row reads as "current" from the bar and weight, not from a block of colour. Tokens drive both themes,
    so there is one source of truth instead of per-theme class overrides. */
-:root{--nav-sel-bg:rgba(47,168,119,.12);--nav-sel-bar:var(--chrome-accent);--nav-sel-fg:#F2F0EA;--nav-sel-icon:var(--chrome-accent-ink);--nav-hover-bg:rgba(255,255,255,.05);--nav-idle-fg:var(--o40)}
-:root[data-theme="light"]{--nav-sel-bg:var(--accent-soft);--nav-sel-bar:var(--accent);--nav-sel-fg:var(--ink);--nav-sel-icon:var(--accent);--nav-hover-bg:var(--hover);--nav-idle-fg:var(--ink-3)}
+:root{--nav-sel-bg:rgba(255,255,255,.10);--nav-sel-bar:#F2F0EA;--nav-sel-fg:#F2F0EA;--nav-sel-icon:#F2F0EA;--nav-hover-bg:rgba(255,255,255,.05);--nav-idle-fg:var(--o40)}
+:root[data-theme="light"]{--nav-sel-bg:rgba(23,22,15,.08);--nav-sel-bar:var(--ink);--nav-sel-fg:var(--ink);--nav-sel-icon:var(--ink);--nav-hover-bg:var(--hover);--nav-idle-fg:var(--ink-3)}
 .app-sidebar .nav-pin{position:relative;color:var(--nav-idle-fg)}
 .app-sidebar .nav-pin.nav-sel{background:var(--nav-sel-bg) !important;color:var(--nav-sel-fg) !important;box-shadow:none !important}
 .app-sidebar .nav-pin.nav-sel svg{color:var(--nav-sel-icon)}
@@ -4227,6 +4227,8 @@ function navMoreSection(it){
 // "All destinations" flyout and the full-page Explore screen — never forked.
 function DestinationGrid({active,query,onGo}){
   const {resolved}=React.useContext(NavConfigContext);
+  const _bc=React.useContext(BillingContext);const _crm=React.useContext(CrmDataContext);
+  const _badges=(()=>{const raw=navBadgeMap(_bc&&_bc.billingState,_crm&&_crm.automations);const out={};Object.keys(raw).forEach(k=>{const d=(typeof ENGAGE_REDIRECT!=='undefined'&&ENGAGE_REDIRECT[k])?'engage':k;[k,d].forEach(x=>{if(!out[x]||sevStyle(raw[k].sev).rank<sevStyle(out[x].sev).rank)out[x]=raw[k];});});return out;})();
   const all=[...navPinnedList(resolved),...navMoreList(resolved)].filter(navCanSee);
   const term=(query||'').trim().toLowerCase();
   const match=(it)=>{if(!term)return true;const m=navDestMeta(it);return (it.label||'').toLowerCase().includes(term)||(m.desc||'').toLowerCase().includes(term)||navMoreSection(it).toLowerCase().includes(term);};
@@ -4234,11 +4236,12 @@ function DestinationGrid({active,query,onGo}){
   const sections=NAV_MORE_ORDER.filter(s=>groups[s]&&groups[s].length);
   if(sections.length===0)return(<div className="flex flex-col items-center justify-center text-center py-14 px-6"><span className="w-11 h-11 rounded-2xl bg-white/[0.04] text-white/30 flex items-center justify-center mb-3"><I.Search size={18}/></span><p className="text-[13px] font-medium text-white/70">No destinations found</p><p className="text-[11.5px] text-white/40 mt-0.5">Try a different search term.</p></div>);
   const card=(it)=>{const Ic=navIco(it.icon);const a=navIsActive(it,active);const m=navDestMeta(it);return(
-    <button key={navKey(it)} onClick={()=>onGo(it)} aria-current={a?'page':undefined} className={['group/navcard relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 cursor-pointer',a?'border-brand-500/40 ring-1 ring-brand-500/30 bg-brand-500/[0.10]':'border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-brand-500/30'].join(' ')}>
+    <button key={navKey(it)} onClick={()=>onGo(it)} aria-current={a?'page':undefined} className={['group/navcard relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 cursor-pointer',a?'border-white/40 ring-1 ring-white/20 bg-white/[0.08]':'border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.20]'].join(' ')}>
       <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ring-1 transition-transform duration-200 group-hover/navcard:scale-105" style={{background:'linear-gradient(135deg,'+m.color+'2e,'+m.color+'12)',color:m.color,'--tw-ring-color':m.color+'33'}}><Ic size={17} stroke={2}/></span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="text-[13px] font-semibold text-white truncate">{it.label}</span>
+          {it.type==='page'&&_badges[it.page]&&<span title={_badges[it.page].title} className="w-[7px] h-[7px] rounded-full shrink-0" style={{background:sevStyle(_badges[it.page].sev).accent}}/>}
           {it.type==='view'&&<span className="text-[8.5px] font-semibold px-1 py-0.5 rounded bg-violet-500/15 text-violet-300 shrink-0">View</span>}
           {it.type==='link'&&<I.ExternalLink size={10} className="text-white/35 shrink-0"/>}
         </span>
@@ -4433,7 +4436,7 @@ function SegTabs({tabs,value,onChange,className,size}){
 let _navExpanded=false;
 // ── Nav badge dots ── a dot on a rail destination only while a needs-fix condition exists on that page (same
 // sources as the global strip), coloured by severity. Never decorative: no condition, no dot.
-function navBadgeMap(billingState,automations){
+function navBadgeMap(billingState,automations,includeSeen){
   const m={};
   const put=(k,sev,title)=>{if(!m[k]||sevStyle(sev).rank<sevStyle(m[k].sev).rank)m[k]={sev,title};};
   if(billingState==='payment-failed')put('settings-billing','critical','Payment failed — $177.00 outstanding');
@@ -4443,7 +4446,17 @@ function navBadgeMap(billingState,automations){
   try{const g=smsComplianceState();if(!g.ok&&g.code!=='no-number'&&!/pending/i.test(g.reason)){put('settings-phone-numbers','warning','SMS blocked — '+g.reason);put('settings-integrations','warning','SMS blocked — '+g.reason);}}catch(e){}
   const f=(automations||[]).filter(a=>a&&a.status==='error');
   if(f.length)put('settings-automations','warning',f.length===1?('“'+f[0].name+'” is failing'):(f.length+' automations are failing'));
+  if(!includeSeen){const seen=navBadgeSeenRead();Object.keys(m).forEach(k=>{if(seen.indexOf(k+'|'+m[k].title)>=0)delete m[k];});}
   return m;
+}
+const NAV_SEEN_LS='nrtur.navBadgesSeen';
+function navBadgeSeenRead(){try{const v=JSON.parse(localStorage.getItem(NAV_SEEN_LS)||'[]');return Array.isArray(v)?v:[];}catch(e){return[];}}
+function navBadgeMarkSeen(keys){
+  let raw={};try{raw=navBadgeMap(_autoRt&&_autoRt.billingState,_autoRt&&_autoRt.automations,true);}catch(e){}
+  const seen=navBadgeSeenRead();let changed=false;
+  (keys||[]).forEach(k=>{const b=raw[k];if(!b)return;const id=k+'|'+b.title;if(seen.indexOf(id)<0){seen.push(id);changed=true;}});
+  if(!changed)return;try{localStorage.setItem(NAV_SEEN_LS,JSON.stringify(seen.slice(-40)));}catch(e){}
+  try{window.dispatchEvent(new CustomEvent('nrtur:notif',{detail:{}}));}catch(e){}
 }
 function navBadgeMax(m,keys){let best=null;keys.forEach(k=>{const b=m[k];if(b&&(!best||sevStyle(b.sev).rank<sevStyle(best.sev).rank))best=b;});return best;}
 function NavDot({b,exp,brand,title}){
@@ -4527,7 +4540,7 @@ function AppSidebar({active,goTo}){
         {/* expanded: a real primary button, which is what "create" deserves — collapsed: the icon affordance */}
         <button onClick={()=>{clearTimeout(addHoverT.current);setAddOpen(v=>!v);}} title="Quick add" aria-label="Quick add" aria-haspopup="menu" aria-expanded={addOpen} className={EXP
           ?'w-full h-9 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all'
-          :rowCls(addOpen?'bg-brand-500 text-white shadow-brand':'text-brand-300 hover:text-brand-200 hover:bg-brand-500/15')}><I.Plus size={EXP?15:18} stroke={2.4}/>{EXP&&<span className="nav-lbl">Quick add</span>}</button>
+          :rowCls(addOpen?'bg-brand-500 text-white shadow-brand':'text-white/75 hover:text-white hover:bg-white/[0.07]')}><I.Plus size={EXP?15:18} stroke={2.4}/>{EXP&&<span className="nav-lbl">Quick add</span>}</button>
         {addOpen&&<div className="absolute top-0 bottom-0 left-full w-3"/>}{addOpen&&<QuickAddMenu close={()=>setAddOpen(false)} goTo={goTo} setQuickModal={setQuickModal} openMulti={setMultiRecord} onEnter={openAddHover} onLeave={closeAddHover}/>}
       </div>}
       {/* expanded: reads as the search FIELD it opens, with the shortcut shown — collapsed: the icon */}
@@ -18264,6 +18277,7 @@ function AutomationBuilderPage({goTo,nav}){
   const _recipe=(nav&&nav.recipe)||null;
   const _editId=(nav&&typeof nav==='object'&&nav.id!=null)?nav.id:null;
   const _edit=_editId!=null?(crm.automations||[]).find(a=>a.id===_editId):null;
+  React.useEffect(()=>{if(_edit&&_edit.status==='error')navBadgeMarkSeen(['settings-automations']);},[]);
   const [nodes,setNodes]=React.useState(()=>{
     if(_edit&&Array.isArray(_edit.nodes)&&_edit.nodes.length)return _edit.nodes;
     // An older automation stores a flat `steps` list and no node tree. Rebuild its real steps instead of dropping
@@ -20496,6 +20510,7 @@ function WhiteLabelConfigDrawer({cfg,setCfg,close}){
   </div>);
 }
 function SettingsBillingPage({goTo}){
+  React.useEffect(()=>{navBadgeMarkSeen(['settings-billing']);},[]);
   const __bc=React.useContext(BillingContext);
   const billingState=__bc.billingState,setBillingState=__bc.setBillingState;
   const [cycle,setCycle]=React.useState('monthly');
@@ -22467,6 +22482,7 @@ function TrustRegistrationWizard({close:_close,onSubmit,initial}){
   </React.Fragment>);
 }
 function SettingsPhoneNumbersPage({goTo}){
+  React.useEffect(()=>{navBadgeMarkSeen(['settings-phone-numbers','settings-integrations']);},[]);
   const crm=React.useContext(CrmDataContext);
   const {confirmNode,openConfirm}=useConfirm();
   const toast=(m,t)=>{if(window.__nrturToast)window.__nrturToast(m,t||'success');};
@@ -22626,6 +22642,7 @@ function SettingsPhoneNumbersPage({goTo}){
   </SettingsShell>);
 }
 function SettingsIntegrationsPage({goTo}){
+  React.useEffect(()=>{navBadgeMarkSeen(['settings-phone-numbers','settings-integrations']);},[]);
   const {conns,connect,disconnect}=React.useContext(IntegrationsContext);
   const ads=React.useContext(AdsContext);
   const [adModal,setAdModal]=React.useState(null);
@@ -25497,6 +25514,7 @@ function AutomationTemplatePanel({close,onUse}){
   </>);
 }
 function SettingsAutomationsPage({goTo}){
+  React.useEffect(()=>{navBadgeMarkSeen(['settings-automations']);},[]);
   const [newSeq,setNewSeq]=React.useState(null);
   const [sub,setSub]=React.useState('workflows');
   const [subView,setSubView]=React.useState('list');
@@ -30572,8 +30590,13 @@ function EngageHub({goTo,nav}){
     if(nav.tab==='delivery'&&nav.sub)setDelSub(nav.sub);
     if(nav.tab==='rules'&&nav.sub)setRulesSub(nav.sub);
   },[nav]);
+  const _bc=React.useContext(BillingContext);const _crm=React.useContext(CrmDataContext);
+  const _raw=navBadgeMap(_bc&&_bc.billingState,_crm&&_crm.automations);
+  const _tabBadge={};Object.keys(_raw).forEach(k=>{const r=(typeof ENGAGE_REDIRECT!=='undefined')?ENGAGE_REDIRECT[k]:null;if(r&&r.tab&&(!_tabBadge[r.tab]||sevStyle(_raw[k].sev).rank<sevStyle(_tabBadge[r.tab].sev).rank))_tabBadge[r.tab]=_raw[k];});
+  const _failing=((_crm&&_crm.automations)||[]).filter(a=>a&&a.status==='error');
+  const _hubNotices=tab==='automations'?[]:_failing.slice(0,1).map(a=>({id:'engage-auto-'+a.id,sev:'warning',Icon:I.Zap,persistent:true,title:_failing.length===1?('“'+a.name+'” is failing — '+(a.errStep||'last run errored')):(_failing.length+' automations are failing — latest: '+a.name),body:'Under Automations. Runs are skipped until the next successful run.',cta:'Open automation',go:'automation-builder',payload:{id:a.id},cta2:'Automations tab',onCta2:()=>setTab('automations')}));
   const tabRail=(<div className="cal-tab-group flex items-center gap-1 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08] overflow-x-auto max-w-full">
-    {ENGAGE_TABS.map(t=>{const a=tab===t.k;return(<button key={t.k} onClick={()=>setTab(t.k)} className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.label}</button>);})}
+    {ENGAGE_TABS.map(t=>{const a=tab===t.k;const b=_tabBadge[t.k];return(<button key={t.k} onClick={()=>setTab(t.k)} title={b?b.title:undefined} className={['relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-all',a?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white'].join(' ')}><t.Icon size={13}/>{t.label}{b&&<span className="w-[6px] h-[6px] rounded-full ml-0.5" style={{background:sevStyle(b.sev).accent}}/>}</button>);})}
   </div>);
   let body;
   if(tab==='templates')body=<EngageTemplates sub={tplSub} setSub={setTplSub} goTo={goTo}/>;
@@ -30588,6 +30611,7 @@ function EngageHub({goTo,nav}){
       <AppSidebar active="engage" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <AppTopbar goTo={goTo} tabs={tabRail}/>
+        <PageNotices page="engage" goTo={goTo} derive={_hubNotices} className="px-7 pt-4"/>
         <div className="flex-1 min-h-0 flex flex-col">
           <EngageEmbedContext.Provider value={true}>{body}</EngageEmbedContext.Provider>
         </div>
@@ -30878,7 +30902,7 @@ function App(){
   return(
     <RoleProvider previewRole={previewRole} setPreview={setPreviewRole}>
     <NavConfigProvider>
-    <BillingContext.Provider value={{billingState,setBillingState}}>
+    <BillingContext.Provider value={{billingState,setBillingState}}>{(()=>{if(_autoRt)_autoRt.billingState=billingState;return null;})()}
      <MailAccountsContext.Provider value={{accounts:mailAccounts,connect:connectMail,disconnect:disconnectMail}}>
      <CrmDataContext.Provider value={crm}>
      <SchedulingContext.Provider value={schedCtx}>
