@@ -2141,6 +2141,39 @@ html .bg-brand-500\/15,html .bg-brand-500\/25{background-image:none !important}
 :root[data-theme] .bg-emerald-500\/60.text-white,:root[data-theme] .bg-emerald-500\/60 .text-white,
 :root[data-theme] .bg-amber-500\/90.text-white,:root[data-theme] .bg-amber-500\/90 .text-white{color:var(--on-solid) !important}
 </style>
+<style id="nrtur-mono-cta">
+/* —— (the tripled [data-theme] is specificity: it must beat nrtur-contrast's `:root[data-theme] .app-shell .bg-brand-500.text-white` and the runtime tw-accent sheet) ——
+   Buttons follow nrtur.io: the primary CTA is inverted ink (cream on dark, near-black on light) with a
+   flat 1px drop shadow — no accent fill, no sheen gradient, no glow ring. Selected segmented pills are the
+   quiet surface-3 chip the marketing site uses for Monthly/Yearly. Bars, dots and tracks (divs) keep the
+   accent; the toggle keeps the accent but loses its glow. —— */
+:root[data-theme][data-theme][data-theme] button.bg-brand-500:not([role="switch"]),:root[data-theme][data-theme][data-theme] a.bg-brand-500,:root[data-theme][data-theme][data-theme] span.bg-brand-500,:root[data-theme][data-theme][data-theme] label.bg-brand-500,
+:root[data-theme][data-theme][data-theme] button.bg-brand-600:not([role="switch"]),:root[data-theme][data-theme][data-theme] a.bg-brand-600{background-color:var(--btn-bg) !important;background-image:none !important;color:var(--btn-fg) !important;border-color:transparent !important}
+:root[data-theme][data-theme][data-theme] button.bg-brand-500:not([role="switch"]) [class*="text-white"],:root[data-theme][data-theme][data-theme] a.bg-brand-500 [class*="text-white"],:root[data-theme][data-theme][data-theme] span.bg-brand-500 [class*="text-white"],
+:root[data-theme][data-theme][data-theme] button.bg-brand-500:not([role="switch"]) [class*="text-brand"],:root[data-theme][data-theme][data-theme] a.bg-brand-500 [class*="text-brand"],:root[data-theme][data-theme][data-theme] button.bg-brand-500:not([role="switch"]) svg,:root[data-theme][data-theme][data-theme] a.bg-brand-500 svg{color:var(--btn-fg) !important}
+:root[data-theme][data-theme][data-theme] button.hover\:bg-brand-400:hover:not([role="switch"]),:root[data-theme][data-theme][data-theme] a.hover\:bg-brand-400:hover,:root[data-theme][data-theme][data-theme] button.hover\:bg-brand-600:hover:not([role="switch"]),:root[data-theme][data-theme][data-theme] a.hover\:bg-brand-600:hover{background-color:var(--btn-bg-hover) !important;background-image:none !important;color:var(--btn-fg) !important}
+:root[data-theme][data-theme][data-theme] button.bg-brand-400:not([role="switch"]),:root[data-theme][data-theme][data-theme] a.bg-brand-400{background-color:var(--btn-bg-hover) !important;background-image:none !important;color:var(--btn-fg) !important}
+:root[data-theme][data-theme][data-theme] .shadow-brand,:root[data-theme][data-theme][data-theme] button.shadow-brand,:root[data-theme][data-theme][data-theme] .app-shell .shadow-brand,:root[data-theme][data-theme][data-theme] body>div:not(#root) .shadow-brand{box-shadow:0 1px 2px rgba(0,0,0,0.40) !important}
+:root[data-theme="light"][data-theme][data-theme] .shadow-brand,:root[data-theme="light"][data-theme][data-theme] .app-shell .shadow-brand,:root[data-theme="light"][data-theme][data-theme] body>div:not(#root) .shadow-brand{box-shadow:0 1px 2px rgba(0,0,0,0.18) !important}
+:root[data-theme][data-theme][data-theme] .shadow-brand-lg{box-shadow:0 1px 2px rgba(0,0,0,0.40),0 8px 24px rgba(0,0,0,0.25) !important}
+/* Segmented control / tab pills: surface-3 chip with ink text. */
+:root[data-theme][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]),:root[data-theme][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]),:root[data-theme][data-theme][data-theme] button.rounded-full.bg-brand-500.text-white:not([role="switch"]):not(.w-9):not(.w-8):not(.w-10):not(.h-9):not(.h-10):not(.h-11){background-color:var(--surface-3) !important;color:var(--ink) !important;box-shadow:0 1px 2px rgba(0,0,0,0.40) !important}
+:root[data-theme][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]) [class*="text-white"],:root[data-theme][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]) [class*="text-white"],:root[data-theme][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]) svg,:root[data-theme][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]) svg{color:var(--ink) !important}
+:root[data-theme="light"][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]),:root[data-theme="light"][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]){background-color:var(--btn-bg) !important;color:var(--btn-fg) !important;box-shadow:0 1px 2px rgba(0,0,0,0.18) !important}
+:root[data-theme="light"][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]) [class*="text-white"],:root[data-theme="light"][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]) [class*="text-white"],:root[data-theme="light"][data-theme][data-theme] button.rounded-lg.bg-brand-500:not([role="switch"]) svg,:root[data-theme="light"][data-theme][data-theme] button.rounded-md.bg-brand-500:not([role="switch"]) svg{color:var(--btn-fg) !important}
+/* Toggle: accent stays, glow goes. */
+:root[data-theme][data-theme][data-theme] [role="switch"].bg-brand-500{box-shadow:none !important;background-image:none !important}
+/* No sheen on any brand fill (bars, chips) either. */
+:root[data-theme][data-theme][data-theme] .bg-brand-500,:root[data-theme][data-theme][data-theme] .bg-brand-400,:root[data-theme][data-theme][data-theme] .app-shell .bg-brand-500,:root[data-theme][data-theme][data-theme] .app-shell .bg-brand-400,:root[data-theme][data-theme][data-theme] body>div:not(#root) .bg-brand-500,:root[data-theme][data-theme][data-theme] body>div:not(#root) .bg-brand-400{background-image:none !important}
+/* Secondary buttons that used a soft green fill (Customize, Enroll, Browse templates…) follow nrtur.io's
+   "See it in action": dark surface, hairline border, ink text. Selected option-cards keep a visible ink ring. */
+:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"]:not([role="switch"]),:root[data-theme][data-theme][data-theme] a[class*="bg-brand-500/"]{background-color:var(--surface-2) !important;background-image:none !important;border-color:var(--line) !important;color:var(--ink) !important}
+:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"]:not([role="switch"]):hover,:root[data-theme][data-theme][data-theme] a[class*="bg-brand-500/"]:hover{background-color:var(--surface-3) !important;border-color:var(--line-3) !important}
+:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"]:not([role="switch"]) [class*="text-brand"],:root[data-theme][data-theme][data-theme] a[class*="bg-brand-500/"] [class*="text-brand"],:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"]:not([role="switch"]) [class*="text-white"],:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"]:not([role="switch"]) svg{color:var(--ink) !important}
+:root[data-theme][data-theme][data-theme] button[class*="bg-brand-500/"][class*="ring-brand-500"]:not([role="switch"]),:root[data-theme][data-theme][data-theme] button[class*="border-brand-500/"][class*="ring-brand-500"]:not([role="switch"]){box-shadow:0 0 0 1px var(--ink-3) !important;border-color:var(--ink-3) !important}
+:root[data-theme][data-theme][data-theme] button[class*="hover:bg-brand-500/"]:not([role="switch"]):hover{background-color:var(--surface-3) !important}
+</style>
+
 <script>(function(){try{var t=localStorage.getItem('nrtur-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
@@ -2669,7 +2702,7 @@ function GlobalToastHost(){
     </div>
   );
 }
-function GlowBg({c1='rgba(47,168,119,0.10)',c2='rgba(106,79,176,0.07)'}){
+function GlowBg({c1='rgba(255,255,255,0.045)',c2='rgba(255,255,255,0.03)'}){
   return(
     <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       <div className="absolute rounded-full" style={{width:600,height:600,background:c1,filter:'blur(140px)',top:-260,right:-160}}/>
@@ -3203,6 +3236,7 @@ function NewContactSplitButton({goTo,onImport}){
 }
 // ── QuickAddMenu ── two-panel hover: records (toggle + list) | Build & automate ──
 function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
+  useEscKey(close);
   const [mode,setMode]=React.useState('single');
   const [impOpen,setImpOpen]=React.useState(false);
   const impT=React.useRef(null);
@@ -3233,7 +3267,7 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
     {l:'Sequence',d:'Multi-step outreach',Icon:I.Layers,c:'#B69EEA',go:'email-sequence-builder'},
   ];
   const list=mode==='single'?SINGLE:MULTI;
-  return(<div onMouseEnter={onEnter} onMouseLeave={onLeave} className="qam-root absolute left-[42px] top-0 z-50 flex rounded-2xl border border-white/[0.08] overflow-hidden" style={{width:606,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
+  return(<div onMouseEnter={onEnter} onMouseLeave={onLeave} className="qam-root absolute left-[calc(100%+8px)] top-0 z-50 flex rounded-2xl border border-white/[0.08] overflow-hidden" style={{width:606,background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
     {/* LEFT — records */}
     <div className="w-[300px] shrink-0 py-2 border-r border-white/[0.07] flex flex-col">
       <div className="px-2 pb-2">
@@ -3265,7 +3299,7 @@ function QuickAddMenu({close,goTo,setQuickModal,openMulti,onEnter,onLeave}){
       </div>
     </div>
     {/* RIGHT — build & automate */}
-    <div className="flex-1 flex flex-col p-4 relative" style={{background:'linear-gradient(160deg, rgba(84,205,149,0.14), rgba(84,205,149,0.02) 60%)'}}>
+    <div className="flex-1 flex flex-col p-4 relative" style={{background:'var(--surface-2)'}}>
       <div aria-hidden className="absolute inset-0 pointer-events-none opacity-[0.5]" style={{backgroundImage:'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.4px)',backgroundSize:'15px 15px'}}/>
       <div className="relative">
         <p className="text-[10px] font-medium text-brand-300 uppercase tracking-[0.16em]">Build &amp; automate</p>
@@ -4219,12 +4253,12 @@ function DestinationGrid({active,query,onGo}){
 }
 // "All destinations" flyout — opens on hover from the rail (see AppSidebar), styled like the settings flyout.
 // onEnter/onLeave keep it open while the pointer bridges from the rail button onto the panel.
-function NavMoreDrawer({active,goTo,close,onCustomize,onEnter,onLeave}){
+function NavMoreDrawer({active,goTo,close,onCustomize,onEnter,onLeave,railW=56}){
   const [q,setQ]=React.useState('');
   React.useEffect(()=>{const esc=(e)=>{if(e.key==='Escape')close();};document.addEventListener('keydown',esc);return()=>document.removeEventListener('keydown',esc);},[close]);
   const go=(it)=>{navGo(it,goTo);if(!it||it.type!=='link')close();};
   return ReactDOM.createPortal((
-    <div className="nav-more-drawer fixed top-0 bottom-0 z-[180] flex flex-col rounded-r-2xl border-r border-white/[0.10]" style={{left:56,width:564,maxWidth:'calc(100vw - 56px)',background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'12px 0 50px rgba(0,0,0,0.55)',animation:'drawerInL .2s ease both'}} role="dialog" aria-label="All destinations" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <div className="nav-more-drawer fixed top-0 bottom-0 z-[180] flex flex-col rounded-r-2xl border-r border-white/[0.10]" style={{left:railW,width:564,maxWidth:'calc(100vw - '+railW+'px)',background:'var(--pop2)',transition:'left .2s ease',backdropFilter:'blur(16px)',boxShadow:'12px 0 50px rgba(0,0,0,0.55)',animation:'drawerInL .2s ease both'}} role="dialog" aria-label="All destinations" onMouseEnter={onEnter} onMouseLeave={onLeave}>
       <div className="shrink-0 px-4 pt-4 pb-3.5 border-b border-white/[0.06]">
         <div className="flex items-center gap-2.5">
           <span className="w-8 h-8 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center shrink-0"><I.Apps size={16}/></span>
@@ -4453,12 +4487,13 @@ function AppSidebar({active,goTo}){
   const [quickModal,setQuickModal]=React.useState(null);
   const [multiRecord,setMultiRecord]=React.useState(null);
   const addHoverT=React.useRef(null);
-  const openAddHover=()=>{clearTimeout(addHoverT.current);setAddOpen(true);};
-  const closeAddHover=()=>{clearTimeout(addHoverT.current);addHoverT.current=setTimeout(()=>setAddOpen(false),180);};
+  const openAddHover=()=>{clearTimeout(addHoverT.current);if(addOpen)return;addHoverT.current=setTimeout(()=>setAddOpen(true),260);};
+  const closeAddHover=()=>{clearTimeout(addHoverT.current);addHoverT.current=setTimeout(()=>setAddOpen(false),240);};
   // "More destinations": hover reveals (120ms in / 200ms out); click pins it open; click-outside or Esc closes.
-  const openMoreHover=()=>{clearTimeout(moreHoverT.current);moreHoverT.current=setTimeout(()=>setMoreOpen(true),120);};
+  // Hover intent: a 320ms hold before the drawer opens, so brushing past the icon never throws a 560px panel over the page. Click opens instantly and pins.
+  const openMoreHover=()=>{clearTimeout(moreHoverT.current);if(moreOpen)return;moreHoverT.current=setTimeout(()=>setMoreOpen(true),320);};
   const cancelMoreClose=()=>clearTimeout(moreHoverT.current);
-  const closeMoreHover=()=>{clearTimeout(moreHoverT.current);moreHoverT.current=setTimeout(()=>{if(!morePinned.current)setMoreOpen(false);},200);};
+  const closeMoreHover=()=>{clearTimeout(moreHoverT.current);moreHoverT.current=setTimeout(()=>{if(!morePinned.current)setMoreOpen(false);},260);};
   const closeMoreNow=()=>{clearTimeout(moreHoverT.current);morePinned.current=false;setMoreOpen(false);};
   const toggleMorePin=()=>{clearTimeout(moreHoverT.current);if(moreOpen){morePinned.current=false;setMoreOpen(false);}else{morePinned.current=true;setMoreOpen(true);}};
   const [sideToast,setSideToast]=React.useState('');
@@ -4490,10 +4525,10 @@ function AppSidebar({active,goTo}){
       </button>
       {effCanCreateAny()&&<div ref={addRef} className={['nav-add relative mb-2',EXP?'w-full':'w-9'].join(' ')} onMouseEnter={openAddHover} onMouseLeave={closeAddHover}>
         {/* expanded: a real primary button, which is what "create" deserves — collapsed: the icon affordance */}
-        <button onClick={()=>setAddOpen(v=>!v)} title="Quick add" aria-label="Quick add" aria-haspopup="menu" aria-expanded={addOpen} className={EXP
+        <button onClick={()=>{clearTimeout(addHoverT.current);setAddOpen(v=>!v);}} title="Quick add" aria-label="Quick add" aria-haspopup="menu" aria-expanded={addOpen} className={EXP
           ?'w-full h-9 rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all'
           :rowCls(addOpen?'bg-brand-500 text-white shadow-brand':'text-brand-300 hover:text-brand-200 hover:bg-brand-500/15')}><I.Plus size={EXP?15:18} stroke={2.4}/>{EXP&&<span className="nav-lbl">Quick add</span>}</button>
-        {addOpen&&<QuickAddMenu close={()=>setAddOpen(false)} goTo={goTo} setQuickModal={setQuickModal} openMulti={setMultiRecord} onEnter={openAddHover} onLeave={closeAddHover}/>}
+        {addOpen&&<div className="absolute top-0 bottom-0 left-full w-3"/>}{addOpen&&<QuickAddMenu close={()=>setAddOpen(false)} goTo={goTo} setQuickModal={setQuickModal} openMulti={setMultiRecord} onEnter={openAddHover} onLeave={closeAddHover}/>}
       </div>}
       {/* expanded: reads as the search FIELD it opens, with the shortcut shown — collapsed: the icon */}
       <button onClick={()=>window.__nrturOpenSearch?.()} title="Search  (Cmd+K)" aria-label="Search" className={EXP
@@ -4519,7 +4554,7 @@ function AppSidebar({active,goTo}){
         <button onClick={()=>setExpanded(!EXP)} title={EXP?'Collapse sidebar':'Expand sidebar'} aria-label={EXP?'Collapse sidebar':'Expand sidebar'} aria-pressed={EXP} className={'nav-expand '+rowCls('text-white/30 hover:text-white/70 hover:bg-white/[0.04]')}>{EXP?<I.ChevronLeft size={16}/>:<I.ChevronRight size={16}/>}{lbl('Collapse')}</button>
         <div ref={moreRef} className={['nav-more relative shrink-0',EXP?'w-full':'w-9'].join(' ')} onMouseEnter={openMoreHover} onMouseLeave={closeMoreHover}>
           <button onClick={toggleMorePin} title="More destinations" aria-label="More destinations" aria-haspopup="menu" aria-expanded={moreOpen} className={'nav-pin relative '+rowCls(moreOpen?'nav-sel':'nav-idle')}><I.Apps size={18}/>{lbl('More')}<NavDot b={moreBadge} exp={EXP}/></button>
-          {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={closeMoreNow} onCustomize={()=>setCustomizeOpen(true)} onEnter={cancelMoreClose} onLeave={closeMoreHover}/>}
+          {moreOpen&&<NavMoreDrawer active={active} goTo={goTo} close={closeMoreNow} onCustomize={()=>setCustomizeOpen(true)} onEnter={cancelMoreClose} onLeave={closeMoreHover} railW={EXP?216:56}/>}
         </div>
         <div ref={notifRef} className={['nav-notif relative',EXP?'w-full':''].join(' ')}>
           <button onClick={()=>setNotifOpen(v=>!v)} title={bellTitle} className={'nav-pin '+rowCls('relative '+(notifOpen?'nav-sel':'nav-idle'))}><I.Bell size={16}/>{lbl('Notifications')}<NavDot brand={__liveN>0||__annN>0||__dueN>0} exp={EXP} title={bellTitle}/></button>
@@ -4730,7 +4765,7 @@ function SettingsSubNav({active,goTo}){
 // ?? ALL_PAGES + DevNav ????????????????????????????????????????????????????????
 const ALL_PAGES=[
   'landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired',
-  'onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','onboarding-6',
+  'onboarding-1','onboarding-2','onboarding-3','onboarding-4',
   'dashboard',
   'explore',
   'leads','lead-detail','add-lead',
@@ -4805,7 +4840,7 @@ function LandingPage({goTo}){
       </header>
       <section className="px-8 py-20 max-w-6xl mx-auto w-full text-center relative">
         <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute rounded-full" style={{width:800,height:800,background:'rgba(47,168,119,0.12)',filter:'blur(180px)',top:-320,left:'50%',transform:'translateX(-50%)'}}/>
+          <div className="absolute rounded-full" style={{width:800,height:800,background:'rgba(255,255,255,0.05)',filter:'blur(180px)',top:-320,left:'50%',transform:'translateX(-50%)'}}/>
         </div>
         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 text-brand-300 text-[11px] font-medium ring-1 ring-brand-500/25 mb-6"><I.Sparkles size={11} stroke={2}/>Now in public beta</span>
         <h1 className="text-[60px] font-bold text-white leading-[1.05] tracking-tight mb-6">The CRM built<br/>for modern sales</h1>
@@ -4885,7 +4920,7 @@ function LandingPage({goTo}){
       </section>
       <section className="px-8 py-16 max-w-6xl mx-auto w-full">
         <div className="rounded-2xl bg-brand-500/[0.06] border border-brand-500/25 p-10 text-center relative overflow-hidden">
-          <div aria-hidden className="absolute inset-0 pointer-events-none"><div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(47,168,119,0.15)',filter:'blur(120px)',top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}/></div>
+          <div aria-hidden className="absolute inset-0 pointer-events-none"><div className="absolute rounded-full" style={{width:500,height:500,background:'rgba(255,255,255,0.05)',filter:'blur(120px)',top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}/></div>
           <h2 className="text-[36px] font-bold text-white mb-4 relative">Ready to start selling smarter?</h2>
           <p className="text-white/65 mb-8 max-w-md mx-auto relative">Join 1,200+ teams already using nrtur. Set up in minutes.</p>
           <button onClick={()=>goTo('signup')} className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-[15px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand-lg hover:-translate-y-0.5 transition-all">Start for free<I.ArrowRight size={15} stroke={2.4}/></button>
@@ -4968,7 +5003,7 @@ function SignUpPage({goTo}){
       {/* Left: Testimonials panel (50%) */}
       <div className="hidden lg:flex flex-col w-1/2 shrink-0 px-8 xl:px-12 py-10 xl:py-12 border-r border-white/[0.05] relative overflow-x-hidden overflow-y-auto scroll-area">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div style={{position:'absolute',width:560,height:560,background:'rgba(47,168,119,0.16)',filter:'blur(150px)',top:'-180px',left:'-140px',borderRadius:'50%'}}/>
+          <div style={{position:'absolute',width:560,height:560,background:'rgba(255,255,255,0.05)',filter:'blur(150px)',top:'-180px',left:'-140px',borderRadius:'50%'}}/>
           <div style={{position:'absolute',width:480,height:480,background:'rgba(194,86,140,0.10)',filter:'blur(150px)',bottom:'-160px',right:'-120px',borderRadius:'50%'}}/>
         </div>
         {/* Heading */}
@@ -5340,14 +5375,15 @@ function AcceptInvitePage({goTo,nav}){
   );
 }
 // ?? OnboardingPage ????????????????????????????????????????????????????????????
+// Four steps. Integrations and team invites were removed from the wizard on purpose — they live in Settings,
+// and the wizard should get someone to a working pipeline in under three minutes.
 const ONB_STEPS=[
-  {label:'Workspace',eyebrow:'Workspace',title:['Set up','your workspace'],desc:'This takes about 5 minutes. You can always change any of this later.'},
-  {label:'Pipeline',eyebrow:'Pipeline',title:['Pick your sales','pipeline'],desc:'Choose a starting template - drag, rename, and add stages anytime.'},
-  {label:'Integrations',eyebrow:'Integrations',title:['Connect your','tools'],desc:'Sync email and calendar so every touch logs automatically. (Texting is set up separately in Phone numbers.)'},
+  {label:'Workspace',eyebrow:'Workspace',title:['Set up','your workspace'],desc:'This takes about 3 minutes. You can always change any of this later.'},
+  {label:'Pipeline',eyebrow:'Pipeline',title:['Your sales','pipeline'],desc:'We start you with a B2B sales pipeline — drag, rename, and add stages anytime.'},
   {label:'Contacts',eyebrow:'Contacts',title:['Bring in your','contacts'],desc:'Add a few people now to get started, or import a spreadsheet anytime.'},
-  {label:'Invite team',eyebrow:'Team',title:['Invite your','team'],desc:'Add teammates now or later. Everyone gets the 14-day free trial.'},
   {label:'Done',eyebrow:'All set',title:["You're",'all set'],desc:"Your workspace is ready. Here's what you can do next."},
 ];
+const ONB_ORDER=[1,2,4,6]; // wizard step → content block id (content ids kept stable so nothing below had to be renumbered)
 function OnboardingDropdown({options,value,onChange,placeholder}){
   const [open,setOpen]=React.useState(false);const ref=React.useRef(null);
   useClickOutside(ref,()=>setOpen(false));
@@ -5390,25 +5426,24 @@ function OnboardingPage({step,goTo}){
   const sendInvite=()=>{if(!inviteEmail.trim())return;addInvites(inviteEmail,inviteRole);setInviteEmail('');};
   const [invites,setInvites]=React.useState(['','']);
   const [csvOpen,setCsvOpen]=React.useState(false);
-  const meta=ONB_STEPS[step-1];
+  const cid=ONB_ORDER[step-1]||6;
+  const meta=ONB_STEPS[step-1]||ONB_STEPS[ONB_STEPS.length-1];
   const prev=step>1?`onboarding-${step-1}`:null;
-  const next=step<6?`onboarding-${step+1}`:'dashboard';
+  const next=step<ONB_ORDER.length?`onboarding-${step+1}`:'dashboard';
   const pct=Math.round((step/6)*100);
   const PIPES=[
     {key:'sales',name:'B2B Sales',desc:'Prospect → Qualified → Proposal → Negotiation → Won',Icon:I.GitBranch},
-    {key:'agency',name:'Agency / Services',desc:'Lead → Scoping → Proposal → Active → Delivered',Icon:I.Layers},
-    {key:'custom',name:'Start from scratch',desc:'Build your own stages from a blank board',Icon:I.Plus},
   ];
   const INTEGS=[
     {key:'gmail',name:'Gmail',desc:'Log emails to contacts automatically',color:'#ea4335'},
     {key:'slack',name:'Slack',desc:'Deal alerts in your channels',color:'#611f69'},
     {key:'calendar',name:'Google Calendar',desc:'Sync meetings to the timeline',color:'#4285f4'},
   ];
-  const grid={backgroundImage:'linear-gradient(rgba(47,168,119,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,168,119,0.05) 1px,transparent 1px)',backgroundSize:'42px 42px',WebkitMaskImage:'radial-gradient(ellipse 80% 60% at 50% 25%,black,transparent 85%)',maskImage:'radial-gradient(ellipse 80% 60% at 50% 25%,black,transparent 85%)'};
+  const grid={backgroundImage:'linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px)',backgroundSize:'42px 42px',WebkitMaskImage:'radial-gradient(ellipse 80% 60% at 50% 25%,black,transparent 85%)',maskImage:'radial-gradient(ellipse 80% 60% at 50% 25%,black,transparent 85%)'};
   return(
     <div className="relative h-full flex flex-col overflow-y-auto scroll-area" style={{background:'var(--s950)'}}>
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute rounded-full" style={{width:760,height:760,background:'rgba(47,168,119,0.18)',filter:'blur(150px)',top:-280,left:'50%',transform:'translateX(-50%)'}}/>
+        <div className="absolute rounded-full" style={{width:760,height:760,background:'rgba(255,255,255,0.05)',filter:'blur(150px)',top:-280,left:'50%',transform:'translateX(-50%)'}}/>
         <div className="absolute rounded-full" style={{width:460,height:460,background:'rgba(106,79,176,0.12)',filter:'blur(140px)',bottom:-160,right:-90}}/>
         <div className="absolute inset-0" style={grid}/>
       </div>
@@ -5422,9 +5457,9 @@ function OnboardingPage({step,goTo}){
             <div className="px-6 sm:px-9 pt-7 pb-6 border-b border-white/[0.05]">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">{ONB_STEPS.map((s,i)=>{const idx=i+1,done=idx<step,active=idx===step;return(<div key={idx} className="flex items-center gap-2"><div className={['w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium transition-all duration-300',done?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/40':active?'bg-brand-500 text-white shadow-brand':'bg-white/[0.04] text-white/40 ring-1 ring-white/[0.06]'].join(' ')}>{done?<I.Check size={12} stroke={2.6}/>:idx}</div><span className={['hidden sm:inline text-[12px] font-medium',active?'text-white':done?'text-white/60':'text-white/50'].join(' ')}>{s.label}</span>{idx<6&&<div className="w-5 h-px bg-white/[0.06] ml-1"/>}</div>);})}</div>
-                <span className="text-[11px] text-white/40 font-medium">Step {step} of 6</span>
+                <span className="text-[11px] text-white/40 font-medium">Step {step} of {ONB_STEPS.length}</span>
               </div>
-              <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:pct+'%',background:'linear-gradient(90deg,#2FA877,#54CD95)',boxShadow:'0 0 12px rgba(47,168,119,0.5)'}}/></div>
+              <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:pct+'%',background:'var(--accent)'}}/></div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,42%)]">
               <div className="p-6 sm:p-9">
@@ -5433,14 +5468,13 @@ function OnboardingPage({step,goTo}){
                   <h1 className="text-[32px] sm:text-[36px] font-bold tracking-tight leading-[1.1] text-white">{meta.title[0]}<br/>{meta.title[1]}</h1>
                   <p className="mt-3 text-[14px] text-white/50 leading-relaxed">{meta.desc}</p>
                   <div className="mt-8">
-                    {step===1&&(<div className="flex flex-col gap-5">
+                    {cid===1&&(<div className="flex flex-col gap-5">
                       <div><label className="text-[12px] font-medium text-white/70 block mb-2">Company name</label><div className="flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 focus-within:shadow-[0_0_0_3px_rgba(47,168,119,0.12)] transition-all"><span className="pl-3.5 text-white/40"><I.Building size={15}/></span><input value={company} onChange={e=>setCompany(e.target.value)} placeholder="Bloom Creative" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div></div>
                       <div><label className="text-[12px] font-medium text-white/70 block mb-2">Industry</label><OnboardingDropdown options={['Agency','Consulting','SaaS','Service business','Other']} value={industry} onChange={setIndustry} placeholder="Choose your industry"/></div>
                       <div><div className="flex items-center justify-between mb-2"><label className="text-[12px] font-medium text-white/70">Team size</label><span className="text-[11px] text-white/40">Pick what’s closest</span></div><div className="grid grid-cols-4 gap-2">{['Just me','2–3','4–5','5+'].map(o=>{const s=teamSize===o;return(<button key={o} onClick={()=>setTeamSize(o)} className={['px-3 py-2.5 rounded-xl text-[13px] font-medium border transition-all',s?'bg-brand-500/15 border-brand-500/40 text-brand-200 shadow-[0_0_0_3px_rgba(47,168,119,0.10)]':'bg-white/[0.03] border-white/[0.08] text-white/60 hover:text-white hover:border-white/[0.16]'].join(' ')}>{o}</button>);})}</div></div>
                     </div>)}
-                    {step===2&&(<div className="flex flex-col gap-3">{PIPES.map(p=>{const s=pipeline===p.key;return(<button key={p.key} onClick={()=>{setPipeline(p.key);_onb.pipeline=p.key;}} className={['flex items-center gap-4 p-4 rounded-2xl border text-left transition-all',s?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(47,168,119,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}><div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0',s?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><p.Icon size={18}/></div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{p.name}</p><p className="text-[12px] text-white/50 mt-0.5 leading-relaxed">{p.desc}</p></div><span className={['w-5 h-5 rounded-full border flex items-center justify-center shrink-0',s?'bg-brand-500 border-brand-500':'border-white/20'].join(' ')}>{s&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</span></button>);})}</div>)}
-                    {step===3&&(<div className="flex flex-col gap-3">{INTEGS.map(it=>{const st=integ[it.key]||'idle';return(<div key={it.key} className="flex items-center gap-3.5 p-4 rounded-2xl border border-white/[0.08] bg-white/[0.03]"><div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-[13px] shrink-0" style={{background:it.color+'22',color:it.color,border:`1px solid ${it.color}40`}}>{it.name[0]}</div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{it.name}</p><p className="text-[12px] text-white/50 mt-0.5">{it.desc}</p>{st==='connected'&&<button onClick={()=>disconnectInteg(it.key)} className="text-[11px] text-white/40 hover:text-red-300 mt-1 transition-colors">Disconnect</button>}</div>{st==='connected'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium bg-emerald-500/12 text-emerald-300 border border-emerald-500/25"><I.Check size={13} stroke={2.6}/>Connected</span>):st==='connecting'?(<span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 border border-brand-500/30 bg-brand-500/10"><span className="w-3.5 h-3.5 rounded-full border-2 border-brand-300/30 border-t-brand-300 animate-spin"/>Connecting…</span>):(<button onClick={()=>connectInteg(it.key)} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-medium border border-brand-500/30 text-brand-300 hover:bg-brand-500/10 transition-all">Connect</button>)}</div>);})}</div>)}
-                    {step===4&&(<div className="flex flex-col gap-4">
+                    {cid===2&&(<div className="flex flex-col gap-3">{PIPES.map(p=>{const s=pipeline===p.key;return(<button key={p.key} onClick={()=>{setPipeline(p.key);_onb.pipeline=p.key;}} className={['flex items-center gap-4 p-4 rounded-2xl border text-left transition-all',s?'bg-brand-500/10 border-brand-500/40 shadow-[0_0_0_3px_rgba(47,168,119,0.10)]':'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.05]'].join(' ')}><div className={['w-11 h-11 rounded-xl flex items-center justify-center shrink-0',s?'bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30':'bg-white/[0.05] text-white/50'].join(' ')}><p.Icon size={18}/></div><div className="min-w-0 flex-1"><p className="text-[14px] font-medium text-white">{p.name}</p><p className="text-[12px] text-white/50 mt-0.5 leading-relaxed">{p.desc}</p></div><span className={['w-5 h-5 rounded-full border flex items-center justify-center shrink-0',s?'bg-brand-500 border-brand-500':'border-white/20'].join(' ')}>{s&&<I.Check size={11} stroke={3} style={{color:'white'}}/>}</span></button>);})}</div>)}
+                    {cid===4&&(<div className="flex flex-col gap-4">
                       <div>
                         <p className="text-[11px] font-medium text-white/40 uppercase tracking-[0.14em] mb-2.5">Add contacts manually</p>
                         <RecordSheet variant="panel" type="contact" onToast={(m)=>window.__nrturToast&&window.__nrturToast(m,'success')} onCreateRows={(rows)=>{const recs=rows.map(r=>arBuildFromSheet('contact',r));if(recs.length)crm.setContacts(a=>[...recs,...a]);}} onCreate={()=>goTo(next)}/>
@@ -5452,14 +5486,13 @@ function OnboardingPage({step,goTo}){
                       </div>
                       {csvOpen&&<BulkImportWizard object='contact' close={()=>setCsvOpen(false)} onToast={(m)=>window.__nrturToast&&window.__nrturToast(m,'success')}/>}
                     </div>)}
-                                        {step===5&&(<div className="flex flex-col gap-4"><div className="flex items-center gap-2"><div className="flex-1 flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl focus-within:border-brand-500/50 transition-all min-w-0"><span className="pl-3.5 text-white/40"><I.Mail size={15}/></span><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')sendInvite();}} onPaste={e=>{const t=(e.clipboardData||window.clipboardData).getData('text');if(t&&/[\s,;]/.test(t.trim())){e.preventDefault();addInvites(t,inviteRole);setInviteEmail('');}}} placeholder="teammate@company.com — paste several at once" className="flex-1 min-w-0 bg-transparent outline-none px-3.5 py-3 text-[14px] text-white placeholder:text-white/30"/></div><div className="w-[150px] shrink-0"><RoleSelect value={inviteRole} onChange={setInviteRole}/></div><button onClick={sendInvite} disabled={!inviteEmail.trim()} className={['inline-flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all shrink-0',inviteEmail.trim()?'text-white bg-brand-500 hover:bg-brand-400 shadow-brand':'text-white/30 bg-white/[0.05] cursor-not-allowed'].join(' ')}><I.Plus size={14} stroke={2.4}/>Send invite</button></div>{sentInvites.length>0&&<div className="flex flex-col gap-2">{sentInvites.map((inv,i)=>(<div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.07]"><span className="w-7 h-7 rounded-full bg-brand-500/20 text-brand-200 flex items-center justify-center text-[11px] font-semibold shrink-0">{inv.email[0].toUpperCase()}</span><span className="text-[13px] text-white truncate flex-1 min-w-0">{inv.email}</span><RoleSelect compact value={inv.role} onChange={(r)=>setSentInvites(a=>a.map((x,j)=>j===i?{...x,role:r}:x))}/><button onClick={()=>setSentInvites(a=>a.filter((_,j)=>j!==i))} className="text-white/30 hover:text-red-300 transition-colors shrink-0"><I.X size={13}/></button></div>))}</div>}<div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]"><span className="flex items-center gap-2 min-w-0"><I.Mail size={13} className="text-white/40 shrink-0"/><span className="text-[12px] text-white/50 truncate">They'll get an email to join your workspace.</span></span>{sentInvites.length>0&&<span className="text-[12px] font-medium text-brand-300 shrink-0">{sentInvites.length} invite{sentInvites.length!==1?'s':''} queued</span>}</div></div>)}
-                    {step===6&&(<div className="flex flex-col gap-5"><div className="flex justify-center"><span className="w-16 h-16 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/25 flex items-center justify-center"><I.Check size={30} stroke={2.4} className="text-emerald-300"/></span></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[{Icon:I.LayoutDash,label:'Go to Dashboard',sub:'See your workspace',go:'dashboard'},{Icon:I.Upload,label:'Import contacts',sub:'Bring in your list',go:'contacts'},{Icon:I.UserPlus,label:'Invite your team',sub:'Add teammates',go:'settings-team'}].map(c=>(<button key={c.label} onClick={()=>goTo(c.go)} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-white/[0.05] transition-all p-4 text-center flex flex-col items-center gap-2"><span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center"><c.Icon size={17}/></span><span className="text-[13px] font-medium text-white">{c.label}</span><span className="text-[11px] text-white/45">{c.sub}</span></button>))}</div></div>)}
+                    {cid===6&&(<div className="flex flex-col gap-5"><div className="flex justify-center"><span className="w-16 h-16 rounded-full bg-emerald-500/10 ring-2 ring-emerald-500/25 flex items-center justify-center"><I.Check size={30} stroke={2.4} className="text-emerald-300"/></span></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[{Icon:I.LayoutDash,label:'Go to Dashboard',sub:'See your workspace',go:'dashboard'},{Icon:I.Upload,label:'Import contacts',sub:'Bring in your list',go:'contacts'},{Icon:I.Plug,label:'Connect your tools',sub:'Email, calendar, Slack',go:'settings-integrations'}].map(c=>(<button key={c.label} onClick={()=>goTo(c.go)} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] hover:border-brand-500/30 hover:bg-white/[0.05] transition-all p-4 text-center flex flex-col items-center gap-2"><span className="w-10 h-10 rounded-xl bg-brand-500/12 text-brand-300 ring-1 ring-brand-500/20 flex items-center justify-center"><c.Icon size={17}/></span><span className="text-[13px] font-medium text-white">{c.label}</span><span className="text-[11px] text-white/45">{c.sub}</span></button>))}</div></div>)}
                   </div>
                   <div className="mt-9 flex items-center justify-between gap-4">
                     {step!==6&&<button onClick={()=>goTo('dashboard')} className="text-[13px] text-white/50 hover:text-white transition-colors">I’ll do this later</button>}
                     <div className="flex items-center gap-2.5">
                       {prev&&<button onClick={()=>goTo(prev)} className="px-5 py-2.5 rounded-xl text-[13px] font-medium text-white/65 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] transition-all">Back</button>}
-                      <button onClick={()=>{if(step===1){_onb.workspace=company.trim();_onb.industry=industry;_onb.teamSize=teamSize;}if(step===2)_onb.pipeline=pipeline;if(step===5&&sentInvites.length)crm.setTeamInvites(a=>{const next=[...a];sentInvites.forEach(inv=>{if(!next.some(x=>(x.email||'').toLowerCase()===(inv.email||'').toLowerCase()))next.push(inv);});return next;});goTo(next);}} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{step===6?'Go to Dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
+                      <button onClick={()=>{if(cid===1){_onb.workspace=company.trim();_onb.industry=industry;_onb.teamSize=teamSize;}if(cid===2)_onb.pipeline=pipeline;goTo(next);}} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all">{cid===6?'Go to Dashboard':'Continue'}<I.ArrowRight size={14} stroke={2.4}/></button>
                     </div>
                   </div>
                 </div>
@@ -5476,7 +5509,7 @@ function OnboardingPage({step,goTo}){
                       <div className="flex items-center justify-center gap-2 mb-2"><I.Sparkles size={14} stroke={2.2} className="text-brand-400" style={{animation:'glowPulse 3s ease-in-out infinite'}}/><span className="text-[11px] font-medium uppercase tracking-[0.14em] text-brand-300">Configuring</span></div>
                       <p className="text-[14px] font-medium text-white leading-tight">Your workspace is being set up…</p>
                       <p className="text-[12px] text-white/50 mt-1.5 leading-relaxed">We’ll tailor it as you complete each step.</p>
-                      <div className="mt-4 flex flex-col gap-2 text-left">{['Workspace details','Default pipeline','Integrations','Import contacts','Team invites'].map((row,i)=>{const idx=i+1,done=idx<step,now=idx===step;return(<div key={i} className="flex items-center gap-2 text-[11px]">{done?<span className="w-3.5 h-3.5 rounded-full bg-brand-500/25 text-brand-300 flex items-center justify-center"><I.Check size={9} stroke={3}/></span>:now?<span className="w-2 h-2 rounded-full bg-brand-400 ml-[3px] mr-[3px]"/>:<span className="w-2 h-2 rounded-full bg-white/15 ml-[3px] mr-[3px]"/>}<span className={done?'text-white/70':now?'text-white/85 font-medium':'text-white/50'}>{row}</span></div>);})}</div>
+                      <div className="mt-4 flex flex-col gap-2 text-left">{['Workspace details','Default pipeline','Import contacts'].map((row,i)=>{const idx=i+1,done=idx<step,now=idx===step;return(<div key={i} className="flex items-center gap-2 text-[11px]">{done?<span className="w-3.5 h-3.5 rounded-full bg-brand-500/25 text-brand-300 flex items-center justify-center"><I.Check size={9} stroke={3}/></span>:now?<span className="w-2 h-2 rounded-full bg-brand-400 ml-[3px] mr-[3px]"/>:<span className="w-2 h-2 rounded-full bg-white/15 ml-[3px] mr-[3px]"/>}<span className={done?'text-white/70':now?'text-white/85 font-medium':'text-white/50'}>{row}</span></div>);})}</div>
                     </div>
                   </div>
                 </div>
@@ -6383,7 +6416,7 @@ function renderWidgetBody(def,cfg,goTo,data,id){
   const nav=()=>goTo&&goTo(meta.nav||'dashboard');
   if(t==='tasks')return(<DashTasksWidget goTo={goTo}/>);
   if(t==='lead-count'){const live=dashCfgActive(cfg);let wk;try{wk=live?dashLiveRows('lead',cfg,D):D.leads.filter(l=>!l.archived&&!l.converted&&l.days<7);}catch(e){wk=[];}return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-emerald-500/10 ring-emerald-500/20 text-emerald-300"><I.Target size={14}/></div></div><p className="text-white text-[30px] font-bold leading-none tabular-nums">{wk.length}</p><p className="text-[11px] text-white/45 mt-1">{live?'matching leads':'new leads this week'}</p>{cfg.sparkline&&<DashSparkline accent="emerald"/>}<div className="mt-3 flex flex-col gap-1.5">{wk.length===0&&<p className="text-[11px] text-white/50">No new leads.</p>}{wk.slice(0,3).map((l,i)=>(<button key={i} onClick={(e)=>{e.stopPropagation();goTo('lead-detail',l.id);}} className="text-left text-[11px] text-white/55 hover:text-white px-2 py-1 rounded-md bg-white/[0.03] hover:bg-brand-500/[0.08] border border-white/[0.05] hover:border-brand-500/30 truncate cursor-pointer transition-colors">{l.name} · {l.source}</button>))}</div></div>);}
-  if(t==='lead-conversion'){const all=D.leads.filter(l=>!l.archived);const conv=all.filter(l=>l.converted||l.convertedToDealId!=null).length;const pct=all.length?Math.round(conv/all.length*100):0;return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-bold leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{conv} converted of {all.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#2FA877,#54CD95)'}}/></div></div>);}
+  if(t==='lead-conversion'){const all=D.leads.filter(l=>!l.archived);const conv=all.filter(l=>l.converted||l.convertedToDealId!=null).length;const pct=all.length?Math.round(conv/all.length*100):0;return(<div onClick={nav} className="p-4 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] group-hover/m:text-white/60">{name}</p><div className="w-8 h-8 rounded-lg flex items-center justify-center ring-1 bg-brand-500/10 ring-brand-500/20 text-brand-300"><I.TrendUp size={14}/></div></div><p className="text-white text-[28px] font-bold leading-none tabular-nums">{pct}%</p><p className="text-[11px] text-white/45 mt-1">{conv} converted of {all.length} leads</p><div className="mt-3 h-2 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'var(--accent)'}}/></div></div>);}
   if(t==='lead-source'){const src=LEAD_SOURCES.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.source===s).length})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const max=Math.max(1,...src.map(s=>s.count));const COLORS=['#54CD95','#5FD09B','#E9B968','#C2568C','#8FB4EA','#B69EEA','#F0947F'];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Active leads" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5 flex flex-col gap-2.5">{src.map((s,i)=>(<div key={s.name}><div className="flex items-center justify-between mb-1"><span className="text-[12px] text-white/70">{s.name}</span><span className="text-[12px] font-semibold text-white tabular-nums">{s.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(s.count/max*100)+'%',background:COLORS[i%COLORS.length]}}/></div></div>))}</div></div>);}
   if(t==='lead-funnel'){const order=LEAD_STATUSES;const rows=order.map(s=>({name:s,count:D.leads.filter(l=>!l.archived&&l.status===s).length,color:LEAD_STATUS_DOT[s]}));const max=Math.max(1,...rows.map(r=>r.count));return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Leads by status" action={<button onClick={()=>goTo('leads')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div className="p-5 flex flex-col gap-3">{rows.map(r=>(<div key={r.name}><div className="flex items-center justify-between mb-1.5"><div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{background:r.color}}/><span className="text-[12px] font-medium text-white/70">{r.name}</span></div><span className="text-[12px] font-semibold text-white tabular-nums">{r.count}</span></div><div className="h-2 rounded-full bg-white/[0.04] overflow-hidden"><div className="h-full rounded-full" style={{width:(r.count/max*100)+'%',background:r.color}}/></div></div>))}</div></div>);}
   if(t==='top-accounts'){const accts=D.companies.filter(c=>!c.archived).map(c=>({c,dl:dealsForCompany(c)})).sort((a,b)=>b.dl.openValue-a.dl.openValue).slice(0,5);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="By open pipeline" action={<button onClick={()=>goTo('companies')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{accts.map(({c,dl},i)=>(<button key={c.id} onClick={()=>goTo('company-detail',c.id)} className={['w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-left',i<accts.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{dl.open} open · {contactsForCompany(c).length} contacts</p></div><span className="text-[13px] font-semibold text-white tabular-nums">{dl.open?fmtK(dl.openValue):'—'}</span></button>))}</div></div>);}
@@ -6402,7 +6435,7 @@ function renderWidgetBody(def,cfg,goTo,data,id){
   if(t==='line'){const pts=[42,51,58,72,88,104,118,138];return(<div className="flex flex-col h-full"><DashHdr name={name} sub="+1,284 · last 12 mo" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200">View</button>}/><div className="p-5"><div className="flex items-end gap-1.5" style={{height:120}}>{pts.map((v,i)=>(<div key={i} className="flex-1 rounded-sm" style={{height:`${(v/138)*100}%`,background:`rgba(47,168,119,${0.35+i*0.07})`,minHeight:4}}/>))}</div></div></div>);}
   if(t==='activity'){return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Last 24 hours" action={window.__nrturPage!=='reports'?<button onClick={()=>goTo('reports')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>:null}/><div className="p-4 flex flex-col gap-2.5">{def.d.map((a,i)=>(<div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/[0.02] transition-colors"><div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 text-white/60">{a.kind==='email'?<I.Mail size={12}/>:a.kind==='deal'?<I.GitBranch size={12}/>:a.kind==='note'?<I.Note size={12}/>:<I.UserPlus size={12}/>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-0.5"><span className={['inline-flex items-center text-[9px] font-semibold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full ring-1',a.chip].join(' ')}>{a.label}</span><span className="text-[10px] text-white/50">{a.time}</span></div><p className="text-[13px] font-medium text-white leading-tight truncate">{a.title}</p><p className="text-[11px] text-white/45 truncate">{a.sub}</p></div></div>))}</div></div>);}
   if(t==='contacts'){const dc=D.contacts.filter(c=>!c.archived).sort((a,b)=>dealK(b)-dealK(a)).slice(0,4);return(<div className="flex flex-col h-full"><DashHdr name={name} sub="Most active this week" action={<button onClick={()=>goTo('contacts')} className="text-[12px] text-brand-300 hover:text-brand-200 flex items-center gap-1">View all<I.ArrowRight size={11} stroke={2.4}/></button>}/><div>{dc.map((c,i)=>(<button key={i} onClick={()=>goTo('contact-detail',c.id)} className={['w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors text-left',i<dc.length-1?'border-b border-white/[0.03]':''].join(' ')}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{background:c.color}}>{c.avatar}</div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium text-white leading-tight truncate">{c.name}</p><p className="text-[11px] text-white/45 truncate">{c.co}</p></div>{c.cstatus&&<span className="text-[10px] font-medium px-2 py-0.5 rounded-full ring-1 bg-white/[0.05] text-white/60 ring-white/[0.10]">{c.cstatus}</span>}<span className="text-[13px] font-semibold text-white tabular-nums">{c.deal}</span></button>))}</div></div>);}
-  if(t==='goal'){const g=def.d;const _gl=dashGoalLive(id,D);const cur=(_gl!=null)?_gl:g.current;const target=cfg.target?parseFloat(cfg.target):g.target;const pct=Math.min(100,Math.round((cur/target)*100));return(<div onClick={nav} className="p-5 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-white font-medium text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><g.Icon size={14}/></div></div><div className="flex items-baseline gap-2 mb-2.5"><span className="text-[26px] font-bold text-white tabular-nums">{g.prefix||''}{cur}{g.suffix||''}</span><span className="text-[12px] text-white/45">/ {g.prefix||''}{target}{g.suffix||''}</span></div><div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'linear-gradient(90deg,#2FA877,#54CD95)',boxShadow:'0 0 12px rgba(47,168,119,0.5)'}}/></div><p className="text-[11px] text-white/40 mt-2">{g.period?(pct+'% of '+g.period+' target'):(pct+'% of target')}</p></div>);}
+  if(t==='goal'){const g=def.d;const _gl=dashGoalLive(id,D);const cur=(_gl!=null)?_gl:g.current;const target=cfg.target?parseFloat(cfg.target):g.target;const pct=Math.min(100,Math.round((cur/target)*100));return(<div onClick={nav} className="p-5 h-full flex flex-col cursor-pointer group/m"><div className="flex items-center justify-between mb-3"><p className="text-white font-medium text-[14px]">{name}</p><div className="w-8 h-8 rounded-lg bg-brand-500/10 ring-1 ring-brand-500/20 text-brand-300 flex items-center justify-center"><g.Icon size={14}/></div></div><div className="flex items-baseline gap-2 mb-2.5"><span className="text-[26px] font-bold text-white tabular-nums">{g.prefix||''}{cur}{g.suffix||''}</span><span className="text-[12px] text-white/45">/ {g.prefix||''}{target}{g.suffix||''}</span></div><div className="h-2.5 rounded-full bg-white/[0.05] overflow-hidden"><div className="h-full rounded-full" style={{width:pct+'%',background:'var(--accent)'}}/></div><p className="text-[11px] text-white/40 mt-2">{g.period?(pct+'% of '+g.period+' target'):(pct+'% of target')}</p></div>);}
   if(t==='actions'){const QAK={'add-contact':'Contacts','add-company':'Companies','add-deal':'Deals','add-lead':'Leads'};return(<div className="p-4 h-full"><p className="text-[10px] font-medium text-white/45 uppercase tracking-[0.14em] mb-3">{name}</p><div className="grid grid-cols-2 gap-2">{def.d.filter(a=>!QAK[a.p]||effCanObject(QAK[a.p],'create')).map(a=>(<button key={a.l} onClick={()=>{const QA={'add-contact':'contact','add-company':'company','add-deal':'deal','add-lead':'lead'};if(QA[a.p]&&window.__nrturQuickAdd)window.__nrturQuickAdd(QA[a.p]);else goTo(a.p);}} className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-brand-500/30 hover:bg-brand-500/[0.06] text-white/70 hover:text-white transition-all"><a.Icon size={16}/><span className="text-[11px] font-medium text-center leading-tight">{a.l}</span></button>))}</div></div>);}
   const e=def.d;return(<div className="h-full min-h-[150px] flex items-center justify-center p-6"><div className="text-center"><div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-white/30"><def.Icon size={20}/></div><p className="text-[13px] font-semibold text-white">No {e.dataType} yet</p><p className="text-[11px] text-white/40 mt-1 max-w-[200px] mx-auto leading-relaxed">{e.expl}</p><button onClick={()=>e.page&&goTo(e.page)} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-brand-300 bg-brand-500/10 border border-brand-500/25 hover:bg-brand-500/15 transition-all"><I.Plus size={12}/>{e.cta}</button></div></div>);
 }
@@ -13604,7 +13637,7 @@ function CompanyDetailPage({goTo,nav}){
           <div className="px-7 py-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] gap-5 items-start">
             <div className="flex flex-col gap-4 lg:sticky lg:top-6 self-start">
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-md overflow-hidden">
-              <div className="relative p-6 pb-5" style={{background:'radial-gradient(circle at top,rgba(47,168,119,0.10),transparent 70%)'}}>
+              <div className="relative p-6 pb-5" style={{background:'var(--surface-2)'}}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-[20px] font-semibold ring-2 ring-white/[0.06]" style={{background:co.color}}>{co.avatar}</div>
                   <div><h2 className="text-white text-[20px] font-semibold">{co.name}</h2><a href={(String(co.domain||'').startsWith('http')?'':'https://')+co.domain} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} className="text-[13px] text-brand-300 mt-1 inline-block hover:text-brand-200">{co.domain}</a><div className="mt-2"><CompanyTypeDropdown value={co.type} onChange={onCoType} disabled={!effCanObject('Companies','edit')}/></div></div>
@@ -14527,7 +14560,7 @@ function MailboxConnectModal({close,onConnected}){
             <div className="w-12 h-12 rounded-2xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center mx-auto mb-4"><I.Mail size={20}/></div>
             <p className="text-[14px] font-medium text-white">Importing your mail…</p>
             <p className="text-[12px] text-white/45 mt-1 mb-4">Syncing the last 30 days for <span className="text-white/70">{acct?acct.addr:im.email}</span></p>
-            <div className="h-2 rounded-full bg-white/[0.08] overflow-hidden max-w-[280px] mx-auto"><div className="h-full rounded-full transition-all duration-200" style={{width:pct+'%',background:'linear-gradient(90deg,#2FA877,#54CD95)'}}/></div>
+            <div className="h-2 rounded-full bg-white/[0.08] overflow-hidden max-w-[280px] mx-auto"><div className="h-full rounded-full transition-all duration-200" style={{width:pct+'%',background:'var(--accent)'}}/></div>
             <p className="text-[11px] text-white/40 mt-2 tabular-nums">{Math.round(pct*12.4)} messages · {pct}%</p>
           </div>)}
           {step==='done'&&(<div className="py-6 text-center">
@@ -14853,7 +14886,7 @@ function EmailDetailPane({email,goTo,onArchive,onDelete,onStar,onTag,onToast,onS
 function FeatureEmpty({Icon,title,desc,actions,gradient}){
   return(<div className="flex-1 flex items-center justify-center px-6 py-16">
     <div className="flex flex-col items-center text-center max-w-sm">
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-white" style={{background:gradient||'linear-gradient(135deg,#2FA877,#6A4FB0)',boxShadow:'0 8px 30px rgba(47,168,119,0.35)'}}>{Icon&&<Icon size={26}/>}</div>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-white" style={{background:gradient||'var(--surface-3)',boxShadow:'0 8px 30px rgba(47,168,119,0.35)'}}>{Icon&&<Icon size={26}/>}</div>
       <p className="text-white text-[18px] font-semibold">{title}</p>
       {desc&&<p className="text-[13px] text-white/45 mt-1.5 leading-relaxed">{desc}</p>}
       {actions&&<div className="flex items-center gap-3 mt-5">{actions}</div>}
@@ -16819,7 +16852,7 @@ const TEMPLATES_A=[
 function AutomationsSubNav({active,goTo}){
   // Point at the LIVE routed pages — the old 'automations'/'email-sequences'/'sms-sequences' targets are dead routes (black screen).
   const tabs=[{label:'Automations',page:'settings-automations'},{label:'Sequences',page:'settings-sequences'},{label:'Email Templates',page:'email-templates'},{label:'SMS Templates',page:'sms-templates'}];
-  return(<div className="shrink-0 border-b border-white/[0.05] px-7" style={{background:'var(--s900)'}}><div className="flex items-center gap-1">{tabs.map(t=>{const a=active===t.page;return(<button key={t.label} onClick={()=>goTo(t.page)} className={['relative px-4 py-3 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.label}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#54CD95,transparent)',boxShadow:'0 0 12px rgba(84,205,149,0.7)'}}/>}</button>);})}</div></div>);
+  return(<div className="shrink-0 border-b border-white/[0.05] px-7" style={{background:'var(--s900)'}}><div className="flex items-center gap-1">{tabs.map(t=>{const a=active===t.page;return(<button key={t.label} onClick={()=>goTo(t.page)} className={['relative px-4 py-3 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.label}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'var(--accent)'}}/>}</button>);})}</div></div>);
 }
 function MiniSparkA({data,color='#54CD95'}){
   if(!data||data.length===0)return null;
@@ -16838,7 +16871,7 @@ function AutomationsPage({goTo}){
         <AutomationsSubNav active="automations" goTo={goTo}/>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-[1240px] mx-auto">
-            <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-r from-brand-500/[0.08] to-transparent p-5 mb-6">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 mb-6">
               <p className="text-[13px] font-semibold text-white mb-3">Your CRM should work even when you're not.</p>
               <div className="flex items-center gap-2 flex-wrap">
                 {[{Icon:I.Zap,c:'#54CD95',t:'Trigger',d:'watches for the moment'},{Icon:I.GitBranch,c:'#5FD09B',t:'Conditions',d:'decide the path'},{Icon:I.Send,c:'#E9B968',t:'Actions',d:'do the work'}].map((s,i,arr)=>(<React.Fragment key={s.t}><div className="inline-flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={13} stroke={2.2}/></span><div><p className="text-[12px] font-semibold text-white leading-none">{s.t}</p><p className="text-[11px] text-white/45 mt-0.5">{s.d}</p></div></div>{i!==arr.length-1&&<I.ArrowRight size={14} className="text-white/25"/>}</React.Fragment>))}
@@ -19544,7 +19577,7 @@ function SettingsWhiteLabelPage({goTo}){
 
     <div className="h-px bg-white/[0.06] mt-2"/>
     {H2(I.Layers,'SaaS & reseller mode')}
-    <div className="rounded-2xl border border-brand-500/20 p-5" style={{background:'linear-gradient(135deg,rgba(47,168,119,0.10),transparent 70%)'}}>
+    <div className="rounded-2xl border border-brand-500/20 p-5" style={{background:'var(--surface-2)'}}>
       <div className="flex items-center justify-between gap-3 mb-3 flex-wrap"><p className="text-[14px] font-semibold text-white flex items-center gap-2"><I.Sparkles size={15} className="text-brand-300"/>Resell nrtur as your own SaaS</p><button onClick={()=>custToast('New sub-account — provision a client workspace')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={13} stroke={2.4}/>New sub-account</button></div>
       <p className="text-[12.5px] text-white/60 max-w-2xl mb-4">Each sub-account is an isolated workspace under your brand. You set pricing &amp; markup; billing rolls up to you.</p>
       <div className="grid grid-cols-3 gap-3 mb-4">
@@ -20104,9 +20137,9 @@ function BillingCycleToggle({cycle,setCycle}){
   </div>);
 }
 function BillingCardVisual({failed}){
-  return(<div className="relative w-full max-w-sm rounded-2xl p-5 overflow-hidden flex flex-col justify-between" style={{minHeight:188,background:failed?'linear-gradient(140deg,#232220,#232220)':'linear-gradient(140deg,#2FA877 0%,#2FA877 52%,#232220 100%)',boxShadow:'0 18px 50px rgba(47,168,119,0.45)'}}>
+  return(<div className="relative w-full max-w-sm rounded-2xl p-5 overflow-hidden flex flex-col justify-between" style={{minHeight:188,background:failed?'#232220':'linear-gradient(140deg,#2B2926,#1B1A18)',boxShadow:'0 18px 50px rgba(0,0,0,0.45)',border:'1px solid rgba(255,255,255,0.08)'}}>
     <div className="absolute -top-16 -right-12 w-56 h-56 rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(255,255,255,0.18),transparent 62%)'}}/>
-    <div className="absolute -bottom-20 -left-10 w-52 h-52 rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(47,168,119,0.35),transparent 60%)'}}/>
+    <div className="absolute -bottom-20 -left-10 w-52 h-52 rounded-full pointer-events-none" style={{background:'radial-gradient(circle,rgba(255,255,255,0.06),transparent 60%)'}}/>
     <div className="relative flex items-center justify-between">
       <span className="text-white text-[13px] font-semibold tracking-wide">nrtur</span>
       <span className="text-white/75 text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 ring-1 ring-white/15">Pro plan</span>
@@ -20349,7 +20382,7 @@ function SettingsBillingPage({goTo}){
       {billingState==='active'&&(<>
         {/* 1 · Current plan */}
         <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.03] backdrop-blur-md p-6">
-          <div className="absolute -top-32 -right-20 w-80 h-80 rounded-full pointer-events-none" style={{background:'rgba(47,168,119,0.18)',filter:'blur(120px)'}}/>
+          <div className="absolute -top-32 -right-20 w-80 h-80 rounded-full pointer-events-none" style={{background:'rgba(255,255,255,0.05)',filter:'blur(120px)'}}/>
           <div className="relative">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div>
@@ -20438,11 +20471,11 @@ function SettingsBillingPage({goTo}){
 
       {billingState==='trial'&&(<>
         <div className="relative rounded-2xl overflow-hidden border border-brand-500/25 bg-brand-500/[0.07] p-6">
-          <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full pointer-events-none" style={{background:'rgba(47,168,119,0.22)',filter:'blur(110px)'}}/>
+          <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full pointer-events-none" style={{background:'rgba(255,255,255,0.05)',filter:'blur(110px)'}}/>
           <div className="relative flex items-start justify-between gap-6 flex-wrap">
             <div><div className="flex items-center gap-2 mb-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/30"><I.Sparkles size={11}/>Free trial</span></div><p className="text-white text-[28px] font-bold leading-none">9 days left</p><p className="text-white/55 text-[13px] mt-2">Your Pro trial ends <span className="text-white/85 font-medium">June 11, 2026</span>. No card required to keep exploring.</p></div>
           </div>
-          <div className="relative mt-5"><div className="h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:'36%',background:'linear-gradient(90deg,#2FA877,#54CD95)',boxShadow:'0 0 12px rgba(47,168,119,0.5)'}}/></div><div className="flex justify-between mt-1.5 text-[10px] text-white/50"><span>Day 5 of 14</span><span>Ends Jun 11</span></div></div>
+          <div className="relative mt-5"><div className="h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:'36%',background:'var(--accent)'}}/></div><div className="flex justify-between mt-1.5 text-[10px] text-white/50"><span>Day 5 of 14</span><span>Ends Jun 11</span></div></div>
         </div>
         <div><p className={BILLING_EYE+' mb-1'}>Choose your plan</p><p className="text-white/45 text-[12px] mb-4">Keep Pro or pick another — switch anytime.</p><BillingPlanCards selected={plan} onSelect={setPlan} cycle={cycle}/></div>
         <div className={BILLING_CARD}>
@@ -25217,9 +25250,9 @@ function SettingsAutomationsPage({goTo}){
             {readOnly&&<WorkspaceReadOnlyBanner label="Automations are shared workspace assets."/>}
             <PageNotices page="settings-automations" goTo={goTo} derive={(()=>{const f=autos.filter(a=>a.status==='error');if(!f.length)return[];const a=f[0];return[{id:'autos-failing',sev:'warning',Icon:I.Zap,persistent:true,title:f.length===1?('“'+a.name+'” is failing — '+(a.errStep||'last run errored')):(f.length+' automations are failing'),body:f.length===1?'Its runs are skipped until the next successful run.':('Latest: '+a.name+' · '+(a.errStep||'last run errored')+'.'),cta:'Open',go:'automation-builder',payload:{id:a.id}}];})()}/>
             <fieldset disabled={readOnly} className="contents border-0 m-0 p-0 min-w-0">
-            <div className="flex items-center gap-1 border-b border-white/[0.06]">{SUBTABS.map(t=>{const a=sub===t.k;return(<button key={t.k} onClick={()=>{setSub(t.k);setSubView('list');}} className={['relative px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'linear-gradient(90deg,transparent,#54CD95,transparent)',boxShadow:'0 0 12px rgba(84,205,149,0.7)'}}/>}</button>);})}</div>
+            <div className="flex items-center gap-1 border-b border-white/[0.06]">{SUBTABS.map(t=>{const a=sub===t.k;return(<button key={t.k} onClick={()=>{setSub(t.k);setSubView('list');}} className={['relative px-4 py-2.5 text-[13px] font-medium transition-colors',a?'text-white':'text-white/45 hover:text-white/75'].join(' ')}>{t.l}{a&&<span className="absolute left-3 right-3 -bottom-px h-px" style={{background:'var(--accent)'}}/>}</button>);})}</div>
             {sub==='workflows'&&(
-              <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-r from-brand-500/[0.08] to-transparent p-5">
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
                 <p className="text-[13px] font-semibold text-white mb-3">Your CRM should work even when you're not.</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   {[{Icon:I.Zap,c:'#54CD95',t:'Trigger',d:'watches for the moment'},{Icon:I.GitBranch,c:'#5FD09B',t:'Conditions',d:'decide the path'},{Icon:I.Send,c:'#E9B968',t:'Actions',d:'do the work'}].map((s,i,arr)=>(<React.Fragment key={s.t}><div className="inline-flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={13} stroke={2.2}/></span><div><p className="text-[12px] font-semibold text-white leading-none">{s.t}</p><p className="text-[11px] text-white/45 mt-0.5">{s.d}</p></div></div>{i!==arr.length-1&&<I.ArrowRight size={14} className="text-white/25"/>}</React.Fragment>))}
@@ -25228,7 +25261,7 @@ function SettingsAutomationsPage({goTo}){
             )}
             {sub==='workflows'&&(autos.length===0?(
               <div className="flex flex-col items-center text-center py-12">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:'linear-gradient(135deg,#2FA877,#6A4FB0)',boxShadow:'0 8px 30px rgba(47,168,119,0.35)'}}><I.Zap size={28} className="text-white"/></div>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{background:'var(--surface-3)'}}><I.Zap size={28} className="text-white"/></div>
                 <p className="text-white text-[18px] font-semibold">No automations yet</p>
                 <p className="text-[13px] text-white/45 mt-1.5 max-w-sm leading-relaxed">Put your follow-ups on autopilot. Trigger actions when contacts are created, deals move stages, or replies come in — no code required.</p>
                 <div className="flex items-center gap-3 mt-5"><button onClick={()=>setTplOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium text-white/80 bg-white/[0.05] border border-white/[0.10] hover:bg-white/[0.08] transition-all"><I.Layers size={14}/>Browse templates</button><button onClick={()=>goTo('automation-builder')} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all"><I.Plus size={14} stroke={2.4}/>Build from scratch</button></div>
@@ -26041,7 +26074,7 @@ function SettingsFormsPage({goTo}){
           <div className="flex-1 overflow-y-auto scroll-area"><div className="px-7 py-6 max-w-[1000px] mx-auto flex flex-col gap-5">
             {readOnly&&<WorkspaceReadOnlyBanner label="Forms are shared workspace assets."/>}
             <fieldset disabled={readOnly} className="contents border-0 m-0 p-0 min-w-0">
-            <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-r from-brand-500/[0.08] to-transparent p-5">
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
               <p className="text-[13px] font-semibold text-white mb-3">Capture leads, then let automations take over.</p>
               <div className="flex items-center gap-2 flex-wrap">
                 {[{Icon:I.Note,c:'#8FB4EA',t:'Form',d:'visitor submits'},{Icon:I.UserPlus,c:'#5FD09B',t:'Contact',d:'created / updated'},{Icon:I.Zap,c:'#E9B968',t:'Automation',d:'trigger + sequence'}].map((s,i,arr)=>(<React.Fragment key={s.t}><div className="inline-flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"><span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{background:s.c+'2e',color:s.c}}><s.Icon size={13} stroke={2.2}/></span><div><p className="text-[12px] font-semibold text-white leading-none">{s.t}</p><p className="text-[11px] text-white/45 mt-0.5">{s.d}</p></div></div>{i!==arr.length-1&&<I.ArrowRight size={14} className="text-white/25"/>}</React.Fragment>))}
@@ -26834,7 +26867,7 @@ function SchedBookingsTab({eventTypes,avail,setAvail,addToast,goTo,onNew,onEdit,
   ];
   return(<div className="flex-1 overflow-y-auto scroll-area">
     <div className="max-w-[1200px] mx-auto px-6 py-6 flex flex-col gap-6">
-      <div className="rounded-2xl border border-brand-500/25 p-6 relative overflow-hidden" style={{background:'radial-gradient(circle at top left,rgba(47,168,119,0.14),transparent 60%)'}}>
+      <div className="rounded-2xl border border-brand-500/25 p-6 relative overflow-hidden" style={{background:'var(--surface-2)'}}>
         <div className="min-w-0">
           <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/25 flex items-center justify-center shrink-0"><I.Globe size={17}/></span><div><p className="text-white text-[17px] font-semibold leading-tight">Your booking page</p><p className="text-[12.5px] text-white/50">Share one link — invitees pick a time from your real availability.</p></div></div>
           <div className="flex items-center gap-2 mt-4 flex-wrap">
@@ -27317,7 +27350,7 @@ function SchedBookingPageTab({eventTypes,avail,initialSlug,addToast,automation,c
         <div className="grid md:grid-cols-[290px_1fr]">
           {/* ── LEFT: host + event details ───────────────────────────── */}
           <div className="border-b md:border-b-0 md:border-r border-white/[0.07] flex flex-col">
-            <div className="px-6 pt-6 pb-5 relative" style={{background:'linear-gradient(180deg, rgba(47,168,119,0.14), transparent)'}}>
+            <div className="px-6 pt-6 pb-5 relative" style={{background:'var(--surface-2)'}}>
               {calType==='collective'?(<React.Fragment>
                 <div className="flex items-center mb-3">{etHosts.slice(0,4).map((av,i)=>{const m=schedMember(av);return(<span key={av} className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[14px] font-semibold ring-4 ring-[var(--s850)] shadow-lg" style={{background:m.color,marginLeft:i?-14:0,zIndex:10-i}}>{av}</span>);})}</div>
                 <p className="text-white text-[17px] font-semibold leading-tight">{schedHostsLabel(etHosts)}</p>
@@ -27899,7 +27932,7 @@ function TasksPage({goTo,nav}){
         </div>
         <div className="flex-1 overflow-y-auto scroll-area">
           {tasks.length>0&&(counts.overdue>0||scoped.filter(t=>isToday(t)&&!t.done).length>0)&&<div className="px-7 pt-4">
-            <div className="rounded-2xl border border-white/[0.06] p-4 flex items-center gap-4 flex-wrap" style={{background:'linear-gradient(135deg, rgba(47,168,119,0.10), transparent 70%)'}}>
+            <div className="rounded-2xl border border-white/[0.06] p-4 flex items-center gap-4 flex-wrap" style={{background:'var(--surface-2)'}}>
               <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-brand-500/12 ring-1 ring-brand-500/25 text-brand-300 flex items-center justify-center shrink-0"><I.Sun size={17}/></span><div><p className="text-[13px] font-semibold text-white">My day</p><p className="text-[11px] text-white/45">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</p></div></div>
               <div className="flex items-center gap-2 flex-wrap">
                 {counts.overdue>0&&<button onClick={()=>setFilter('overdue')} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/[0.08] border border-red-500/20 text-[12px] font-medium text-red-300 hover:bg-red-500/[0.14] transition-all"><span className="w-1.5 h-1.5 rounded-full bg-red-400"/>{counts.overdue} overdue</button>}
@@ -30529,7 +30562,7 @@ function App(){
   React.useEffect(()=>{window.__nrturOpenSearch=()=>setSearchOpen(true);window.__nrturOpenCmd=()=>setCmdOpen(true);window.__nrturGoTo=goTo;return()=>{delete window.__nrturOpenSearch;delete window.__nrturOpenCmd;delete window.__nrturGoTo;};},[goTo]);
   React.useEffect(()=>{const fn=(e)=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setSearchOpen(false);setCmdOpen(true);}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[]);
   const p={goTo,nav};
-  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','accept-invite','onboarding-1','onboarding-2','onboarding-3','onboarding-4','onboarding-5','pay-checkout'];
+  const MARKETING_PAGES=['landing','signup','signin','forgot-password','verify-email','reset-password','reset-expired','accept-invite','onboarding-1','onboarding-2','onboarding-3','onboarding-4','pay-checkout'];
   const isApp=!MARKETING_PAGES.includes(page);
   return(
     <RoleProvider previewRole={previewRole} setPreview={setPreviewRole}>
@@ -30557,8 +30590,6 @@ function App(){
       {page==='onboarding-2'      && <OnboardingPage step={2} {...p}/>}
       {page==='onboarding-3'      && <OnboardingPage step={3} {...p}/>}
       {page==='onboarding-4'      && <OnboardingPage step={4} {...p}/>}
-      {page==='onboarding-5'      && <OnboardingPage step={5} {...p}/>}
-      {page==='onboarding-6'      && <OnboardingPage step={6} {...p}/>}
       {isApp&&<div className="app-shell" style={{height:'100%',display:'flex',flexDirection:'column'}}>
       <RolePreviewBanner/>
       <GlobalBannerHost goTo={goTo} page={page}/>
