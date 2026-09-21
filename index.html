@@ -9785,6 +9785,7 @@ function ActivityCompactRow({e,open,toggle,goTo}){
       <span className="text-[13px] text-white/60 truncate min-w-0 flex-1">{e.title}</span>
       {p.from&&p.to&&<ActFromTo from={p.from} to={p.to} className="shrink-0"/>}
       {e.source&&<span onClick={_actStop()} className="shrink-0 hidden md:inline-flex"><ActivitySourceChip src={e.source} goTo={goTo}/></span>}
+      {e.payload&&e.payload.sequence&&<span onClick={_actStop()} className="shrink-0 inline-flex"><SeqActChip sq={e.payload.sequence}/></span>}
       <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold text-white shrink-0" style={{background:e.actor.color}} title={e.actor.name}>{e.actor.avatar}</span>
       <span className="text-[11px] text-white/50 shrink-0">{e.timeLabel}</span>
       <I.ChevronDown size={13} className={(open?'rotate-180 ':'')+'text-white/30 transition-transform shrink-0'}/>
@@ -9812,6 +9813,38 @@ function ActDealLinkChip({e,dealLink,goTo,inline}){
     </div>}
   </div>);
 }
+// "Sent by a sequence" chip: names the sequence + step and opens the message as it went out (SeqMessageModalHost).
+function SeqActChip({sq,inline}){
+  if(!sq)return null;
+  return(<button onClick={()=>{try{window.dispatchEvent(new CustomEvent('nrtur:seqmsg',{detail:sq}));}catch(e){}}} title="Open this sequence message" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 transition-all hover:brightness-125 max-w-[220px]" style={{background:'color-mix(in srgb, var(--accent) 12%, transparent)',color:'var(--accent-ink)',boxShadow:'inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent)'}}><I.Zap size={9} className="shrink-0"/><span className="truncate">Sequence · {sq.seqName} · {sq.stepNo}/{sq.total}</span></button>);
+}
+function SeqMessageModalHost({goTo}){
+  const [sq,setSq]=React.useState(null);
+  React.useEffect(()=>{const fn=(e)=>setSq(e.detail||null);window.addEventListener('nrtur:seqmsg',fn);return()=>window.removeEventListener('nrtur:seqmsg',fn);},[]);
+  useEscKey(()=>setSq(null));
+  if(!sq)return null;
+  const isSms=sq.channel==='sms';const Ic=isSms?I.MessageSquare:I.Mail;
+  const openSeq=()=>{setSq(null);if(!goTo)return;const ch=sq.channel||'email';const bid=sq.builderId!=null?sq.builderId:String(sq.seqId||'').replace(/^(email|sms|push|inapp):/,'');goTo(ch+'-sequence-builder',{id:isNaN(Number(bid))?bid:Number(bid)});};
+  const enrolled=()=>{setSq(null);goTo&&goTo('settings-sequences');};
+  return(<div className="fixed inset-0 z-[190] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)'}} onClick={e=>{if(e.target===e.currentTarget)setSq(null);}}>
+    <div role="dialog" aria-modal="true" aria-label="Sequence message" style={{width:620,maxWidth:'100%',maxHeight:'86vh'}} className="flex flex-col rounded-2xl border border-white/[0.10] overflow-hidden" >
+      <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-white/[0.07]" style={{background:'var(--s850)'}}>
+        <div className="flex items-center gap-3 min-w-0"><span className="w-10 h-10 rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] text-white/70 flex items-center justify-center shrink-0"><Ic size={17}/></span><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{color:'var(--accent-ink)'}}>Sent by sequence · step {sq.stepNo} of {sq.total} · {isSms?'SMS':'Email'}</p><p className="text-white text-[15px] font-semibold truncate mt-0.5">{sq.seqName}</p></div></div>
+        <button onClick={()=>setSq(null)} aria-label="Close" className="text-white/40 hover:text-white transition-colors shrink-0"><I.X size={16}/></button>
+      </div>
+      <div className="flex-1 overflow-y-auto scroll-area px-6 py-5" style={{background:'var(--s850)'}}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-white/50 mb-4"><span>Sent <span className="text-white/75">{sq.sentAt?seqFmtWhen(sq.sentAt):'—'}</span></span><span>To <span className="text-white/75">{sq.to||'—'}</span></span><span>From <span className="text-white/75">{sq.from||'—'}</span></span></div>
+        {isSms?(<div className="flex justify-end"><div className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-[13px] leading-relaxed text-white/90" style={{background:'color-mix(in srgb, var(--accent) 22%, var(--surface-2))'}}>{sq.body}</div></div>)
+        :(<div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">{sq.subject&&<p className="text-[14px] font-semibold text-white mb-3">{sq.subject}</p>}<p className="text-[13px] text-white/75 leading-relaxed" style={{whiteSpace:'pre-line'}}>{sq.body}</p></div>)}
+        {sq.note&&<p className="text-[11.5px] text-white/45 mt-3">{sq.note}</p>}
+      </div>
+      <div className="px-6 py-3.5 border-t border-white/[0.07] flex items-center justify-between gap-3" style={{background:'var(--s850)'}}>
+        <button onClick={enrolled} className="text-[12px] font-medium text-white/55 hover:text-white transition-colors">All sequences</button>
+        <div className="flex items-center gap-2"><button onClick={()=>setSq(null)} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/65 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">Close</button><button onClick={openSeq} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Open sequence step<I.ArrowRight size={12} stroke={2.4}/></button></div>
+      </div>
+    </div>
+  </div>);
+}
 function ActivityRow({e,last,goTo,dealLink}){
   const [open,setOpen]=React.useState(false);
   const toggle=()=>setOpen(o=>!o);
@@ -9827,6 +9860,7 @@ function ActivityRow({e,last,goTo,dealLink}){
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className={['inline-flex items-center text-[9px] font-semibold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full ring-1',e.chip].join(' ')}>{e.label}</span>
             <span onClick={_actStop()} className="inline-flex"><ActivitySourceChip src={e.source} goTo={goTo}/></span>
+            {e.payload&&e.payload.sequence&&<span onClick={_actStop()} className="inline-flex"><SeqActChip sq={e.payload.sequence}/></span>}
             {/* Deal link lives in the HEADER chip row (same place as the source chip) — not below the card */}
             <span onClick={_actStop()} className="inline-flex"><ActDealLinkChip e={e} dealLink={dealLink} goTo={goTo} inline/></span>
           </div>
@@ -11401,11 +11435,14 @@ function seqTick(now){
     }
     const cur=steps[r.stepIdx]||steps[steps.length-1];const stepNo=r.stepIdx+1;
     const toNow=g.to;const toSnap=(r.to&&(r.to.phone||r.to.email))||'';const changed=toSnap&&toNow&&toSnap!==toNow;
+    const rec=r.contactId!=null?(_liveContacts||[]).find(x=>x.id===r.contactId):(r.leadId!=null?(_liveLeads||[]).find(x=>x.id===r.leadId):null);
+    const msg=seqNextMessage(r,rec);const seqDef=seq||{};
+    const sentAct=(sfx)=>{try{if(!_autoRt||!_autoRt.addActivity)return;const isSms=r.channel==='sms';const build=()=>mkAct(isSms?'sms':'email',{ts:0,by:'nrtur',title:isSms?String(msg.body||'').replace(/\s+/g,' ').slice(0,72):(msg.subject||('Step '+stepNo+' of '+steps.length)),body:msg.body||'',payload:{dir:'out',from:(r.from&&r.from.label)||'',to:toNow,sequence:{seqId:r.seqId,seqName:r.seqName,builderId:seqDef.id!=null?seqDef.id:null,channel:r.channel,stepNo,total:steps.length,enrollmentId:r.id,subject:msg.subject||'',body:msg.body||'',to:toNow,from:(r.from&&r.from.label)||'',sentAt:now,note:sfx||''}}});if(r.contactId!=null)_autoRt.addActivity('contact',r.contactId,build());else if(r.leadId!=null)_autoRt.addActivity('lead',r.leadId,build());if(r.dealId!=null)_autoRt.addActivity('deal',r.dealId,build());}catch(e){}};
     const hist=[...(r.history||[])];if(changed)hist.push({at:now,type:'address_changed',from:toSnap,to:toNow});
     hist.push({at:now,type:'sent',stepIdx:r.stepIdx,to:toNow,from:r.from&&r.from.label});
     const next=r.stepIdx+1;const to=changed?{...r.to,[r.channel==='sms'?'phone':'email']:toNow,snapshotAt:now}:r.to;
-    if(next>=steps.length){patch[r.id]={status:'finished',nextAt:null,held:null,to,stepIdx:r.stepIdx,lastSentAt:now,history:[...hist,{at:now,type:'finished'}]};acts.push([r,'Step '+stepNo+' of '+steps.length+' sent → '+toNow,(cur.label||'')+' · from '+((r.from&&r.from.label)||'—')+' · sequence finished']);}
-    else{const nextAt=seqSnap(now+seqDelayMs(steps[next].delay),r.settings,r.tz);patch[r.id]={status:'active',stepIdx:next,nextAt,held:null,to,lastSentAt:now,history:hist};acts.push([r,'Step '+stepNo+' of '+steps.length+' sent → '+toNow,(cur.label||'')+' · from '+((r.from&&r.from.label)||'—')+' · next step '+seqRel(nextAt)+(changed?' · address changed since enrollment':'')]);}
+    if(next>=steps.length){patch[r.id]={status:'finished',nextAt:null,held:null,to,stepIdx:r.stepIdx,lastSentAt:now,history:[...hist,{at:now,type:'finished'}]};sentAct('Last step — sequence finished');acts.push([r,'Finished “'+r.seqName+'”','All '+steps.length+' steps sent.']);}
+    else{const nextAt=seqSnap(now+seqDelayMs(steps[next].delay),r.settings,r.tz);patch[r.id]={status:'active',stepIdx:next,nextAt,held:null,to,lastSentAt:now,history:hist};sentAct(changed?'Address changed since enrollment':'');}
   });
   if(Object.keys(patch).length)seqSet(a=>a.map(r=>patch[r.id]?{...r,...patch[r.id]}:r));
   exits.forEach(x=>seqExit([x.id],x.reason,'nrtur'));
@@ -30869,6 +30906,7 @@ function App(){
       <GlobalBannerHost goTo={goTo} page={page}/>
       <AnnouncementSpotlight goTo={goTo} page={page}/>
       <NotifPopupHost goTo={goTo}/>
+      <SeqMessageModalHost goTo={goTo}/>
       <div className="app-shell-body" style={{flex:1,minHeight:0,position:'relative'}}>
       {page==='dashboard'         && <DashboardPage {...p}/>}
       {page==='explore'           && <ExplorePage {...p}/>}
