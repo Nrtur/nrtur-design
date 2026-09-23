@@ -4042,12 +4042,12 @@ function pushPageNotice(page,n){if(!page||!n||!n.id)return;_pageNotices={..._pag
 try{window.__nrturPageNotice=pushPageNotice;}catch(e){}
 function PageNotice({b,onCta,onDismiss}){
   const s=sevStyle(b.sev);const Ic=b.Icon||s.Icon;
-  return(<div role={b.persistent?'alert':'status'} data-sev={b.sev} className="rounded-xl border px-4 py-3 flex items-center gap-3" style={{background:'color-mix(in srgb,'+s.accent+' 7%,transparent)',borderColor:'color-mix(in srgb,'+s.accent+' 28%,transparent)'}}>
-    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{background:'color-mix(in srgb,'+s.accent+' 16%,transparent)',color:s.ink}}><Ic size={15} stroke={2}/></span>
-    <div className="flex-1 min-w-0"><p className="text-[13px] font-medium leading-snug" style={{color:s.ink}}>{b.title}</p>{b.body&&<p className="text-[12px] mt-0.5 leading-relaxed" style={{color:s.inkSoft}}>{b.body}</p>}</div>
-    {b.cta&&<button onClick={onCta} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90" style={{color:s.ink,background:'color-mix(in srgb,'+s.accent+' 18%,transparent)',boxShadow:'0 0 0 1px color-mix(in srgb,'+s.accent+' 32%,transparent)'}}>{b.cta}<I.ArrowRight size={11} stroke={2.4}/></button>}
-    {b.cta2&&<button onClick={()=>b.onCta2&&b.onCta2()} className="shrink-0 text-[12px] font-semibold underline-offset-2 hover:underline" style={{color:s.ink}}>{b.cta2}</button>}
-    {!b.persistent&&<button onClick={onDismiss} aria-label="Dismiss" className="shrink-0 w-7 h-7 -mr-1 rounded-lg flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity" style={{color:s.ink}}><I.X size={14} stroke={2.2}/></button>}
+  return(<div role={b.persistent?'alert':'status'} data-sev={b.sev} className="rounded-xl border pl-3 pr-2.5 py-2 flex items-center gap-2.5 min-w-0" style={{background:'color-mix(in srgb,'+s.accent+' 7%,transparent)',borderColor:'color-mix(in srgb,'+s.accent+' 26%,transparent)'}}>
+    <Ic size={14} stroke={2} className="shrink-0" style={{color:s.ink}}/>
+    <p className="flex-1 min-w-0 text-[12.5px] leading-[18px] truncate" style={{color:s.ink}}><span className="font-semibold">{b.title}</span>{b.body&&<span style={{color:s.inkSoft}}> · {b.body}</span>}</p>
+    {b.cta&&<button onClick={onCta} className="shrink-0 inline-flex items-center gap-1 px-2.5 h-[26px] rounded-lg text-[12px] font-semibold transition-all hover:opacity-90" style={{color:s.ink,background:'color-mix(in srgb,'+s.accent+' 18%,transparent)',boxShadow:'0 0 0 1px color-mix(in srgb,'+s.accent+' 32%,transparent)'}}>{b.cta}<I.ArrowRight size={11} stroke={2.4}/></button>}
+    {b.cta2&&<button onClick={()=>b.onCta2&&b.onCta2()} className="shrink-0 text-[12px] font-medium underline-offset-2 hover:underline whitespace-nowrap" style={{color:s.inkSoft}}>{b.cta2}</button>}
+    {!b.persistent&&<button onClick={onDismiss} aria-label="Dismiss" className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center opacity-55 hover:opacity-100 transition-opacity" style={{color:s.ink}}><I.X size={13} stroke={2.2}/></button>}
   </div>);
 }
 function PageNotices({page,goTo,derive,className}){
@@ -4058,7 +4058,7 @@ function PageNotices({page,goTo,derive,className}){
   const list=[...(derive||[]),...(_pageNotices[page]||[])].filter(b=>b&&b.id&&(b.persistent||dismissed.indexOf(b.id)<0)).sort((a,b)=>sevStyle(a.sev).rank-sevStyle(b.sev).rank);
   if(!list.length)return null;
   const act=(b)=>{if(b.onCta)b.onCta();else if(b.go&&goTo)goTo(b.go,b.payload);};
-  return(<div className={['flex flex-col gap-2.5',className||''].join(' ')}>{list.map(b=>(<PageNotice key={b.id} b={b} onCta={()=>act(b)} onDismiss={()=>dismiss(b.id)}/>))}</div>);
+  return(<div className={['flex flex-col gap-2 w-full',className||''].join(' ')}>{list.map(b=>(<PageNotice key={b.id} b={b} onCta={()=>act(b)} onDismiss={()=>dismiss(b.id)}/>))}</div>);
 }
 // ── Announcements ── product news (“What’s new”). Lives in the bell drawer as its own tab; the newest unseen one
 // also gets a one-time spotlight card bottom-right. Seen state is per user (localStorage), never auto-expiring.
@@ -8961,7 +8961,7 @@ function ContactsPage({goTo,nav}){
             </div>}
             {effCanObject('Contacts','create')&&<NewContactSplitButton goTo={goTo} onImport={()=>setImportModal(true)}/>}
           </>} noSearch/>
-        <PageNotices page="contacts" goTo={goTo} className="px-7 pt-4 pb-3"/>
+        <PageNotices page="contacts" goTo={goTo} className="px-7 pt-3 pb-1"/>
         <div className="flex-1 flex min-h-0">
           <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive}]} folders={viewFolders} smart={smartMgr}/>
           <div className="flex-1 flex flex-col min-w-0">
@@ -13723,7 +13723,7 @@ function CompaniesPage({goTo,nav}){
             </div>}
             {effCanObject('Companies','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('company'):goTo('add-company')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Company</button>}
           </>} noSearch/>
-        <PageNotices page="companies" goTo={goTo} className="px-7 pt-4 pb-3"/>
+        <PageNotices page="companies" goTo={goTo} className="px-7 pt-3 pb-1"/>
         <div className="flex-1 flex min-h-0">
           <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'archived',label:'Archived',Icon:I.Archive}]} folders={viewFolders} smart={smartMgr}/>
           <div className="flex-1 flex flex-col min-w-0">
@@ -14415,7 +14415,7 @@ function LeadsPage({goTo,nav}){
             </div>}
             {effCanObject('Leads','create')&&<button onClick={()=>window.__nrturQuickAdd?window.__nrturQuickAdd('lead'):goTo('add-lead')} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium text-white bg-brand-500 hover:bg-brand-400 shadow-brand hover:-translate-y-0.5 transition-all"><I.Plus size={14} stroke={2.4}/>New Lead</button>}
           </>} noSearch/>
-        <PageNotices page="leads" goTo={goTo} className="px-7 pt-4 pb-3"/>
+        <PageNotices page="leads" goTo={goTo} className="px-7 pt-3 pb-1"/>
         <div className="flex-1 flex min-h-0">
           <OmViewRail views={views} activeKey={activeKey} onSelect={selectView} favs={favs} onToggleFav={toggleFav} onEdit={(v)=>{setEditView(v);setSaveOpen(true);}} onSaveView={()=>{setEditView(null);setSaveOpen(true);}} countFor={countFor} dirty={dirty} onSaveChanges={saveChanges} bottomViews={[{key:'converted',label:'Converted',Icon:I.Check},{key:'archived',label:'Archived',Icon:I.Archive}]} folders={viewFolders} smart={smartMgr}/>
           <div className="flex-1 flex flex-col min-w-0">
@@ -18382,7 +18382,7 @@ function AutomationBuilderPage({goTo,nav}){
           </div>
         </header>
         {readOnly&&<div className="px-7 pt-5"><WorkspaceReadOnlyBanner label="Automations are shared workspace assets."/></div>}
-        <PageNotices page="automation-builder" goTo={goTo} className="px-7 pt-5" derive={_edit&&_edit.status==='error'?[{id:'auto-'+_edit.id+'-error',sev:'warning',Icon:I.Zap,persistent:true,title:'Last run failed — '+(_edit.errStep||'a step errored'),body:'Runs are skipped until the next successful run. Fix the step, then test it against a real record.',cta:'Test now',onCta:()=>setTestOpen(true),cta2:'Run history',onCta2:()=>setLogOpen(true)}]:[]}/>
+        <PageNotices page="automation-builder" goTo={goTo} className="px-7 pt-5 max-w-5xl mx-auto" derive={_edit&&_edit.status==='error'?[{id:'auto-'+_edit.id+'-error',sev:'warning',Icon:I.Zap,persistent:true,title:'Last run failed — '+(_edit.errStep||'a step errored'),body:'Runs are skipped until the next successful run. Fix the step, then test it against a real record.',cta:'Test now',onCta:()=>setTestOpen(true),cta2:'Run history',onCta2:()=>setLogOpen(true)}]:[]}/>
         <div className="flex-1 overflow-y-auto scroll-area">
           <div className="px-7 py-6 max-w-5xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 items-start">
@@ -30654,7 +30654,7 @@ function EngageHub({goTo,nav}){
       <AppSidebar active="engage" goTo={goTo}/>
       <div className="flex-1 flex flex-col min-w-0">
         <AppTopbar goTo={goTo} tabs={tabRail}/>
-        <PageNotices page="engage" goTo={goTo} derive={_hubNotices} className="px-7 pt-4"/>
+        <PageNotices page="engage" goTo={goTo} derive={_hubNotices} className="px-7 pt-4 max-w-[1000px] mx-auto"/>
         <div className="flex-1 min-h-0 flex flex-col">
           <EngageEmbedContext.Provider value={true}>{body}</EngageEmbedContext.Provider>
         </div>
