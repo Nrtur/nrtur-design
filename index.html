@@ -96,7 +96,7 @@ button:focus:not(:focus-visible),a:focus:not(:focus-visible),input:focus:not(:fo
   .app-sidebar .nav-mid{display:contents !important}
   .app-sidebar > .mt-auto{margin-top:0 !important;flex-direction:row !important;gap:0 !important;align-items:center !important}
   .app-sidebar .nav-add{position:fixed;right:14px;bottom:74px;z-index:126;width:auto !important;margin:0 !important}
-  .app-sidebar .nav-add > button{width:52px !important;height:52px !important;border-radius:9999px !important;background:var(--accent) !important;color:var(--on-solid) !important;box-shadow:0 10px 28px rgba(0,0,0,0.55) !important}
+  .app-sidebar .nav-add > button{width:52px !important;height:52px !important;border-radius:9999px !important;background:var(--btn-bg) !important;color:var(--btn-fg) !important;box-shadow:0 10px 28px rgba(0,0,0,0.55) !important}
   .app-sidebar .nav-add .qam-root{position:fixed !important;left:10px !important;right:10px !important;top:auto !important;bottom:138px !important;width:auto !important;flex-direction:column !important;max-height:58vh;overflow-y:auto}
   .qam-root > div{width:100% !important;border-right:0 !important}
   /* --- topbars: tighter, hide secondary controls; left pad clears the hamburger --- */
@@ -3944,10 +3944,12 @@ function sevStyle(k){
 // Runtime push mirrors __nrturToast: window.__nrturBanner({id,sev,title,body,cta,go|onCta}).
 // Preview: window.__nrturBannerScenario('none'|'one-fix'|'one-notice'|'two'|'many'|null) — Settings › Notifications › Banner states.
 const BANNER_PRESETS={
-  billingFailed:{id:'billing-failed',sev:'critical',Icon:I.CreditCard,persistent:true,owner:'settings-billing',title:'Payment failed — $177.00 outstanding',body:'Card declined June 1. Update it before June 8 or the workspace is suspended.',cta:'Update card',go:'settings-billing'},
-  trialExpired:{id:'trial-expired',sev:'critical',Icon:I.Lock,persistent:true,owner:'settings-billing',title:'Trial ended — workspace is read-only',body:'Pick a plan to restore editing. Data is kept for 23 more days.',cta:'Choose a plan',go:'settings-billing'},
-  cancelled:{id:'billing-cancelled',sev:'warning',Icon:I.Clock,persistent:true,owner:'settings-billing',title:'Plan cancelled — access ends June 30',body:'Reactivate before then to keep your data and settings.',cta:'Reactivate',go:'settings-billing'},
-  trial:{id:'trial-ends-2026-06-11',sev:'info',Icon:I.Sparkles,owner:'settings-billing',title:'9 days left in your Pro trial',body:'Add a payment method before June 11 to keep everything you’ve built.',cta:'Add payment method',go:'settings-billing'},
+  billingFailed:{id:'billing-failed',sev:'critical',Icon:I.CreditCard,persistent:true,title:'Payment failed — $177.00 outstanding',body:'Card declined June 1. Update it before June 8 or the workspace is suspended.',cta:'Update card',go:'settings-billing'},
+  trialExpired:{id:'trial-expired',sev:'critical',Icon:I.Lock,persistent:true,title:'Trial ended — the workspace is read-only',body:'Sequences, automations and edits are paused. Pick a plan to switch everything back on; your data is kept for 23 more days.',cta:'Choose a plan',go:'settings-billing'},
+  cancelled:{id:'billing-cancelled',sev:'warning',Icon:I.Clock,persistent:true,title:'Plan cancelled — access ends June 30',body:'Reactivate before then to keep your data and settings.',cta:'Reactivate',go:'settings-billing'},
+  trial:{id:'trial-week-5',sev:'info',Icon:I.Sparkles,title:'5 days left in your Pro trial',body:'Add a payment method before June 11 to keep everything you’ve built.',cta:'Add payment method',go:'settings-billing'},
+  trialUrgent:{id:'trial-urgent-2',sev:'warning',Icon:I.Clock,title:'Trial ends in 2 days — June 11',body:'Add a payment method to keep your pipeline, automations and history running.',cta:'Choose a plan',go:'settings-billing'},
+  trialGrace:{id:'trial-grace',sev:'warning',Icon:I.Clock,persistent:true,title:'Trial data is kept for 23 more days',body:'Pick a plan before July 4 and everything comes back exactly as you left it.',cta:'Choose a plan',go:'settings-billing'},
   smsBlocked:{id:'sms-campaign',sev:'warning',Icon:I.Ban,persistent:true,owner:['settings-phone-numbers','settings-integrations'],title:'SMS sending is blocked',body:'A2P campaign rejected by the carrier — nobody can text until it’s resubmitted.',cta:'Open Trust center',go:'settings-phone-numbers'},
   maint:{id:'maint-2026-09-27',sev:'info',Icon:I.Clock,title:'Scheduled maintenance · Sat 27 Sep, 02:00–02:30 UTC',body:'nrtur will be read-only for about 30 minutes.'},
   exportDone:{id:'export-done',sev:'success',Icon:I.Check,title:'Your contacts export is ready',body:'18 rows · CSV · link valid for 24 hours.',cta:'Download'},
@@ -3958,6 +3960,7 @@ const BANNER_SCENARIOS={
   'one-fix':[BANNER_PRESETS.billingFailed],
   'one-notice':[BANNER_PRESETS.maint],
   two:[BANNER_PRESETS.smsBlocked,BANNER_PRESETS.maint],
+  trial:[BANNER_PRESETS.trial],
   many:[BANNER_PRESETS.billingFailed,BANNER_PRESETS.smsBlocked,BANNER_PRESETS.exportDone,BANNER_PRESETS.maint],
 };
 const BANNER_LS='nrtur.bannersDismissed';
@@ -4003,7 +4006,7 @@ function GlobalBannerHost({goTo,page}){
     if(bs==='payment-failed')fixes.push(forOwner(BANNER_PRESETS.billingFailed,'Ask your workspace owner to update the card before June 8.'));
     else if(bs==='trial-expired')fixes.push(forOwner(BANNER_PRESETS.trialExpired,'Ask your workspace owner to pick a plan to restore editing.'));
     else if(bs==='cancelled')fixes.push(forOwner(BANNER_PRESETS.cancelled,'Ask your workspace owner to reactivate before then.'));
-    else if(bs==='trial'&&canBill)fixes.push(BANNER_PRESETS.trial);
+    else if(bs==='trial'){const tb=trialBanner((bc&&bc.trial)||null,canBill);if(tb)fixes.push(tb);}
     // SMS: a REJECTED / unverified registration is workspace-wide and needs an admin — strip. "Pending review"
     // is a waiting state nobody can act on, and "no number" is setup — those stay page-wise (Integrations,
     // Phone numbers, and the Engage inline notes).
@@ -4600,7 +4603,25 @@ function AppSidebar({active,goTo}){
   );
 }
 // ?? AppTopbar ?????????????????????????????????????????????????????????????????
-const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{}});
+const BillingContext=React.createContext({billingState:'active',setBillingState:()=>{},trial:null,setTrial:()=>{}});
+const TRIAL_LEN=21;
+function trialBucket(d){return d<=0?'ended':d<=1?'last':d<=3?'urgent':d<=7?'week':'early';}
+// One banner for a trial, or null when it should stay quiet. `t` = {daysLeft, hasCard, endLabel}.
+function trialBanner(t,canBill){
+  if(!t)return null;
+  const d=Math.max(0,Math.floor(t.daysLeft));const b=trialBucket(d);const end=t.endLabel||'the end date';
+  // Paid up front: no countdown, one quiet heads-up in the last week.
+  if(t.hasCard){
+    return {id:'trial-card-'+b,sev:'info',Icon:I.Sparkles,title:d<=0?'Your Pro plan has started':('Trial ends in '+d+' day'+(d===1?'':'s')+' — then Pro begins'),body:d<=0?('Billing started on '+end+'. Nothing else to do.'):('Your card is on file, so billing starts '+end+' with no interruption.'),cta:'Review plan',go:'settings-billing'};
+  }
+  const common={Icon:I.Sparkles};
+  // Early: visible from day one but the quietest row there is, and dismissible — it returns at 7 days.
+  if(b==='early')return {...common,id:'trial-early',sev:'info',title:d+' days left in your Pro trial',body:'Everything is unlocked until '+end+'. Add a payment method whenever you\'re ready — no charge until then.',cta:canBill?'See plans':undefined,go:canBill?'settings-billing':undefined};
+  if(b==='week')return {...common,id:'trial-week-'+d,sev:'info',title:d+' days left in your Pro trial',body:'Add a payment method before '+end+' to keep everything you’ve built.',cta:canBill?'Add payment method':undefined,go:canBill?'settings-billing':undefined};
+  if(b==='urgent')return {...common,id:'trial-urgent-'+d,sev:'warning',Icon:I.Clock,title:'Trial ends in '+d+' day'+(d===1?'':'s')+' — '+end,body:canBill?'Add a payment method to keep your pipeline, automations and history running.':'Ask your workspace owner to add a payment method before it ends.',cta:canBill?'Choose a plan':undefined,go:canBill?'settings-billing':undefined};
+  if(b==='last'||b==='ended')return {...common,id:'trial-last',sev:'warning',Icon:I.Clock,title:d<1?'Your trial ends today':'Your trial ends tomorrow',body:canBill?'After that the workspace goes read-only — sending, automations and edits stop until a plan is picked.':'After that the workspace goes read-only. Ask your workspace owner to pick a plan.',cta:canBill?'Choose a plan':undefined,go:canBill?'settings-billing':undefined};
+  return null;
+}
 // Shared connected-mailbox state so the inbox rail and Integrations page stay in sync (email spec Part B).
 const MailAccountsContext=React.createContext({accounts:[],connect:()=>{},disconnect:()=>{}});
 // Shared calendar + tasks store so events/tasks created anywhere (detail pages, automations, booking links) show on the Calendar and dashboard.
@@ -20512,7 +20533,7 @@ function WhiteLabelConfigDrawer({cfg,setCfg,close}){
 function SettingsBillingPage({goTo}){
   React.useEffect(()=>{navBadgeMarkSeen(['settings-billing']);},[]);
   const __bc=React.useContext(BillingContext);
-  const billingState=__bc.billingState,setBillingState=__bc.setBillingState;
+  const billingState=__bc.billingState,setBillingState=__bc.setBillingState;const trial=__bc.trial,setTrial=__bc.setTrial;
   const [cycle,setCycle]=React.useState('monthly');
   const [plan,setPlan]=React.useState('pro');
   const [addedEmail,setAddedEmail]=React.useState(false);
@@ -20536,7 +20557,7 @@ function SettingsBillingPage({goTo}){
   // Card capture is Stripe-hosted, so 'checkout' is a redirect, not a form we submit. Simulated here.
   const toStripe=(label,after)=>{window.__nrturToast&&window.__nrturToast('Opening Stripe checkout for '+label+' — hosted by Stripe, not simulated in this prototype.','success');setTimeout(()=>{after&&after();},900);};
   const toggleRenew=()=>{if(autoRenew){openConfirm({title:'Pause auto-renew?',body:'Your Pro plan stays active until June 1, 2026, then won’t renew. The workspace becomes read-only after that unless you resume. You can resume any time before the date.',confirmLabel:'Pause auto-renew',danger:false,onConfirm:()=>{setAutoRenew(false);window.__nrturToast&&window.__nrturToast('Auto-renew paused — plan ends June 1, 2026','warning');}});}else{setAutoRenew(true);window.__nrturToast&&window.__nrturToast('Auto-renew resumed');}};
-  const STATES=[{k:'trial',l:'Trial'},{k:'trial-expired',l:'Trial expired'},{k:'cancelled',l:'Cancelled'},{k:'payment-failed',l:'Payment failed'},{k:'active',l:'Active'}];
+  const STATES=[{k:'trial',l:'Trial',trial:{daysLeft:16,hasCard:false,endLabel:'June 11'}},{k:'trial',l:'Trial · 5d',trial:{daysLeft:5,hasCard:false,endLabel:'June 11'}},{k:'trial',l:'Trial · 2d',trial:{daysLeft:2,hasCard:false,endLabel:'June 11'}},{k:'trial',l:'Trial · card',trial:{daysLeft:2,hasCard:true,endLabel:'June 11'}},{k:'trial-expired',l:'Trial expired'},{k:'cancelled',l:'Cancelled'},{k:'payment-failed',l:'Payment failed'},{k:'active',l:'Active'}];
   // Billing is Owner-only — guard direct navigation/search while previewing a lower role.
   if(!effCanManageBilling()){
     return(<SettingsShell active="settings-billing" goTo={goTo} subtitle="Manage your plan, payment method, and invoices.">
@@ -20645,9 +20666,13 @@ function SettingsBillingPage({goTo}){
         <div className="relative rounded-2xl overflow-hidden border border-brand-500/25 bg-brand-500/[0.07] p-6">
           <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full pointer-events-none" style={{background:'rgba(255,255,255,0.05)',filter:'blur(110px)'}}/>
           <div className="relative flex items-start justify-between gap-6 flex-wrap">
-            <div><div className="flex items-center gap-2 mb-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-brand-500/20 text-brand-200 ring-1 ring-brand-500/30"><I.Sparkles size={11}/>Free trial</span></div><p className="text-white text-[28px] font-bold leading-none">9 days left</p><p className="text-white/55 text-[13px] mt-2">Your Pro trial ends <span className="text-white/85 font-medium">June 11, 2026</span>. No card required to keep exploring.</p></div>
+            {(()=>{const d=Math.max(0,Math.floor((trial&&trial.daysLeft)!=null?trial.daysLeft:16));const end=(trial&&trial.endLabel)||'June 11';const card=!!(trial&&trial.hasCard);const b=trialBucket(d);const sv=sevStyle(card?'info':b==='early'||b==='week'?'info':'warning');
+              return(<div><div className="flex items-center gap-2 mb-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium" style={{color:sv.ink,background:'color-mix(in srgb,'+sv.accent+' 14%,transparent)',boxShadow:'0 0 0 1px color-mix(in srgb,'+sv.accent+' 30%,transparent)'}}><I.Sparkles size={11}/>Free trial</span>{card&&<span className="text-[11px] text-white/45">Card on file</span>}</div>
+                <p className="text-white text-[28px] font-bold leading-none">{d<=0?'Ends today':(d+' day'+(d===1?'':'s')+' left')}</p>
+                <p className="text-white/55 text-[13px] mt-2">Your Pro trial ends <span className="text-white/85 font-medium">{end}, 2026</span>. {card?'Your card is on file — Pro starts automatically, nothing is interrupted.':(d<=3?'After that the workspace goes read-only until a plan is picked.':'No card required to keep exploring.')}</p></div>);})()}
           </div>
-          <div className="relative mt-5"><div className="h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full" style={{width:'36%',background:'var(--accent)'}}/></div><div className="flex justify-between mt-1.5 text-[10px] text-white/50"><span>Day 5 of 14</span><span>Ends Jun 11</span></div></div>
+          {(()=>{const d=Math.max(0,Math.floor((trial&&trial.daysLeft)!=null?trial.daysLeft:16));const used=Math.min(TRIAL_LEN,Math.max(0,TRIAL_LEN-d));const pct=Math.round(used/TRIAL_LEN*100);const sv=sevStyle(!!(trial&&trial.hasCard)||d>7?'info':d>3?'warning':'critical');
+            return(<div className="relative mt-5"><div className="h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full rounded-full transition-all" style={{width:Math.max(4,pct)+'%',background:sv.accent}}/></div><div className="flex justify-between mt-1.5 text-[10px] text-white/50"><span>Day {used+1} of {TRIAL_LEN}</span><span>Ends {(trial&&trial.endLabel)||'June 11'}</span></div></div>);})()}
         </div>
         <div><p className={BILLING_EYE+' mb-1'}>Choose your plan</p><p className="text-white/45 text-[12px] mb-4">Keep Pro or pick another — switch anytime.</p><BillingPlanCards selected={plan} onSelect={setPlan} cycle={cycle}/></div>
         <div className={BILLING_CARD}>
@@ -20724,7 +20749,7 @@ function SettingsBillingPage({goTo}){
       {wlDrawer&&<WhiteLabelConfigDrawer cfg={wlCfg} setCfg={setWlCfg} close={()=>setWlDrawer(false)}/>}
       <div className="fixed bottom-6 left-6 z-[80] flex items-center gap-1 p-1.5 rounded-xl border border-white/[0.10]" style={{background:'var(--pop2)',backdropFilter:'blur(16px)',boxShadow:'0 16px 50px rgba(0,0,0,0.6)'}}>
         <span className="text-[10px] font-medium text-white/50 uppercase tracking-[0.14em] px-2">Billing state</span>
-        {STATES.map(s=>(<button key={s.k} onClick={()=>setBillingState(s.k)} className={['px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',billingState===s.k?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.06]'].join(' ')}>{s.l}</button>))}
+        {STATES.map(s=>{const on=billingState===s.k&&(!s.trial||(trial&&trial.daysLeft===s.trial.daysLeft&&!!trial.hasCard===!!s.trial.hasCard));return(<button key={s.l} onClick={()=>{if(s.trial&&setTrial)setTrial(s.trial);setBillingState(s.k);}} className={['px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',on?'bg-brand-500 text-white shadow-brand':'text-white/55 hover:text-white hover:bg-white/[0.06]'].join(' ')}>{s.l}</button>);})}
       </div>
     </SettingsShell>
   );
@@ -23706,6 +23731,7 @@ function NotificationStatesPage({goTo}){
     {t:'A notice you can close',look:'Top strip · the ×',d:'Scheduled maintenance is workspace-wide but needs nothing from you, so it is a blue notice with an ×. Close it and it stays closed for you.',apply:()=>{pick('one-notice');bc.setBillingState('active');rc.exitPreview();}},
     {t:'Something needs fixing',look:'Top strip · no ×',d:'A failed payment blocks the whole workspace. It is red, it has no ×, and it only leaves when the card is updated. The action is right there.',apply:()=>{pick('live');bc.setBillingState('payment-failed');rc.exitPreview();}},
     {t:'The same thing, as a teammate',look:'Top strip · the copy',d:'A Sales Rep can’t fix billing, so they get the fact and who to ask — not a button that lands on “Billing is restricted”. (You’re now previewing as Sales Rep; the amber bar above the strip is the preview itself.)',apply:()=>{pick('live');bc.setBillingState('payment-failed');rc.setPreviewRole('Sales Rep');}},
+    {t:'A trial running out',look:'Top strip',d:'The countdown escalates rather than nagging: quiet for the first two weeks, blue in the last week, amber in the last three days, red once it ends. Closing it hides only that stage. A card already on file turns it into one quiet heads-up.',apply:()=>{pick('live');rc.exitPreview();bc.setTrial({daysLeft:2,hasCard:false,endLabel:'June 11'});bc.setBillingState('trial');}},
     {t:'Several at once',look:'Top strip · “+3 more”',d:'Four workspace-level notices, still one row. The most severe is the row; the rest wait behind “+N more”. The page never gets shorter than one row.',apply:()=>{pick('many');bc.setBillingState('active');rc.exitPreview();}},
     {t:'On the page that owns the fix',look:'Settings › Billing',d:'On the Billing page itself the strip hides — that page already shows the failed payment as a full status block, and two copies of the same alarm is noise. Open Billing to see it; come back and the strip is here again.',apply:()=>{pick('live');bc.setBillingState('payment-failed');rc.exitPreview();},go:['settings-billing','Open Billing']},
     {t:'One feature’s problem',look:'Sidebar dot · bell · the page',d:'A failing automation is not a workspace-level event, so it never gets a strip. It gets an amber dot on Engage (or More), a bell item that deep-links to the canvas, and a notice on the automation’s own page.',apply:()=>{pick('live');bc.setBillingState('active');rc.exitPreview();},go:['automation-builder','See the canvas',{id:7}]},
@@ -23717,7 +23743,7 @@ function NotificationStatesPage({goTo}){
   const [step,setStep]=React.useState(0);
   const touched=React.useRef(false);
   const goStep=(i)=>{const n=Math.max(0,Math.min(STEPS.length-1,i));setStep(n);touched.current=true;STEPS[n].apply();};
-  React.useEffect(()=>()=>{window.__nrturBannerScenario&&window.__nrturBannerScenario(null);if(touched.current){bc.setBillingState('active');rc.exitPreview();}},[]);
+  React.useEffect(()=>()=>{window.__nrturBannerScenario&&window.__nrturBannerScenario(null);if(touched.current){bc.setBillingState('active');bc.setTrial({daysLeft:16,hasCard:false,endLabel:'June 11'});rc.exitPreview();}},[]);
   React.useEffect(()=>{const fn=(e)=>{if(e.target&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;if(e.key==='ArrowRight')goStep(step+1);if(e.key==='ArrowLeft')goStep(step-1);};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn);},[step]);
   const cur=STEPS[step];
   const SCEN=[{k:'live',l:'Live',d:'Whatever the workspace is actually in right now.'},{k:'none',l:'Nothing',d:'No strip at all — the page starts at the header.'},{k:'one-fix',l:'One needs-fix',d:'A single persistent notice. No ×; it clears when the condition does.'},{k:'one-notice',l:'One notice',d:'A single dismissible announcement with an ×.'},{k:'two',l:'Two',d:'Most severe is the row; the other sits behind “+1 more”.'},{k:'many',l:'Many',d:'Four at once — still one row. Open “+3 more” to see the rest.'}];
@@ -23747,7 +23773,7 @@ function NotificationStatesPage({goTo}){
             {!touched.current&&<button onClick={()=>goStep(0)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Start<I.ArrowRight size={12} stroke={2.4}/></button>}
             {touched.current&&step<STEPS.length-1&&<button onClick={()=>goStep(step+1)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12.5px] font-semibold text-white bg-brand-500 hover:bg-brand-400 shadow-brand transition-all">Next use case<I.ArrowRight size={12} stroke={2.4}/></button>}
             {cur.go&&<button onClick={()=>goTo(cur.go[0],cur.go[2])} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{cur.go[1]}<I.ArrowRight size={11}/></button>}
-            {touched.current&&<button onClick={()=>{setStep(0);touched.current=false;pick('live');bc.setBillingState('active');rc.exitPreview();}} className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/50 hover:text-white transition-colors">Reset</button>}
+            {touched.current&&<button onClick={()=>{setStep(0);touched.current=false;pick('live');bc.setBillingState('active');bc.setTrial({daysLeft:16,hasCard:false,endLabel:'June 11'});rc.exitPreview();}} className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-white/50 hover:text-white transition-colors">Reset</button>}
           </div>
         </div>
       </div>
@@ -23756,6 +23782,7 @@ function NotificationStatesPage({goTo}){
         <div className={FRAME}>
           <BannerRow b={BANNER_PRESETS.billingFailed} onCta={noop}/>
           <BannerRow b={BANNER_PRESETS.smsBlocked} onCta={noop}/>
+          <BannerRow b={BANNER_PRESETS.trialUrgent} onCta={noop} onDismiss={noop}/>
           <BannerRow b={BANNER_PRESETS.exportDone} onCta={noop} onDismiss={noop}/>
           <BannerRow b={BANNER_PRESETS.maint} onDismiss={noop}/>
         </div>
@@ -23785,6 +23812,22 @@ function NotificationStatesPage({goTo}){
         <div className="flex flex-wrap gap-2">
           <button onClick={()=>window.__nrturOpenNotifs&&window.__nrturOpenNotifs('new')} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-brand-200 bg-brand-500/[0.10] border border-brand-500/25 hover:bg-brand-500/[0.16] transition-all">Open “What’s new” in the bell</button>
           <button onClick={()=>{try{localStorage.removeItem(ANN_LS);localStorage.removeItem(ANN_SPOT_LS);}catch(e){}window.dispatchEvent(new CustomEvent('nrtur:ann'));toast('Announcements reset — spotlight is back','success');}} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/55 hover:text-white transition-all">Mark all unseen (replay spotlight)</button>
+        </div>
+      </div>
+      <div className={CARD}>
+        <p className="text-white font-medium mb-1">Trial countdown</p><p className="text-white/45 text-[12px] mb-5">The nudge escalates instead of sitting there all trial: nothing in the strip for the first two weeks (the Billing page carries it), a blue reminder in the last week, amber in the last three days, a blocking red notice once it ends. Closing it only hides that stage — the next one comes back. Someone who already added a card gets one quiet heads-up, never a countdown.</p>
+        <div className="rounded-xl border border-white/[0.08] overflow-hidden mb-4">
+          {[{d:16,c:false,l:'16 days left · no card'},{d:5,c:false,l:'5 days left'},{d:2,c:false,l:'2 days left'},{d:0.5,c:false,l:'Ends today'},{d:5,c:true,l:'5 days left · card on file'},{d:2,c:true,l:'2 days left · card on file'}].map((x,i)=>{const b=trialBanner({daysLeft:x.d,hasCard:x.c,endLabel:'June 11'},true);const sv=b?sevStyle(b.sev):null;return(
+            <div key={i} className="px-4 py-2.5 border-b border-white/[0.04] last:border-0 flex items-center gap-3">
+              <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{background:sv?sv.accent:'rgba(255,255,255,0.14)'}}/>
+              <span className="text-[12.5px] text-white font-medium w-52 shrink-0">{x.l}</span>
+              <span className="text-[12px] text-white/50 truncate">{b?b.title:'No strip — Billing page only'}</span>
+            </div>);})}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[[16,false,'Day 1 (16 left)'],[5,false,'5 days'],[2,false,'2 days'],[0.5,false,'Ends today'],[5,true,'Card added']].map(([d,c,l])=>(<button key={l} onClick={()=>{pick('live');bc.setTrial({daysLeft:d,hasCard:c,endLabel:'June 11'});bc.setBillingState('trial');}} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/75 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all">{l}</button>))}
+          <button onClick={()=>{pick('live');bc.setBillingState('trial-expired');}} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-red-200 bg-red-500/[0.10] border border-red-500/25 hover:bg-red-500/[0.18] transition-all">Trial ended</button>
+          <button onClick={()=>{pick('live');bc.setBillingState('active');}} className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-white/50 hover:text-white transition-colors">Back to active</button>
         </div>
       </div>
       <div className={CARD}>
@@ -30862,6 +30905,7 @@ function App(){
   const schedAddMeeting=React.useCallback((m)=>{setSchedMeetings(ms=>[m,...ms]);try{if(m&&m.contactId!=null)seqAutoExit({contactId:m.contactId},'meeting_booked',null,'nrtur');}catch(e){}try{const _d=m.date instanceof Date?m.date:null;nrturNotify({type:'meeting',text:'New booking — '+(m.contactName||'Someone')+' booked '+(m.name||'a meeting'),sub:_d?(_d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · '+_d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+(m.duration?' · '+m.duration+' min':'')):'See the Meetings tab',avatar:m.avatar||'⚡',color:m.contactColor||'#54CD95',page:'calendar',payload:{tab:'meetings'}});}catch(e){}},[]);
   const schedCtx=React.useMemo(()=>({eventTypes:schedEventTypes,setEventTypes:setSchedEventTypes,availability:schedAvailability,setAvailability:setSchedAvailability,automation:schedAutomation,setAutomation:setSchedAutomation,meetings:schedMeetings,setMeetings:setSchedMeetings,addMeeting:schedAddMeeting}),[schedEventTypes,schedAvailability,schedAutomation,schedMeetings,schedAddMeeting]);
   const [billingState,setBillingState]=React.useState('active');
+  const [trial,setTrial]=React.useState({daysLeft:16,hasCard:false,endLabel:'June 11'});
   const [previewRole,setPreviewRole]=React.useState(null); // "View as role" — App-level so a switch re-renders every page
   _previewRole=(NAV_ADMIN_ROLES.indexOf(CURRENT_USER_ROLE)>=0?previewRole:null); // sync module pointer BEFORE pages render this pass
   const [mailAccounts,setMailAccounts]=React.useState([{addr:'sarah@bloom.co',initials:'SC',color:'#ea4335',provider:'gmail'},{addr:'alex@bloom.co',initials:'AM',color:'#0078d4',provider:'microsoft365'}]);
@@ -30902,7 +30946,7 @@ function App(){
   return(
     <RoleProvider previewRole={previewRole} setPreview={setPreviewRole}>
     <NavConfigProvider>
-    <BillingContext.Provider value={{billingState,setBillingState}}>{(()=>{if(_autoRt)_autoRt.billingState=billingState;return null;})()}
+    <BillingContext.Provider value={{billingState,setBillingState,trial,setTrial}}>{(()=>{if(_autoRt)_autoRt.billingState=billingState;return null;})()}
      <MailAccountsContext.Provider value={{accounts:mailAccounts,connect:connectMail,disconnect:disconnectMail}}>
      <CrmDataContext.Provider value={crm}>
      <SchedulingContext.Provider value={schedCtx}>
